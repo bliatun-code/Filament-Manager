@@ -76,7 +76,7 @@ test("buildTrustedLanCompanionModel reports the scaffold as disabled by default"
     "Not available until trusted-LAN mode is enabled",
   );
   assert.equal(model.localNameWarning, null);
-  assert.equal(model.authLabel, "Per-browser pairing");
+  assert.equal(model.authLabel, "Per-client pairing");
   assert.equal(model.pairActionDisabled, true);
   assert.equal(model.configActionDisabled, false);
 });
@@ -207,6 +207,8 @@ test("buildTrustedLanCompanionModel blocks pairing when the stable local name is
     model.stableAddressValue,
     "Unavailable until the stable local name is running",
   );
+  assert.equal(model.stableAddressHint, model.statusHint);
+  assert.doesNotMatch(model.stableAddressHint, /mode stays disabled/);
   assert.equal(model.directAddressValue, "http://192.168.1.50:4278");
   assert.equal(model.pairActionDisabled, true);
 });
@@ -393,13 +395,13 @@ test("buildTrustedLanPairedBrowserListModel uses Norwegian relative wording and 
     nowMs: Date.parse("2026-03-28T20:00:00.000Z"),
   });
 
-  assert.equal(model.activeRows[0]?.displayName, "Paired browser");
-  assert.equal(model.activeRows[0]?.initials, "PB");
+  assert.equal(model.activeRows[0]?.displayName, "Paired client");
+  assert.equal(model.activeRows[0]?.initials, "PC");
   assert.equal(model.activeRows[0]?.activityLabel, "Last seen for 5 min siden");
   assert.equal(model.activeRows[0]?.originLabel, "192.168.1.25:4278");
 });
 
-test("authorized browsers are only marked recently active after a recent renewal", () => {
+test("authorized clients are only marked recently active after a recent renewal", () => {
   const model = buildTrustedLanPairedBrowserListModel({
     browsers: [
       {

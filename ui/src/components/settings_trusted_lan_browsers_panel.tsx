@@ -44,17 +44,17 @@ function TrustedLanBrowserRow({
   const recentlyActive = browser.statusTone === "live";
   const revokeAriaLabel = t(
     "settings.trustedLanRevokeBrowserAria",
-    "Revoke browser access for {name}",
+    "Revoke client access for {name}",
     { name: browser.displayName },
   );
   const confirmAriaLabel = t(
     "settings.trustedLanConfirmRevokeBrowserAria",
-    "Confirm revoking browser access for {name}",
+    "Confirm revoking client access for {name}",
     { name: browser.displayName },
   );
   const cancelAriaLabel = t(
     "settings.trustedLanCancelRevokeBrowserAria",
-    "Cancel revoking browser access for {name}",
+    "Cancel revoking client access for {name}",
     { name: browser.displayName },
   );
 
@@ -108,7 +108,7 @@ function TrustedLanBrowserRow({
               <div className="min-w-0 flex-1 leading-5" role="alert">
                 {t(
                   "settings.trustedLanConfirmRevokeBrowser",
-                  "Revoke access for {name}? Its current sessions will be closed, and the browser must be paired again.",
+                  "Revoke access for {name}? Its current sessions will be closed, and the client must be paired again.",
                   { name: browser.displayName },
                 )}
               </div>
@@ -221,7 +221,7 @@ export function SettingsTrustedLanBrowsersPanel({
   const revokeRequestDisabled = actionBusy || revokeConfirmation !== null;
   const revokeAllAriaLabel = t(
     "settings.trustedLanRevokeAllAria",
-    "Revoke access for all {count} authorized browsers",
+    "Revoke access for all {count} authorized clients",
     { count: activeBrowsers.length },
   );
 
@@ -242,12 +242,12 @@ export function SettingsTrustedLanBrowsersPanel({
             id="trusted-lan-browsers-title"
             className="font-semibold text-slate-800 dark:text-slate-100"
           >
-            {t("settings.trustedLanBrowsersTitle", "Paired browsers")}
+            {t("settings.trustedLanBrowsersTitle", "Paired clients")}
           </h3>
           <div className="mt-1 text-sm leading-6">
             {t(
               "settings.trustedLanBrowsersBody",
-              "Revoke a browser to stop future renewals and cut off its current sessions.",
+              "Revoke a client to stop renewals and close its current sessions.",
             )}
           </div>
         </div>
@@ -283,7 +283,7 @@ export function SettingsTrustedLanBrowsersPanel({
               <div className="min-w-0 flex-1 leading-5" role="alert">
                 {t(
                   "settings.trustedLanConfirmRevokeAll",
-                  "Revoke access for all authorized browsers ({count})? Their current sessions will be closed, and every browser must be paired again.",
+                  "Revoke access for all authorized clients ({count})? Their current sessions will be closed, and every client must be paired again.",
                   { count: activeBrowsers.length },
                 )}
               </div>
@@ -292,7 +292,7 @@ export function SettingsTrustedLanBrowsersPanel({
                   type="button"
                   aria-label={t(
                     "settings.trustedLanConfirmRevokeAllAria",
-                    "Confirm revoking access for all authorized browsers",
+                    "Confirm revoking access for all authorized clients",
                   )}
                   className={settingsActionButtonClass("danger", "compact")}
                   disabled={actionBusy || activeBrowsers.length === 0}
@@ -304,7 +304,7 @@ export function SettingsTrustedLanBrowsersPanel({
                   type="button"
                   aria-label={t(
                     "settings.trustedLanCancelRevokeAllAria",
-                    "Cancel revoking access for all authorized browsers",
+                    "Cancel revoking access for all authorized clients",
                   )}
                   className={settingsActionButtonClass("neutral", "compact")}
                   onClick={() => setRevokeConfirmation(null)}
@@ -319,13 +319,13 @@ export function SettingsTrustedLanBrowsersPanel({
 
       {totalBrowserCount === 0 ? (
         <div className="surface-subtle mt-4 border-dashed px-4 py-4 text-sm text-slate-600 dark:text-slate-300">
-          {t("settings.trustedLanBrowsersEmpty", "No trusted-LAN browsers have been paired yet.")}
+          {t("settings.trustedLanBrowsersEmpty", "No trusted-LAN clients have been paired yet.")}
         </div>
       ) : (
         <div className="mt-4 space-y-4">
           {activeBrowsers.length === 0 ? (
             <div className="surface-subtle border-dashed px-4 py-4 text-sm text-slate-600 dark:text-slate-300">
-              {t("settings.trustedLanNoActiveBrowsers", "No authorized browsers right now.")}
+              {t("settings.trustedLanNoActiveBrowsers", "No authorized clients right now.")}
             </div>
           ) : (
             <ul className="grid list-none gap-3 p-0">
@@ -369,7 +369,7 @@ export function SettingsTrustedLanBrowsersPanel({
                   <div className="mt-1 text-xs leading-5 text-slate-500 dark:text-slate-400">
                     {t(
                       "settings.trustedLanRevokedHistoryBody",
-                      "Keep this tucked away unless you need to audit older browser access.",
+                      "Keep this tucked away unless you need to audit older client access.",
                     )}
                   </div>
                 </div>

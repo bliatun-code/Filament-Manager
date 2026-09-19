@@ -152,3 +152,10 @@ Host/Client-harnessen ble kjørt med det egenbygde testprogrammet via
 `run-packaged-host-client-e2e.mjs`; navnet på verktøyet innebærer ikke at en ny
 signert releasepakke ble testet. Den avgrensede automatiserte integrasjonen
 lukker ikke hullet i kritikerens manuelle Client-UI-vurdering.
+
+## Senere målrettet oppfølging
+
+Den separate [Host/Client-gjennomgangen](HOST_CLIENT_USABILITY_REVIEW_2026-09-19.md)
+fortsatte 20. september med faktiske, nettverkstilkoblede native testapper. Den
+dokumenterer manuell klientdekning, rettelser og nye avgrensede kriteriescorer.
+Tallene og dekningsgrensene ovenfor beskriver den opprinnelige brede vurderingen.

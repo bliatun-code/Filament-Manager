@@ -2,6 +2,12 @@
   "schemaVersion": 1,
   "messages": [
     {
+      "surface": "desktop",
+      "key": "errors.hostUnavailable",
+      "meaning": "The paired library Host cannot currently be reached. Saved pairing is distinct from live connectivity: no offline write is queued or reported saved. Ask the user to restore Host/network availability and refresh. Missing pairing uses a separate message.",
+      "screenshot": "docs/screenshots/settings-library-network.jpg"
+    },
+    {
       "surface": "companion",
       "key": "settings.cachedData",
       "meaning": "Persistent warning after any overview request failed: previously loaded values may be stale. Refresh is the user action to retry; a reachable session does not guarantee fresh data.",

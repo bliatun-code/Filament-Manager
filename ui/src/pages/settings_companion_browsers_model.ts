@@ -164,7 +164,7 @@ export function buildTrustedLanPairedBrowserListModel(
       lastSeenAtMs !== null &&
       Math.max(0, nowMs - lastSeenAtMs) < 24 * 60 * 60 * 1000;
     const displayName =
-      browser.display_name?.trim() || t("settings.trustedLanUnnamedBrowser", "Paired browser");
+      browser.display_name?.trim() || t("settings.trustedLanUnnamedBrowser", "Paired client");
     const statusLabel = revoked
       ? t("settings.trustedLanRevoked", "Revoked")
       : recentlyActive

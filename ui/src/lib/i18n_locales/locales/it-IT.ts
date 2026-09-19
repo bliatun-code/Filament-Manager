@@ -224,6 +224,7 @@ export const itITDictionary: DictionaryNode = {
     totalSpoolsSubtitle: "In tutte le località",
   },
   errors: {
+      hostUnavailable: "L’host non è disponibile. Le modifiche possono essere salvate solo dopo la riconnessione. Controlla l’host e la rete, poi aggiorna.",
       "inventoryWeightHostUnsupported": "Aggiorna l’Host prima di salvare il peso misurato di una bobina. Nessuna modifica è stata inviata.",
       "inventoryStatusHostUnsupported": "Aggiorna l’Host prima di cambiare lo stato di una bobina. Non è stata inviata alcuna modifica.",
     "printerSlotChanged": "La bobina in questo slot è cambiata. Riapri l’azione dello slot e conferma la bobina attuale.",
@@ -1980,14 +1981,14 @@ export const itITDictionary: DictionaryNode = {
       loadTrustedLanCompanion:
         "Impossibile caricare lo stato companion della LAN attendibile.",
       loadTrustedLanPairedBrowsers:
-        "Impossibile aggiornare i browser associati.",
+        "Impossibile aggiornare i client associati.",
       printerRequired: "Il nome e il modello della stampante sono obbligatori.",
       resetApp: "Impossibile reimpostare i dati dell'app.",
       resetCatalogs: "Impossibile riparare il catalogo.",
       revokeAllTrustedLanBrowsers:
-        "Impossibile revocare i browser LAN attendibili.",
+        "Impossibile revocare i client LAN attendibili.",
       revokeTrustedLanBrowser:
-        "Impossibile revocare il browser della LAN attendibile.",
+        "Impossibile revocare il client della LAN attendibile.",
       saveSwatch:
         "Impossibile salvare il campione per il filamento selezionato.",
       saveTrustedLanConfig:
@@ -2297,28 +2298,28 @@ export const itITDictionary: DictionaryNode = {
     totalCatalog: "Catalogare",
     trustedLanActive: "Attivo",
     trustedLanAllBrowsersRevoked:
-      "Tutti i browser LAN attendibili sono stati revocati.",
+      "Tutti i client LAN attendibili sono stati revocati.",
     trustedLanAuth: "Aut",
     trustedLanAuthHint:
-      "Associazione per browser con cookie, rinnovo e controlli CSRF.",
+      "Associazione per client con cookie, rinnovo e controlli CSRF.",
     trustedLanAuthorized: "Autorizzato",
-    trustedLanAuthPairing: "Associazione per browser",
+    trustedLanAuthPairing: "Associazione per client",
     trustedLanBindBody:
       "Si lega a un'interfaccia privata esplicita. Mai 0.0.0.0.",
     trustedLanBindTitle: "Solo legato all'interfaccia",
-    trustedLanBrowserPairedDetected: "Nuovo browser associato connesso.",
-    trustedLanBrowserRevoked: "Trusted-LAN browser revocato.",
+    trustedLanBrowserPairedDetected: "Nuovo client associato connesso.",
+    trustedLanBrowserRevoked: "Trusted-LAN client revocato.",
     trustedLanBrowsersBody:
-      "Revoca un browser per interrompere i rinnovi e chiudere le sessioni correnti.",
+      "Revoca un client per interrompere i rinnovi e chiudere le sessioni correnti.",
     trustedLanBrowsersEmpty:
-      "Nessun browser LAN attendibile è stato ancora associato.",
-    trustedLanBrowsersTitle: "Browser accoppiati",
+      "Nessun client LAN attendibile è stato ancora associato.",
+    trustedLanBrowsersTitle: "Client accoppiati",
     trustedLanBrowserWaiting: "In attesa del primo rinnovo",
     trustedLanCancelRevokeAction: "Annulla",
     trustedLanCancelRevokeAllAria:
-      "Annulla la revoca dell'accesso per tutti i browser autorizzati",
+      "Annulla la revoca dell'accesso per tutti i client autorizzati",
     trustedLanCancelRevokeBrowserAria:
-      "Annulla la revoca dell'accesso al browser per {name}",
+      "Annulla la revoca dell'accesso al client per {name}",
     trustedLanCloseNetworkEditor: "Chiudi editore",
     trustedLanCompactNetworkHint:
       "L'app Web viene eseguita su un'interfaccia LAN privata selezionata. Apri i dettagli della rete solo quando ne hai bisogno.",
@@ -2328,14 +2329,14 @@ export const itITDictionary: DictionaryNode = {
     trustedLanConfigTitle: "Rete",
     trustedLanConfirmRevokeAction: "Conferma revoca",
     trustedLanConfirmRevokeAll:
-      "Revoca l'accesso per tutti i browser autorizzati ({count})? Le loro sessioni correnti verranno chiuse e ogni browser dovrà essere nuovamente associato.",
+      "Revoca l'accesso per tutti i client autorizzati ({count})? Le loro sessioni correnti verranno chiuse e ogni client dovrà essere nuovamente associato.",
     trustedLanConfirmRevokeAllAction: "Conferma revoca tutto",
     trustedLanConfirmRevokeAllAria:
-      "Conferma la revoca dell'accesso per tutti i browser autorizzati",
+      "Conferma la revoca dell'accesso per tutti i client autorizzati",
     trustedLanConfirmRevokeBrowser:
-      "Revocare l'accesso per {name}? Le sue sessioni correnti verranno chiuse e il browser dovrà essere nuovamente associato.",
+      "Revocare l'accesso per {name}? Le sue sessioni correnti verranno chiuse e il client dovrà essere nuovamente associato.",
     trustedLanConfirmRevokeBrowserAria:
-      "Conferma la revoca dell'accesso al browser per {name}",
+      "Conferma la revoca dell'accesso al client per {name}",
     trustedLanCopyPairing: "Copia il collegamento di accoppiamento",
     trustedLanCreateAnotherPairing: "Crea un altro collegamento",
     trustedLanCreatePairing: "Crea collegamento di accoppiamento",
@@ -2345,9 +2346,9 @@ export const itITDictionary: DictionaryNode = {
     trustedLanEnabledPendingInfo:
       "Il server dell'app Web è in fase di avvio. Aggiorna lo stato se richiede un momento.",
     trustedLanEnableLabel:
-      "Abilita l'accesso al browser LAN attendibile sull'interfaccia selezionata",
+      "Abilita l'accesso al client LAN attendibile sull'interfaccia selezionata",
     trustedLanHelp:
-      "Attiva l'accesso al browser su un'interfaccia LAN privata. L'app desktop mantiene il controllo.",
+      "Attiva l'accesso al client su un'interfaccia LAN privata. L'app desktop mantiene il controllo.",
     trustedLanHideNetwork: "Nascondi rete",
     trustedLanHideNetworkDetails: "Nascondi i dettagli della rete",
     trustedLanHideNetworkSummary: "Nascondi rete",
@@ -2364,12 +2365,12 @@ export const itITDictionary: DictionaryNode = {
     trustedLanNetworkDetails: "Dettagli della rete",
     trustedLanNetworkInterface: "Interfaccia di rete (IP)",
     trustedLanNetworkSaved: "Impostazioni di rete dell'app Web salvate.",
-    trustedLanNoActiveBrowsers: "Nessun browser autorizzato al momento.",
+    trustedLanNoActiveBrowsers: "Nessun client autorizzato al momento.",
     trustedLanNoInterfaces: "Nessuna interfaccia IPv4 privata rilevata",
     trustedLanOrigin: "Origine",
     trustedLanPairedAt: "Accoppiato",
     trustedLanPairingBody:
-      "Crea un collegamento di breve durata o QR per un browser alla volta.",
+      "Crea un link monouso per un browser o un client desktop.",
     trustedLanPairingCopied:
       "Collegamento di accoppiamento Trusted-LAN copiato.",
     trustedLanPairingCreated:
@@ -2381,14 +2382,14 @@ export const itITDictionary: DictionaryNode = {
     trustedLanPairingExpiresAt: "Scade alle",
     trustedLanPairingLabelEmpty: "Nessuna etichetta",
     trustedLanPairingLabelHint:
-      "Opzionale. Ciò aiuta l'elenco dei browser associati a rimanere leggibile in seguito.",
-    trustedLanPairingLabelInput: "Nome del browser",
+      "Opzionale. Ciò aiuta l'elenco dei client associati a rimanere leggibile in seguito.",
+    trustedLanPairingLabelInput: "Nome del client",
     trustedLanPairingLabelMeta: "Navigatore",
     trustedLanPairingLabelPlaceholder:
       "iPad Safari, telefono in cucina, MacBook in officina...",
     trustedLanPairingNoteBody:
-      "Accesso solo tramite browser. Nessun percorso di importazione del dispositivo.",
-    trustedLanPairingNoteTitle: "Solo autenticazione del browser umano",
+      "Nell’app desktop, scegli Client in Libreria e app web e incolla il link. Per l’app web, apri il link o scansiona il QR nel browser da associare.",
+    trustedLanPairingNoteTitle: "Associa client",
     trustedLanPairingQrAlt: "Trusted-LAN abbinamento QR",
     trustedLanPairingQrHint:
       "Crea un collegamento di abbinamento per generare un'anteprima QR.",
@@ -2401,7 +2402,7 @@ export const itITDictionary: DictionaryNode = {
     trustedLanPairingQrUnavailable:
       "L'anteprima QR non è disponibile in questa build. Il collegamento di accoppiamento funziona ancora.",
     trustedLanPairingReady: "Collegamento di accoppiamento pronto",
-    trustedLanPairingTitle: "Associazione dell'accesso al browser",
+    trustedLanPairingTitle: "Associa client",
     trustedLanPort: "Porta",
     trustedLanPortHint:
       "Mantieni la porta stabile in modo che i collegamenti di accoppiamento rimangano prevedibili.",
@@ -2415,13 +2416,13 @@ export const itITDictionary: DictionaryNode = {
     trustedLanRevoke: "Revocare",
     trustedLanRevokeAll: "Revocare tutto",
     trustedLanRevokeAllAria:
-      "Revoca l'accesso per tutti i browser autorizzati {count}",
+      "Revoca l'accesso per tutti i client autorizzati {count}",
     trustedLanRevokeAllWithCount: "Revoca tutto ({count})",
-    trustedLanRevokeBrowserAria: "Revoca l'accesso al browser per {name}",
+    trustedLanRevokeBrowserAria: "Revoca l'accesso al client per {name}",
     trustedLanRevoked: "Revocato",
     trustedLanRevokedHistory: "Storia revocata",
     trustedLanRevokedHistoryBody:
-      "Tienilo nascosto a meno che non sia necessario controllare l'accesso ai browser meno recenti.",
+      "Tienilo nascosto a meno che non sia necessario controllare l'accesso ai client meno recenti.",
     trustedLanSave: "Salva rete",
     trustedLanServerControl: "Controllo del server",
     trustedLanServerTitle: "Server dell'applicazione Web",
@@ -2451,11 +2452,11 @@ export const itITDictionary: DictionaryNode = {
     trustedLanStatusHintRunning:
       "Il server dell'app Web è attivo sull'interfaccia privata selezionata.",
     trustedLanStatusStarting: "Di partenza...",
-    trustedLanTitle: "Trusted-LAN accesso al browser",
+    trustedLanTitle: "Trusted-LAN accesso al client",
     trustedLanToggleBusy: "Risparmio...",
     trustedLanToggleOff: "Spegnere",
     trustedLanToggleOn: "Accendi",
-    trustedLanUnnamedBrowser: "Browser accoppiato",
+    trustedLanUnnamedBrowser: "Client accoppiato",
     trustedLanUrlHintDisabled:
       "Nessuna LAN URL viene esposta mentre la modalità LAN attendibile rimane disabilitata.",
     trustedLanUrlHintEnabled:

@@ -15,6 +15,7 @@ type InventorySpoolDetailFooterProps = {
   onConfirmDiscard: () => void;
   onSaveCommonDetails: () => void;
   runtimeAvailable: boolean;
+  showSavedStatus?: boolean;
 };
 
 export function InventorySpoolDetailFooter({
@@ -27,6 +28,7 @@ export function InventorySpoolDetailFooter({
   onConfirmDiscard,
   onSaveCommonDetails,
   runtimeAvailable,
+  showSavedStatus = true,
 }: InventorySpoolDetailFooterProps) {
   const { t } = useI18n();
   const cancelButtonRef = useRef<HTMLButtonElement | null>(null);
@@ -89,7 +91,7 @@ export function InventorySpoolDetailFooter({
           <div className="text-xs text-slate-500 dark:text-slate-400" aria-live="polite">
             {hasUnsavedChanges
               ? t("inventory.unsavedChanges", "You have unsaved changes.")
-              : t("inventory.allChangesSaved", "All changes are saved.")}
+              : showSavedStatus ? t("inventory.allChangesSaved", "All changes are saved.") : null}
           </div>
           <div className="flex items-center gap-3">
             <button

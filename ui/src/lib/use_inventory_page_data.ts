@@ -10,6 +10,7 @@ import { loadActiveLoanRowsSnapshot } from "./loan_data_source";
 import {
   loadInventorySpoolDetail,
   loadInventorySpools,
+  inventoryFallbackPairingRejected,
 } from "./inventory_data_source";
 import { loadInventoryLocations } from "./inventory_location_data_source";
 import { loadLibrarySyncPageState } from "./library_sync_state";
@@ -148,6 +149,7 @@ export function useInventoryPageData({
   const [clientInventoryPartial, setClientInventoryPartial] = useState(false);
   const [clientInventoryUpdatedAt, setClientInventoryUpdatedAt] = useState<string | null>(null);
   const [historyLoading, setHistoryLoading] = useState(false);
+  const [detailUnavailable, setDetailUnavailable] = useState(false);
   const [historyRows, setHistoryRows] = useState<SpoolHistoryEventRow[]>([]);
   const [usageLoading, setUsageLoading] = useState(false);
   const [usagePoints, setUsagePoints] = useState<SpoolUsagePointRow[]>([]);
@@ -215,6 +217,7 @@ export function useInventoryPageData({
     setBambuLiveIntegrations({});
     setHistoryRows([]);
     setHistoryLoading(false);
+    setDetailUnavailable(false);
     setUsagePoints([]);
     setUsageLoading(false);
     clientInventorySourceRef.current = "UNRESOLVED";
@@ -386,6 +389,14 @@ export function useInventoryPageData({
         clientLibraryId,
         clientTargetGeneration,
       });
+      if (dataRequestIsCurrent("spools", requestId) &&
+          clientReadOnly && clientHostWritePaired && result.source !== "LIVE" &&
+          clientHostBaseUrl && clientLibraryId) {
+        const pairingRejected = await inventoryFallbackPairingRejected(clientHostBaseUrl, clientLibraryId);
+        if (dataRequestIsCurrent("spools", requestId) && pairingRejected) {
+          setClientHostWritePaired(false);
+        }
+      }
       if (!dataRequestIsCurrent("spools", requestId)) {
         reportResult?.("spools", "SUPERSEDED");
         reportResult?.("locations", "SUPERSEDED");
@@ -459,6 +470,7 @@ export function useInventoryPageData({
     recordClientInventoryDomainSource,
     refreshClientInventoryPartial,
     reloadLocations,
+    clientHostWritePaired,
     tauriAvailable,
   ]);
 
@@ -653,6 +665,7 @@ export function useInventoryPageData({
       return;
     }
     const requestId = beginDataRequest("detail");
+    setDetailUnavailable(false);
     if (
       clientReadOnly &&
       (!clientHostBaseUrl?.trim() || !clientLibraryId?.trim())
@@ -662,6 +675,7 @@ export function useInventoryPageData({
         setUsagePoints([]);
       }
       recordClientInventoryDomainSource("detail", "OFFLINE");
+      setDetailUnavailable(true);
       reportResult?.("detail", "OFFLINE");
       return;
     }
@@ -689,6 +703,7 @@ export function useInventoryPageData({
         return;
       }
       console.error(detailError);
+      setDetailUnavailable(true);
       if (reportResult && clientReadOnly) {
         setHistoryRows([]);
         setUsagePoints([]);
@@ -813,6 +828,7 @@ export function useInventoryPageData({
     clientReadOnly,
     clientTargetGeneration,
     completeDataLoad: completeRefresh,
+    detailUnavailable,
     historyLoading,
     historyRows,
     librarySyncReady,

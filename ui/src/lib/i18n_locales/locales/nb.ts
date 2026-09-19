@@ -49,6 +49,7 @@ export const nbDictionary: DictionaryNode = {
       optional: "Valgfritt",
     },
     errors: {
+      hostUnavailable: "Verten er utilgjengelig. Endringer kan ikke lagres før forbindelsen er tilbake. Sjekk verten og nettverket, og oppdater deretter.",
       "inventoryWeightHostUnsupported": "Oppdater verten før du lagrer en målt rullvekt. Ingen endringer ble sendt.",
       "inventoryStatusHostUnsupported": "Oppdater verten før du endrer statusen til en rull. Ingen endringer ble sendt.",
       "printerSlotChanged": "Rullen i dette sporet er endret. Åpne sporhandlingen på nytt og bekreft gjeldende rull.",
@@ -1995,9 +1996,9 @@ export const nbDictionary: DictionaryNode = {
       companionBoundaries: "Desktop-først-grenser",
       companionBoundariesValue:
         "Katalogoppdatering, import/eksport/reset, utskifting av opptatte spor og bredere adminflyter blir foreløpig i desktop-appen.",
-      trustedLanTitle: "Trusted-LAN-nettlesertilgang",
+      trustedLanTitle: "Trusted-LAN-klienttilgang",
       trustedLanHelp:
-        "Slå på nettlesertilgang på ett privat LAN-grensesnitt. Desktop-appen har fortsatt kontrollen.",
+        "Slå på klienttilgang på ett privat LAN-grensesnitt. Desktop-appen har fortsatt kontrollen.",
       trustedLanServerTitle: "Webapp-server",
       trustedLanServerControl: "Serverkontroll",
       trustedLanRefreshStatus: "Oppdater status",
@@ -2057,33 +2058,33 @@ export const nbDictionary: DictionaryNode = {
       trustedLanLocalNameUnavailableHint:
         "Webappen kjører på den nåværende IP-adressen, men parring og permanente QR-lenker er deaktivert til den stabile lokale adressen er tilgjengelig.",
       trustedLanAuth: "Autentisering",
-      trustedLanAuthPairing: "Per-nettleser-parring",
+      trustedLanAuthPairing: "Per-klient-parring",
       trustedLanAuthHint:
-        "Per-nettleser-parring med cookies, fornyelse og CSRF-sjekker.",
+        "Hver nettleser og skrivebordsklient pares separat. Tilbakekall tilgangen her når den ikke lenger trengs.",
       trustedLanConfigTitle: "Nettverk",
       trustedLanConfigBody:
         "Velg privat grensesnitt og port som webappen skal bruke.",
       trustedLanSave: "Lagre nettverk",
       trustedLanEnableLabel:
-        "Aktiver trusted-LAN-nettlesertilgang på valgt grensesnitt",
+        "Aktiver trusted-LAN-klienttilgang på valgt grensesnitt",
       trustedLanInterfaceSelect: "Privat grensesnitt",
       trustedLanNoInterfaces: "Ingen private IPv4-grensesnitt oppdaget",
       trustedLanPortInput: "Lytterport",
-      trustedLanPairingTitle: "Parring for nettleser",
+      trustedLanPairingTitle: "Parring av klient",
       trustedLanPairingBody:
-        "Lag en kortvarig lenke eller QR for én nettleser om gangen. Desktop-klienter pares fra Klient-rollen.",
+        "Lag en engangslenke for en nettleser eller skrivebordsklient.",
       trustedLanCreatePairing: "Lag parringlenke",
       trustedLanCreateAnotherPairing: "Lag en ny lenke",
-      trustedLanPairingLabelInput: "Nettlesernavn",
+      trustedLanPairingLabelInput: "Klientnavn",
       trustedLanPairingLabelPlaceholder:
         "iPad Safari, kjøkkentelefon, verksted-MacBook...",
       trustedLanPairingLabelHint:
-        "Valgfritt. Dette gjør listen over parede nettlesere mer menneskelig lesbar senere.",
+        "Valgfritt. Dette gjør listen over parede klienter mer menneskelig lesbar senere.",
       trustedLanPairingReady: "Parringlenken er klar",
       trustedLanLatestPairing: "Siste parringlenke",
       trustedLanPairingEmptyState:
         "Lag en parringlenke når du vil åpne webappen på en annen enhet.",
-      trustedLanPairingLabelMeta: "Nettleser",
+      trustedLanPairingLabelMeta: "Klient",
       trustedLanPairingLabelEmpty: "Ingen etikett",
       trustedLanPairingExpiresAt: "Utløper",
       trustedLanPairingEmpty: "Lag en parringlenke for å vise den her.",
@@ -2097,26 +2098,26 @@ export const nbDictionary: DictionaryNode = {
       trustedLanPairingQrScanTitle: "Skann fra nettleseren du vil pare",
       trustedLanPairingQrScanBody:
         "Skann med nettleseren du vil pare. Lenken er fortsatt kortvarig og kan bare brukes én gang.",
-      trustedLanPairingNoteTitle: "Kun menneskelig nettleserautentisering",
+      trustedLanPairingNoteTitle: "Parring av klient",
       trustedLanPairingNoteBody:
-        "Kun nettlesertilgang her. Desktop-klienter pares fra Klient-rollen.",
-      trustedLanBrowsersTitle: "Parede nettlesere",
+        "I skrivebordsappen velger du Klient under Bibliotek og webapp og limer inn lenken. For webappen åpner du lenken eller skanner QR-koden i nettleseren du vil pare.",
+      trustedLanBrowsersTitle: "Parede klienter",
       trustedLanBrowsersBody:
-        "Tilbakekall en nettleser for å stoppe fornyelser og lukke nåværende sesjoner.",
+        "Tilbakekall en klient for å stoppe fornyelser og lukke nåværende sesjoner.",
       trustedLanRevokeAll: "Tilbakekall alle",
       trustedLanRevokeAllWithCount: "Tilbakekall alle ({count})",
       trustedLanRevokeAllAria:
-        "Tilbakekall tilgangen for alle {count} autoriserte nettlesere",
+        "Tilbakekall tilgangen for alle {count} autoriserte klienter",
       trustedLanConfirmRevokeAll:
-        "Tilbakekall tilgangen for alle autoriserte nettlesere ({count})? Nåværende sesjoner lukkes, og hver nettleser må pares på nytt.",
+        "Tilbakekall tilgangen for alle autoriserte klienter ({count})? Nåværende sesjoner lukkes, og hver klient må pares på nytt.",
       trustedLanConfirmRevokeAllAction: "Bekreft tilbakekalling av alle",
       trustedLanConfirmRevokeAllAria:
-        "Bekreft tilbakekalling av tilgang for alle autoriserte nettlesere",
+        "Bekreft tilbakekalling av tilgang for alle autoriserte klienter",
       trustedLanCancelRevokeAllAria:
-        "Avbryt tilbakekalling av tilgang for alle autoriserte nettlesere",
-      trustedLanBrowsersEmpty: "Ingen trusted-LAN-nettlesere har blitt paret ennå.",
-      trustedLanNoActiveBrowsers: "Ingen autoriserte nettlesere akkurat nå.",
-      trustedLanUnnamedBrowser: "Paret nettleser",
+        "Avbryt tilbakekalling av tilgang for alle autoriserte klienter",
+      trustedLanBrowsersEmpty: "Ingen trusted-LAN-klienter har blitt paret ennå.",
+      trustedLanNoActiveBrowsers: "Ingen autoriserte klienter akkurat nå.",
+      trustedLanUnnamedBrowser: "Paret klient",
       trustedLanPairedAt: "Paret",
       trustedLanLastSeen: "Sist sett",
       trustedLanBrowserWaiting: "Venter på første fornyelse",
@@ -2127,19 +2128,19 @@ export const nbDictionary: DictionaryNode = {
       trustedLanRevoked: "Tilbakekalt",
       trustedLanRevokedHistory: "Tilbakekalt historikk",
       trustedLanRevokedHistoryBody:
-        "Hold dette skjult med mindre du trenger å kontrollere eldre nettlesertilgang.",
+        "Hold dette skjult med mindre du trenger å kontrollere eldre klienttilgang.",
       trustedLanShowRevoked: "Vis {count} tilbakekalte",
       trustedLanHideRevoked: "Skjul {count} tilbakekalte",
       trustedLanRevoke: "Tilbakekall",
-      trustedLanRevokeBrowserAria: "Tilbakekall nettlesertilgang for {name}",
+      trustedLanRevokeBrowserAria: "Tilbakekall klienttilgang for {name}",
       trustedLanConfirmRevokeBrowser:
-        "Tilbakekall tilgangen for {name}? Nåværende sesjoner lukkes, og nettleseren må pares på nytt.",
+        "Tilbakekall tilgangen for {name}? Nåværende sesjoner lukkes, og klienten må pares på nytt.",
       trustedLanConfirmRevokeAction: "Bekreft tilbakekalling",
       trustedLanConfirmRevokeBrowserAria:
-        "Bekreft tilbakekalling av nettlesertilgang for {name}",
+        "Bekreft tilbakekalling av klienttilgang for {name}",
       trustedLanCancelRevokeAction: "Avbryt",
       trustedLanCancelRevokeBrowserAria:
-        "Avbryt tilbakekalling av nettlesertilgang for {name}",
+        "Avbryt tilbakekalling av klienttilgang for {name}",
       trustedLanBindTitle: "Kun grensesnittbundet",
       trustedLanBindBody:
         "Bindes til ett eksplisitt privat grensesnitt. Aldri 0.0.0.0.",
@@ -2155,9 +2156,9 @@ export const nbDictionary: DictionaryNode = {
       trustedLanDisabledInfo: "Webapp-server slått av.",
       trustedLanPairingCreated: "Trusted-LAN-parringlenke opprettet og kopiert.",
       trustedLanPairingCopied: "Trusted-LAN-parringlenke kopiert.",
-      trustedLanBrowserRevoked: "Trusted-LAN-nettleser tilbakekalt.",
-      trustedLanAllBrowsersRevoked: "Alle trusted-LAN-nettlesere tilbakekalt.",
-      trustedLanBrowserPairedDetected: "Ny paret nettleser koblet til.",
+      trustedLanBrowserRevoked: "Trusted-LAN-klient tilbakekalt.",
+      trustedLanAllBrowsersRevoked: "Alle trusted-LAN-klienter tilbakekalt.",
+      trustedLanBrowserPairedDetected: "Ny paret klient koblet til.",
       subtitle: "Administrer nettlesertilgang, printere, katalogoppdateringer og vedlikehold.",
       desktopOnly: "Innstillinger er kun tilgjengelig i desktop-appen.",
       printerModel: "Printermodell",
@@ -2614,9 +2615,9 @@ export const nbDictionary: DictionaryNode = {
         saveTrustedLanConfig: "Kunne ikke lagre innstillinger for trusted-LAN-kompanjong.",
         createTrustedLanPairing: "Kunne ikke opprette en trusted-LAN-parringlenke.",
         copyTrustedLanPairing: "Kunne ikke kopiere trusted-LAN-parringlenken.",
-        loadTrustedLanPairedBrowsers: "Kunne ikke oppdatere parede nettlesere.",
-        revokeTrustedLanBrowser: "Kunne ikke tilbakekalle trusted-LAN-nettleseren.",
-        revokeAllTrustedLanBrowsers: "Kunne ikke tilbakekalle trusted-LAN-nettlesere.",
+        loadTrustedLanPairedBrowsers: "Kunne ikke oppdatere parede klienter.",
+        revokeTrustedLanBrowser: "Kunne ikke tilbakekalle trusted-LAN-klienten.",
+        revokeAllTrustedLanBrowsers: "Kunne ikke tilbakekalle trusted-LAN-klienter.",
         librarySyncSave: "Kunne ikke lagre bibliotekrolle.",
         librarySyncDeviceNameSave: "Kunne ikke lagre enhetsnavnet.",
         librarySyncHostCheck: "Kunne ikke sjekke konfigurert vert.",

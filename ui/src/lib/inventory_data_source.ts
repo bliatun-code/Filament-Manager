@@ -3,6 +3,7 @@ import {
   fetchLibrarySyncSpoolDetail,
   listSpoolHistory,
   listSpoolUsage,
+  validateLibrarySyncHost,
   type LibrarySyncCachedSpoolList,
   type SpoolHistoryEventRow,
   type SpoolUsagePointRow,
@@ -34,6 +35,22 @@ export type InventoryDataSourceOptions = {
   clientLibraryId?: string | null;
   clientTargetGeneration?: number | null;
 };
+
+// Cache fallback alone cannot distinguish a stopped Host from revoked access.
+// Only a pairing rejection from the expected library warrants re-pairing.
+export async function inventoryFallbackPairingRejected(
+  baseUrl: string,
+  libraryId: string,
+  validate = validateLibrarySyncHost,
+): Promise<boolean> {
+  try {
+    const validation = await validate(baseUrl, libraryId);
+    return validation.reachable && validation.matches_library_id &&
+      validation.pairing_checked && !validation.pairing_valid;
+  } catch {
+    return false;
+  }
+}
 
 export type InventoryDataLoadResult = {
   rows: InventorySpool[];

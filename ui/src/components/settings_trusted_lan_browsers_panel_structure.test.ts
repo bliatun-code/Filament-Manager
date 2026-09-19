@@ -50,8 +50,8 @@ test("trusted-LAN revoke requests start as clearly destructive, named actions", 
 
   assert.match(html, /id="trusted-lan-browsers-panel"/);
   assert.match(html, /scroll-mt-24/);
-  assert.match(html, /aria-label="Revoke browser access for Studio iPad"/);
-  assert.match(html, /aria-label="Revoke access for all 1 authorized browsers"/);
+  assert.match(html, /aria-label="Revoke client access for Studio iPad"/);
+  assert.match(html, /aria-label="Revoke access for all 1 authorized clients"/);
   assert.equal((html.match(/border-rose-200/g) ?? []).length, 2);
   assert.doesNotMatch(html, /border-emerald-200/);
   assert.doesNotMatch(html, /Confirm revoke/);

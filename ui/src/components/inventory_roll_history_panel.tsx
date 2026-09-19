@@ -11,6 +11,7 @@ import type { ResolvedTheme } from "../lib/theme_mode";
 import type { SpoolHistoryEventRow } from "../lib/tauri_client";
 
 type InventoryRollHistoryPanelProps = {
+  unavailable?: boolean;
   formatHistoryEventDetails: (event: SpoolHistoryEventRow) => string;
   formatHistoryEventType: (eventType: string) => string;
   hasHiddenHistoryRows: boolean;
@@ -25,6 +26,7 @@ type InventoryRollHistoryPanelProps = {
 const INITIAL_HISTORY_EVENT_LIMIT = 8;
 
 export function InventoryRollHistoryPanel({
+  unavailable = false,
   formatHistoryEventDetails,
   formatHistoryEventType,
   hasHiddenHistoryRows,
@@ -66,7 +68,7 @@ export function InventoryRollHistoryPanel({
           <div className={inventoryDetailEyebrowClassName}>
             {t("inventory.rollHistory", "Roll history")}
           </div>
-          {!historyLoading ? (
+          {!historyLoading && !unavailable ? (
             <span className="app-modal-inset-soft rounded-full border px-2 py-0.5 text-[11px] font-medium text-slate-600 dark:text-slate-300">
               {historyEventCountLabel}
             </span>
@@ -89,12 +91,16 @@ export function InventoryRollHistoryPanel({
         aria-busy={historyLoading}
         hidden={!showRollHistory}
       >
-          {historyLoading ? (
+          {unavailable ? (
+            <div role="status" className="text-xs text-slate-500">
+              {t("errors.requestFailed", "The request could not be completed.")}
+            </div>
+          ) : historyLoading ? (
             <div className="text-xs text-slate-500">
               {t("inventory.loadingHistory", "Loading history...")}
             </div>
           ) : null}
-          {!historyLoading && visibleHistoryRows.length === 0 ? (
+          {!historyLoading && !unavailable && visibleHistoryRows.length === 0 ? (
             <div className="surface-subtle border-dashed px-3 py-3 text-xs text-slate-600 dark:text-slate-300">
               {hasHiddenHistoryRows
                 ? t(
@@ -104,7 +110,7 @@ export function InventoryRollHistoryPanel({
                 : t("inventory.noHistory", "No history events yet.")}
             </div>
           ) : null}
-          {!historyLoading && displayedHistoryRows.length > 0 ? (
+          {!historyLoading && !unavailable && displayedHistoryRows.length > 0 ? (
             <ol
               id="inventory-roll-history-list"
               className="app-modal-inset-soft app-modal-divider overflow-hidden rounded-lg border divide-y"
@@ -142,7 +148,7 @@ export function InventoryRollHistoryPanel({
               ))}
             </ol>
           ) : null}
-          {!historyLoading && hasMoreHistory ? (
+          {!historyLoading && !unavailable && hasMoreHistory ? (
             <button
               type="button"
               className={`${inventoryPanelToggleButtonClassName} mt-2`}

@@ -19,12 +19,14 @@ pub(crate) fn save_library_sync_validation_state(
         Some(value) => set_setting(conn, "library_sync_last_validation_message", value)?,
         None => delete_setting(conn, "library_sync_last_validation_message")?,
     }
-    match host_device_name
+    // A failed health check (or a successful write without identity metadata)
+    // does not mean the known Host has lost its name. Settings changes
+    // clear/replace this field when the selected target changes.
+    if let Some(value) = host_device_name
         .map(str::trim)
         .filter(|value| !value.is_empty())
     {
-        Some(value) => set_setting(conn, "library_sync_host_device_name", value)?,
-        None => delete_setting(conn, "library_sync_host_device_name")?,
+        set_setting(conn, "library_sync_host_device_name", value)?;
     }
     Ok(())
 }

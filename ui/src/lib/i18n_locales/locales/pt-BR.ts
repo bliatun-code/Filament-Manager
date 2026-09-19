@@ -231,6 +231,7 @@ export const ptBRDictionary: DictionaryNode = {
     legacyLowStockFallback: "Valor alternativo de 200 g para host antigo",
   },
   errors: {
+      hostUnavailable: "O host está indisponível. As alterações só podem ser salvas após a reconexão. Verifique o host e a rede e atualize.",
       "inventoryWeightHostUnsupported": "Atualize o Host antes de salvar o peso medido de um rolo. Nenhuma alteração foi enviada.",
       "inventoryStatusHostUnsupported": "Atualize o Host antes de alterar o estado de um rolo. Nenhuma alteração foi enviada.",
     "printerSlotChanged": "O rolo neste slot mudou. Abra a ação do slot novamente e confirme o rolo atual.",
@@ -2031,13 +2032,13 @@ export const ptBRDictionary: DictionaryNode = {
       load: "Falha ao carregar as configurações.",
       loadTrustedLanCompanion:
         "Falha ao carregar o status companion da LAN confiável.",
-      loadTrustedLanPairedBrowsers: "Falha ao atualizar navegadores pareados.",
+      loadTrustedLanPairedBrowsers: "Falha ao atualizar clientes pareados.",
       printerRequired: "O nome e o modelo da impressora são obrigatórios.",
       resetApp: "Falha ao redefinir os dados do aplicativo.",
       resetCatalogs: "Falha ao reparar o catálogo.",
       revokeAllTrustedLanBrowsers:
-        "Falha ao revogar navegadores de LAN confiáveis.",
-      revokeTrustedLanBrowser: "Falha ao revogar o navegador de LAN confiável.",
+        "Falha ao revogar clientes de LAN confiáveis.",
+      revokeTrustedLanBrowser: "Falha ao revogar o cliente de LAN confiável.",
       saveSwatch: "Falha ao salvar a amostra do filamento selecionado.",
       saveTrustedLanConfig:
         "Falha ao salvar as configurações de LAN confiável companion.",
@@ -2340,28 +2341,28 @@ export const ptBRDictionary: DictionaryNode = {
     totalCatalog: "Catálogo",
     trustedLanActive: "Ativo",
     trustedLanAllBrowsersRevoked:
-      "Todos os navegadores de LAN confiáveis ​​foram revogados.",
+      "Todos os clientes de LAN confiáveis ​​foram revogados.",
     trustedLanAuth: "Autenticação",
     trustedLanAuthHint:
-      "Emparelhamento por navegador com cookies, renovação e verificações CSRF.",
+      "Emparelhamento por cliente com cookies, renovação e verificações CSRF.",
     trustedLanAuthorized: "Autorizado",
-    trustedLanAuthPairing: "Emparelhamento por navegador",
+    trustedLanAuthPairing: "Emparelhamento por cliente",
     trustedLanBindBody:
       "Vincula-se a uma interface privada explícita. Nunca 0.0.0.0.",
     trustedLanBindTitle: "Apenas vinculado à interface",
-    trustedLanBrowserPairedDetected: "Novo navegador emparelhado conectado.",
-    trustedLanBrowserRevoked: "Navegador Trusted-LAN revogado.",
+    trustedLanBrowserPairedDetected: "Novo cliente emparelhado conectado.",
+    trustedLanBrowserRevoked: "Cliente Trusted-LAN revogado.",
     trustedLanBrowsersBody:
-      "Revogue um navegador para interromper as renovações e fechar as sessões atuais.",
+      "Revogue um cliente para interromper as renovações e fechar as sessões atuais.",
     trustedLanBrowsersEmpty:
-      "Nenhum navegador de LAN confiável foi emparelhado ainda.",
-    trustedLanBrowsersTitle: "Navegadores emparelhados",
+      "Nenhum cliente de LAN confiável foi emparelhado ainda.",
+    trustedLanBrowsersTitle: "Clientes emparelhados",
     trustedLanBrowserWaiting: "Aguardando a primeira renovação",
     trustedLanCancelRevokeAction: "Cancelar",
     trustedLanCancelRevokeAllAria:
-      "Cancelar a revogação do acesso para todos os navegadores autorizados",
+      "Cancelar a revogação do acesso para todos os clientes autorizados",
     trustedLanCancelRevokeBrowserAria:
-      "Cancelar a revogação do acesso do navegador para {name}",
+      "Cancelar a revogação do acesso do cliente para {name}",
     trustedLanCloseNetworkEditor: "Fechar editor",
     trustedLanCompactNetworkHint:
       "O aplicativo web é executado em uma interface LAN privada selecionada. Abra os detalhes da rede somente quando precisar deles.",
@@ -2371,14 +2372,14 @@ export const ptBRDictionary: DictionaryNode = {
     trustedLanConfigTitle: "Rede",
     trustedLanConfirmRevokeAction: "Confirmar revogação",
     trustedLanConfirmRevokeAll:
-      "Revogar o acesso de todos os navegadores autorizados ({count})? Suas sessões atuais serão encerradas e todos os navegadores deverão ser emparelhados novamente.",
+      "Revogar o acesso de todos os clientes autorizados ({count})? Suas sessões atuais serão encerradas e todos os clientes deverão ser emparelhados novamente.",
     trustedLanConfirmRevokeAllAction: "Confirmar revogar tudo",
     trustedLanConfirmRevokeAllAria:
-      "Confirme a revogação do acesso para todos os navegadores autorizados",
+      "Confirme a revogação do acesso para todos os clientes autorizados",
     trustedLanConfirmRevokeBrowser:
-      "Revogar acesso para {name}? Suas sessões atuais serão encerradas e o navegador deverá ser emparelhado novamente.",
+      "Revogar acesso para {name}? Suas sessões atuais serão encerradas e o cliente deverá ser emparelhado novamente.",
     trustedLanConfirmRevokeBrowserAria:
-      "Confirme a revogação do acesso do navegador para {name}",
+      "Confirme a revogação do acesso do cliente para {name}",
     trustedLanCopyPairing: "Copiar link de pareamento",
     trustedLanCreateAnotherPairing: "Crie outro link",
     trustedLanCreatePairing: "Criar link de pareamento",
@@ -2388,9 +2389,9 @@ export const ptBRDictionary: DictionaryNode = {
     trustedLanEnabledPendingInfo:
       "O servidor de aplicativos Web está sendo iniciado. Atualize o status se demorar um pouco.",
     trustedLanEnableLabel:
-      "Habilite o acesso do navegador de LAN confiável na interface selecionada",
+      "Habilite o acesso do cliente de LAN confiável na interface selecionada",
     trustedLanHelp:
-      "Ative o acesso do navegador em uma interface LAN privada. O aplicativo desktop permanece no controle.",
+      "Ative o acesso do cliente em uma interface LAN privada. O aplicativo desktop permanece no controle.",
     trustedLanHideNetwork: "Ocultar rede",
     trustedLanHideNetworkDetails: "Ocultar detalhes da rede",
     trustedLanHideNetworkSummary: "Ocultar rede",
@@ -2407,12 +2408,12 @@ export const ptBRDictionary: DictionaryNode = {
     trustedLanNetworkDetails: "Detalhes da rede",
     trustedLanNetworkInterface: "Interface de rede (IP)",
     trustedLanNetworkSaved: "Configurações de rede do aplicativo Web salvas.",
-    trustedLanNoActiveBrowsers: "Nenhum navegador autorizado no momento.",
+    trustedLanNoActiveBrowsers: "Nenhum cliente autorizado no momento.",
     trustedLanNoInterfaces: "Nenhuma interface IPv4 privada detectada",
     trustedLanOrigin: "Origem",
     trustedLanPairedAt: "Emparelhado",
     trustedLanPairingBody:
-      "Crie um link de curta duração ou QR para um navegador por vez.",
+      "Crie um link de uso único para um navegador ou cliente de desktop.",
     trustedLanPairingCopied: "Link de emparelhamento Trusted-LAN copiado.",
     trustedLanPairingCreated:
       "Link de emparelhamento Trusted-LAN criado e copiado.",
@@ -2423,14 +2424,14 @@ export const ptBRDictionary: DictionaryNode = {
     trustedLanPairingExpiresAt: "Expira em",
     trustedLanPairingLabelEmpty: "Sem rótulo",
     trustedLanPairingLabelHint:
-      "Opcional. Isso ajuda a lista de navegadores emparelhados a permanecer legível posteriormente.",
-    trustedLanPairingLabelInput: "Nome do navegador",
-    trustedLanPairingLabelMeta: "Navegador",
+      "Opcional. Isso ajuda a lista de clientes emparelhados a permanecer legível posteriormente.",
+    trustedLanPairingLabelInput: "Nome do cliente",
+    trustedLanPairingLabelMeta: "Cliente",
     trustedLanPairingLabelPlaceholder:
       "iPad Safari, telefone de cozinha, MacBook de oficina...",
     trustedLanPairingNoteBody:
-      "Acesso somente pelo navegador. Nenhuma rota de ingestão de dispositivo.",
-    trustedLanPairingNoteTitle: "Somente autenticação humana do navegador",
+      "No aplicativo de desktop, escolha Cliente em Biblioteca e aplicativo web e cole o link. Para o aplicativo web, abra o link ou leia o QR no navegador que deseja emparelhar.",
+    trustedLanPairingNoteTitle: "Emparelhar cliente",
     trustedLanPairingQrAlt: "Emparelhamento Trusted-LAN QR",
     trustedLanPairingQrHint:
       "Crie um link de emparelhamento para gerar uma visualização QR.",
@@ -2443,7 +2444,7 @@ export const ptBRDictionary: DictionaryNode = {
     trustedLanPairingQrUnavailable:
       "A visualização QR não está disponível nesta compilação. O link de emparelhamento ainda funciona.",
     trustedLanPairingReady: "Link de emparelhamento pronto",
-    trustedLanPairingTitle: "Emparelhamento de acesso ao navegador",
+    trustedLanPairingTitle: "Emparelhar cliente",
     trustedLanPort: "Porta",
     trustedLanPortHint:
       "Mantenha a porta estável para que os links de emparelhamento permaneçam previsíveis.",
@@ -2457,13 +2458,13 @@ export const ptBRDictionary: DictionaryNode = {
     trustedLanRevoke: "Revogar",
     trustedLanRevokeAll: "Revogar tudo",
     trustedLanRevokeAllAria:
-      "Revogar o acesso de todos os navegadores autorizados {count}",
+      "Revogar o acesso de todos os clientes autorizados {count}",
     trustedLanRevokeAllWithCount: "Revogar tudo ({count})",
-    trustedLanRevokeBrowserAria: "Revogar o acesso do navegador para {name}",
+    trustedLanRevokeBrowserAria: "Revogar o acesso do cliente para {name}",
     trustedLanRevoked: "Revogado",
     trustedLanRevokedHistory: "Histórico de revogações",
     trustedLanRevokedHistoryBody:
-      "Mantenha isso guardado, a menos que precise auditar o acesso a navegadores mais antigos.",
+      "Mantenha isso guardado, a menos que precise auditar o acesso a clientes mais antigos.",
     trustedLanSave: "Salvar rede",
     trustedLanServerControl: "Controle de servidor",
     trustedLanServerTitle: "Servidor de aplicativos da web",
@@ -2493,11 +2494,11 @@ export const ptBRDictionary: DictionaryNode = {
     trustedLanStatusHintRunning:
       "O servidor de aplicativos web está ativo na interface privada selecionada.",
     trustedLanStatusStarting: "Começando...",
-    trustedLanTitle: "Acesso ao navegador Trusted-LAN",
+    trustedLanTitle: "Acesso ao cliente Trusted-LAN",
     trustedLanToggleBusy: "Salvando...",
     trustedLanToggleOff: "Desligar",
     trustedLanToggleOn: "Ligar",
-    trustedLanUnnamedBrowser: "Navegador emparelhado",
+    trustedLanUnnamedBrowser: "Cliente emparelhado",
     trustedLanUrlHintDisabled:
       "Nenhuma LAN URL é exposta enquanto o modo LAN confiável permanece desabilitado.",
     trustedLanUrlHintEnabled:

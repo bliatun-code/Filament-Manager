@@ -33,6 +33,7 @@ function historyEvent(index: number): SpoolHistoryEventRow {
 }
 
 function renderPanel(options: {
+  unavailable?: boolean;
   historyLoading?: boolean;
   rows?: SpoolHistoryEventRow[];
   showRollHistory?: boolean;
@@ -42,6 +43,7 @@ function renderPanel(options: {
   return renderToStaticMarkup(
     <I18nContext.Provider value={i18nValue}>
       <InventoryRollHistoryPanel
+        unavailable={options.unavailable}
         formatHistoryEventDetails={(event) => `Details for ${event.id}`}
         formatHistoryEventType={(eventType) => `Type ${eventType}`}
         hasHiddenHistoryRows={false}
@@ -55,6 +57,12 @@ function renderPanel(options: {
     </I18nContext.Provider>,
   );
 }
+
+test("failed history reads do not claim the roll has zero events", () => {
+  const html = renderPanel({ unavailable: true });
+  assert.match(html, /The request could not be completed/);
+  assert.doesNotMatch(html, /0 events|No history/);
+});
 
 test("InventoryRollHistoryPanel connects its disclosure and renders a semantic timeline", () => {
   const row = historyEvent(1);

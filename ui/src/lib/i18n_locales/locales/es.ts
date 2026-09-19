@@ -49,6 +49,7 @@ export const esDictionary: DictionaryNode = {
     optional: "Opcional",
   },
   errors: {
+      hostUnavailable: "El host no está disponible. Los cambios no se pueden guardar hasta que se restablezca la conexión. Comprueba el host y la red, y actualiza.",
       "inventoryWeightHostUnsupported": "Actualiza el anfitrión antes de guardar el peso medido de una bobina. No se envió ningún cambio.",
       "inventoryStatusHostUnsupported": "Actualiza el Host antes de cambiar el estado de una bobina. No se envió ningún cambio.",
     "printerSlotChanged": "La bobina de esta ranura ha cambiado. Vuelve a abrir la acción de la ranura y confirma la bobina actual.",
@@ -1934,9 +1935,9 @@ export const esDictionary: DictionaryNode = {
     companionBoundaries: "Límites reservados al escritorio",
     companionBoundariesValue:
       "La actualización del catálogo, la importación, exportación y restauración, la sustitución de ranuras ocupadas y los flujos administrativos más amplios siguen realizándose en la aplicación de escritorio.",
-    trustedLanTitle: "Acceso desde navegador en la LAN de confianza",
+    trustedLanTitle: "Acceso desde cliente en la LAN de confianza",
     trustedLanHelp:
-      "Activa el acceso desde navegador en una única interfaz de red privada. La aplicación de escritorio mantiene el control.",
+      "Activa el acceso desde cliente en una única interfaz de red privada. La aplicación de escritorio mantiene el control.",
     trustedLanServerTitle: "Servidor de la aplicación web",
     trustedLanServerControl: "Control del servidor",
     trustedLanRefreshStatus: "Actualizar estado",
@@ -1955,7 +1956,7 @@ export const esDictionary: DictionaryNode = {
     trustedLanHideNetworkSummary: "Ocultar red",
     trustedLanHideNetworkDetails: "Ocultar detalles de red",
     trustedLanEnableLabel:
-      "Activar el acceso desde navegador en la interfaz seleccionada",
+      "Activar el acceso desde cliente en la interfaz seleccionada",
     trustedLanQuickToggleHint:
       "Se ejecuta solo en la interfaz privada seleccionada.",
     trustedLanQuickToggleDisabledHint:
@@ -2018,25 +2019,25 @@ export const esDictionary: DictionaryNode = {
       "Se vincula a una interfaz privada explícita, nunca a 0.0.0.0.",
     trustedLanOrigin: "Origen",
     trustedLanAuth: "Autenticación",
-    trustedLanAuthPairing: "Vinculación por navegador",
+    trustedLanAuthPairing: "Vinculación por cliente",
     trustedLanAuthHint:
-      "Vinculación independiente por navegador con cookies, renovación y comprobaciones CSRF.",
+      "Vinculación independiente por cliente con cookies, renovación y comprobaciones CSRF.",
     trustedLanWarningTitle: "El tráfico de la LAN de confianza no está cifrado",
     trustedLanWarningBody:
       "Úsalo solo en una red de confianza. La vinculación protege el acceso, pero cualquier persona en esa red puede leer el tráfico.",
     trustedLanPairingNoteTitle:
-      "Autenticación solo para navegadores personales",
+      "Vincular cliente",
     trustedLanPairingNoteBody:
-      "Acceso exclusivo desde navegador, sin rutas para la ingesta de dispositivos.",
-    trustedLanPairingTitle: "Vinculación del acceso desde navegador",
+      "En la aplicación de escritorio, elige Cliente en Biblioteca y aplicación web y pega el enlace. Para la aplicación web, abre el enlace o escanea el QR en el navegador que quieras vincular.",
+    trustedLanPairingTitle: "Vincular cliente",
     trustedLanPairingBody:
-      "Crea un enlace o QR de corta duración para un único navegador cada vez.",
-    trustedLanPairingLabelInput: "Nombre del navegador",
+      "Crea un enlace de un solo uso para un navegador o cliente de escritorio.",
+    trustedLanPairingLabelInput: "Nombre del cliente",
     trustedLanPairingLabelHint:
-      "Opcional. Ayuda a reconocer el navegador posteriormente en la lista de dispositivos vinculados.",
+      "Opcional. Ayuda a reconocer el cliente posteriormente en la lista de dispositivos vinculados.",
     trustedLanPairingLabelPlaceholder:
       "Safari del iPad, teléfono de la cocina, MacBook del taller...",
-    trustedLanPairingLabelMeta: "Navegador",
+    trustedLanPairingLabelMeta: "Cliente",
     trustedLanPairingLabelEmpty: "Sin nombre",
     trustedLanCreatePairing: "Crear enlace de vinculación",
     trustedLanCreateAnotherPairing: "Crear otro enlace",
@@ -2062,24 +2063,24 @@ export const esDictionary: DictionaryNode = {
       "Escanea desde el navegador que quieras vincular",
     trustedLanPairingQrScanBody:
       "Escanéalo con el navegador que quieras vincular. El enlace es de corta duración y de un solo uso.",
-    trustedLanBrowsersTitle: "Navegadores vinculados",
+    trustedLanBrowsersTitle: "Clientes vinculados",
     trustedLanBrowsersBody:
-      "Revoca un navegador para impedir renovaciones y cerrar sus sesiones actuales.",
+      "Revoca un cliente para impedir renovaciones y cerrar sus sesiones actuales.",
     trustedLanBrowsersEmpty:
-      "Aún no se ha vinculado ningún navegador en la LAN de confianza.",
+      "Aún no se ha vinculado ningún cliente en la LAN de confianza.",
     trustedLanNoActiveBrowsers:
-      "No hay navegadores autorizados en este momento.",
+      "No hay clientes autorizados en este momento.",
     trustedLanAuthorized: "Autorizado",
     trustedLanActive: "Activo",
     trustedLanRecentlyActive: "Activo recientemente",
     trustedLanBrowserWaiting: "Esperando la primera renovación",
-    trustedLanUnnamedBrowser: "Navegador vinculado",
+    trustedLanUnnamedBrowser: "Cliente vinculado",
     trustedLanPairedAt: "Vinculado",
     trustedLanLastSeen: "Última actividad",
     trustedLanRevoke: "Revocar",
-    trustedLanRevokeBrowserAria: "Revocar el acceso del navegador {name}",
+    trustedLanRevokeBrowserAria: "Revocar el acceso del cliente {name}",
     trustedLanConfirmRevokeBrowser:
-      "¿Revocar el acceso de {name}? Sus sesiones actuales se cerrarán y el navegador deberá volver a vincularse.",
+      "¿Revocar el acceso de {name}? Sus sesiones actuales se cerrarán y el cliente deberá volver a vincularse.",
     trustedLanConfirmRevokeBrowserAria:
       "Confirmar la revocación del acceso de {name}",
     trustedLanCancelRevokeBrowserAria:
@@ -2089,25 +2090,25 @@ export const esDictionary: DictionaryNode = {
     trustedLanRevokeAll: "Revocar todos",
     trustedLanRevokeAllWithCount: "Revocar todos ({count})",
     trustedLanRevokeAllAria:
-      "Revocar el acceso de los {count} navegadores autorizados",
+      "Revocar el acceso de los {count} clientes autorizados",
     trustedLanConfirmRevokeAll:
-      "¿Revocar el acceso de todos los navegadores autorizados ({count})? Sus sesiones actuales se cerrarán y todos deberán volver a vincularse.",
+      "¿Revocar el acceso de todos los clientes autorizados ({count})? Sus sesiones actuales se cerrarán y todos deberán volver a vincularse.",
     trustedLanConfirmRevokeAllAction: "Confirmar todas las revocaciones",
     trustedLanConfirmRevokeAllAria:
-      "Confirmar la revocación de todos los navegadores autorizados",
+      "Confirmar la revocación de todos los clientes autorizados",
     trustedLanCancelRevokeAllAria:
-      "Cancelar la revocación de todos los navegadores autorizados",
+      "Cancelar la revocación de todos los clientes autorizados",
     trustedLanRevoked: "Revocado",
     trustedLanRevokedHistory: "Historial de revocaciones",
     trustedLanRevokedHistoryBody:
-      "Mantén esta sección cerrada salvo que necesites auditar accesos anteriores desde navegadores.",
+      "Mantén esta sección cerrada salvo que necesites auditar accesos anteriores desde clientes.",
     trustedLanShowRevoked: "Mostrar {count} revocados",
     trustedLanHideRevoked: "Ocultar {count} revocados",
     trustedLanBrowserPairedDetected:
-      "Se ha conectado un navegador vinculado nuevo.",
-    trustedLanBrowserRevoked: "Navegador de la LAN de confianza revocado.",
+      "Se ha conectado un cliente vinculado nuevo.",
+    trustedLanBrowserRevoked: "Cliente de la LAN de confianza revocado.",
     trustedLanAllBrowsersRevoked:
-      "Se han revocado todos los navegadores de la LAN de confianza.",
+      "Se han revocado todos los clientes de la LAN de confianza.",
     subtitle:
       "Gestiona el acceso del navegador, las impresoras, los catálogos y el mantenimiento.",
     desktopOnly:
@@ -2756,14 +2757,14 @@ export const esDictionary: DictionaryNode = {
       loadTrustedLanCompanion:
         "No se pudo cargar el estado del compañero de LAN confiable.",
       loadTrustedLanPairedBrowsers:
-        "No se pudieron actualizar los navegadores emparejados.",
+        "No se pudieron actualizar los clientes emparejados.",
       printerRequired: "Se requieren el nombre y modelo de la impresora.",
       resetApp: "No se pudieron restablecer los datos de la aplicación.",
       resetCatalogs: "No se pudo reparar el catálogo.",
       revokeAllTrustedLanBrowsers:
-        "No se pudieron revocar los navegadores LAN confiables.",
+        "No se pudieron revocar los clientes LAN confiables.",
       revokeTrustedLanBrowser:
-        "No se pudo revocar el navegador de LAN confiable.",
+        "No se pudo revocar el cliente de LAN confiable.",
       saveSwatch: "No se pudo guardar la muestra del filamento seleccionado.",
       saveTrustedLanConfig:
         "No se pudo guardar la configuración del compañero de LAN confiable.",
