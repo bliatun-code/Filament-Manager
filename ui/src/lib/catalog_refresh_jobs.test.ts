@@ -305,3 +305,93 @@ test("a persistence error fails before submitting a request", async () => {
   assert.equal(f.controller.snapshot().busy, false);
   assert.match(f.controller.snapshot().error!, /Storage unavailable/);
 });
+
+test("success notification claims survive controller recreation without consuming result recovery", async () => {
+  const request = { job_id: "completed", vendor: "eSUN", material: "ABS" } as const;
+  const f = fixture({ get: async () => job(request, "SUCCEEDED") });
+  assert.equal(f.controller.claimSuccessNotification(request.job_id), false);
+  await f.controller.checkNow();
+  assert.equal(f.controller.claimSuccessNotification("another-job"), false);
+  assert.equal(f.controller.claimSuccessNotification(request.job_id), true);
+  assert.equal(f.controller.claimSuccessNotification(request.job_id), false);
+  assert.deepEqual(JSON.parse(f.storage.getItem(catalogRefreshJobStorageKey("host-a"))!), request);
+  f.controller.dispose();
+
+  const restored = fixture({ ...f.dependencies });
+  await restored.controller.checkNow();
+  assert.equal(restored.controller.claimSuccessNotification(request.job_id), false);
+  assert.deepEqual(restored.controller.snapshot().job, job(request, "SUCCEEDED"));
+
+  const other = fixture({ ...f.dependencies }, "host-b");
+  await other.controller.checkNow();
+  assert.equal(other.controller.claimSuccessNotification(request.job_id), true);
+  restored.controller.dispose();
+  other.controller.dispose();
+});
+
+test("only a live positive terminal result can claim a success notification", async () => {
+  const request = { job_id: "completed", vendor: "eSUN", material: "ABS" } as const;
+  let response = job(request);
+  const f = fixture({ get: async () => response });
+  await f.controller.checkNow();
+  assert.equal(f.controller.claimSuccessNotification(request.job_id), false);
+  response = job(request, "FAILED");
+  await f.controller.checkNow();
+  assert.equal(f.controller.claimSuccessNotification(request.job_id), false);
+  response = job(request, "SUCCEEDED");
+  response.result!.imported = 0;
+  await f.controller.checkNow();
+  assert.equal(f.controller.claimSuccessNotification(request.job_id), false);
+  response = job(request, "SUCCEEDED");
+  await f.controller.checkNow();
+  f.controller.dispose();
+  assert.equal(f.controller.claimSuccessNotification(request.job_id), false);
+});
+
+test("notification storage failures retain one notification in memory and do not alter the result", async () => {
+  for (const failure of ["read", "write"] as const) {
+    const request = { job_id: failure, vendor: "eSUN", material: "ABS" } as const;
+    const storage = memoryStorage();
+    const f = fixture({
+      get: async () => job(request, "SUCCEEDED"),
+      storage: {
+        ...storage,
+        getItem: (key) => {
+          if (failure === "read") throw new Error("Storage read unavailable");
+          return storage.getItem(key);
+        },
+        setItem: (key, value) => {
+          if (failure === "write") throw new Error("Storage write unavailable");
+          storage.setItem(key, value);
+        },
+      },
+    });
+    await f.controller.checkNow();
+    assert.equal(f.controller.claimSuccessNotification(request.job_id), true);
+    await f.controller.checkNow();
+    assert.equal(f.controller.claimSuccessNotification(request.job_id), false);
+    assert.deepEqual(f.controller.snapshot().job, job(request, "SUCCEEDED"));
+    assert.equal(f.controller.snapshot().error, null);
+    f.controller.dispose();
+  }
+});
+
+test("a late notification claim cannot overwrite a newer request or its acknowledgment", async () => {
+  const firstRequest = { job_id: "first", vendor: "eSUN", material: "ABS" } as const;
+  const nextRequest = { ...firstRequest, job_id: "next" };
+  const first = fixture({ get: async () => job(firstRequest, "SUCCEEDED") });
+  await first.controller.checkNow();
+  first.storage.setItem(catalogRefreshJobStorageKey("host-a"), JSON.stringify(nextRequest));
+  const next = fixture({ storage: first.storage, get: async () => job(nextRequest, "SUCCEEDED") });
+  await next.controller.checkNow();
+  assert.equal(next.controller.claimSuccessNotification(nextRequest.job_id), true);
+  assert.equal(first.controller.claimSuccessNotification(firstRequest.job_id), true);
+  assert.deepEqual(JSON.parse(first.storage.getItem(catalogRefreshJobStorageKey("host-a"))!), nextRequest);
+
+  const restored = fixture({ ...next.dependencies });
+  await restored.controller.checkNow();
+  assert.equal(restored.controller.claimSuccessNotification(nextRequest.job_id), false);
+  first.controller.dispose();
+  next.controller.dispose();
+  restored.controller.dispose();
+});

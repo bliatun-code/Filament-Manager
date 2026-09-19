@@ -15,7 +15,11 @@ function SettingsCatalogJobsMount(input: Input) {
 
 function MountCatalogJobs(input: Input) {
   const refs: Array<{ current: unknown }> = [];
-  const effects: Array<{ dependencies?: readonly unknown[]; cleanup?: void | (() => void) }> = [];
+  const effects: Array<{
+    dependencies?: readonly unknown[];
+    run: () => void | (() => void);
+    cleanup?: void | (() => void);
+  }> = [];
   function renderCatalogJobs(current: Input) {
     let refIndex = 0;
     let effectIndex = 0;
@@ -34,8 +38,10 @@ function MountCatalogJobs(input: Input) {
         if (!dependencies || !existing?.dependencies || dependencies.some((value, item) => !Object.is(value, existing.dependencies?.[item]))) {
           pending.push(() => {
             existing?.cleanup?.();
-            effects[index] = { dependencies, cleanup: effect() };
+            effects[index] = { dependencies, run: effect, cleanup: effect() };
           });
+        } else {
+          existing.run = effect;
         }
       },
     };
@@ -48,6 +54,10 @@ function MountCatalogJobs(input: Input) {
   return {
     ...renderCatalogJobs(input),
     rerender: renderCatalogJobs,
+    replayEffects: () => {
+      for (const effect of effects) effect.cleanup?.();
+      for (const effect of effects) effect.cleanup = effect.run();
+    },
     unmount: () => { for (const effect of effects) effect.cleanup?.(); },
   };
 }
@@ -111,6 +121,7 @@ test("Settings renders the authoritative vendor/material and recovers a completi
   let vendor = "";
   let progress = "";
   let info: string | null = null;
+  let announcements = 0;
   let imported: number | null = null;
   let reloads = 0;
   const input: Input = {
@@ -126,7 +137,10 @@ test("Settings renders the authoritative vendor/material and recovers a completi
     setCatalogRefreshStartedAt: () => undefined,
     setCatalogRefreshVendor: (value) => { vendor = typeof value === "function" ? value("Bambu") : value; },
     setError: () => undefined,
-    setInfo: (value) => { info = typeof value === "function" ? value(info) : value; },
+    setInfo: (value) => {
+      info = typeof value === "function" ? value(info) : value;
+      if (info !== null) announcements += 1;
+    },
   };
   let first: ReturnType<typeof MountCatalogJobs> | null = null;
   let second: ReturnType<typeof MountCatalogJobs> | null = null;
@@ -152,9 +166,211 @@ test("Settings renders the authoritative vendor/material and recovers a completi
     assert.equal(imported, 9);
     assert.match(info!, /^eSUN PETG:/);
     assert.equal(reloads, 1);
+    assert.equal(announcements, 1, "completion while away must announce when first displayed");
+    await controller.checkNow();
+    second.unmount();
+    second = MountCatalogJobs(input);
+    assert.equal(imported, 9, "the completed result remains recoverable on later visits");
+    assert.equal(info, null, "later visits must not resurrect the success banner");
+    assert.equal(announcements, 1);
   } finally {
     first?.unmount();
     second?.unmount();
+    observeCatalogRefreshJobSession({ clientReadOnly: true }, () => undefined);
+    globalThis.window = previousWindow;
+  }
+});
+
+function completedJob(jobId: string, imported = 45): CatalogRefreshJobSnapshot {
+  return {
+    job_id: jobId, vendor: "eSUN", material: "ABS", status: "SUCCEEDED",
+    started_at: "2026-09-05T10:00:00Z", finished_at: "2026-09-05T10:01:00Z",
+    result: { imported, reactivated_count: 0, discontinued_count: 0, output: `Import log for ${jobId}` },
+    error: null,
+  };
+}
+
+function trackedFeedback() {
+  const notifications: string[] = [];
+  const results: NonNullable<CatalogRefreshJobSnapshot["result"]>[] = [];
+  const errors: string[] = [];
+  let reloads = 0;
+  const input: Input = {
+    ...baseInput(),
+    completeCatalogRefreshResult: (result) => { results.push(result); },
+    reloadSettings: async () => { reloads += 1; },
+    setInfo: (value) => { if (typeof value === "string") notifications.push(value); },
+    setError: (value) => { if (typeof value === "string") errors.push(value); },
+  };
+  return { input, notifications, results, errors, reloads: () => reloads };
+}
+
+test("completed imports do not reannounce after polling or Settings remount, while receipt and log are restored", async () => {
+  const previousWindow = globalThis.window;
+  globalThis.window = fakeWindow();
+  const completed = completedJob("already-displayed");
+  invokeHandler = async (command) => {
+    assert.equal(command, "get_library_sync_host_catalog_refresh_job", "recovery must never resubmit an import");
+    return completed;
+  };
+  const feedback = trackedFeedback();
+  let mounted: ReturnType<typeof MountCatalogJobs> | null = null;
+  try {
+    mounted = MountCatalogJobs(feedback.input);
+    const controller = observeCatalogRefreshJobSession(feedback.input.target, () => undefined)!;
+    await controller.checkNow();
+    await controller.checkNow();
+    assert.equal(feedback.notifications.length, 1);
+    mounted.unmount();
+    mounted = MountCatalogJobs(feedback.input);
+    await controller.checkNow();
+    assert.equal(feedback.notifications.length, 1, "a page revisit must not restart the transient notification");
+    assert.deepEqual(feedback.results, [completed.result, completed.result]);
+    assert.equal(feedback.results[1].output, "Import log for already-displayed");
+    assert.equal(feedback.reloads(), 2, "banner suppression must not skip refreshing catalog data");
+  } finally {
+    mounted?.unmount();
+    observeCatalogRefreshJobSession({ clientReadOnly: true }, () => undefined);
+    globalThis.window = previousWindow;
+  }
+});
+
+test("StrictMode effect replay preserves a just-announced success without announcing it again", async () => {
+  const previousWindow = globalThis.window;
+  globalThis.window = fakeWindow();
+  const completed = completedJob("completed-before-mount");
+  invokeHandler = async () => completed;
+  const feedback = trackedFeedback();
+  let info: string | null = null;
+  const input: Input = {
+    ...feedback.input,
+    setInfo: (value) => {
+      info = typeof value === "function" ? value(info) : value;
+      feedback.input.setInfo(value);
+    },
+  };
+  let mounted: ReturnType<typeof MountCatalogJobs> | null = null;
+  try {
+    const controller = observeCatalogRefreshJobSession(input.target, () => undefined)!;
+    await controller.checkNow();
+    mounted = MountCatalogJobs(input);
+    assert.match(info!, /^eSUN ABS:/);
+    const displayed = info;
+    mounted.replayEffects();
+    await controller.checkNow();
+    assert.equal(info, displayed, "effect cleanup/setup must not erase the newly displayed banner");
+    assert.equal(feedback.notifications.length, 1);
+    assert.deepEqual(feedback.results, [completed.result], "effect replay must not repeat receipt side effects");
+    mounted.unmount();
+    mounted = MountCatalogJobs(input);
+    assert.equal(info, null, "an actual new Settings mount must still suppress the acknowledged banner");
+    assert.equal(feedback.notifications.length, 1);
+    assert.deepEqual(feedback.results, [completed.result, completed.result]);
+  } finally {
+    mounted?.unmount();
+    observeCatalogRefreshJobSession({ clientReadOnly: true }, () => undefined);
+    globalThis.window = previousWindow;
+  }
+});
+
+test("success acknowledgment survives Client generation changes and controller recreation, scoped to its library", async () => {
+  const previousWindow = globalThis.window;
+  const storage = new Map<string, string>();
+  globalThis.window = fakeWindow(storage);
+  const completed = completedJob("same-id-in-two-libraries");
+  invokeHandler = async () => completed;
+  const feedback = trackedFeedback();
+  let mounted: ReturnType<typeof MountCatalogJobs> | null = null;
+  try {
+    mounted = MountCatalogJobs(feedback.input);
+    await observeCatalogRefreshJobSession(feedback.input.target, () => undefined)!.checkNow();
+    assert.equal(feedback.notifications.length, 1);
+    const nextGeneration = {
+      ...feedback.input,
+      target: { ...feedback.input.target, clientTargetGeneration: 2 },
+    };
+    mounted.rerender(nextGeneration);
+    await observeCatalogRefreshJobSession(nextGeneration.target, () => undefined)!.checkNow();
+    assert.equal(feedback.notifications.length, 1, "reconnecting to the same Host must not reannounce its old result");
+    mounted.unmount();
+    observeCatalogRefreshJobSession({ clientReadOnly: true }, () => undefined);
+    mounted = MountCatalogJobs(nextGeneration);
+    await observeCatalogRefreshJobSession(nextGeneration.target, () => undefined)!.checkNow();
+    assert.equal(feedback.notifications.length, 1, "a new controller must recover persisted acknowledgment");
+    assert.deepEqual(feedback.results, [completed.result, completed.result, completed.result]);
+    const otherLibrary = {
+      ...feedback.input,
+      target: { ...feedback.input.target, clientLibraryId: "library-b", clientTargetGeneration: 3 },
+    };
+    mounted.rerender(otherLibrary);
+    await observeCatalogRefreshJobSession(otherLibrary.target, () => undefined)!.checkNow();
+    assert.equal(feedback.notifications.length, 2, "another library owns an independent notification even with the same job ID");
+    const returning = { ...nextGeneration, target: { ...nextGeneration.target, clientTargetGeneration: 4 } };
+    mounted.rerender(returning);
+    await observeCatalogRefreshJobSession(returning.target, () => undefined)!.checkNow();
+    assert.equal(feedback.notifications.length, 2, "returning to the first library must retain its acknowledgment");
+    assert.equal(feedback.results.length, 5);
+    assert.equal(feedback.results[4].output, completed.result?.output);
+  } finally {
+    mounted?.unmount();
+    observeCatalogRefreshJobSession({ clientReadOnly: true }, () => undefined);
+    globalThis.window = previousWindow;
+  }
+});
+
+test("a later completed import still announces even when its summary matches the previous job", async () => {
+  const previousWindow = globalThis.window;
+  globalThis.window = fakeWindow();
+  let response = completedJob("first-import");
+  invokeHandler = async () => response;
+  const feedback = trackedFeedback();
+  let mounted: ReturnType<typeof MountCatalogJobs> | null = null;
+  try {
+    mounted = MountCatalogJobs(feedback.input);
+    const controller = observeCatalogRefreshJobSession(feedback.input.target, () => undefined)!;
+    await controller.checkNow();
+    response = {
+      ...completedJob("second-import"), status: "RUNNING", finished_at: null, result: null,
+    };
+    await controller.checkNow();
+    assert.equal(feedback.notifications.length, 1);
+    response = completedJob("second-import");
+    await controller.checkNow();
+    assert.equal(feedback.notifications.length, 2);
+    assert.equal(feedback.notifications[0], feedback.notifications[1], "identical copy must not hide a genuinely new import");
+    assert.equal(feedback.results[1].output, "Import log for second-import");
+    mounted.unmount();
+    mounted = MountCatalogJobs(feedback.input);
+    assert.equal(feedback.notifications.length, 2, "the second completion must also be acknowledged after display");
+  } finally {
+    mounted?.unmount();
+    observeCatalogRefreshJobSession({ clientReadOnly: true }, () => undefined);
+    globalThis.window = previousWindow;
+  }
+});
+
+test("zero-import warnings remain visible after remount and reload", async () => {
+  const previousWindow = globalThis.window;
+  globalThis.window = fakeWindow();
+  const completed = completedJob("zero-import", 0);
+  invokeHandler = async () => completed;
+  const feedback = trackedFeedback();
+  let mounted: ReturnType<typeof MountCatalogJobs> | null = null;
+  try {
+    mounted = MountCatalogJobs(feedback.input);
+    await observeCatalogRefreshJobSession(feedback.input.target, () => undefined)!.checkNow();
+    mounted.unmount();
+    mounted = MountCatalogJobs(feedback.input);
+    await observeCatalogRefreshJobSession(feedback.input.target, () => undefined)!.checkNow();
+    mounted.unmount();
+    observeCatalogRefreshJobSession({ clientReadOnly: true }, () => undefined);
+    mounted = MountCatalogJobs(feedback.input);
+    await observeCatalogRefreshJobSession(feedback.input.target, () => undefined)!.checkNow();
+    assert.deepEqual(feedback.notifications, []);
+    assert.deepEqual(feedback.errors, ["No eSUN rows", "No eSUN rows", "No eSUN rows"]);
+    assert.deepEqual(feedback.results, [completed.result, completed.result, completed.result]);
+  } finally {
+    mounted?.unmount();
     observeCatalogRefreshJobSession({ clientReadOnly: true }, () => undefined);
     globalThis.window = previousWindow;
   }
@@ -326,14 +542,19 @@ test("idle status failures do not replace a terminal job's authoritative error",
     return interrupted;
   };
   const failures: string[] = [];
+  const input = { ...initial, failCatalogRefreshResult: (error: string) => { failures.push(error); } };
   let mounted: ReturnType<typeof MountCatalogJobs> | null = null;
   try {
-    mounted = MountCatalogJobs({ ...initial, failCatalogRefreshResult: (error) => { failures.push(error); } });
+    mounted = MountCatalogJobs(input);
     const controller = observeCatalogRefreshJobSession(initial.target, () => undefined)!;
     await controller.checkNow();
     offline = true;
     await controller.checkNow();
     assert.deepEqual(failures, [interrupted.error], "the receipt's original error must stay authoritative");
+    mounted.unmount();
+    mounted = MountCatalogJobs(input);
+    await controller.checkNow();
+    assert.deepEqual(failures, [interrupted.error, interrupted.error], "revisiting Settings must still restore the terminal error");
   } finally {
     mounted?.unmount();
     observeCatalogRefreshJobSession({ clientReadOnly: true }, () => undefined);
