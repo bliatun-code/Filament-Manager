@@ -112,7 +112,10 @@ where
 {
     let normalized = content.trim_start_matches('\u{feff}').trim();
     if normalized.is_empty() {
-        return Err(InventoryError::Db("Import file is empty".to_string()));
+        return Err(InventoryError::InvalidOperation {
+            code: "document.file_empty",
+            message: "Import file is empty".to_string(),
+        });
     }
 
     match validate_full_backup(normalized) {
@@ -138,14 +141,9 @@ where
         Err(_) => {}
     }
 
-    if let Ok(rows) = parse_inventory_spools_csv(normalized) {
-        let stats = import_inventory_rows(&rows)?;
-        return Ok(import_stats("INVENTORY_CSV", stats));
-    }
-
-    Err(InventoryError::Db(
-        "Unsupported import format. Expected full backup JSON, inventory JSON array/object, or inventory CSV.".to_string(),
-    ))
+    let rows = parse_inventory_spools_csv(normalized)?;
+    let stats = import_inventory_rows(&rows)?;
+    Ok(import_stats("INVENTORY_CSV", stats))
 }
 
 fn looks_like_json(content: &str) -> bool {
@@ -177,8 +175,22 @@ fn import_stats(detected_format: &str, stats: InventoryImportStats) -> ImportDat
 pub(crate) fn parse_inventory_spools_json(
     content: &str,
 ) -> InventoryResult<Vec<InventoryImportRow>> {
+    parse_inventory_spools_json_inner(content).map_err(|error| match error {
+        // Only the pure file parser is classified here; database failures remain internal.
+        InventoryError::Db(message) => InventoryError::InvalidOperation {
+            code: "document.inventory_invalid",
+            message,
+        },
+        other => other,
+    })
+}
+
+fn parse_inventory_spools_json_inner(content: &str) -> InventoryResult<Vec<InventoryImportRow>> {
     let parsed: Value =
-        serde_json::from_str(content).map_err(|error| InventoryError::Db(error.to_string()))?;
+        serde_json::from_str(content).map_err(|error| InventoryError::InvalidOperation {
+            code: "document.json_invalid",
+            message: error.to_string(),
+        })?;
     let rows = match &parsed {
         Value::Array(items) => items,
         Value::Object(object) => {
@@ -457,6 +469,17 @@ pub(crate) fn parse_inventory_spools_json(
 pub(crate) fn parse_inventory_spools_csv(
     content: &str,
 ) -> InventoryResult<Vec<InventoryImportRow>> {
+    parse_inventory_spools_csv_inner(content).map_err(|error| match error {
+        // Only the pure file parser is classified here; database failures remain internal.
+        InventoryError::Db(message) => InventoryError::InvalidOperation {
+            code: "document.inventory_invalid",
+            message,
+        },
+        other => other,
+    })
+}
+
+fn parse_inventory_spools_csv_inner(content: &str) -> InventoryResult<Vec<InventoryImportRow>> {
     let mut records = parse_csv_records(content)?
         .into_iter()
         .filter(|record| !record.iter().all(|field| field.trim().is_empty()));
@@ -1133,6 +1156,31 @@ fn csv_has_header(headers: &[String], candidates: &[&str]) -> bool {
 #[cfg(test)]
 mod tests {
     use super::{parse_csv_records, parse_inventory_spools_csv, parse_inventory_spools_json};
+
+    #[test]
+    fn malformed_documents_have_actionable_codes_without_reaching_the_writer() {
+        use super::super::database_result::InventoryError;
+        for (content, code) in [
+            (" ", "document.file_empty"),
+            ("{", "document.json_invalid"),
+            (r#"{"note":"not inventory"}"#, "document.inventory_invalid"),
+            (
+                "spool_id,material,filament_name,color_name,remaining_g\na,PLA,Basic,Blue,-25",
+                "document.inventory_invalid",
+            ),
+        ] {
+            let error = super::import_data_content(
+                content,
+                |_| Err(InventoryError::Db("not a backup".into())),
+                |_| panic!("must not restore"),
+                |_| panic!("must not write inventory"),
+            )
+            .unwrap_err();
+            assert!(
+                matches!(error, InventoryError::InvalidOperation { code: actual, .. } if actual == code)
+            );
+        }
+    }
 
     #[test]
     fn csv_records_preserve_cr_and_lf_inside_quoted_fields() {

@@ -57,7 +57,7 @@ function renderHiddenSelectionBanner(selectedSpool, loanRows, escapeHtml, format
   const summaryItems = [
     formatRollReference(selectedSpool.spool, locale),
     formatGrams(selectedSpool.spool?.remaining_g),
-    selectedSpool.spool?.location_id || t(locale, "format.unassigned", "Unassigned"),
+    selectedSpool.location_name || selectedSpool.spool?.location_id || t(locale, "format.unassigned", "Unassigned"),
   ].filter(Boolean);
   return renderSelectionBanner({
     actions: `
@@ -115,7 +115,7 @@ function renderLoanPickerRows(options) {
         row.master?.vendor || "",
         formatRollReference(row.spool, locale),
         formatGrams(row.spool?.remaining_g),
-        row.spool?.location_id || t(locale, "format.unassigned", "Unassigned"),
+        row.location_name || row.spool?.location_id || t(locale, "format.unassigned", "Unassigned"),
       ].filter(Boolean);
       return renderSwatchListRow({
         action: "select-loan-spool",
@@ -268,6 +268,13 @@ function renderLoanRows(options) {
 export function renderLoanPickerTaskSheetBody(options) {
   const { state, loanSpoolOptions, escapeHtml, formatGrams } = options;
   const locale = state.locale || "en";
+  const query = (state.loanPickerSearch || "").trim().toLocaleLowerCase(locale);
+  const matchingSpools = loanSpoolOptions.filter((row) => !query || [
+    row.spool.id, row.master.material, row.master.filament_name,
+    row.master.color_name, row.master.vendor, row.spool.owner_name,
+    row.location_name, row.home_location_name, row.spool.location_id,
+    row.spool.home_location_id,
+  ].some((value) => String(value || "").toLocaleLowerCase(locale).includes(query)));
 
   if (!loanSpoolOptions.length) {
     return renderCompanionStateCard({
@@ -278,8 +285,15 @@ export function renderLoanPickerTaskSheetBody(options) {
 
   return `
     <div class="stack loan-picker-sheet">
+      <label class="search-field" for="companion-loan-picker-search">
+        <span class="search-field-label">${escapeHtml(t(locale, "storage.catalogSearch", "Search material, filament, color, or vendor"))}</span>
+        <input id="companion-loan-picker-search" class="search-input" type="search" name="loan-picker-search" value="${escapeHtml(state.loanPickerSearch || "")}" placeholder="${escapeHtml(t(locale, "storage.searchPlaceholder", "Search filament, color, owner, or placement"))}" />
+      </label>
+      <p class="muted" role="status">${matchingSpools.length}/${loanSpoolOptions.length}</p>
       <div class="stack loan-list">
-        ${renderLoanPickerRows({ state, locale, loanSpoolOptions, escapeHtml, formatGrams })}
+        ${matchingSpools.length
+          ? renderLoanPickerRows({ state, locale, loanSpoolOptions: matchingSpools, escapeHtml, formatGrams })
+          : renderCompanionStateCard({ escapeHtml, message: t(locale, "storage.noMatch", "No local spools matched the current search.") })}
       </div>
     </div>
   `;
@@ -390,12 +404,16 @@ export function renderLoanReturnTaskSheetBody(options) {
             <div
               id="loan-return-calculation"
               class="metric-card"
+              data-weight-preview="${direction === "INBOUND" ? "inbound" : "return"}"
+              data-tare-weight="${tareWeight}"
+              data-loaned-weight="${loanedWeight}"
+              aria-live="polite"
             >
               <div class="metric-label">${escapeHtml(
                 t(locale, "loans.returnCalculation", "Suggested return calculation"),
               )}</div>
               <div class="metric-value">${escapeHtml(returnWeightCalculation)}</div>
-              <div class="muted">${escapeHtml(
+              <div class="muted" data-estimated-used>${escapeHtml(
                 t(
                   locale,
                   "loans.estimatedUsedCalculation",
@@ -528,6 +546,9 @@ export function renderLoanCreateTaskSheetBody(options) {
           <div
             id="loan-outgoing-calculation"
             class="metric-card"
+            data-weight-preview="outgoing"
+            data-tare-weight="${tareWeight}"
+            aria-live="polite"
           >
             <div class="metric-label">${escapeHtml(
               t(locale, "loans.outgoingCalculation", "Suggested outgoing calculation"),

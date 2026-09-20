@@ -49,13 +49,15 @@ type InventorySpoolCollectionProps = {
   selectedSpoolId: string | null;
   selectedBulkSpoolIds: ReadonlySet<string>;
   totalSpoolCount: number;
+  slotLabelById?: ReadonlyMap<string, string>;
 };
 
 function formatInventoryPlacement(
   t: ReturnType<typeof useI18n>["t"],
   value: string | null | undefined,
+  slotLabelById?: ReadonlyMap<string, string>,
 ) {
-  return formatPlacementLabel(t, value);
+  return formatPlacementLabel(t, value, slotLabelById);
 }
 
 function OwnershipChip({
@@ -167,6 +169,7 @@ export function InventorySpoolCollection({
   selectedSpoolId,
   selectedBulkSpoolIds,
   totalSpoolCount,
+  slotLabelById,
 }: InventorySpoolCollectionProps) {
   const { locale, t } = useI18n();
   const collectionId = useId();
@@ -326,7 +329,7 @@ export function InventorySpoolCollection({
                       <div className="flex items-start justify-between gap-3">
                         <div className="min-w-0">
                           <div className="truncate text-sm font-semibold text-slate-900 dark:text-slate-50">
-                            {formatInventoryPlacement(t, singleVisibleRoll.location)}
+                            {formatInventoryPlacement(t, singleVisibleRoll.location, slotLabelById)}
                           </div>
                           <div className="mt-1 truncate text-[11px] leading-relaxed text-slate-600 dark:text-slate-400">
                             {formatRollReference(singleVisibleRoll)}
@@ -389,7 +392,7 @@ export function InventorySpoolCollection({
                             <div className="min-w-0 flex-1">
                               <div className="flex flex-wrap items-center gap-2">
                                 <div className="truncate text-[13px] font-semibold leading-snug text-slate-900 dark:text-slate-50">
-                                  {formatInventoryPlacement(t, roll.location)}
+                                  {formatInventoryPlacement(t, roll.location, slotLabelById)}
                                 </div>
                                 <OwnershipChip ownershipType={roll.ownershipType} t={t} />
                               </div>
@@ -494,7 +497,7 @@ export function InventorySpoolCollection({
                       <OwnershipChip ownershipType={roll.ownershipType} t={t} />
                     </div>
                     <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-                      {formatInventoryPlacement(t, roll.location)} · {formatRollReference(roll)}
+                      {formatInventoryPlacement(t, roll.location, slotLabelById)} · {formatRollReference(roll)}
                     </div>
                     {isBorrowedInOwnership(roll.ownershipType) && roll.ownerName ? (
                       <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">

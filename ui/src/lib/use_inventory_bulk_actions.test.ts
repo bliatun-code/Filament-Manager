@@ -15,9 +15,9 @@ async function harness() {
     let api,state,props={},old,calls=[],failure="LIVE",held=false,release,refreshes=[],labels=[];
     const t=(_key,fallback="",params={})=>fallback.replace(/\\{(\\w+)\\}/g,(_,key)=>params[key]??key);
     window.__TAURI__={invoke:(command,payload)=>new Promise((resolve,reject)=>calls.push({command,payload,resolve,reject}))};
-    function Harness({host="local",generation=1,active=true,ready=true,live=true,loading=false,paired=true,status="IN_STOCK",filtered=false,loan=false,otherStatus="IN_STOCK"}) {
+    function Harness({host="local",generation=1,active=true,ready=true,live=true,loading=false,paired=true,status="IN_STOCK",filtered=false,loan=false,otherStatus="IN_STOCK",weight=500}) {
       const [busy,setBusy]=useState(false),[error,setError]=useState(null),[info,setInfo]=useState(null);
-      const spools=['a','b','c'].map(id=>({id,masterId:'master',status:id==='c'?otherStatus:status,homeLocationId:'old',locationId:'old',remainingGrams:500,
+      const spools=['a','b','c'].map(id=>({id,masterId:'master',status:id==='c'?otherStatus:status,homeLocationId:'old',locationId:'old',remainingGrams:weight,
         vendor:'Vendor',material:'PLA',filamentName:'Basic',colorName:'Blue',ownershipType:'OWNED'}));
       const reload=kind=>async report=>{refreshes.push(kind);if(held&&kind==='spools')await new Promise(resolve=>release=resolve);
         if(failure==='throw')throw Error('refresh rejected');report?.(kind,failure);};
@@ -36,11 +36,11 @@ async function harness() {
     const root=createRoot(document.getElementById('root'));
     const render=(p={})=>{props=p;flushSync(()=>root.render(React.createElement(Harness,p)));};
     const prepare=kind=>{flushSync(()=>api.selectionModeTriggerProps.onActiveChange(true));flushSync(()=>api.panelProps.onSelectVisibleChange(true));
-      flushSync(()=>kind==='MOVE'?api.panelProps.onRequestMoveReview(api.panelProps.locationTargets[0]):api.panelProps.onRequestStatusReview('LOST'));};
+      flushSync(()=>kind==='MOVE'?api.panelProps.onRequestMoveReview(api.panelProps.locationTargets[0]):api.panelProps.onRequestStatusReview(kind==='REACTIVATE'?'IN_STOCK':'LOST'));};
     const confirm=()=>api.panelProps.onConfirmReview(api.panelProps.review);
     window.bulk={render,prepare,confirm,double:()=>{confirm();confirm();},save:()=>{const fn=api.panelProps.onConfirmReview,plan=api.panelProps.review;old=()=>fn(plan);},old:()=>old(),
       cancel:()=>api.panelProps.onCancelReview(),clear:()=>api.panelProps.onClearSelection(),failure:value=>{failure=value;},hold:()=>{held=true;},
-      finish:async(index,reject=false,mismatch=false)=>{await Promise.resolve();if(reject)calls[index].reject(Error('write rejected'));else calls[index].resolve({committed:true,affected_count:mismatch?1:2,history_spool_count:2});await new Promise(resolve=>setTimeout(resolve,0));},
+      finish:async(index,reject=false,mismatch=false)=>{await Promise.resolve();if(reject)calls[index].reject(Error(typeof reject==='string'?reject:'write rejected'));else calls[index].resolve({committed:true,affected_count:mismatch?1:2,history_spool_count:2});await new Promise(resolve=>setTimeout(resolve,0));},
       release:async()=>{release();await new Promise(resolve=>setTimeout(resolve,0));},
       labels:()=>api.panelProps.onCreateLabels(api.panelProps.labelsPlan),
       snapshot:()=>({...state,calls:calls.map(({command,payload})=>({command,payload})),refreshes,labels,
@@ -113,6 +113,24 @@ test("rendered inventory bulk review lifecycle",async context=>{
         await page.evaluate(`bulk.prepare('STATUS');bulk.save();bulk.render(${props});bulk.old()`);assert.equal((await page.evaluate('bulk.snapshot()')).calls.length,0);
       });
     }
+    await scenario('empty rolls without weight explain recovery before offering confirmation',async page=>{
+      await page.evaluate("bulk.render({status:'EMPTY',weight:0});bulk.prepare('REACTIVATE')");
+      const state=await page.evaluate('bulk.snapshot()');
+      assert.equal(state.review,null);assert.equal(state.calls.length,0);
+      assert.match(state.error,/Set measured total weight above empty spool weight/);
+      assert.match(state.error,/Basic/);
+    });
+    await scenario('a selected roll weight change invalidates an earlier reactivation review',async page=>{
+      await page.evaluate("bulk.render({status:'EMPTY',weight:500});bulk.prepare('REACTIVATE');bulk.save();bulk.render({status:'EMPTY',weight:0});bulk.old()");
+      assert.equal((await page.evaluate('bulk.snapshot()')).calls.length,0);
+    });
+    await scenario('authoritative host weight rejection offers the same recovery guidance',async page=>{
+      await page.evaluate("bulk.render({status:'EMPTY',weight:500});bulk.prepare('REACTIVATE');bulk.confirm();bulk.finish(0,JSON.stringify({code:'inventory.bulk.reactivation_requires_weight',safe_detail:null,diagnostic_id:null}))");
+      await page.waitForFunction('!bulk.snapshot().busy');
+      const state=await page.evaluate('bulk.snapshot()');
+      assert.match(state.error,/Set measured total weight above empty spool weight/);
+      assert.equal(state.info,null);assert.equal(state.count,2);
+    });
     await scenario('unselected roll changes do not invalidate a reviewed batch',async page=>{
       await page.evaluate("bulk.prepare('STATUS');bulk.render({otherStatus:'EMPTY'});bulk.confirm()");assert.equal((await page.evaluate('bulk.snapshot()')).calls.length,1);await page.evaluate('bulk.finish(0)');
     });

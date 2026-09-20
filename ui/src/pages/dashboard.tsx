@@ -92,6 +92,7 @@ export default function DashboardPage({
     error,
     goalMetrics,
     health,
+    hasSuccessfulData,
     lastSyncLabel,
     libraryId,
     loading,
@@ -396,6 +397,31 @@ export default function DashboardPage({
     },
     [lowStockPurchaseCoordinator, onOpenPurchases, refreshDashboard, t],
   );
+
+  // Before the first resolved snapshot, zero values and the default local role
+  // are placeholders, not evidence about the selected library.
+  if (tauri && !hasSuccessfulData) {
+    return (
+      <div className="page-shell" aria-busy={loading}>
+        <div className="page-header">
+          <h1 className="page-title">{t("nav.dashboard", "Dashboard")}</h1>
+        </div>
+        {error ? (
+          <PageLoadErrorBanner
+            message={error}
+            onRetry={() => void refreshDashboard()}
+            retryDisabled={!refreshAvailable || loading}
+            retryLabel={t("common.refresh", "Refresh")}
+            retrying={refreshing}
+          />
+        ) : (
+          <div role="status" className="surface-subtle px-4 py-4">
+            {t("common.loading", "Loading...")}
+          </div>
+        )}
+      </div>
+    );
+  }
 
   return (
     <div className="page-shell">

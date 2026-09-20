@@ -35,7 +35,7 @@ export function renderSettingsShell(options) {
   const connectionSummary =
     connectionSummaryOption ||
     [
-      state.apiReady
+      state.apiReady && !state.connectionUnavailable
         ? t(locale, "settings.trustedLanConnected", "Trusted-LAN connected")
         : t(locale, "settings.disconnected", "Disconnected"),
       t(locale, "settings.spoolCount", "{count, plural, one {# spool} other {# spools}}", {
@@ -114,6 +114,7 @@ export function renderSettingsShell(options) {
           </div>
           <div class="stack">
             <div class="meta-line">${escapeHtml(connectionSummary)}</div>
+            ${state.overviewStale ? `<p class="info-card" role="status">${escapeHtml(t(locale, "settings.cachedData", "Some data could not be refreshed. Previously loaded values may be out of date. Refresh to try again."))}</p>` : ""}
             ${renderFormActionBlock({
               actions: renderCompanionActionButton({
                 attributes: { "data-action": "refresh" },

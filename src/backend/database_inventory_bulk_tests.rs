@@ -754,3 +754,60 @@ fn wire_contract_uses_ui_action_and_snake_case_fields() {
     assert_eq!(serialized["target_status"], "EMPTY");
     assert_eq!(serialized["spools"][0]["expected_status"], "IN_STOCK");
 }
+
+#[test]
+fn bulk_reactivation_requires_positive_authoritative_weight_for_every_empty_roll() {
+    with_test_database("reactivation-weight", |database| {
+        for id in ["first", "second"] {
+            insert_spool(database, id, SpoolStatus::Empty, None, None);
+        }
+        database
+            .connection()
+            .execute(
+                "UPDATE filament_spools SET remaining_g = 400 WHERE id = 'first'",
+                [],
+            )
+            .unwrap();
+        let request = || {
+            status_input(
+                2,
+                vec![
+                    precondition("first", SpoolStatus::Empty, None, None, false, false),
+                    precondition("second", SpoolStatus::Empty, None, None, false, false),
+                ],
+                SpoolStatus::InStock,
+            )
+        };
+        for weight in [None, Some(0), Some(-1)] {
+            database
+                .connection()
+                .execute(
+                    "UPDATE filament_spools SET remaining_g = ?1 WHERE id = 'second'",
+                    [weight],
+                )
+                .unwrap();
+            database
+                .execute_inventory_bulk_mutation(request())
+                .expect_err(
+                    "an empty roll without positive weight must reject the whole selection",
+                );
+            assert_eq!(spool_status(database, "first"), "EMPTY");
+            assert_eq!(spool_status(database, "second"), "EMPTY");
+            assert_eq!(history_count(database, "STATUS_UPDATED"), 0);
+        }
+        database
+            .connection()
+            .execute(
+                "UPDATE filament_spools SET remaining_g = 200 WHERE id = 'second'",
+                [],
+            )
+            .unwrap();
+        let receipt = database
+            .execute_inventory_bulk_mutation(request())
+            .expect("positive weights can reactivate");
+        assert_eq!(receipt.affected_count, 2);
+        assert_eq!(spool_status(database, "first"), "IN_STOCK");
+        assert_eq!(spool_status(database, "second"), "IN_STOCK");
+        assert_eq!(history_count(database, "STATUS_UPDATED"), 2);
+    });
+}

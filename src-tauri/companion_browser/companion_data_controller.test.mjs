@@ -470,3 +470,21 @@ test("pairAndLoad treats pairing URL cleanup as best-effort", async () => {
   assert.deepEqual(pairingCalls, ["secret"]);
   assert.equal(harness.state.statusTone, "success");
 });
+
+test("partial refresh marks cached data stale until every overview dataset succeeds", async () => {
+  let failure = true;
+  const harness = createDataHarness({
+    state: { printers: [{ id: "previous-printer" }] },
+    fetchJson: async url => {
+      if (url.includes("printers") && failure) throw new Error("unavailable");
+      return [];
+    },
+  });
+  await harness.controller.refreshOverview();
+  assert.equal(harness.state.overviewStale, true);
+  assert.deepEqual(harness.state.printers, [{ id: "previous-printer" }]);
+  failure = false;
+  await harness.controller.refreshOverview();
+  assert.equal(harness.state.overviewStale, false);
+  assert.deepEqual(harness.state.printers, []);
+});

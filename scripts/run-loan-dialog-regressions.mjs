@@ -101,7 +101,8 @@ async function openLoanOut(page) {
 
 async function checkReopen({ page, fixture, calls, state, fallback }) {
   let dialog = await openLoanOut(page);
-  await dialog.getByRole("spinbutton").fill("600");
+  await dialog.getByRole("spinbutton", { name: "Measured total weight (g)" }).fill("600");
+  assert.match(await dialog.locator("#loan-out-weight-preview").innerText(), /600 g − 200 g = 400 g/);
   await dialog.getByLabel("Borrower name", { exact: true }).fill("Old borrower");
   await dialog.getByRole("button", { name: "Close", exact: true }).click();
   fixture.printerRows = [{ printer: { id: "test-printer" }, slots: [{ spool_id: "dialog-spool-a" }] }];

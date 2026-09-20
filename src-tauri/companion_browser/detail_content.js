@@ -130,10 +130,14 @@ export function renderSelectedSpoolDetailBody(options) {
           >
             <input type="hidden" name="spool-id" value="${escapeHtml(selectedSpool.spool.id)}" />
             ${renderDetailField({
-              body: `<input class="weight-input" name="grams" type="number" min="0" step="1" value="${escapeHtml(defaultMeasuredWeight)}" ${busy ? "disabled" : ""} />`,
+              body: `<input class="weight-input" name="grams" type="number" min="0" step="1" aria-describedby="detail-weight-calculation" value="${escapeHtml(defaultMeasuredWeight)}" ${busy ? "disabled" : ""} />`,
               escapeHtml,
               label: t(locale, "detail.measuredWeightGrams", "Measured total weight (g)"),
             })}
+            <div id="detail-weight-calculation" class="metric-card weight-preview" data-weight-preview="measurement" data-tare-weight="${detailTareWeight}" aria-live="polite">
+              <div class="metric-label">${escapeHtml(t(locale, "storage.filament", "Filament"))}</div>
+              <div class="metric-value">${escapeHtml(formatGrams(defaultMeasuredWeight))} − ${escapeHtml(formatGrams(detailTareWeight))} = ${escapeHtml(formatGrams(Math.max(0, defaultMeasuredWeight - detailTareWeight)))}</div>
+            </div>
             ${renderSwatchSubmitAction(t(locale, "detail.saveWeight", "Save weight"))}
           </form>
           <form

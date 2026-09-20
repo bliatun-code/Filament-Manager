@@ -89,7 +89,8 @@
         "printerSlotChanged": "The roll in this slot changed. Reopen the slot action and confirm the current roll.",
         "printerSlotHostUnsupported": "Upgrade the Host before changing printer slots or their weights. No changes were sent.",
         "inventoryStatusHostUnsupported": "Update the Host before changing a roll’s status. No changes were sent.",
-        "inventoryWeightHostUnsupported": "Update the Host before saving a measured roll weight. No changes were sent."
+        "inventoryWeightHostUnsupported": "Update the Host before saving a measured roll weight. No changes were sent.",
+        "inventoryBulkReactivationRequiresWeight": "Set measured total weight above empty spool weight before reactivating."
       },
       "nav": {
         "storage": "Inventory",
@@ -371,7 +372,8 @@
         "licenseHelp": "Open source terms for this browser companion.",
         "sourceCode": "Source code",
         "viewLicense": "View license",
-        "viewNotices": "Notices"
+        "viewNotices": "Notices",
+        "cachedData": "Some data could not be refreshed. Previously loaded values may be out of date. Refresh to try again."
       },
       "trustedLan": {
         "title": "Trusted-LAN browser companion",
@@ -734,7 +736,8 @@
         "printerSlotChanged": "Rullen i dette sporet er endret. Åpne sporhandlingen på nytt og bekreft gjeldende rull.",
         "printerSlotHostUnsupported": "Oppgrader verten før du endrer printerspor eller vekten på rullene i dem. Ingen endringer ble sendt.",
         "inventoryStatusHostUnsupported": "Oppdater verten før du endrer statusen til en rull. Ingen endringer ble sendt.",
-        "inventoryWeightHostUnsupported": "Oppdater verten før du lagrer en målt rullvekt. Ingen endringer ble sendt."
+        "inventoryWeightHostUnsupported": "Oppdater verten før du lagrer en målt rullvekt. Ingen endringer ble sendt.",
+        "inventoryBulkReactivationRequiresWeight": "Sett målt totalvekt høyere enn tom rull-vekt før reaktivering."
       },
       "nav": {
         "storage": "Lager",
@@ -1016,7 +1019,8 @@
         "licenseHelp": "Vilkår for åpen kildekode for denne nettleserkompanjongen.",
         "sourceCode": "Kildekode",
         "viewLicense": "Vis lisens",
-        "viewNotices": "Notiser"
+        "viewNotices": "Notiser",
+        "cachedData": "Noen data kunne ikke oppdateres. Tidligere innlastede verdier kan være utdaterte. Trykk Oppdater for å prøve igjen."
       },
       "trustedLan": {
         "title": "Trusted-LAN-nettleserkompanjong",
@@ -1379,7 +1383,8 @@
         "printerSlotChanged": "Die Rolle in diesem Steckplatz hat sich geändert. Öffne die Steckplatzaktion erneut und bestätige die aktuelle Rolle.",
         "printerSlotHostUnsupported": "Aktualisiere den Host, bevor du Druckersteckplätze oder das Gewicht ihrer Rollen änderst. Es wurden keine Änderungen gesendet.",
         "inventoryStatusHostUnsupported": "Aktualisiere den Host, bevor du den Status einer Rolle änderst. Es wurden keine Änderungen gesendet.",
-        "inventoryWeightHostUnsupported": "Aktualisiere den Host, bevor du ein gemessenes Rollengewicht speicherst. Es wurden keine Änderungen gesendet."
+        "inventoryWeightHostUnsupported": "Aktualisiere den Host, bevor du ein gemessenes Rollengewicht speicherst. Es wurden keine Änderungen gesendet.",
+        "inventoryBulkReactivationRequiresWeight": "Setze vor der Reaktivierung das gemessene Gesamtgewicht höher als das Leerrollengewicht."
       },
       "nav": {
         "storage": "Bestand",
@@ -1661,7 +1666,8 @@
         "licenseHelp": "Open-Source-Bedingungen für diesen Browser-Companion.",
         "sourceCode": "Quellcode",
         "viewLicense": "Lizenz anzeigen",
-        "viewNotices": "Hinweise"
+        "viewNotices": "Hinweise",
+        "cachedData": "Einige Daten konnten nicht aktualisiert werden. Zuvor geladene Werte sind möglicherweise veraltet. Zum erneuten Versuch aktualisieren."
       },
       "trustedLan": {
         "title": "Trusted-LAN-Browser-Companion",
@@ -2024,7 +2030,8 @@
         "printerSlotChanged": "La bobine de cet emplacement a changé. Rouvrez l’action de l’emplacement et confirmez la bobine actuelle.",
         "printerSlotHostUnsupported": "Mettez à jour l’hôte avant de modifier les emplacements de l’imprimante ou le poids de leurs bobines. Aucune modification n’a été envoyée.",
         "inventoryStatusHostUnsupported": "Mettez à jour l’hôte avant de modifier le statut d’une bobine. Aucune modification n’a été envoyée.",
-        "inventoryWeightHostUnsupported": "Mettez à jour l’hôte avant d’enregistrer le poids mesuré d’une bobine. Aucune modification n’a été envoyée."
+        "inventoryWeightHostUnsupported": "Mettez à jour l’hôte avant d’enregistrer le poids mesuré d’une bobine. Aucune modification n’a été envoyée.",
+        "inventoryBulkReactivationRequiresWeight": "Définissez un poids total mesuré supérieur au poids de la bobine vide avant de la réactiver."
       },
       "nav": {
         "storage": "Stock",
@@ -2403,7 +2410,8 @@
         "licenseHelp": "Conditions open source de ce Companion navigateur.",
         "sourceCode": "Code source",
         "viewLicense": "Afficher la licence",
-        "viewNotices": "Mentions"
+        "viewNotices": "Mentions",
+        "cachedData": "Certaines données n’ont pas pu être actualisées. Les valeurs précédemment chargées peuvent être obsolètes. Actualisez pour réessayer."
       },
       "trustedLan": {
         "title": "Companion navigateur Trusted-LAN",
@@ -2669,7 +2677,8 @@
         "printerSlotChanged": "La bobina de esta ranura ha cambiado. Vuelve a abrir la acción de la ranura y confirma la bobina actual.",
         "printerSlotHostUnsupported": "Actualiza el Host antes de cambiar las ranuras de la impresora o el peso de sus bobinas. No se envió ningún cambio.",
         "inventoryStatusHostUnsupported": "Actualiza el Host antes de cambiar el estado de una bobina. No se envió ningún cambio.",
-        "inventoryWeightHostUnsupported": "Actualiza el anfitrión antes de guardar el peso medido de una bobina. No se envió ningún cambio."
+        "inventoryWeightHostUnsupported": "Actualiza el anfitrión antes de guardar el peso medido de una bobina. No se envió ningún cambio.",
+        "inventoryBulkReactivationRequiresWeight": "Establezca el peso total medido por encima del peso del rollo vacío antes de reactivar."
       },
       "nav": {
         "storage": "Inventario",
@@ -3025,7 +3034,8 @@
         "printerCountOne": "{count} impresora",
         "spoolCountMany": "{count} bobinas",
         "spoolCountOne": "{count} bobina",
-        "trustedLanDesktopInCharge": "La aplicación de escritorio y SQLite permanecen a cargo. El acceso a Trusted-LAN sigue estando controlado por el escritorio y no está cifrado en la red."
+        "trustedLanDesktopInCharge": "La aplicación de escritorio y SQLite permanecen a cargo. El acceso a Trusted-LAN sigue estando controlado por el escritorio y no está cifrado en la red.",
+        "cachedData": "No se pudieron actualizar algunos datos. Los valores cargados anteriormente pueden estar desactualizados. Actualiza para volver a intentarlo."
       },
       "format": {
         "unknown": "Desconocido",
@@ -3405,7 +3415,8 @@
         "printerSlotChanged": "O rolo neste slot mudou. Abra a ação do slot novamente e confirme o rolo atual.",
         "printerSlotHostUnsupported": "Atualize o Host antes de alterar os slots da impressora ou o peso dos rolos neles. Nenhuma alteração foi enviada.",
         "inventoryStatusHostUnsupported": "Atualize o Host antes de alterar o estado de um rolo. Nenhuma alteração foi enviada.",
-        "inventoryWeightHostUnsupported": "Atualize o Host antes de salvar o peso medido de um rolo. Nenhuma alteração foi enviada."
+        "inventoryWeightHostUnsupported": "Atualize o Host antes de salvar o peso medido de um rolo. Nenhuma alteração foi enviada.",
+        "inventoryBulkReactivationRequiresWeight": "Defina o peso total medido acima do peso da bobina vazia antes de reativar."
       },
       "format": {
         "assigned": "Atribuído",
@@ -3634,7 +3645,8 @@
         "trustedLanConnected": "Trusted-LAN conectado",
         "trustedLanDesktopInCharge": "O aplicativo Desktop e SQLite permanecem no comando. O acesso Trusted-LAN ainda é controlado por desktop e não é criptografado na rede.",
         "viewLicense": "Ver licença",
-        "viewNotices": "Avisos"
+        "viewNotices": "Avisos",
+        "cachedData": "Alguns dados não puderam ser atualizados. Os valores carregados anteriormente podem estar desatualizados. Atualize para tentar novamente."
       },
       "shell": {
         "close": "Fechar",
@@ -4050,7 +4062,8 @@
         "printerSlotChanged": "La bobina in questo slot è cambiata. Riapri l’azione dello slot e conferma la bobina attuale.",
         "printerSlotHostUnsupported": "Aggiorna l’Host prima di modificare gli slot della stampante o il peso delle bobine al loro interno. Non è stata inviata alcuna modifica.",
         "inventoryStatusHostUnsupported": "Aggiorna l’Host prima di cambiare lo stato di una bobina. Non è stata inviata alcuna modifica.",
-        "inventoryWeightHostUnsupported": "Aggiorna l’Host prima di salvare il peso misurato di una bobina. Nessuna modifica è stata inviata."
+        "inventoryWeightHostUnsupported": "Aggiorna l’Host prima di salvare il peso misurato di una bobina. Nessuna modifica è stata inviata.",
+        "inventoryBulkReactivationRequiresWeight": "Impostare il peso totale misurato sopra il peso della bobina vuota prima di riattivare."
       },
       "format": {
         "assigned": "Assegnato",
@@ -4279,7 +4292,8 @@
         "trustedLanConnected": "Trusted-LAN collegato",
         "trustedLanDesktopInCharge": "L'app Desktop e SQLite rimangono al comando. L'accesso Trusted-LAN è ancora controllato da desktop e non crittografato sulla rete.",
         "viewLicense": "Visualizza licenza",
-        "viewNotices": "Avvisi"
+        "viewNotices": "Avvisi",
+        "cachedData": "Non è stato possibile aggiornare alcuni dati. I valori caricati in precedenza potrebbero non essere aggiornati. Aggiorna per riprovare."
       },
       "shell": {
         "close": "Vicino",
@@ -4695,7 +4709,8 @@
         "printerSlotChanged": "Szpula w tym slocie uległa zmianie. Otwórz ponownie działanie slotu i potwierdź aktualną szpulę.",
         "printerSlotHostUnsupported": "Zaktualizuj Host przed zmianą slotów drukarki lub masy znajdujących się w nich szpul. Nie wysłano żadnych zmian.",
         "inventoryStatusHostUnsupported": "Zaktualizuj hosta przed zmianą statusu szpuli. Nie wysłano żadnych zmian.",
-        "inventoryWeightHostUnsupported": "Zaktualizuj hosta przed zapisaniem zmierzonej wagi szpuli. Nie wysłano żadnych zmian."
+        "inventoryWeightHostUnsupported": "Zaktualizuj hosta przed zapisaniem zmierzonej wagi szpuli. Nie wysłano żadnych zmian.",
+        "inventoryBulkReactivationRequiresWeight": "Przed ponownym włączeniem ustawić zmierzoną masę całkowitą powyżej masy pustej szpuli."
       },
       "format": {
         "assigned": "Przydzielony",
@@ -4924,7 +4939,8 @@
         "trustedLanConnected": "Trusted-LAN podłączony",
         "trustedLanDesktopInCharge": "Aplikacja Desktop i SQLite pozostają pod kontrolą. Dostęp Trusted-LAN jest nadal kontrolowany przez desktop i nie jest szyfrowany w sieci.",
         "viewLicense": "Zobacz licencję",
-        "viewNotices": "Uwagi"
+        "viewNotices": "Uwagi",
+        "cachedData": "Nie udało się odświeżyć części danych. Wcześniej wczytane wartości mogą być nieaktualne. Odśwież, aby spróbować ponownie."
       },
       "shell": {
         "close": "Zamknij",
@@ -5340,7 +5356,8 @@
         "printerSlotChanged": "De rol in deze sleuf is gewijzigd. Open de sleufactie opnieuw en bevestig de huidige rol.",
         "printerSlotHostUnsupported": "Werk de Host bij voordat je printersleuven of het gewicht van de rollen daarin wijzigt. Er zijn geen wijzigingen verzonden.",
         "inventoryStatusHostUnsupported": "Werk de host bij voordat je de status van een rol wijzigt. Er zijn geen wijzigingen verzonden.",
-        "inventoryWeightHostUnsupported": "Werk de host bij voordat je een gemeten rolgewicht opslaat. Er zijn geen wijzigingen verzonden."
+        "inventoryWeightHostUnsupported": "Werk de host bij voordat je een gemeten rolgewicht opslaat. Er zijn geen wijzigingen verzonden.",
+        "inventoryBulkReactivationRequiresWeight": "Stel het gemeten totale gewicht boven het lege spoelgewicht in voordat u opnieuw activeert."
       },
       "format": {
         "assigned": "Toegewezen",
@@ -5569,7 +5586,8 @@
         "trustedLanConnected": "Trusted-LAN aangesloten",
         "trustedLanDesktopInCharge": "De Desktop-app en SQLite blijven de baas. De toegang tot Trusted-LAN wordt nog steeds door desktop beheerd en is niet gecodeerd op het netwerk.",
         "viewLicense": "Licentie bekijken",
-        "viewNotices": "Mededelingen"
+        "viewNotices": "Mededelingen",
+        "cachedData": "Sommige gegevens konden niet worden vernieuwd. Eerder geladen waarden kunnen verouderd zijn. Vernieuw om het opnieuw te proberen."
       },
       "shell": {
         "close": "Sluiten",
@@ -5985,7 +6003,8 @@
         "printerSlotChanged": "Cívka v tomto slotu se změnila. Znovu otevřete akci slotu a potvrďte aktuální cívku.",
         "printerSlotHostUnsupported": "Před změnou slotů tiskárny nebo hmotnosti cívek v nich aktualizujte Host. Nebyly odeslány žádné změny.",
         "inventoryStatusHostUnsupported": "Před změnou stavu cívky aktualizujte hostitele. Nebyly odeslány žádné změny.",
-        "inventoryWeightHostUnsupported": "Před uložením naměřené hmotnosti cívky aktualizujte hostitele. Žádné změny nebyly odeslány."
+        "inventoryWeightHostUnsupported": "Před uložením naměřené hmotnosti cívky aktualizujte hostitele. Žádné změny nebyly odeslány.",
+        "inventoryBulkReactivationRequiresWeight": "Před opětovnou aktivací nastavte naměřenou celkovou hmotnost nad hmotnost prázdné cívky."
       },
       "format": {
         "assigned": "Přiřazeno",
@@ -6214,7 +6233,8 @@
         "trustedLanConnected": "Trusted-LAN připojeno",
         "trustedLanDesktopInCharge": "Aplikace Desktop a SQLite zůstávají pod kontrolou. Přístup Trusted-LAN je stále řízen desktop a není v síti šifrován.",
         "viewLicense": "Zobrazit licenci",
-        "viewNotices": "Oznámení"
+        "viewNotices": "Oznámení",
+        "cachedData": "Některá data se nepodařilo aktualizovat. Dříve načtené hodnoty mohou být zastaralé. Zkuste je znovu aktualizovat."
       },
       "shell": {
         "close": "Zavřít",
@@ -6630,7 +6650,8 @@
         "printerSlotChanged": "此槽位中的料卷已更改。请重新打开槽位操作并确认当前料卷。",
         "printerSlotHostUnsupported": "更改打印机槽位或其中料卷的重量前，请升级主机。未发送任何更改。",
         "inventoryStatusHostUnsupported": "更改料卷状态前请更新主机。未发送任何更改。",
-        "inventoryWeightHostUnsupported": "保存测得的料卷重量前，请先更新主机。未发送任何更改。"
+        "inventoryWeightHostUnsupported": "保存测得的料卷重量前，请先更新主机。未发送任何更改。",
+        "inventoryBulkReactivationRequiresWeight": "在重新激活之前，将测得的总重量设置为高于空线轴重量。"
       },
       "format": {
         "assigned": "已分配",
@@ -6859,7 +6880,8 @@
         "trustedLanConnected": "Trusted-LAN 已连接",
         "trustedLanDesktopInCharge": "Desktop 应用程序和 SQLite 继续负责。 Trusted-LAN 访问仍然受 desktop 控制，并且在网络上未加密。",
         "viewLicense": "查看许可证",
-        "viewNotices": "通知"
+        "viewNotices": "通知",
+        "cachedData": "部分数据无法刷新。之前加载的值可能已过时。请刷新重试。"
       },
       "shell": {
         "close": "关闭",
@@ -7275,7 +7297,8 @@
         "printerSlotChanged": "このスロットのスプールが変更されました。スロット操作を開き直し、現在のスプールを確認してください。",
         "printerSlotHostUnsupported": "プリンターのスロットやスプールの重量を変更する前に、ホストをアップグレードしてください。変更は送信されていません。",
         "inventoryStatusHostUnsupported": "ロールの状態を変更する前にホストを更新してください。変更は送信されていません。",
-        "inventoryWeightHostUnsupported": "ロールの実測重量を保存する前にホストを更新してください。変更は送信されていません。"
+        "inventoryWeightHostUnsupported": "ロールの実測重量を保存する前にホストを更新してください。変更は送信されていません。",
+        "inventoryBulkReactivationRequiresWeight": "再起動する前に、測定された総重量を空のスプール重量よりも高く設定してください。"
       },
       "format": {
         "assigned": "割り当て済み",
@@ -7504,7 +7527,8 @@
         "trustedLanConnected": "Trusted-LAN 接続されました",
         "trustedLanDesktopInCharge": "Desktop アプリと SQLite が引き続き担当します。 Trusted-LAN アクセスは依然として desktop によって制御されており、ネットワーク上で暗号化されていません。",
         "viewLicense": "ライセンスを表示する",
-        "viewNotices": "お知らせ"
+        "viewNotices": "お知らせ",
+        "cachedData": "一部のデータを更新できませんでした。以前読み込んだ値は古い可能性があります。更新して再試行してください。"
       },
       "shell": {
         "close": "閉じる",
@@ -7920,7 +7944,8 @@
         "printerSlotChanged": "이 슬롯의 스풀이 변경되었습니다. 슬롯 작업을 다시 열고 현재 스풀을 확인하세요.",
         "printerSlotHostUnsupported": "프린터 슬롯이나 해당 스풀의 무게를 변경하기 전에 호스트를 업그레이드하세요. 변경 사항은 전송되지 않았습니다.",
         "inventoryStatusHostUnsupported": "롤 상태를 변경하기 전에 호스트를 업데이트하세요. 변경 사항은 전송되지 않았습니다.",
-        "inventoryWeightHostUnsupported": "측정한 롤 무게를 저장하기 전에 호스트를 업데이트하세요. 변경 사항은 전송되지 않았습니다."
+        "inventoryWeightHostUnsupported": "측정한 롤 무게를 저장하기 전에 호스트를 업데이트하세요. 변경 사항은 전송되지 않았습니다.",
+        "inventoryBulkReactivationRequiresWeight": "다시 활성화하기 전에 측정된 총 중량을 빈 스풀 중량보다 높게 설정하십시오."
       },
       "format": {
         "assigned": "할당된",
@@ -8149,7 +8174,8 @@
         "trustedLanConnected": "Trusted-LAN 연결됨",
         "trustedLanDesktopInCharge": "Desktop 앱과 SQLite가 계속 담당합니다. Trusted-LAN 액세스는 여전히 desktop에 의해 제어되며 네트워크에서 암호화되지 않습니다.",
         "viewLicense": "라이선스 보기",
-        "viewNotices": "공지사항"
+        "viewNotices": "공지사항",
+        "cachedData": "일부 데이터를 새로 고치지 못했습니다. 이전에 불러온 값이 오래되었을 수 있습니다. 새로 고침하여 다시 시도하세요."
       },
       "shell": {
         "close": "닫기",
@@ -8565,7 +8591,8 @@
         "printerSlotChanged": "此插槽中的料捲已變更。請重新開啟插槽操作並確認目前的料捲。",
         "printerSlotHostUnsupported": "變更印表機插槽或其中料捲的重量前，請升級主機。未傳送任何變更。",
         "inventoryStatusHostUnsupported": "變更料卷狀態前請更新主機。未傳送任何變更。",
-        "inventoryWeightHostUnsupported": "儲存測得的料卷重量前，請先更新主機。未傳送任何變更。"
+        "inventoryWeightHostUnsupported": "儲存測得的料卷重量前，請先更新主機。未傳送任何變更。",
+        "inventoryBulkReactivationRequiresWeight": "在重新啟動之前，將測得的總重量設定為高於空線材捲重量。"
       },
       "format": {
         "assigned": "已分配",
@@ -8794,7 +8821,8 @@
         "trustedLanConnected": "Trusted-LAN 已連線",
         "trustedLanDesktopInCharge": "Desktop 應用程式和 SQLite 繼續負責。 Trusted-LAN 存取仍受 desktop 控制，且在網路上未加密。",
         "viewLicense": "檢視許可證",
-        "viewNotices": "通知"
+        "viewNotices": "通知",
+        "cachedData": "部分資料無法重新整理。先前載入的值可能已過時。請重新整理以重試。"
       },
       "shell": {
         "close": "關閉",
@@ -9210,7 +9238,8 @@
         "printerSlotChanged": "Bu yuvadaki makara değişti. Yuva işlemini yeniden açın ve mevcut makarayı onaylayın.",
         "printerSlotHostUnsupported": "Yazıcı yuvalarını veya içlerindeki makaraların ağırlığını değiştirmeden önce Host’u yükseltin. Hiçbir değişiklik gönderilmedi.",
         "inventoryStatusHostUnsupported": "Makara durumunu değiştirmeden önce Host’u güncelleyin. Hiçbir değişiklik gönderilmedi.",
-        "inventoryWeightHostUnsupported": "Ölçülen makara ağırlığını kaydetmeden önce ana bilgisayarı güncelleyin. Hiçbir değişiklik gönderilmedi."
+        "inventoryWeightHostUnsupported": "Ölçülen makara ağırlığını kaydetmeden önce ana bilgisayarı güncelleyin. Hiçbir değişiklik gönderilmedi.",
+        "inventoryBulkReactivationRequiresWeight": "Yeniden etkinleştirmeden önce ölçülen toplam ağırlığı boş makara ağırlığının üstüne ayarlayın."
       },
       "format": {
         "assigned": "Atandı",
@@ -9439,7 +9468,8 @@
         "trustedLanConnected": "Trusted-LAN bağlandı",
         "trustedLanDesktopInCharge": "Desktop uygulaması ve SQLite sorumlu kalır. Trusted-LAN erişimi hâlâ desktop kontrollüdür ve ağ üzerinde şifrelenmez.",
         "viewLicense": "Lisansı görüntüle",
-        "viewNotices": "Bildirimler"
+        "viewNotices": "Bildirimler",
+        "cachedData": "Bazı veriler yenilenemedi. Önceden yüklenen değerler güncel olmayabilir. Tekrar denemek için yenileyin."
       },
       "shell": {
         "close": "Kapat",
@@ -9855,7 +9885,8 @@
         "printerSlotChanged": "Котушка в цьому слоті змінилася. Знову відкрийте дію слота й підтвердьте поточну котушку.",
         "printerSlotHostUnsupported": "Оновіть Host, перш ніж змінювати слоти принтера або вагу котушок у них. Жодних змін не надіслано.",
         "inventoryStatusHostUnsupported": "Оновіть хост перед зміною стану котушки. Жодних змін не надіслано.",
-        "inventoryWeightHostUnsupported": "Оновіть хост, перш ніж зберігати виміряну вагу котушки. Жодних змін не надіслано."
+        "inventoryWeightHostUnsupported": "Оновіть хост, перш ніж зберігати виміряну вагу котушки. Жодних змін не надіслано.",
+        "inventoryBulkReactivationRequiresWeight": "Перед повторним увімкненням установіть виміряну загальну вагу вище ваги порожньої котушки."
       },
       "format": {
         "assigned": "Призначений",
@@ -10084,7 +10115,8 @@
         "trustedLanConnected": "Trusted-LAN підключено",
         "trustedLanDesktopInCharge": "Додаток Desktop і SQLite залишаються відповідальними. Доступ Trusted-LAN все ще контролюється desktop і не шифрується в мережі.",
         "viewLicense": "Переглянути ліцензію",
-        "viewNotices": "Повідомлення"
+        "viewNotices": "Повідомлення",
+        "cachedData": "Не вдалося оновити частину даних. Раніше завантажені значення можуть бути застарілими. Оновіть, щоб спробувати знову."
       },
       "shell": {
         "close": "Закрити",
@@ -10403,7 +10435,8 @@
         "printerSlotChanged": "Катушка в этом слоте изменилась. Снова откройте действие слота и подтвердите текущую катушку.",
         "printerSlotHostUnsupported": "Обновите Host, прежде чем изменять слоты принтера или вес катушек в них. Изменения не отправлены.",
         "inventoryStatusHostUnsupported": "Обновите хост перед изменением статуса катушки. Изменения не отправлены.",
-        "inventoryWeightHostUnsupported": "Обновите хост перед сохранением измеренного веса катушки. Изменения не отправлены."
+        "inventoryWeightHostUnsupported": "Обновите хост перед сохранением измеренного веса катушки. Изменения не отправлены.",
+        "inventoryBulkReactivationRequiresWeight": "Перед повторной активацией установите измеренный общий вес выше веса пустой катушки."
       },
       "shell": {
         "refresh": "Обновить",
@@ -10532,7 +10565,8 @@
         "activeLoanCount": "{count, plural, one {# активный заём} few {# активных займа} many {# активных займов} other {# активного займа}}",
         "licenseHelp": "Условия открытого исходного кода для этого сопутствующего браузера.",
         "desktopInCharge": "Настольное приложение и SQLite остаются за вами.",
-        "trustedLanDesktopInCharge": "Настольное приложение и SQLite остаются за вами. Доступ к Trusted-LAN по-прежнему контролируется настольным компьютером и не шифруется в сети."
+        "trustedLanDesktopInCharge": "Настольное приложение и SQLite остаются за вами. Доступ к Trusted-LAN по-прежнему контролируется настольным компьютером и не шифруется в сети.",
+        "cachedData": "Не удалось обновить часть данных. Ранее загруженные значения могут устареть. Обновите, чтобы повторить попытку."
       },
       "trustedLan": {
         "pairingHint": "Настройки рабочего стола создают кратковременные одноразовые ссылки для доступа человека к браузеру.",
@@ -11048,7 +11082,8 @@
         "printerSlotChanged": "A rekeszben lévő tekercs megváltozott. Nyisd meg újra a rekesz műveletét, és erősítsd meg az aktuális tekercset.",
         "printerSlotHostUnsupported": "A nyomtatórekeszek vagy a bennük lévő tekercsek súlyának módosítása előtt frissítsd a Hostot. Nem küldtünk módosításokat.",
         "inventoryStatusHostUnsupported": "A tekercs állapotának módosítása előtt frissítse a gazdagépet. Nem történt módosításküldés.",
-        "inventoryWeightHostUnsupported": "Frissítse a gazdagépet a tekercs mért tömegének mentése előtt. Nem történt módosításküldés."
+        "inventoryWeightHostUnsupported": "Frissítse a gazdagépet a tekercs mért tömegének mentése előtt. Nem történt módosításküldés.",
+        "inventoryBulkReactivationRequiresWeight": "Újraaktiválás előtt állítsa a mért össztömeget az üres orsó súlya fölé."
       },
       "purchaseReceipt": {
         "optionalSummary": "Vásárlási adatok (opcionális)",
@@ -11209,7 +11244,8 @@
         "licenseHelp": "Nyílt forráskódú feltételek ehhez a böngészőtárshoz.",
         "trustedLanDesktopInCharge": "Az asztali alkalmazás és a SQLite továbbra is a felelős. A Trusted-LAN hozzáférést továbbra is asztali számítógép vezérli, és nincs titkosítva a hálózaton.",
         "desktopInCharge": "Az asztali alkalmazás és a SQLite továbbra is a felelős.",
-        "trustedLanConnected": "Trusted-LAN csatlakoztatva"
+        "trustedLanConnected": "Trusted-LAN csatlakoztatva",
+        "cachedData": "Néhány adatot nem sikerült frissíteni. A korábban betöltött értékek elavultak lehetnek. Próbálja újra a frissítést."
       },
       "inventory": {
         "rfidButton": "RFID",
@@ -11693,7 +11729,8 @@
         "printerSlotChanged": "Rullen i det här facket har ändrats. Öppna fackets åtgärd igen och bekräfta den aktuella rullen.",
         "printerSlotHostUnsupported": "Uppgradera värden innan du ändrar skrivarfack eller vikten på rullarna i dem. Inga ändringar skickades.",
         "inventoryStatusHostUnsupported": "Uppdatera värden innan du ändrar en rulles status. Inga ändringar skickades.",
-        "inventoryWeightHostUnsupported": "Uppdatera värden innan du sparar en uppmätt rullvikt. Inga ändringar har skickats."
+        "inventoryWeightHostUnsupported": "Uppdatera värden innan du sparar en uppmätt rullvikt. Inga ändringar har skickats.",
+        "inventoryBulkReactivationRequiresWeight": "Ställ in uppmätt totalvikt över tomspolevikten innan du återaktiverar."
       },
       "shell": {
         "refresh": "Uppdatera",
@@ -11822,7 +11859,8 @@
         "desktopInCharge": "Desktop-appen och SQLite har ansvaret.",
         "connectionHelp": "Uppdaterings- och sessionskontroller.",
         "licenseHelp": "Termer med öppen källkod för denna webbläsare.",
-        "trustedLanDesktopInCharge": "Desktop-appen och SQLite har ansvaret. Trusted-LAN-åtkomst är fortfarande skrivbordskontrollerad och inte krypterad i nätverket."
+        "trustedLanDesktopInCharge": "Desktop-appen och SQLite har ansvaret. Trusted-LAN-åtkomst är fortfarande skrivbordskontrollerad och inte krypterad i nätverket.",
+        "cachedData": "Vissa data kunde inte uppdateras. Tidigare inlästa värden kan vara inaktuella. Tryck på Uppdatera för att försöka igen."
       },
       "trustedLan": {
         "title": "Trusted-LAN webbläsare",
@@ -12338,7 +12376,8 @@
         "printerSlotChanged": "Rullen i dette spor er ændret. Åbn sporhandlingen igen, og bekræft den aktuelle rulle.",
         "printerSlotHostUnsupported": "Opgrader værten, før du ændrer printerspor eller vægten på rullerne i dem. Ingen ændringer blev sendt.",
         "inventoryStatusHostUnsupported": "Opdater værten, før du ændrer en rulles status. Ingen ændringer blev sendt.",
-        "inventoryWeightHostUnsupported": "Opdater værten, før du gemmer en målt rullevægt. Ingen ændringer blev sendt."
+        "inventoryWeightHostUnsupported": "Opdater værten, før du gemmer en målt rullevægt. Ingen ændringer blev sendt.",
+        "inventoryBulkReactivationRequiresWeight": "Indstil den målte totalvægt over den tomme spolevægt før genaktivering."
       },
       "shell": {
         "refresh": "Opdater",
@@ -12467,7 +12506,8 @@
         "desktopInCharge": "Desktop-appen og SQLite er ansvarlige.",
         "connectionHelp": "Opdateringer og sessionskontrol.",
         "licenseHelp": "Open Source-vilkår for denne browser.",
-        "trustedLanDesktopInCharge": "Desktop-appen og SQLite er ansvarlige. Trusted-LAN-adgang er stadig skrivebordsstyret og ikke krypteret på netværket."
+        "trustedLanDesktopInCharge": "Desktop-appen og SQLite er ansvarlige. Trusted-LAN-adgang er stadig skrivebordsstyret og ikke krypteret på netværket.",
+        "cachedData": "Nogle data kunne ikke opdateres. Tidligere indlæste værdier kan være forældede. Tryk på Opdater for at prøve igen."
       },
       "trustedLan": {
         "title": "Trusted-LAN browser",
@@ -12983,7 +13023,8 @@
         "printerSlotChanged": "Tämän paikan kela on vaihtunut. Avaa paikan toiminto uudelleen ja vahvista nykyinen kela.",
         "printerSlotHostUnsupported": "Päivitä Host ennen tulostinpaikkojen tai niissä olevien kelojen painojen muuttamista. Muutoksia ei lähetetty.",
         "inventoryStatusHostUnsupported": "Päivitä isäntä ennen rullan tilan muuttamista. Muutoksia ei lähetetty.",
-        "inventoryWeightHostUnsupported": "Päivitä isäntäkone ennen rullan mitatun painon tallentamista. Muutoksia ei lähetetty."
+        "inventoryWeightHostUnsupported": "Päivitä isäntäkone ennen rullan mitatun painon tallentamista. Muutoksia ei lähetetty.",
+        "inventoryBulkReactivationRequiresWeight": "Aseta mitattu kokonaispaino tyhjän kelan painon yläpuolelle ennen uudelleenaktivointia."
       },
       "shell": {
         "refresh": "Päivitä",
@@ -13112,7 +13153,8 @@
         "desktopInCharge": "Työpöytäsovellus ja SQLite ovat vastuussa.",
         "connectionHelp": "Päivitys ja istunnon hallinta.",
         "licenseHelp": "Avoimen lähdekoodin ehdot tälle selaimelle.",
-        "trustedLanDesktopInCharge": "Työpöytäsovellus ja SQLite ovat vastuussa. Trusted-LAN-käyttö on edelleen työpöytäohjattu, eikä sitä ole salattu verkossa."
+        "trustedLanDesktopInCharge": "Työpöytäsovellus ja SQLite ovat vastuussa. Trusted-LAN-käyttö on edelleen työpöytäohjattu, eikä sitä ole salattu verkossa.",
+        "cachedData": "Joitakin tietoja ei voitu päivittää. Aiemmin ladatut arvot voivat olla vanhentuneita. Yritä uudelleen päivittämällä."
       },
       "trustedLan": {
         "title": "Trusted-LAN selain",

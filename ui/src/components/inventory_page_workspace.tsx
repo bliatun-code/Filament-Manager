@@ -92,6 +92,7 @@ type InventoryPageWorkspaceProps = {
     onActiveChange: (active: boolean) => void;
   }>;
   clientHostDeviceName: string | null;
+  clientHostWritePaired: boolean;
   clientInventoryPartial: boolean;
   clientInventorySource: ClientSnapshotSource;
   clientInventoryUpdatedAt: string | null;
@@ -134,6 +135,7 @@ export function InventoryPageWorkspace({
   bulkActionsProps,
   bulkSelectionTriggerProps,
   clientHostDeviceName,
+  clientHostWritePaired,
   clientInventoryPartial,
   clientInventorySource,
   clientInventoryUpdatedAt,
@@ -245,7 +247,9 @@ export function InventoryPageWorkspace({
       {clientDataWarningVisible ? (
         <PageDataFallbackBanner
           message={`${clientHostDeviceName ? `${clientHostDeviceName}. ` : ""}${
-            clientHostWarningVisible && clientInventorySource === "CACHED"
+            !clientHostWritePaired
+              ? t("inventory.clientWriteRequiresPairing", "Pair this desktop client with the host before running protected sync actions.")
+              : clientHostWarningVisible && clientInventorySource === "CACHED"
               ? t(
                   "inventory.clientReadOnlyCached",
                   "Host unavailable. Showing the last cached inventory snapshot.",

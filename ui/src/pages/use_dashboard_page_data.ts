@@ -204,6 +204,7 @@ export function useDashboardPageData(t: TranslateFn, locale: string) {
     completeRefresh,
     error,
     failRefresh,
+    hasSuccessfulData,
     loading,
     refreshing,
   } = usePageRefreshState(tauri, initialSnapshot !== null);
@@ -776,6 +777,7 @@ export function useDashboardPageData(t: TranslateFn, locale: string) {
     error,
     goalMetrics,
     health,
+    hasSuccessfulData,
     lastSyncLabel,
     libraryId,
     loading,

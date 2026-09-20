@@ -447,3 +447,23 @@ test("success receipts must prove one committed atomic result and history covera
     false,
   );
 });
+
+test("reactivation rejects every empty roll without a known positive net weight", () => {
+  for (const remainingGrams of [undefined, null, 0, -1, Number.NaN]) {
+    const result = buildInventoryBulkMutationPlan({
+      action: "STATUS", targetStatus: "IN_STOCK",
+      selectedSpoolIds: ["weighted", "empty"],
+      snapshots: [
+        { ...snapshot("weighted", { status: "EMPTY" }), remainingGrams: 400 },
+        { ...snapshot("empty", { status: "EMPTY" }), remainingGrams },
+      ],
+    });
+    assert.deepEqual(issueCodes(result), ["REACTIVATION_REQUIRES_WEIGHT"]);
+    if (!result.ok) assert.deepEqual(result.issues[0].spoolIds, ["empty"]);
+  }
+  const result = buildInventoryBulkMutationPlan({
+    action: "STATUS", targetStatus: "IN_STOCK", selectedSpoolIds: ["weighted"],
+    snapshots: [{ ...snapshot("weighted", { status: "EMPTY" }), remainingGrams: 400 }],
+  });
+  assert.equal(unwrapPlan(result).affectedCount, 1);
+});

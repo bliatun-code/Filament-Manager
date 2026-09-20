@@ -117,6 +117,7 @@ export default function InventoryPage({
     clientReadOnly,
     clientTargetGeneration,
     completeDataLoad,
+    detailUnavailable,
     historyLoading,
     historyRows,
     librarySyncReady,
@@ -1263,6 +1264,14 @@ export default function InventoryPage({
       {showRollModal ? (
         <Suspense fallback={null}>
           <InventorySpoolDetailModal
+            clientDataWarning={clientReadOnly && !clientHostWritePaired
+              ? t("inventory.clientWriteRequiresPairing", "Pair this desktop client with the host before running protected sync actions.")
+              : clientReadOnly && (clientInventorySource === "CACHED" || clientInventorySource === "OFFLINE")
+                ? t("errors.hostUnavailable", "Host is unavailable. Changes cannot be saved until it reconnects. Check the host and network, then refresh.")
+                : null}
+            detailUnavailable={detailUnavailable}
+            onRefreshData={() => void refreshInventoryData({ selectedSpoolId: selectedSpool?.id })}
+            refreshingData={refreshing}
             assignedSlot={selectedSpoolAssignedSlot}
             canLoadInPrinter={canLoadSelectedSpool}
             canLoanOut={canLoanSelectedSpool}
@@ -1390,6 +1399,7 @@ export default function InventoryPage({
         bulkActionsProps={inventoryBulkActionsProps}
         bulkSelectionTriggerProps={inventoryBulkSelectionTriggerProps}
         clientHostDeviceName={clientHostDeviceName}
+        clientHostWritePaired={clientHostWritePaired}
         clientInventoryPartial={clientInventoryPartial}
         clientInventorySource={clientInventorySource}
         clientInventoryUpdatedAt={clientInventoryUpdatedAt}
@@ -1400,6 +1410,7 @@ export default function InventoryPage({
           ...inventoryBulkCollectionProps,
           filteredSpools,
           groupedSpools,
+          slotLabelById,
           inventoryView,
           loading,
           onSelectRoll: selectRollForManage,

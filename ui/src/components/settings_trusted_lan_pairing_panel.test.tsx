@@ -36,7 +36,7 @@ test("browser pairing is a labelled submit form with a permanent optional-name h
   assert.match(html, /<form aria-busy="false"/);
   assert.match(html, /aria-describedby="trusted-lan-pairing-label-hint"/);
   assert.match(html, /id="trusted-lan-pairing-label-hint"/);
-  assert.match(html, /Optional\. This keeps the paired-browser list readable later\./);
+  assert.match(html, /Optional\. This helps the paired-client list stay human-readable later\./);
   assert.match(html, /<button type="submit"/);
 });
 

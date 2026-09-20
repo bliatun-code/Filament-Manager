@@ -49,6 +49,8 @@ export const enDictionary: DictionaryNode = {
       optional: "Optional",
     },
     errors: {
+      "inventoryBulkReactivationRequiresWeight": "Set measured total weight above empty spool weight before reactivating.",
+      hostUnavailable: "Host is unavailable. Changes cannot be saved until it reconnects. Check the host and network, then refresh.",
       "inventoryWeightHostUnsupported": "Update the Host before saving a measured roll weight. No changes were sent.",
       "inventoryStatusHostUnsupported": "Update the Host before changing a roll’s status. No changes were sent.",
       "printerSlotChanged": "The roll in this slot changed. Reopen the slot action and confirm the current roll.",
@@ -559,7 +561,7 @@ export const enDictionary: DictionaryNode = {
       bulkReviewTarget: "{action} target: {target}",
       bulkReviewChanged: "The selection or roll data changed. Review the action again.",
       bulkAtomicWarning:
-        "All {count} changes and their history are committed together, or none are written.",
+        "All selected changes are saved together. If any change fails, nothing is saved.",
       bulkConfirmAction: "Confirm {action} for {count}",
       bulkActiveLoanBlocked:
         "{count, plural, one {# affected roll has} other {# affected rolls have}} an active loan. Return it before changing placement or status.",
@@ -574,7 +576,7 @@ export const enDictionary: DictionaryNode = {
       bulkLegacyHostUnsupported:
         "The connected Host does not support atomic inventory bulk actions. Upgrade the Host and try again.",
       bulkMutationDone:
-        "{count, plural, one {# roll updated} other {# rolls updated}} atomically.",
+        "Updated rolls: {count}.",
       bulkMutationFailed: "The bulk action failed. No partial changes were written.",
       bulkReceiptMismatch:
         "The Host returned an unexpected bulk result. Refresh inventory before trying again.",
@@ -1618,6 +1620,13 @@ export const enDictionary: DictionaryNode = {
       },
     },
     settings: {
+    importFileEmpty: "This file is empty. Choose an export containing data.",
+    importJsonInvalid: "The JSON file is damaged or incomplete. Export or download it again, then retry.",
+    importBackupUnsupported: "This backup version is not supported. Update Filament Manager or choose a backup exported by this version.",
+    importBackupInvalid: "This is not a complete Filament Manager backup. Choose a full backup JSON exported from Program maintenance.",
+    importInventoryInvalid: "Invalid inventory data. Use an exported inventory CSV or JSON. Each row needs spool_id, material, filament_name and color_name; weights must be non-negative whole grams.",
+    importDataScopeHint: "Inventory CSV/JSON creates or updates spools with matching IDs. A full backup replaces the library after confirmation. Export a full backup first to keep a recovery copy.",
+
       filamentDefaultsUnknownWeight: "Unknown nominal weight",
       filamentDefaultsLoadError: "Failed to load filament defaults.",
       filamentDefaultsSaveCurrencyError: "Could not save the default currency.",
@@ -1983,9 +1992,9 @@ export const enDictionary: DictionaryNode = {
       companionBoundaries: "Desktop-first boundaries",
       companionBoundariesValue:
         "Catalog refresh, import/export/reset, occupied-slot replacement, and broader admin flows still stay in the desktop app for now.",
-      trustedLanTitle: "Trusted-LAN browser access",
+      trustedLanTitle: "Trusted-LAN client access",
       trustedLanHelp:
-        "Turn on browser access on one private LAN interface. The desktop app stays in control.",
+        "Turn on client access on one private LAN interface. The desktop app stays in control.",
       trustedLanServerTitle: "Web app server",
       trustedLanServerControl: "Server control",
       trustedLanRefreshStatus: "Refresh status",
@@ -2045,33 +2054,33 @@ export const enDictionary: DictionaryNode = {
       trustedLanLocalNameUnavailableHint:
         "The web app is running on its current IP, but pairing and permanent QR links stay disabled until the stable local address is available.",
       trustedLanAuth: "Auth",
-      trustedLanAuthPairing: "Per-browser pairing",
+      trustedLanAuthPairing: "Per-client pairing",
       trustedLanAuthHint:
-        "Per-browser pairing with cookies, renewal, and CSRF checks.",
+        "Each browser or desktop Client pairs separately. Revoke access here when it is no longer needed.",
       trustedLanConfigTitle: "Network",
       trustedLanConfigBody:
         "Pick the private interface and port the web app should use.",
       trustedLanSave: "Save network",
       trustedLanEnableLabel:
-        "Enable trusted-LAN browser access on the selected interface",
+        "Enable trusted-LAN client access on the selected interface",
       trustedLanInterfaceSelect: "Private interface",
       trustedLanNoInterfaces: "No private IPv4 interfaces detected",
       trustedLanPortInput: "Listener port",
-      trustedLanPairingTitle: "Browser access pairing",
+      trustedLanPairingTitle: "Client pairing",
       trustedLanPairingBody:
-        "Create a short-lived link or QR for one browser at a time.",
+        "Create a single-use link for a browser or desktop Client.",
       trustedLanCreatePairing: "Create pairing link",
       trustedLanCreateAnotherPairing: "Create another link",
-      trustedLanPairingLabelInput: "Browser name",
+      trustedLanPairingLabelInput: "Client name",
       trustedLanPairingLabelPlaceholder:
         "iPad Safari, kitchen phone, workshop MacBook...",
       trustedLanPairingLabelHint:
-        "Optional. This helps the paired-browser list stay human-readable later.",
+        "Optional. This helps the paired-client list stay human-readable later.",
       trustedLanPairingReady: "Pairing link ready",
       trustedLanLatestPairing: "Latest pairing link",
       trustedLanPairingEmptyState:
         "Create a pairing link when you want to open the web app on another device.",
-      trustedLanPairingLabelMeta: "Browser",
+      trustedLanPairingLabelMeta: "Client",
       trustedLanPairingLabelEmpty: "No label",
       trustedLanPairingExpiresAt: "Expires at",
       trustedLanPairingEmpty: "Create a pairing link to show it here.",
@@ -2085,25 +2094,25 @@ export const enDictionary: DictionaryNode = {
       trustedLanPairingQrScanTitle: "Scan from the browser you want to pair",
       trustedLanPairingQrScanBody:
         "Scan with the browser you want to pair. The link stays short-lived and single-use.",
-      trustedLanPairingNoteTitle: "Human browser auth only",
+      trustedLanPairingNoteTitle: "Client pairing",
       trustedLanPairingNoteBody:
-        "Browser-only access. No device-ingestion route.",
-      trustedLanBrowsersTitle: "Paired browsers",
+        "In the desktop app, choose Client under Library & web app and paste this link. For the web app, open the link or scan the QR in the browser you want to pair.",
+      trustedLanBrowsersTitle: "Paired clients",
       trustedLanBrowsersBody:
-        "Revoke a browser to stop renewals and close its current sessions.",
+        "Revoke a client to stop renewals and close its current sessions.",
       trustedLanRevokeAll: "Revoke all",
       trustedLanRevokeAllWithCount: "Revoke all ({count})",
-      trustedLanRevokeAllAria: "Revoke access for all {count} authorized browsers",
+      trustedLanRevokeAllAria: "Revoke access for all {count} authorized clients",
       trustedLanConfirmRevokeAll:
-        "Revoke access for all authorized browsers ({count})? Their current sessions will be closed, and every browser must be paired again.",
+        "Revoke access for all authorized clients ({count})? Their current sessions will be closed, and every client must be paired again.",
       trustedLanConfirmRevokeAllAction: "Confirm revoke all",
       trustedLanConfirmRevokeAllAria:
-        "Confirm revoking access for all authorized browsers",
+        "Confirm revoking access for all authorized clients",
       trustedLanCancelRevokeAllAria:
-        "Cancel revoking access for all authorized browsers",
-      trustedLanBrowsersEmpty: "No trusted-LAN browsers have been paired yet.",
-      trustedLanNoActiveBrowsers: "No authorized browsers right now.",
-      trustedLanUnnamedBrowser: "Paired browser",
+        "Cancel revoking access for all authorized clients",
+      trustedLanBrowsersEmpty: "No trusted-LAN clients have been paired yet.",
+      trustedLanNoActiveBrowsers: "No authorized clients right now.",
+      trustedLanUnnamedBrowser: "Paired client",
       trustedLanPairedAt: "Paired",
       trustedLanLastSeen: "Last seen",
       trustedLanBrowserWaiting: "Waiting for first renewal",
@@ -2114,19 +2123,19 @@ export const enDictionary: DictionaryNode = {
       trustedLanRevoked: "Revoked",
       trustedLanRevokedHistory: "Revoked history",
       trustedLanRevokedHistoryBody:
-        "Keep this tucked away unless you need to audit older browser access.",
+        "Keep this tucked away unless you need to audit older client access.",
       trustedLanShowRevoked: "Show {count} revoked",
       trustedLanHideRevoked: "Hide {count} revoked",
       trustedLanRevoke: "Revoke",
-      trustedLanRevokeBrowserAria: "Revoke browser access for {name}",
+      trustedLanRevokeBrowserAria: "Revoke client access for {name}",
       trustedLanConfirmRevokeBrowser:
-        "Revoke access for {name}? Its current sessions will be closed, and the browser must be paired again.",
+        "Revoke access for {name}? Its current sessions will be closed, and the client must be paired again.",
       trustedLanConfirmRevokeAction: "Confirm revoke",
       trustedLanConfirmRevokeBrowserAria:
-        "Confirm revoking browser access for {name}",
+        "Confirm revoking client access for {name}",
       trustedLanCancelRevokeAction: "Cancel",
       trustedLanCancelRevokeBrowserAria:
-        "Cancel revoking browser access for {name}",
+        "Cancel revoking client access for {name}",
       trustedLanBindTitle: "Interface-bound only",
       trustedLanBindBody:
         "Binds to one explicit private interface. Never 0.0.0.0.",
@@ -2142,9 +2151,9 @@ export const enDictionary: DictionaryNode = {
       trustedLanDisabledInfo: "Web app server turned off.",
       trustedLanPairingCreated: "Trusted-LAN pairing link created and copied.",
       trustedLanPairingCopied: "Trusted-LAN pairing link copied.",
-      trustedLanBrowserRevoked: "Trusted-LAN browser revoked.",
-      trustedLanAllBrowsersRevoked: "All trusted-LAN browsers revoked.",
-      trustedLanBrowserPairedDetected: "New paired browser connected.",
+      trustedLanBrowserRevoked: "Trusted-LAN client revoked.",
+      trustedLanAllBrowsersRevoked: "All trusted-LAN clients revoked.",
+      trustedLanBrowserPairedDetected: "New paired client connected.",
       subtitle: "Manage browser access, printers, catalogue updates and maintenance.",
       desktopOnly: "Settings are only available in the desktop app build.",
       printerModel: "Printer model",
@@ -2601,9 +2610,9 @@ export const enDictionary: DictionaryNode = {
         saveTrustedLanConfig: "Failed to save trusted-LAN companion settings.",
         createTrustedLanPairing: "Failed to create a trusted-LAN pairing link.",
         copyTrustedLanPairing: "Failed to copy the trusted-LAN pairing link.",
-        loadTrustedLanPairedBrowsers: "Failed to refresh paired browsers.",
-        revokeTrustedLanBrowser: "Failed to revoke the trusted-LAN browser.",
-        revokeAllTrustedLanBrowsers: "Failed to revoke trusted-LAN browsers.",
+        loadTrustedLanPairedBrowsers: "Failed to refresh paired clients.",
+        revokeTrustedLanBrowser: "Failed to revoke the trusted-LAN client.",
+        revokeAllTrustedLanBrowsers: "Failed to revoke trusted-LAN clients.",
         librarySyncSave: "Failed to save library role settings.",
         librarySyncDeviceNameSave: "Failed to save the device name.",
         librarySyncHostCheck: "Failed to check the configured host.",

@@ -941,6 +941,7 @@ test("printer workspace renders a dedicated weight task sheet body for loaded sl
     currentLocationId: "Hylle 3",
     currentRemainingWeight: "730",
     currentMeasuredWeight: "980",
+    currentTareWeight: "250",
     currentSwatchColor: "#9B9EA0",
   };
   const renderTaskSheet = (busy) =>
@@ -958,12 +959,13 @@ test("printer workspace renders a dedicated weight task sheet body for loaded sl
   const submitButton = html.match(/<button[^>]*type="submit"[^>]*>Tøm spor<\/button>/)?.[0];
   const busySubmitButton = busyHtml.match(/<button[^>]*type="submit"[^>]*>Tøm spor<\/button>/)?.[0];
 
-  assert.match(html, /Utgående vekt \(g\)/);
+  assert.match(html, /Utgående totalvekt inkl\. spole \(g\)/);
   assert.match(html, /data-action="printer-slot-operation-form"/);
   assert.match(html, /companion-selection-card swatch-surface detail-section-card printer-weight-summary/);
   assert.match(html, /--swatch-rgb:155 158 160/);
   assert.match(html, /Brutus · AMS 1 · Spor 4/);
-  assert.match(html, /980/);
+  assert.match(html, /980 g − 250 g = 730 g/);
+  assert.match(html, /data-weight-input="outgoing-grams"/);
   assert.ok(submitButton);
   assert.match(submitButton, /class="primary-button"/);
   assert.doesNotMatch(submitButton, /swatch-action-button|style=|disabled/);

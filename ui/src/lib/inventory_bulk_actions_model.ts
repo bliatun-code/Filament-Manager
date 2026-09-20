@@ -37,6 +37,7 @@ export type InventoryBulkSpoolSnapshot = Readonly<{
   locationId: string | null;
   spoolId: string;
   status: SpoolStatus;
+  remainingGrams?: number | null;
 }>;
 
 export type InventoryBulkSpoolPrecondition = Readonly<{
@@ -131,6 +132,7 @@ export type InventoryBulkValidationIssueCode =
   | "INVALID_SNAPSHOT_STATUS"
   | "NO_CHANGES"
   | "PRINTER_SLOT_CONTROLLED"
+  | "REACTIVATION_REQUIRES_WEIGHT"
   | "REMOVED_SPOOL"
   | "STALE_SELECTION"
   | "UNSUPPORTED_STATUS_TARGET";
@@ -478,6 +480,15 @@ export function buildInventoryBulkMutationPlan(
       affectedSnapshots = collected.snapshots.filter(
         (snapshot) => snapshot.status !== typedTarget,
       );
+      if (typedTarget === "IN_STOCK") {
+        const unweighed = affectedSnapshots.filter(snapshot =>
+          snapshot.status === "EMPTY" &&
+          (!Number.isFinite(snapshot.remainingGrams) || (snapshot.remainingGrams ?? 0) <= 0),
+        );
+        if (unweighed.length) {
+          issues.push(validationIssue("REACTIVATION_REQUIRES_WEIGHT", unweighed.map(snapshot => snapshot.spoolId)));
+        }
+      }
       command = {
         action: "STATUS",
         expected_affected_count: affectedSnapshots.length,

@@ -79,7 +79,7 @@ export function buildLoanableSpoolCandidates(
       status: row.spool.normalized_status ?? "IN_STOCK",
       remainingGrams: row.spool.remaining_g ?? row.spool.current_weight_g ?? null,
       spoolTareWeightGrams: row.spool.spool_tare_weight_g ?? null,
-      location: row.spool.location_id ?? null,
+      location: row.location_name?.trim() || row.spool.location_id || null,
     }));
 }
 

@@ -264,7 +264,9 @@ export function buildTrustedLanCompanionModel(
         "settings.trustedLanUrlHintEnabled",
         "Use this exact address for pairing and permanent QR links on your trusted network.",
       )
-    : t(
+    : enabled
+      ? statusHint
+      : t(
         "settings.trustedLanUrlHintDisabled",
         "No LAN URL is exposed while trusted-LAN mode stays disabled.",
       );
@@ -278,7 +280,7 @@ export function buildTrustedLanCompanionModel(
 
   const authLabel =
     trustedLanStatus?.auth_mode === "pairing-session"
-      ? t("settings.trustedLanAuthPairing", "Per-browser pairing")
+      ? t("settings.trustedLanAuthPairing", "Per-client pairing")
       : trustedLanStatus?.auth_mode ?? t("common.unknown", "Unknown");
 
   return {
@@ -303,7 +305,7 @@ export function buildTrustedLanCompanionModel(
     authLabel,
     authHint: t(
       "settings.trustedLanAuthHint",
-      "Trusted-LAN browsers use per-browser pairing, HttpOnly cookies, session renewal, and CSRF protection.",
+      "Each browser or desktop Client pairs separately. Revoke access here when it is no longer needed.",
     ),
     pairActionDisabled:
       statusLoading || actionBusy || !enabled || !reachable || !trustedLanStatus?.shell_url,

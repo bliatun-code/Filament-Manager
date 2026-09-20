@@ -5509,3 +5509,47 @@ fn trusted_lan_pairing_token_is_not_consumed_when_browser_creation_fails() {
         panic!("trusted_lan_pairing_token_is_not_consumed_when_browser_creation_fails: {message}");
     }
 }
+
+#[test]
+fn host_validation_keeps_known_name_until_target_changes() {
+    let db = FilamentDatabase::open(":memory:").unwrap();
+    db.apply_schema().unwrap();
+    let mut settings = db.get_library_sync_settings().unwrap();
+    settings.mode = "CLIENT".to_string();
+    settings.host_base_url = Some("http://host-a.local:4278".to_string());
+    settings.host_device_name = Some("Workshop Host".to_string());
+    settings.library_id = "library-a".to_string();
+    db.save_library_sync_settings(&settings).unwrap();
+
+    for reachable in [false, true] {
+        db.save_library_sync_validation_state(reachable, None, None)
+            .unwrap();
+        assert_eq!(
+            db.get_library_sync_settings()
+                .unwrap()
+                .host_device_name
+                .as_deref(),
+            Some("Workshop Host")
+        );
+    }
+    db.save_library_sync_validation_state(true, None, Some("Renamed Host"))
+        .unwrap();
+    assert_eq!(
+        db.get_library_sync_settings()
+            .unwrap()
+            .host_device_name
+            .as_deref(),
+        Some("Renamed Host")
+    );
+
+    settings.host_base_url = Some("http://host-b.local:4278".to_string());
+    settings.library_id = "library-b".to_string();
+    settings.host_device_name = None;
+    db.save_library_sync_settings(&settings).unwrap();
+    db.save_library_sync_validation_state(false, None, None)
+        .unwrap();
+    assert_eq!(
+        db.get_library_sync_settings().unwrap().host_device_name,
+        None
+    );
+}

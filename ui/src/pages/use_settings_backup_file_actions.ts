@@ -9,7 +9,7 @@ import {
 import type { SettingsTabKey } from "./settings_page_model";
 import type { Locale } from "../lib/i18n";
 import { clearDashboardPageSnapshot } from "../lib/dashboard_page_snapshot_cache";
-import { toErrorMessage } from "../lib/error_text";
+import { settingsBackupFileError } from "./settings_backup_errors";
 import {
   importDataFile,
   validateFullBackupJson,
@@ -24,6 +24,7 @@ import {
   buildSettingsImportSuccessMessage,
   resolveSettingsFullBackupImportedAt,
   shouldPrepareImportedFullBackupAsHost,
+  type SettingsBackupValidation,
   type SettingsBackupErrorMessageLabels,
   type SettingsBackupValidationMessageLabels,
   type SettingsImportMessageLabels,
@@ -36,7 +37,7 @@ type UseSettingsBackupFileActionsInput = {
   clearConfirmResetAction: () => void;
   librarySyncModeDraft: LibrarySyncMode;
   locale: Locale;
-  recordBackupValidation: (summary: BackupValidationStats, validatedAt: string) => void;
+  recordBackupValidation: (summary: SettingsBackupValidation, validatedAt: string) => void;
   recordImportedFullBackup: (importedAt: string) => void;
   reloadSettings: () => Promise<void>;
   setActiveTab: Dispatch<SetStateAction<SettingsTabKey>>;
@@ -156,6 +157,7 @@ export function useSettingsBackupFileActions({
     setBusy(true);
     setError(null);
     setInfo(null);
+    clearBackupValidation();
     try {
       const content = await file.text();
       if (!isCurrent()) return;
@@ -231,8 +233,9 @@ export function useSettingsBackupFileActions({
       if (!isCurrent()) return;
       console.error(importError);
       setError(
-        toErrorMessage(
+        settingsBackupFileError(
           importError,
+          file.name,
           buildSettingsBackupErrorMessage("importDataFailed", settingsBackupErrorMessageLabels()),
           t,
         ),
@@ -257,19 +260,21 @@ export function useSettingsBackupFileActions({
     setBusy(true);
     setError(null);
     setInfo(null);
+    clearBackupValidation();
     try {
       const content = await file.text();
       if (!isCurrent()) return;
       const summary = await validateFullBackupJson(content);
       if (!isCurrent()) return;
-      recordBackupValidation(summary, new Date().toISOString());
+      recordBackupValidation({ ...summary, fileName: file.name }, new Date().toISOString());
       setInfo(buildSettingsBackupValidationSuccessMessage(settingsBackupValidationMessageLabels()));
     } catch (validationError) {
       if (!isCurrent()) return;
       console.error(validationError);
       setError(
-        toErrorMessage(
+        settingsBackupFileError(
           validationError,
+          file.name,
           buildSettingsBackupErrorMessage(
             "validateBackupFailed",
             settingsBackupErrorMessageLabels(),

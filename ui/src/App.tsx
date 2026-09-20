@@ -232,6 +232,7 @@ export default function App() {
   }, [activePage, pages, t]);
 
   useEffect(() => {
+    window.scrollTo({ top: 0, behavior: "instant" });
     activeNavButtonRef.current?.scrollIntoView({
       behavior: "auto",
       block: "nearest",

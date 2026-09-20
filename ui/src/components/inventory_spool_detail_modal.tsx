@@ -67,6 +67,10 @@ function keepsLegacyCurrencylessPurchasePrice(
 }
 
 type InventorySpoolDetailModalProps = {
+  clientDataWarning?: string | null;
+  detailUnavailable?: boolean;
+  onRefreshData?: () => void;
+  refreshingData?: boolean;
   assignedSlot: InventorySpoolDetailAssignedSlot | null;
   colorName: string;
   confirmDelete: boolean;
@@ -156,6 +160,10 @@ type InventorySpoolDetailModalProps = {
 };
 
 export function InventorySpoolDetailModal({
+  clientDataWarning,
+  detailUnavailable = false,
+  onRefreshData,
+  refreshingData = false,
   assignedSlot,
   colorName,
   confirmDelete,
@@ -285,6 +293,16 @@ export function InventorySpoolDetailModal({
           className="overflow-y-auto px-4 pb-4 pt-4 sm:p-5"
           data-inventory-detail-scroll
         >
+          {clientDataWarning || detailUnavailable ? (
+            <ModalNotice tone="warning" className="mb-4">
+              <div role="status">
+                {clientDataWarning ?? t("errors.requestFailed", "The request could not be completed.")}
+              </div>
+              <button type="button" className="mt-2 underline" onClick={onRefreshData} disabled={refreshingData}>
+                {refreshingData ? t("common.loading", "Loading...") : t("common.refresh", "Refresh")}
+              </button>
+            </ModalNotice>
+          ) : null}
           <div className={inventoryTwoColumnModalGridClassName}>
             <div
               className={inventoryDetailPanelClassName}
@@ -429,14 +447,17 @@ export function InventorySpoolDetailModal({
                 <div className={inventoryDetailEyebrowClassName}>
                   {t("inventory.usageDiagram", "Usage diagram")}
                 </div>
-                <RollUsageChart
+                {detailUnavailable ? (
+                  <div role="status">{t("errors.requestFailed", "The request could not be completed.")}</div>
+                ) : <RollUsageChart
                   points={usagePoints}
                   loading={usageLoading}
                   initialWeight={spool.initialWeightGrams}
-                />
+                />}
               </div>
 
               <InventoryRollHistoryPanel
+                unavailable={detailUnavailable}
                 formatHistoryEventDetails={formatHistoryEventDetails}
                 formatHistoryEventType={formatHistoryEventType}
                 hasHiddenHistoryRows={hasHiddenHistoryRows}
@@ -467,6 +488,7 @@ export function InventorySpoolDetailModal({
         </div>
 
         <InventorySpoolDetailFooter
+          showSavedStatus={!error && !clientDataWarning && !detailUnavailable}
           discardConfirmationOpen={discardConfirmationOpen}
           hasCommonChanges={hasCommonChanges}
           hasUnsavedChanges={hasUnsavedChanges}

@@ -173,7 +173,7 @@ function InventoryBulkMutationReview({
         </div>
         <div>
           <dt className="sr-only">{copy.reviewTargetTerm}</dt>
-          <dd>{copy.reviewTarget(review.action, review.targetLabel)}</dd>
+          <dd>{copy.reviewTarget(review.action, review.action === "STATUS" ? copy.statusName(review.command.target_status) : review.targetLabel)}</dd>
         </div>
       </dl>
       <p className="mt-3 text-xs leading-5">

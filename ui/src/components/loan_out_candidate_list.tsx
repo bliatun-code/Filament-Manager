@@ -147,7 +147,7 @@ export function LoanOutCandidateList({
         id={listId}
         role="group"
         aria-label={t("inventory.availableToLoan", "Available to loan")}
-        className="mt-3 grid min-h-0 flex-1 grid-cols-1 gap-2 overflow-y-auto pr-1 max-h-[min(52vh,36rem)]"
+        className="mt-3 grid auto-rows-max content-start min-h-0 flex-1 grid-cols-1 gap-2 overflow-y-auto pr-1 max-h-[min(52vh,36rem)]"
       >
         {visibleSpools.length === 0 ? (
           <div className="rounded-xl border border-dashed border-slate-300 px-4 py-6 text-center text-sm text-slate-600 dark:border-slate-700 dark:text-slate-300">

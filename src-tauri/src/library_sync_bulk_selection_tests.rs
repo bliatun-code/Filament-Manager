@@ -171,3 +171,47 @@ fn reviewed_bulk_selection_acknowledgement_survives_cache_target_change() {
         );
     }
 }
+
+#[test]
+fn reviewed_bulk_selection_rejects_unweighed_reactivation_on_host_without_partial_writes() {
+    use crate::backend::inventory_domain::SpoolStatus;
+    use crate::backend::inventory_engine::InventoryBulkMutationInput;
+    let _serial = NETWORK_TEST_LOCK
+        .lock()
+        .unwrap_or_else(|error| error.into_inner());
+    let mut host = SyntheticHost::start(true, serde_json::json!({"ok":true}));
+    let (_directory, state, generation) = client(&host, true);
+    let mut request = reviewed_request(&host, generation, "STATUS");
+    let db = FilamentDatabase::open(&host.db_path).unwrap();
+    db.connection().execute("UPDATE filament_spools SET status = 'EMPTY', remaining_g = CASE id WHEN 'original-host-roll' THEN 400 ELSE 0 END WHERE id IN ('original-host-roll','incoming-host-roll')", []).unwrap();
+    if let InventoryBulkMutationInput::Status {
+        target_status,
+        spools,
+        ..
+    } = &mut request.mutation
+    {
+        *target_status = SpoolStatus::InStock;
+        for spool in spools {
+            spool.expected_status = SpoolStatus::Empty;
+        }
+    } else {
+        panic!("expected bulk STATUS");
+    }
+    drop(db);
+    let before_host = snapshot(host.db_path.to_str().unwrap());
+    let before_client = snapshot(&state.db_path);
+    let error = execute(&state, request).expect_err("Host must reject the entire selection");
+    assert!(
+        error.contains("inventory.bulk.reactivation_requires_weight"),
+        "{error}"
+    );
+    assert_eq!(snapshot(host.db_path.to_str().unwrap()), before_host);
+    assert_eq!(snapshot(&state.db_path), before_client);
+    assert_eq!(
+        host.finish()
+            .iter()
+            .filter(|(line, _)| line.starts_with("POST "))
+            .count(),
+        1
+    );
+}

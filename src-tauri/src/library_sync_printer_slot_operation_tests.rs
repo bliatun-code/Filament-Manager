@@ -214,9 +214,9 @@ impl SyntheticHost {
                                 .map(serde_json::Value::to_string)
                                 .unwrap_or_else(|| serde_json::to_string(&receipt).unwrap()),
                         ),
-                        Err(_) => (
-                            "409 Conflict",
-                            serde_json::json!({"code":"inventory.bulk.stale_snapshot"}).to_string(),
+                        Err(error) => (
+                            "400 Bad Request",
+                            crate::app_error::inventory_error_to_command_string(error),
                         ),
                     }
                 } else if slot_post {

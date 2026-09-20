@@ -1,0 +1,52 @@
+{
+  "filament_spools": {
+    "count": 9,
+    "sha256": "9025d05c5e29e7ee52da11efd716cb67a1e0ee8f5be5d1a65f010867e81063d6"
+  },
+  "filament_master_list": {
+    "count": 1613,
+    "sha256": "3e83d43e8d6848fba10a4368793e9a9a43c6811ad88739588086d627dbcc3c4f"
+  },
+  "printers": {
+    "count": 2,
+    "sha256": "b395c8cc7048680ce88f9f286a926807c57f84a168e32e9a0b5addfd7ad1403f"
+  },
+  "ams_units": {
+    "count": 4,
+    "sha256": "34596caabbc539048922d44dd7ba81a6cb1c9b46adc8bd052597421d9a96e321"
+  },
+  "ams_slots": {
+    "count": 11,
+    "sha256": "8ed02da672ae69b2d3a21befa30ac92ac0ba463f95a6f92c26ee156012f8322b"
+  },
+  "spool_loans": {
+    "count": 2,
+    "sha256": "cd95a9e016c98999660207a799293754a20e8f3d809b853e94d4d24c3c9519ff"
+  },
+  "spool_history_events": {
+    "count": 9,
+    "sha256": "a5b1731134f8fd51462fa60cee74152680a74982af7407577da56ac23dd6ff7b"
+  },
+  "print_jobs": {
+    "count": 1,
+    "sha256": "8533b928d5de837c6c7f615fbebf98457884bde51fe6a9e7a10e64c5cd15610a"
+  },
+  "wishlist_items": {
+    "count": 2,
+    "sha256": "fec0738f5428f369ab4ab77a1a89ca03ebc8c1cf0c4254537eee402043360fdd"
+  },
+  "inventory_locations": {
+    "count": 2,
+    "sha256": "bc04e35d961f47e216397cd8503fb8bbf996e602cedc3e2b818b2a4b97f2b20e"
+  },
+  "controls": [
+    {
+      "id": "review_import_control",
+      "remaining_g": 800,
+      "spool_tare_weight_g": 200,
+      "status": "IN_STOCK"
+    }
+  ],
+  "integrity": "ok",
+  "foreignKeys": []
+}

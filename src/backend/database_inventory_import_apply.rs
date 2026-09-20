@@ -23,9 +23,10 @@ pub(crate) fn import_inventory_spools_rows(
     rows: &[InventoryImportRow],
 ) -> InventoryResult<InventoryImportStats> {
     if rows.is_empty() {
-        return Err(InventoryError::Db(
-            "Inventory import contains no spool rows".to_string(),
-        ));
+        return Err(InventoryError::InvalidOperation {
+            code: "document.inventory_invalid",
+            message: "Inventory import contains no spool rows".to_string(),
+        });
     }
 
     conn.execute_batch("BEGIN IMMEDIATE;")?;
@@ -735,10 +736,7 @@ fn normalize_import_row<'a>(
         || filament_name.is_empty()
         || color_name.is_empty()
     {
-        return Err(InventoryError::Db(format!(
-            "Invalid inventory row at index {}: spool_id, material, filament_name and color_name are required",
-            index
-        )));
+        return Err(InventoryError::InvalidOperation { code: "document.inventory_invalid", message: format!("Invalid inventory row at index {}: spool_id, material, filament_name and color_name are required", index) });
     }
 
     let remaining_g = row

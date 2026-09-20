@@ -49,6 +49,8 @@ export const frDictionary: DictionaryNode = {
     optional: "Facultatif",
   },
   errors: {
+    "inventoryBulkReactivationRequiresWeight": "Définissez un poids total mesuré supérieur au poids de la bobine vide avant de la réactiver.",
+      hostUnavailable: "L’hôte est indisponible. Les modifications ne peuvent pas être enregistrées avant la reconnexion. Vérifiez l’hôte et le réseau, puis actualisez.",
       "inventoryWeightHostUnsupported": "Mettez à jour l’hôte avant d’enregistrer le poids mesuré d’une bobine. Aucune modification n’a été envoyée.",
       "inventoryStatusHostUnsupported": "Mettez à jour l’hôte avant de modifier le statut d’une bobine. Aucune modification n’a été envoyée.",
     "printerSlotChanged": "La bobine de cet emplacement a changé. Rouvrez l’action de l’emplacement et confirmez la bobine actuelle.",
@@ -506,7 +508,7 @@ export const frDictionary: DictionaryNode = {
     bulkReviewChanged:
       "La sélection ou les données des bobines ont changé. Vérifiez de nouveau l’action.",
     bulkAtomicWarning:
-      "Les {count} modifications et leur historique sont enregistrés ensemble, ou rien n’est écrit.",
+      "Toutes les modifications sélectionnées sont enregistrées ensemble. Si l’une échoue, rien n’est enregistré.",
     bulkConfirmAction: "Confirmer {action} pour {count}",
     bulkActiveLoanBlocked:
       "{count, plural, one {# bobine concernée a} other {# bobines concernées ont}} un prêt actif. Terminez-le avant de modifier l’emplacement ou le statut.",
@@ -522,7 +524,7 @@ export const frDictionary: DictionaryNode = {
     bulkLegacyHostUnsupported:
       "L’hôte connecté ne prend pas en charge les actions groupées atomiques. Mettez-le à jour et réessayez.",
     bulkMutationDone:
-      "{count, plural, one {# bobine mise à jour} other {# bobines mises à jour}} atomiquement.",
+      "Bobines mises à jour : {count}.",
     bulkMutationFailed:
       "L’action groupée a échoué. Aucune modification partielle n’a été enregistrée.",
     bulkReceiptMismatch:
@@ -1639,6 +1641,13 @@ export const frDictionary: DictionaryNode = {
     },
   },
   settings: {
+    importFileEmpty: "Ce fichier est vide. Choisissez un export contenant des données.",
+    importJsonInvalid: "Le fichier JSON est endommagé ou incomplet. Exportez-le ou téléchargez-le à nouveau, puis réessayez.",
+    importBackupUnsupported: "Cette version de sauvegarde n’est pas prise en charge. Mettez Filament Manager à jour ou choisissez une sauvegarde exportée par cette version.",
+    importBackupInvalid: "Ce fichier n’est pas une sauvegarde complète de Filament Manager. Choisissez une sauvegarde JSON complète exportée depuis la maintenance du programme.",
+    importInventoryInvalid: "Données de stock invalides. Utilisez un export CSV ou JSON du stock. Chaque ligne doit contenir spool_id, material, filament_name et color_name ; les poids doivent être des grammes entiers positifs ou nuls.",
+    importDataScopeHint: "Le CSV/JSON du stock crée des bobines ou met à jour celles ayant le même identifiant. Une sauvegarde complète remplace la bibliothèque après confirmation. Exportez d’abord une sauvegarde complète pour pouvoir restaurer les données.",
+
     filamentDefaultsUnknownWeight: "Poids nominal inconnu",
     filamentDefaultsLoadError: "Impossible de charger les valeurs par défaut du filament.",
     filamentDefaultsSaveCurrencyError: "Impossible d’enregistrer la devise par défaut.",
@@ -2105,9 +2114,9 @@ export const frDictionary: DictionaryNode = {
     companionBoundaries: "Fonctions réservées au desktop",
     companionBoundariesValue:
       "Actualisation du catalogue, import, export, réinitialisation, remplacement d’un emplacement occupé et administration avancée.",
-    trustedLanTitle: "Accès navigateur Trusted-LAN",
+    trustedLanTitle: "Accès client Trusted-LAN",
     trustedLanHelp:
-      "Activez l’accès navigateur sur une interface LAN privée. L’application desktop garde le contrôle.",
+      "Activez l’accès client sur une interface LAN privée. L’application desktop garde le contrôle.",
     trustedLanServerTitle: "Serveur de la web app",
     trustedLanServerControl: "Contrôle du serveur",
     trustedLanRefreshStatus: "Actualiser l’état",
@@ -2160,9 +2169,9 @@ export const frDictionary: DictionaryNode = {
     trustedLanLocalNameUnavailableHint:
       "La web app fonctionne sur son adresse IP actuelle, mais l’association et les liens QR permanents restent désactivés jusqu’à ce que l’adresse locale stable soit disponible.",
     trustedLanAuth: "Authentification",
-    trustedLanAuthPairing: "Association par navigateur",
+    trustedLanAuthPairing: "Association par client",
     trustedLanAuthHint:
-      "Association par navigateur avec cookies, renouvellement et contrôles CSRF.",
+      "Association par client avec cookies, renouvellement et contrôles CSRF.",
     trustedLanConfigTitle: "Réseau",
     trustedLanConfigBody: "Choisissez l’interface privée et le port de la web app.",
     trustedLanSave: "Enregistrer le réseau",
@@ -2170,19 +2179,19 @@ export const frDictionary: DictionaryNode = {
     trustedLanInterfaceSelect: "Interface privée",
     trustedLanNoInterfaces: "Aucune interface IPv4 privée détectée",
     trustedLanPortInput: "Port d’écoute",
-    trustedLanPairingTitle: "Association de l’accès navigateur",
-    trustedLanPairingBody: "Créez un lien ou QR temporaire pour un navigateur à la fois.",
+    trustedLanPairingTitle: "Associer un client",
+    trustedLanPairingBody: "Créez un lien à usage unique pour un navigateur ou un client de bureau.",
     trustedLanCreatePairing: "Créer un lien d’association",
     trustedLanCreateAnotherPairing: "Créer un autre lien",
-    trustedLanPairingLabelInput: "Nom du navigateur",
+    trustedLanPairingLabelInput: "Nom du client",
     trustedLanPairingLabelPlaceholder: "Safari sur iPad, téléphone de cuisine, MacBook atelier…",
     trustedLanPairingLabelHint:
-      "Facultatif. Ce nom rend la liste des navigateurs associés plus lisible.",
+      "Facultatif. Ce nom rend la liste des clients associés plus lisible.",
     trustedLanPairingReady: "Lien d’association prêt",
     trustedLanLatestPairing: "Dernier lien d’association",
     trustedLanPairingEmptyState:
       "Créez un lien lorsque vous souhaitez ouvrir la web app sur un autre appareil.",
-    trustedLanPairingLabelMeta: "Navigateur",
+    trustedLanPairingLabelMeta: "Client",
     trustedLanPairingLabelEmpty: "Sans nom",
     trustedLanPairingExpiresAt: "Expire à",
     trustedLanPairingEmpty: "Créez un lien d’association pour l’afficher ici.",
@@ -2196,22 +2205,22 @@ export const frDictionary: DictionaryNode = {
     trustedLanPairingQrScanTitle: "Scanner depuis le navigateur à associer",
     trustedLanPairingQrScanBody:
       "Scannez avec le navigateur à associer. Le lien est temporaire et à usage unique.",
-    trustedLanPairingNoteTitle: "Authentification pour navigateur humain uniquement",
-    trustedLanPairingNoteBody: "Accès navigateur uniquement. Aucun endpoint d’ingestion d’appareil.",
-    trustedLanBrowsersTitle: "Navigateurs associés",
+    trustedLanPairingNoteTitle: "Associer un client",
+    trustedLanPairingNoteBody: "Dans l’application de bureau, choisissez Client sous Bibliothèque et application web et collez le lien. Pour l’application web, ouvrez le lien ou scannez le QR dans le navigateur à associer.",
+    trustedLanBrowsersTitle: "Clients associés",
     trustedLanBrowsersBody:
-      "Révoquez un navigateur pour arrêter ses renouvellements et fermer ses sessions actuelles.",
+      "Révoquez un client pour arrêter ses renouvellements et fermer ses sessions actuelles.",
     trustedLanRevokeAll: "Tout révoquer",
     trustedLanRevokeAllWithCount: "Tout révoquer ({count})",
-    trustedLanRevokeAllAria: "Révoquer l’accès des {count} navigateurs autorisés",
+    trustedLanRevokeAllAria: "Révoquer l’accès des {count} clients autorisés",
     trustedLanConfirmRevokeAll:
-      "Révoquer l’accès des {count} navigateurs autorisés ? Leurs sessions seront fermées et chacun devra être associé de nouveau.",
+      "Révoquer l’accès des {count} clients autorisés ? Leurs sessions seront fermées et chacun devra être associé de nouveau.",
     trustedLanConfirmRevokeAllAction: "Confirmer la révocation de tous",
-    trustedLanConfirmRevokeAllAria: "Confirmer la révocation de tous les navigateurs",
-    trustedLanCancelRevokeAllAria: "Annuler la révocation de tous les navigateurs",
-    trustedLanBrowsersEmpty: "Aucun navigateur Trusted-LAN n’a encore été associé.",
-    trustedLanNoActiveBrowsers: "Aucun navigateur autorisé actuellement.",
-    trustedLanUnnamedBrowser: "Navigateur associé",
+    trustedLanConfirmRevokeAllAria: "Confirmer la révocation de tous les clients",
+    trustedLanCancelRevokeAllAria: "Annuler la révocation de tous les clients",
+    trustedLanBrowsersEmpty: "Aucun client Trusted-LAN n’a encore été associé.",
+    trustedLanNoActiveBrowsers: "Aucun client autorisé actuellement.",
+    trustedLanUnnamedBrowser: "Client associé",
     trustedLanPairedAt: "Associé",
     trustedLanLastSeen: "Dernière activité",
     trustedLanBrowserWaiting: "En attente du premier renouvellement",
@@ -2226,13 +2235,13 @@ export const frDictionary: DictionaryNode = {
     trustedLanShowRevoked: "Afficher {count} révoqués",
     trustedLanHideRevoked: "Masquer {count} révoqués",
     trustedLanRevoke: "Révoquer",
-    trustedLanRevokeBrowserAria: "Révoquer l’accès du navigateur {name}",
+    trustedLanRevokeBrowserAria: "Révoquer l’accès du client {name}",
     trustedLanConfirmRevokeBrowser:
-      "Révoquer l’accès de {name} ? Ses sessions seront fermées et le navigateur devra être associé de nouveau.",
+      "Révoquer l’accès de {name} ? Ses sessions seront fermées et le client devra être associé de nouveau.",
     trustedLanConfirmRevokeAction: "Confirmer la révocation",
-    trustedLanConfirmRevokeBrowserAria: "Confirmer la révocation du navigateur {name}",
+    trustedLanConfirmRevokeBrowserAria: "Confirmer la révocation du client {name}",
     trustedLanCancelRevokeAction: "Annuler",
-    trustedLanCancelRevokeBrowserAria: "Annuler la révocation du navigateur {name}",
+    trustedLanCancelRevokeBrowserAria: "Annuler la révocation du client {name}",
     trustedLanBindTitle: "Lié à une interface uniquement",
     trustedLanBindBody: "Se lie à une interface privée explicite, jamais à 0.0.0.0.",
     trustedLanWarningTitle: "Le trafic Trusted-LAN n’est pas chiffré",
@@ -2247,9 +2256,9 @@ export const frDictionary: DictionaryNode = {
     trustedLanDisabledInfo: "Serveur de la web app désactivé.",
     trustedLanPairingCreated: "Lien d’association Trusted-LAN créé et copié.",
     trustedLanPairingCopied: "Lien d’association Trusted-LAN copié.",
-    trustedLanBrowserRevoked: "Navigateur Trusted-LAN révoqué.",
-    trustedLanAllBrowsersRevoked: "Tous les navigateurs Trusted-LAN ont été révoqués.",
-    trustedLanBrowserPairedDetected: "Nouveau navigateur associé connecté.",
+    trustedLanBrowserRevoked: "Client Trusted-LAN révoqué.",
+    trustedLanAllBrowsersRevoked: "Tous les clients Trusted-LAN ont été révoqués.",
+    trustedLanBrowserPairedDetected: "Nouveau client associé connecté.",
     licenseHelp:
       "Filament Manager est open source. Les versions modifiées distribuées, ou utilisées sur un réseau, doivent publier leur code source correspondant sous la même licence.",
     helpHint:
@@ -2624,9 +2633,9 @@ export const frDictionary: DictionaryNode = {
       saveTrustedLanConfig: "Échec de l’enregistrement des paramètres de Companion Trusted-LAN.",
       createTrustedLanPairing: "Échec de la création du lien d’association Trusted-LAN.",
       copyTrustedLanPairing: "Échec de la copie du lien d’association Trusted-LAN.",
-      loadTrustedLanPairedBrowsers: "Échec de l’actualisation des navigateurs associés.",
-      revokeTrustedLanBrowser: "Échec de la révocation du navigateur Trusted-LAN.",
-      revokeAllTrustedLanBrowsers: "Échec de la révocation des navigateurs Trusted-LAN.",
+      loadTrustedLanPairedBrowsers: "Échec de l’actualisation des clients associés.",
+      revokeTrustedLanBrowser: "Échec de la révocation du client Trusted-LAN.",
+      revokeAllTrustedLanBrowsers: "Échec de la révocation des clients Trusted-LAN.",
     },
   },
 };

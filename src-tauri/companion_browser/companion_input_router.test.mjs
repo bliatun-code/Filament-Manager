@@ -12,6 +12,7 @@ test("input router dispatches inventory, loan, and printer updates", () => {
     setLoanSearch(value) {
       calls.push(["loan", value]);
     },
+    setLoanPickerSearch(value) { calls.push(["picker", value]); },
     setPrinterSpoolSearch(value) {
       calls.push(["printer", value]);
     },
@@ -25,11 +26,13 @@ test("input router dispatches inventory, loan, and printer updates", () => {
 
   assert.equal(routeCompanionInputChange("inventory-search", "pla", handlers), true);
   assert.equal(routeCompanionInputChange("loan-search", "alex", handlers), true);
+  assert.equal(routeCompanionInputChange("loan-picker-search", "target", handlers), true);
   assert.equal(routeCompanionInputChange("printer-spool-search", "petg", handlers), true);
 
   assert.deepEqual(calls, [
     ["inventory", "pla"],
     ["loan", "alex"],
+    ["picker", "target"],
     ["printer", "petg"],
   ]);
 });

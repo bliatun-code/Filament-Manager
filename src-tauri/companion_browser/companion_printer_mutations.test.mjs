@@ -174,3 +174,17 @@ test("weight-only slot update keeps the existing single-spool weight path", asyn
     success: true,
   });
 });
+
+test("printer weight drafts never truncate exponent or fractional notation", async () => {
+  for (const mode of ["update", "assign", "clear"]) {
+    for (const value of ["1e3", "2.5", "9007199254740992"]) {
+      const harness = createHarness({ state: { activeTaskSheet: {
+        type: "printer-weight", mode, printerId: "printer", slotId: "slot",
+        currentSpoolId: "current", targetSpoolId: "next",
+      } } });
+      await harness.mutations.submitPrinterSlotOperation(value, value, value);
+      assert.equal(harness.fetchCalls.length, 0, `${mode}: ${value}`);
+      assert.equal(harness.statusCalls.at(-1).tone, "error");
+    }
+  }
+});

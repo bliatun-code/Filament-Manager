@@ -1,8 +1,8 @@
+import type { SettingsBackupValidation } from "../pages/settings_backup_model";
 import { SettingsMetricTile } from "./settings_ui";
 import { inlineStatusSignalClass } from "../lib/chip_styles";
 import type { Locale } from "../lib/i18n";
 import { formatDisplayInteger } from "../lib/number_display";
-import type { BackupValidationStats } from "../lib/tauri_client";
 
 type TranslateFn = (key: string, fallback: string) => string;
 
@@ -11,7 +11,7 @@ type SettingsBackupValidationSummaryProps = {
   hasMissingTables: boolean;
   hasWarnings: boolean;
   locale?: Locale;
-  summary: BackupValidationStats;
+  summary: SettingsBackupValidation;
   t: TranslateFn;
 };
 
@@ -35,6 +35,7 @@ export function SettingsBackupValidationSummary({
             : t("settings.validationStatusOk", "Fully compatible")}
         </span>
       </div>
+      {summary.fileName ? <p className="mt-2 break-all font-medium">{summary.fileName}</p> : null}
       <div className="mt-3 grid gap-3 sm:grid-cols-3">
         <SettingsMetricTile
           label={t("settings.validationFormat", "Format")}

@@ -311,3 +311,30 @@ test("loadInventorySpoolDetail loads local history and usage together outside cl
     usagePoints: [],
   });
 });
+
+test("cached inventory distinguishes rejected pairing from network failure", async () => {
+  const { inventoryFallbackPairingRejected } = await import("./inventory_data_source");
+  const baseUrl = "http://workshop.local:4278";
+  const libraryId = "workshop-library";
+  const validation = {
+    base_url: baseUrl, library_id: libraryId, reachable: true, ok: false,
+    matches_library_id: true, pairing_checked: true, pairing_valid: false,
+    message: "Pairing rejected",
+  };
+  const rejected = await inventoryFallbackPairingRejected(baseUrl, libraryId, async (url, expected) => {
+    assert.equal(url, baseUrl);
+    assert.equal(expected, libraryId);
+    return validation;
+  });
+  assert.equal(rejected, true);
+  for (const result of [
+    { ...validation, reachable: false, pairing_checked: false },
+    { ...validation, matches_library_id: false },
+    { ...validation, ok: true, pairing_valid: true },
+  ]) {
+    assert.equal(await inventoryFallbackPairingRejected(baseUrl, libraryId, async () => result), false);
+  }
+  assert.equal(await inventoryFallbackPairingRejected(baseUrl, libraryId, async () => {
+    throw new Error("Network unavailable");
+  }), false);
+});

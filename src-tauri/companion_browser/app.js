@@ -5,6 +5,7 @@ import {
   createLatestAsyncCommitter,
 } from "./companion_data_controller.js";
 import { installCompanionDomEvents } from "./companion_dom_events.js";
+import { updateCompanionWeightPreviews } from "./companion_spool_weight.js";
 import {
   COMPANION_LOCALE_STORAGE_KEY,
   loadCompanionLocale,
@@ -505,6 +506,7 @@ function render() {
     documentRef: document,
     markup: companionAppShellRenderer.renderRoot(),
   });
+  updateCompanionWeightPreviews(root, state.locale || "en");
   companionOverlayFocusLifecycle.restoreAfterRender(overlayKey);
 }
 

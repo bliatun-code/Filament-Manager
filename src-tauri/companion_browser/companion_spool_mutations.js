@@ -1,3 +1,4 @@
+import { parseCompanionMeasuredWeight } from "./companion_spool_weight.js";
 import {
   liveSlotHasLoadedRoll,
   liveSlotObservedRfid,
@@ -27,7 +28,7 @@ export function createCompanionSpoolMutations({
   openSpoolDetail,
 }) {
   async function submitWeightUpdate(spoolId, gramsValue, mutationOptions = {}) {
-    const grams = Number.parseInt(gramsValue, 10);
+    const grams = parseCompanionMeasuredWeight(gramsValue);
     if (!Number.isFinite(grams) || grams < 0) {
       setStatus(
         tr("status.weightInvalid", "Enter a valid non-negative weight in grams."),
@@ -82,7 +83,7 @@ export function createCompanionSpoolMutations({
   }
 
   async function submitTareWeightUpdate(spoolId, gramsValue) {
-    const grams = Number.parseInt(gramsValue, 10);
+    const grams = parseCompanionMeasuredWeight(gramsValue);
     if (!Number.isFinite(grams) || grams < 0) {
       setStatus(
         tr("status.weightInvalid", "Enter a valid non-negative weight in grams."),

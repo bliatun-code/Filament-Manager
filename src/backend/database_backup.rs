@@ -31,12 +31,28 @@ pub(crate) struct ParsedFullBackup {
 }
 
 pub(crate) fn parse_full_backup_content(content: &str) -> InventoryResult<ParsedFullBackup> {
+    parse_full_backup_content_inner(content).map_err(|error| match error {
+        InventoryError::Db(message) => InventoryError::InvalidOperation {
+            code: "document.backup_invalid",
+            message,
+        },
+        other => other,
+    })
+}
+
+fn parse_full_backup_content_inner(content: &str) -> InventoryResult<ParsedFullBackup> {
     let normalized = content.trim_start_matches('\u{feff}').trim();
     if normalized.is_empty() {
-        return Err(InventoryError::Db("Backup content is empty".to_string()));
+        return Err(InventoryError::InvalidOperation {
+            code: "document.file_empty",
+            message: "Backup content is empty".to_string(),
+        });
     }
     let parsed: Value =
-        serde_json::from_str(normalized).map_err(|error| InventoryError::Db(error.to_string()))?;
+        serde_json::from_str(normalized).map_err(|error| InventoryError::InvalidOperation {
+            code: "document.json_invalid",
+            message: error.to_string(),
+        })?;
     let root = parsed
         .as_object()
         .ok_or_else(|| InventoryError::Db("Backup root must be a JSON object".to_string()))?;
@@ -45,9 +61,10 @@ pub(crate) fn parse_full_backup_content(content: &str) -> InventoryResult<Parsed
         .and_then(Value::as_str)
         .ok_or_else(|| InventoryError::Db("Backup format field is missing".to_string()))?;
     if format != "filament-manager-backup-v1" {
-        return Err(InventoryError::Db(format!(
-            "Unsupported backup format: {format}"
-        )));
+        return Err(InventoryError::InvalidOperation {
+            code: "document.backup_unsupported",
+            message: format!("Unsupported backup format: {format}"),
+        });
     }
 
     let schema_version = optional_schema_version(root)?;
@@ -353,9 +370,7 @@ pub(crate) fn ensure_full_backup_is_safe_to_import(
     if let Some(schema_version) = parsed.schema_version
         && schema_version > CURRENT_SCHEMA_VERSION
     {
-        return Err(InventoryError::Db(format!(
-                "Backup schema version {schema_version} is newer than the supported schema version {CURRENT_SCHEMA_VERSION}"
-            )));
+        return Err(InventoryError::InvalidOperation { code: "document.backup_unsupported", message: format!("Backup schema version {schema_version} is newer than the supported schema version {CURRENT_SCHEMA_VERSION}") });
     }
 
     let missing_required_tables: Vec<&str> = FULL_BACKUP_TABLES
@@ -369,10 +384,13 @@ pub(crate) fn ensure_full_backup_is_safe_to_import(
         return Ok(());
     }
 
-    Err(InventoryError::Db(format!(
-        "Backup is incomplete and cannot be imported safely. Missing required tables: {}",
-        missing_required_tables.join(", ")
-    )))
+    Err(InventoryError::InvalidOperation {
+        code: "document.backup_invalid",
+        message: format!(
+            "Backup is incomplete and cannot be imported safely. Missing required tables: {}",
+            missing_required_tables.join(", ")
+        ),
+    })
 }
 
 pub(crate) fn export_full_backup_content(conn: &rusqlite::Connection) -> InventoryResult<String> {
@@ -431,4 +449,39 @@ fn export_table_rows(conn: &rusqlite::Connection, table: &str) -> InventoryResul
         }
     }
     Ok(output)
+}
+
+#[cfg(test)]
+mod document_error_tests {
+    use super::*;
+
+    #[test]
+    fn backup_validation_distinguishes_file_format_from_unsupported_version() {
+        for (content, expected) in [
+            ("", "document.file_empty"),
+            ("{", "document.json_invalid"),
+            (r#"{"note":"not a backup"}"#, "document.backup_invalid"),
+            (
+                r#"{"format":"filament-manager-backup-v999","tables":{}}"#,
+                "document.backup_unsupported",
+            ),
+        ] {
+            let error = parse_full_backup_content(content)
+                .err()
+                .expect("reject invalid file");
+            assert!(
+                matches!(error, InventoryError::InvalidOperation { code, .. } if code == expected)
+            );
+        }
+        for (version, expected) in [
+            (0, "document.backup_invalid"),
+            (CURRENT_SCHEMA_VERSION + 1, "document.backup_unsupported"),
+        ] {
+            let parsed = parse_full_backup_content(&format!(r#"{{"format":"filament-manager-backup-v1","schema_version":{version},"tables":{{}}}}"#)).unwrap();
+            let error = ensure_full_backup_is_safe_to_import(&parsed).unwrap_err();
+            assert!(
+                matches!(error, InventoryError::InvalidOperation { code, .. } if code == expected)
+            );
+        }
+    }
 }

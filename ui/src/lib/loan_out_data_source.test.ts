@@ -176,3 +176,12 @@ test("loan candidates fail when live spools cannot load", async () => {
     },
   ), /live spools unavailable/);
 });
+
+
+test("loan candidates expose a resolved location name for display and search", () => {
+  const row = { ...spoolRow("spool-location", { location_id: "location_opaque" }), location_name: "Workshop Shelf" };
+  const [candidate] = buildLoanableSpoolCandidates(normalizeSpoolWithMasterRows([row]), []);
+  assert.equal(candidate.location, "Workshop Shelf");
+  const [legacy] = buildLoanableSpoolCandidates(normalizeSpoolWithMasterRows([spoolRow("spool-legacy")]), []);
+  assert.equal(legacy.location, "Shelf 1");
+});

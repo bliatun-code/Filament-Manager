@@ -350,7 +350,7 @@ export function useSettingsLibrarySyncActions({
       if (!disabled) {
         return;
       }
-      await saveLibrarySyncSettings(
+      const targetSettings = await saveLibrarySyncSettings(
         buildLibrarySyncPairingSettingsInput({
           deviceName: librarySyncDeviceNameDraft,
           libraryId: validation.library_id,
@@ -359,6 +359,13 @@ export function useSettingsLibrarySyncActions({
         }),
       );
       clearDashboardPageSnapshot();
+      // The target is already persisted even if exchanging the one-use token
+      // fails. Show that actual, unpaired target instead of stale Host data.
+      setLibrarySyncSettings(targetSettings);
+      setLibrarySyncSnapshot(targetSettings.cached_snapshot ?? null);
+      setLibrarySyncModeDraft("CLIENT");
+      setLibrarySyncHostBaseUrlDraft(targetSettings.host_base_url ?? validation.base_url);
+      setInfo(null);
       const saved = await pairLibrarySyncHost(validation.base_url, pairingInput);
       setLibrarySyncSettings(saved);
       setLibrarySyncModeDraft("CLIENT");
@@ -368,6 +375,7 @@ export function useSettingsLibrarySyncActions({
       setInfo(buildLibrarySyncActionMessage("clientPaired", librarySyncActionMessageLabels()));
     } catch (pairError) {
       console.error(pairError);
+      setInfo(null);
       if (validation) {
         setLibrarySyncValidation({
           ...validation,
@@ -413,6 +421,7 @@ export function useSettingsLibrarySyncActions({
     setLibrarySyncModeDraft,
     setLibrarySyncPairingDraft,
     setLibrarySyncSettings,
+    setLibrarySyncSnapshot,
     setLibrarySyncValidation,
     tauri,
     trustedLanConfigMessageLabels,
@@ -493,13 +502,25 @@ export function useSettingsLibrarySyncActions({
   ]);
 
   const handleFetchLibrarySyncSnapshot = useCallback(async () => {
-    if (!tauri || !librarySyncSettings) {
+    if (!tauri || !librarySyncSettings || librarySyncBusy) {
       return;
     }
     setLibrarySyncSnapshotBusy(true);
     setError(null);
     setInfo(null);
     try {
+      const validation = await validateLibrarySyncHost(
+        librarySyncHostBaseUrlDraft,
+        librarySyncSettings.library_id,
+      );
+      setLibrarySyncValidation(validation);
+      if (!validation.ok || !validation.matches_library_id ||
+          (validation.pairing_checked && !validation.pairing_valid)) {
+        const refreshed = await getLibrarySyncSettings();
+        setLibrarySyncSettings(refreshed);
+        setLibrarySyncSnapshot(refreshed.cached_snapshot ?? null);
+        return;
+      }
       const refreshed = await refreshLibrarySyncSnapshot(
         librarySyncHostBaseUrlDraft,
         librarySyncSettings.library_id,
@@ -523,12 +544,14 @@ export function useSettingsLibrarySyncActions({
     librarySyncActionMessageLabels,
     librarySyncErrorMessageLabels,
     librarySyncHostBaseUrlDraft,
+    librarySyncBusy,
     librarySyncSettings,
     setError,
     setInfo,
     setLibrarySyncSettings,
     setLibrarySyncSnapshot,
     setLibrarySyncSnapshotBusy,
+    setLibrarySyncValidation,
     tauri,
   ]);
 

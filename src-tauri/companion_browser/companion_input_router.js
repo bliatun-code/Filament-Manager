@@ -11,6 +11,11 @@ export function routeCompanionInputChange(name, value, handlers) {
     return true;
   }
 
+  if (normalizedName === "loan-picker-search") {
+    handlers.setLoanPickerSearch(String(value || ""));
+    return true;
+  }
+
   if (normalizedName === "printer-spool-search") {
     handlers.setPrinterSpoolSearch(String(value || ""));
     return true;

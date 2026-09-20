@@ -167,6 +167,7 @@ export function SettingsLibraryClientPanel({
               <div className="mt-1">
                 {librarySyncSettings?.host_device_name ||
                   librarySyncValidation?.device_name ||
+                  librarySyncSnapshot?.device_name ||
                   t("common.unknown", "Unknown")}
               </div>
               <div className="font-mono text-xs text-slate-500 dark:text-slate-400">
@@ -196,7 +197,9 @@ export function SettingsLibraryClientPanel({
               </button>
               <span
                 className={inlineStatusSignalClass(
-                  settingsClientHostPairingValid ? "success" : "warning",
+                  settingsClientHostPairingValid
+                    ? librarySyncValidation?.reachable ? "success" : "neutral"
+                    : "warning",
                   "text-xs",
                 )}
               >
@@ -225,13 +228,22 @@ export function SettingsLibraryClientPanel({
             className="mt-3"
           >
             <div className="font-semibold">
-              {librarySyncValidation.pairing_checked && !librarySyncValidation.pairing_valid
+              {!librarySyncValidation.reachable
+                ? t("errors.hostUnavailable", "Host is unavailable. Changes cannot be saved until it reconnects. Check the host and network, then refresh.")
+                : librarySyncValidation.pairing_checked && !librarySyncValidation.pairing_valid
                 ? t(
                     "settings.librarySyncHostCheckPairingInvalid",
                     "Host is reachable, but desktop client pairing must be refreshed.",
                   )
                 : librarySyncValidation.message}
             </div>
+            {!librarySyncValidation.reachable ? (
+              <button type="button" className={`${settingsActionButtonClass("neutral")} mt-3`}
+                onClick={onFetchSnapshot}
+                disabled={!tauri || librarySyncBusy || librarySyncValidationBusy || librarySyncSnapshotBusy}>
+                {librarySyncSnapshotBusy ? t("common.loading", "Loading...") : t("common.refresh", "Refresh")}
+              </button>
+            ) : null}
           </FeedbackBanner>
         ) : null}
       </div>

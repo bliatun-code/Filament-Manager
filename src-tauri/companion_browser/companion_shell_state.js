@@ -250,6 +250,7 @@ export function createCompanionShellState(options) {
   function startLoanPicker() {
     state.activeRootFlow = ROOT_FLOW_LOANS;
     state.loanPickerRenderLimit = 150;
+    state.loanPickerSearch = "";
     state.detailOpen = false;
     state.activeTaskSheet = { type: "loan-picker" };
     syncTaskSheetState();
@@ -370,6 +371,7 @@ export function createCompanionShellState(options) {
         : String(taskOptions.spoolTitle || "").trim(),
       currentVendor: String(currentSpoolRow?.master?.vendor || "").trim(),
       currentReference: currentSpoolId ? `#${currentSpoolId.replace(/^spool[-_]?/, "").slice(-6)}` : "",
+      currentLocationLabel: String(currentSpoolRow?.location_name || "").trim(),
       currentLocationId: String(currentSpoolRow?.spool?.location_id || "").trim(),
       currentRemainingWeight: String(currentSpoolRow?.spool?.remaining_g ?? slotRow?.spool_remaining_g ?? "").trim(),
       currentMeasuredWeight:
@@ -385,6 +387,7 @@ export function createCompanionShellState(options) {
         : "",
       targetVendor: String(targetSpoolRow?.master?.vendor || "").trim(),
       targetReference: targetSpoolId ? `#${targetSpoolId.replace(/^spool[-_]?/, "").slice(-6)}` : "",
+      targetLocationLabel: String(targetSpoolRow?.location_name || "").trim(),
       targetLocationId: String(targetSpoolRow?.spool?.location_id || "").trim(),
       targetRemainingWeight: String(targetSpoolRow?.spool?.remaining_g ?? "").trim(),
       targetMeasuredWeight:

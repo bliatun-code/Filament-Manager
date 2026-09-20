@@ -72,18 +72,18 @@ export function SettingsTrustedLanPairingPanel({
               id="trusted-lan-pairing-title"
               className="font-semibold text-slate-800 dark:text-slate-100"
             >
-              {t("settings.trustedLanPairingTitle", "Browser pairing")}
+              {t("settings.trustedLanPairingTitle", "Client pairing")}
             </h3>
             <div className="mt-1 text-sm leading-6">
               {t(
                 "settings.trustedLanPairingBody",
-                "Create a short-lived link or QR for one browser.",
+                "Create a single-use link for a browser or desktop Client.",
               )}
             </div>
             <div className="mt-2 text-xs leading-5 text-slate-500 dark:text-slate-400">
               {t(
                 "settings.trustedLanPairingNoteBody",
-                "Browser-only access. This does not add any device-ingestion route.",
+                "In the desktop app, choose Client under Library & web app and paste this link. For the web app, open the link or scan the QR in the browser you want to pair.",
               )}
             </div>
           </div>
@@ -107,7 +107,7 @@ export function SettingsTrustedLanPairingPanel({
               <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_max-content] md:items-start">
                 <label className="block">
                   <div className={settingsSectionLabelClass}>
-                    {t("settings.trustedLanPairingLabelInput", "Browser label")}
+                    {t("settings.trustedLanPairingLabelInput", "Client name")}
                   </div>
                   <input
                     type="text"
@@ -127,7 +127,7 @@ export function SettingsTrustedLanPairingPanel({
                   >
                     {t(
                       "settings.trustedLanPairingLabelHint",
-                      "Optional. This keeps the paired-browser list readable later.",
+                      "Optional. This helps the paired-client list stay human-readable later.",
                     )}
                   </div>
                 </label>
@@ -162,7 +162,7 @@ export function SettingsTrustedLanPairingPanel({
                 </div>
                 <div className="mt-4 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
                   <span className={inlineStatusSignalClass("neutral", "text-xs")}>
-                    {t("settings.trustedLanPairingLabelMeta", "Browser label")}:{" "}
+                    {t("settings.trustedLanPairingLabelMeta", "Client")}:{" "}
                     {pairingLabel ?? t("settings.trustedLanPairingLabelEmpty", "No label")}
                   </span>
                   <span className={inlineStatusSignalClass("neutral", "text-xs")}>

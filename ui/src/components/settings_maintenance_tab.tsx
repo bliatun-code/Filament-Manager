@@ -1,3 +1,4 @@
+import type { SettingsBackupValidation } from "../pages/settings_backup_model";
 import type { ChangeEvent, RefObject } from "react";
 import { SettingsBackupValidationSummary } from "./settings_backup_validation_summary";
 import { SettingsApplicationDiagnosticsPanel } from "./settings_application_diagnostics_panel";
@@ -13,7 +14,6 @@ import {
 import { settingsActionButtonClass } from "../lib/settings_ui_classes";
 import type {
   ApplicationDiagnostics,
-  BackupValidationStats,
   CatalogResetStats,
 } from "../lib/tauri_client";
 import type { SettingsDiagnosticsRequestStatus } from "../pages/settings_application_diagnostics_model";
@@ -82,7 +82,7 @@ export type SettingsMaintenanceTabProps = {
   busy: boolean;
   catalogCount: number | string;
   confirmResetAction: ResetConfirmAction | null;
-  lastBackupValidation: BackupValidationStats | null;
+  lastBackupValidation: SettingsBackupValidation | null;
   lastCatalogReset: CatalogResetStats | null;
   latestFullBackupExportedAt: string | null;
   locale: Locale;
@@ -240,6 +240,9 @@ export function SettingsMaintenanceTab({
             <div className="section-eyebrow">
               {t("settings.backupImportGroup", "Import and validation")}
             </div>
+            <p className="mt-2 text-sm leading-relaxed text-slate-600 dark:text-slate-300">
+              {t("settings.importDataScopeHint", "Inventory CSV/JSON creates or updates spools with matching IDs. A full backup replaces the library after confirmation. Export a full backup first to keep a recovery copy.")}
+            </p>
             {!lastBackupValidation ? (
               <div className="surface-subtle mt-2 border-dashed px-4 py-4 text-sm text-slate-600 dark:text-slate-300">
                 {t(

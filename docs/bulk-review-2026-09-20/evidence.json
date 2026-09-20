@@ -1,0 +1,551 @@
+{
+  "method": "Readonly snapshots of ten tables and all 72 spool controls; changedTables and changedSpoolControls compare each step with the previous listed step of the same round. First step includes all table digests and eight relevant baseline controls. Complete local snapshots/exports are retained in the ignored review directory.",
+  "exports": [
+    {
+      "file": "filament-manager-selected-inventory-1789863354198.csv",
+      "sha256": "d0fde3a3b8b82acd4aea44fd593644c1ba02ab293e15a4f75a92af75df354127",
+      "verifiedIds": [
+        "bulk_review_001",
+        "bulk_review_002",
+        "bulk_review_003"
+      ]
+    },
+    {
+      "file": "filament-manager-selected-inventory-1789863360875.json",
+      "sha256": "f75e9a5e43ca7747d1bc76ade396da36336a22b482e2c9e5096317d1bf4f78d5",
+      "verifiedIds": [
+        "bulk_review_001",
+        "bulk_review_002",
+        "bulk_review_003"
+      ]
+    }
+  ],
+  "rounds": [
+    {
+      "round": 1,
+      "steps": [
+        {
+          "file": "critic-r1-before.json",
+          "snapshotSha256": "8e7d5ef080a9e8df0d10693512f596d7c649b40ba510c1e7c5f62b6edabf1337",
+          "changedTables": {
+            "filament_spools": {
+              "count": 72,
+              "sha256": "25fe8561d4b064a64ea7516d034f8bf810151d4efcde5be714dc974f336714f3"
+            },
+            "filament_master_list": {
+              "count": 1676,
+              "sha256": "f6cee68fc41771f4e16a6ee8473d9d49dc79bf0e795b4857d2b6812b4317143b"
+            },
+            "printers": {
+              "count": 2,
+              "sha256": "8ae70b0974fe355f8c2fb683494fc97f48443e4597f469c30934f976ccb5d923"
+            },
+            "ams_units": {
+              "count": 4,
+              "sha256": "ad447de8f82f4f0e544b0764e7495b058086f932ccc8ea1f3ec382d118a58cf3"
+            },
+            "ams_slots": {
+              "count": 11,
+              "sha256": "8ed02da672ae69b2d3a21befa30ac92ac0ba463f95a6f92c26ee156012f8322b"
+            },
+            "spool_loans": {
+              "count": 2,
+              "sha256": "cd95a9e016c98999660207a799293754a20e8f3d809b853e94d4d24c3c9519ff"
+            },
+            "spool_history_events": {
+              "count": 9,
+              "sha256": "a5b1731134f8fd51462fa60cee74152680a74982af7407577da56ac23dd6ff7b"
+            },
+            "print_jobs": {
+              "count": 1,
+              "sha256": "8533b928d5de837c6c7f615fbebf98457884bde51fe6a9e7a10e64c5cd15610a"
+            },
+            "wishlist_items": {
+              "count": 2,
+              "sha256": "22bbf36775dbb4fcb51345eaaf54a09ba21a5c003128fd2db4f42e4b754d4375"
+            },
+            "inventory_locations": {
+              "count": 4,
+              "sha256": "94987c6d9e9c7c9a1a4fcba9c4aaa724f0e2b8ed44081f5ebc50cbad286123c8"
+            }
+          },
+          "changedSpoolControls": [
+            {
+              "id": "bulk_review_001",
+              "remaining_g": 501,
+              "spool_tare_weight_g": 200,
+              "status": "IN_STOCK",
+              "location_id": "bulk_shelf_a",
+              "home_location_id": "bulk_shelf_a"
+            },
+            {
+              "id": "bulk_review_002",
+              "remaining_g": 502,
+              "spool_tare_weight_g": 200,
+              "status": "IN_STOCK",
+              "location_id": "bulk_shelf_a",
+              "home_location_id": "bulk_shelf_a"
+            },
+            {
+              "id": "bulk_review_003",
+              "remaining_g": 503,
+              "spool_tare_weight_g": 200,
+              "status": "IN_STOCK",
+              "location_id": "bulk_shelf_b",
+              "home_location_id": "bulk_shelf_b"
+            },
+            {
+              "id": "bulk_review_004",
+              "remaining_g": 504,
+              "spool_tare_weight_g": 200,
+              "status": "IN_STOCK",
+              "location_id": "bulk_shelf_b",
+              "home_location_id": "bulk_shelf_b"
+            },
+            {
+              "id": "bulk_review_005",
+              "remaining_g": 505,
+              "spool_tare_weight_g": 200,
+              "status": "IN_STOCK",
+              "location_id": "bulk_shelf_b",
+              "home_location_id": "bulk_shelf_b"
+            },
+            {
+              "id": "bulk_review_006",
+              "remaining_g": 0,
+              "spool_tare_weight_g": 200,
+              "status": "EMPTY",
+              "location_id": "bulk_shelf_b",
+              "home_location_id": "bulk_shelf_b"
+            },
+            {
+              "id": "spool_demo_100001",
+              "remaining_g": 820,
+              "spool_tare_weight_g": null,
+              "status": "ASSIGNED",
+              "location_id": "QA Shelf A",
+              "home_location_id": "QA Shelf A"
+            },
+            {
+              "id": "spool_demo_100008",
+              "remaining_g": 640,
+              "spool_tare_weight_g": null,
+              "status": "LOANED_OUT",
+              "location_id": null,
+              "home_location_id": "QA Dry box"
+            }
+          ],
+          "integrity": "ok",
+          "foreignKeys": []
+        },
+        {
+          "file": "critic-r1-after-move-cancel.json",
+          "snapshotSha256": "8e7d5ef080a9e8df0d10693512f596d7c649b40ba510c1e7c5f62b6edabf1337",
+          "changedTables": {},
+          "changedSpoolControls": [],
+          "integrity": "ok",
+          "foreignKeys": []
+        },
+        {
+          "file": "critic-r1-after-move.json",
+          "snapshotSha256": "5ecc9ae8cc3bbd6f1bb3c36c56feb205a565cb852ccce91f5d791f88d28cf818",
+          "changedTables": {
+            "filament_spools": {
+              "count": 72,
+              "sha256": "0ddd8ebf56f455fb18bfcb338f8e8774ee2db7ff20107350b4c10c5f42d946bf"
+            },
+            "spool_history_events": {
+              "count": 11,
+              "sha256": "bda6fa940122de34c785e0a778f0d6ec0753beae3137561107a1649e13abf375"
+            }
+          },
+          "changedSpoolControls": [
+            {
+              "id": "bulk_review_001",
+              "remaining_g": 501,
+              "spool_tare_weight_g": 200,
+              "status": "IN_STOCK",
+              "location_id": "bulk_shelf_b",
+              "home_location_id": "bulk_shelf_b"
+            },
+            {
+              "id": "bulk_review_002",
+              "remaining_g": 502,
+              "spool_tare_weight_g": 200,
+              "status": "IN_STOCK",
+              "location_id": "bulk_shelf_b",
+              "home_location_id": "bulk_shelf_b"
+            }
+          ],
+          "integrity": "ok",
+          "foreignKeys": []
+        },
+        {
+          "file": "critic-r1-after-empty.json",
+          "snapshotSha256": "db802fd26003e219f31bfe560e182c90523d98d796e6ef56747c477eca2dcee3",
+          "changedTables": {
+            "filament_spools": {
+              "count": 72,
+              "sha256": "17d787275d8686dbb97756fcdf8db15d9817a34ac62d4aa4e4666491d464f841"
+            },
+            "spool_history_events": {
+              "count": 17,
+              "sha256": "e61e6f759c5bc74c56af939cfa4f508ed7c199e5ee55f2f2d8f9d56e37937263"
+            }
+          },
+          "changedSpoolControls": [
+            {
+              "id": "bulk_review_004",
+              "remaining_g": 504,
+              "spool_tare_weight_g": 200,
+              "status": "EMPTY",
+              "location_id": "bulk_shelf_b",
+              "home_location_id": "bulk_shelf_b"
+            },
+            {
+              "id": "bulk_review_005",
+              "remaining_g": 505,
+              "spool_tare_weight_g": 200,
+              "status": "EMPTY",
+              "location_id": "bulk_shelf_b",
+              "home_location_id": "bulk_shelf_b"
+            }
+          ],
+          "integrity": "ok",
+          "foreignKeys": []
+        },
+        {
+          "file": "critic-r1-after-zero-reactivate.json",
+          "snapshotSha256": "b397ac6741151109f2faefe3fbb373948295ec36fc72ddf6a8776f0a1a0e0145",
+          "changedTables": {
+            "filament_spools": {
+              "count": 72,
+              "sha256": "95f70612a0545ec6d5334ae4e63ba238d27816307b9451b7ed6a3c974552eb2e"
+            },
+            "spool_history_events": {
+              "count": 19,
+              "sha256": "ba5d1a2520e6f5668625be0a0f8dfb464f3605939f52541624a28879eb43f3b6"
+            }
+          },
+          "changedSpoolControls": [
+            {
+              "id": "bulk_review_004",
+              "remaining_g": 504,
+              "spool_tare_weight_g": 200,
+              "status": "IN_STOCK",
+              "location_id": "bulk_shelf_b",
+              "home_location_id": "bulk_shelf_b"
+            },
+            {
+              "id": "bulk_review_006",
+              "remaining_g": 0,
+              "spool_tare_weight_g": 200,
+              "status": "IN_STOCK",
+              "location_id": "bulk_shelf_b",
+              "home_location_id": "bulk_shelf_b"
+            }
+          ],
+          "integrity": "ok",
+          "foreignKeys": []
+        },
+        {
+          "file": "critic-r1-after-loan-rejection.json",
+          "snapshotSha256": "b397ac6741151109f2faefe3fbb373948295ec36fc72ddf6a8776f0a1a0e0145",
+          "changedTables": {},
+          "changedSpoolControls": [],
+          "integrity": "ok",
+          "foreignKeys": []
+        },
+        {
+          "file": "critic-r1-after-printer-rejection.json",
+          "snapshotSha256": "b397ac6741151109f2faefe3fbb373948295ec36fc72ddf6a8776f0a1a0e0145",
+          "changedTables": {},
+          "changedSpoolControls": [],
+          "integrity": "ok",
+          "foreignKeys": []
+        },
+        {
+          "file": "critic-r1-after-corrected-move.json",
+          "snapshotSha256": "78f7a52978820b1a25ce0871b2e8253de049473a1352884a780f71005648d2ae",
+          "changedTables": {
+            "filament_spools": {
+              "count": 72,
+              "sha256": "7e2b52528997211e7b3dbb7f07720fd5e280b4126637fa28b8c729e4b38848ae"
+            },
+            "spool_history_events": {
+              "count": 20,
+              "sha256": "07f932fbd676839036166102a824dca786fbf2f61cf153fed06149d7ed35aff2"
+            }
+          },
+          "changedSpoolControls": [
+            {
+              "id": "bulk_review_001",
+              "remaining_g": 501,
+              "spool_tare_weight_g": 200,
+              "status": "IN_STOCK",
+              "location_id": "bulk_shelf_a",
+              "home_location_id": "bulk_shelf_a"
+            }
+          ],
+          "integrity": "ok",
+          "foreignKeys": []
+        }
+      ]
+    },
+    {
+      "round": 2,
+      "steps": [
+        {
+          "file": "critic-r2-before.json",
+          "snapshotSha256": "967a09bd027980f90ae997b953d076f759b766fc7f0016c41de07b76cdf97a4a",
+          "changedTables": {
+            "filament_spools": {
+              "count": 72,
+              "sha256": "cf4d86ec86d2e4b02c3a8d84732742525c6f90a07f48011212c664604f9b5042"
+            },
+            "filament_master_list": {
+              "count": 1676,
+              "sha256": "f6cee68fc41771f4e16a6ee8473d9d49dc79bf0e795b4857d2b6812b4317143b"
+            },
+            "printers": {
+              "count": 2,
+              "sha256": "8ae70b0974fe355f8c2fb683494fc97f48443e4597f469c30934f976ccb5d923"
+            },
+            "ams_units": {
+              "count": 4,
+              "sha256": "ad447de8f82f4f0e544b0764e7495b058086f932ccc8ea1f3ec382d118a58cf3"
+            },
+            "ams_slots": {
+              "count": 11,
+              "sha256": "8ed02da672ae69b2d3a21befa30ac92ac0ba463f95a6f92c26ee156012f8322b"
+            },
+            "spool_loans": {
+              "count": 2,
+              "sha256": "cd95a9e016c98999660207a799293754a20e8f3d809b853e94d4d24c3c9519ff"
+            },
+            "spool_history_events": {
+              "count": 22,
+              "sha256": "034a34b0ac322ce21973e9e13f01241df0d0a1fc4333e4bffcc55c2d12f9aae0"
+            },
+            "print_jobs": {
+              "count": 1,
+              "sha256": "8533b928d5de837c6c7f615fbebf98457884bde51fe6a9e7a10e64c5cd15610a"
+            },
+            "wishlist_items": {
+              "count": 2,
+              "sha256": "22bbf36775dbb4fcb51345eaaf54a09ba21a5c003128fd2db4f42e4b754d4375"
+            },
+            "inventory_locations": {
+              "count": 4,
+              "sha256": "94987c6d9e9c7c9a1a4fcba9c4aaa724f0e2b8ed44081f5ebc50cbad286123c8"
+            }
+          },
+          "changedSpoolControls": [
+            {
+              "id": "bulk_review_001",
+              "remaining_g": 501,
+              "spool_tare_weight_g": 200,
+              "status": "IN_STOCK",
+              "location_id": "bulk_shelf_a",
+              "home_location_id": "bulk_shelf_a"
+            },
+            {
+              "id": "bulk_review_002",
+              "remaining_g": 502,
+              "spool_tare_weight_g": 200,
+              "status": "IN_STOCK",
+              "location_id": "bulk_shelf_b",
+              "home_location_id": "bulk_shelf_b"
+            },
+            {
+              "id": "bulk_review_003",
+              "remaining_g": 503,
+              "spool_tare_weight_g": 200,
+              "status": "IN_STOCK",
+              "location_id": "bulk_shelf_b",
+              "home_location_id": "bulk_shelf_b"
+            },
+            {
+              "id": "bulk_review_004",
+              "remaining_g": 504,
+              "spool_tare_weight_g": 200,
+              "status": "IN_STOCK",
+              "location_id": "bulk_shelf_b",
+              "home_location_id": "bulk_shelf_b"
+            },
+            {
+              "id": "bulk_review_005",
+              "remaining_g": 505,
+              "spool_tare_weight_g": 200,
+              "status": "EMPTY",
+              "location_id": "bulk_shelf_b",
+              "home_location_id": "bulk_shelf_b"
+            },
+            {
+              "id": "bulk_review_006",
+              "remaining_g": 0,
+              "spool_tare_weight_g": 200,
+              "status": "EMPTY",
+              "location_id": "bulk_shelf_b",
+              "home_location_id": "bulk_shelf_b"
+            },
+            {
+              "id": "spool_demo_100001",
+              "remaining_g": 820,
+              "spool_tare_weight_g": null,
+              "status": "ASSIGNED",
+              "location_id": "QA Shelf A",
+              "home_location_id": "QA Shelf A"
+            },
+            {
+              "id": "spool_demo_100008",
+              "remaining_g": 640,
+              "spool_tare_weight_g": null,
+              "status": "LOANED_OUT",
+              "location_id": null,
+              "home_location_id": "QA Dry box"
+            }
+          ],
+          "integrity": "ok",
+          "foreignKeys": []
+        },
+        {
+          "file": "critic-r2-after-zero-rejection.json",
+          "snapshotSha256": "967a09bd027980f90ae997b953d076f759b766fc7f0016c41de07b76cdf97a4a",
+          "changedTables": {},
+          "changedSpoolControls": [],
+          "integrity": "ok",
+          "foreignKeys": []
+        },
+        {
+          "file": "critic-r2-after-weight-correction.json",
+          "snapshotSha256": "86cb69e07c38e8994b6237eedeb298f78a7c5431403c42886d778e492a28838a",
+          "changedTables": {
+            "filament_spools": {
+              "count": 72,
+              "sha256": "70998906fec183d133854b300076d73b06958cc0571a692033d6a0e91705e955"
+            },
+            "spool_history_events": {
+              "count": 24,
+              "sha256": "a25f111a17288379be8f4538b0b5f8f63899917f2bb3438075ac7007b87f3f3a"
+            }
+          },
+          "changedSpoolControls": [
+            {
+              "id": "bulk_review_006",
+              "remaining_g": 500,
+              "spool_tare_weight_g": 200,
+              "status": "IN_STOCK",
+              "location_id": "bulk_shelf_b",
+              "home_location_id": "bulk_shelf_b"
+            }
+          ],
+          "integrity": "ok",
+          "foreignKeys": []
+        },
+        {
+          "file": "critic-r2-after-reactivate.json",
+          "snapshotSha256": "196977a7e5e4b7d1959d205bd8ed03af29832c45d0a6d9e357730943bbef8aec",
+          "changedTables": {
+            "filament_spools": {
+              "count": 72,
+              "sha256": "90022b97263da2da34e0e732ca499a0d8b60bdb32b4d657d3e2ed074b64a37ff"
+            },
+            "spool_history_events": {
+              "count": 25,
+              "sha256": "36f910d4c52635e0f5320646542fce225d7b0165fb4ca28c51b940b35b766d12"
+            }
+          },
+          "changedSpoolControls": [
+            {
+              "id": "bulk_review_005",
+              "remaining_g": 505,
+              "spool_tare_weight_g": 200,
+              "status": "IN_STOCK",
+              "location_id": "bulk_shelf_b",
+              "home_location_id": "bulk_shelf_b"
+            }
+          ],
+          "integrity": "ok",
+          "foreignKeys": []
+        },
+        {
+          "file": "critic-r2-after-move-cancel.json",
+          "snapshotSha256": "196977a7e5e4b7d1959d205bd8ed03af29832c45d0a6d9e357730943bbef8aec",
+          "changedTables": {},
+          "changedSpoolControls": [],
+          "integrity": "ok",
+          "foreignKeys": []
+        },
+        {
+          "file": "critic-r2-after-move.json",
+          "snapshotSha256": "f21acc5c76786daca79f12659ae724158ccaed0a10db5359c1c2a29d01c4a457",
+          "changedTables": {
+            "filament_spools": {
+              "count": 72,
+              "sha256": "8cf906fd78b3ff2f40c770c55cd30561e63be50a40d4a43cdb27840183e88f30"
+            },
+            "spool_history_events": {
+              "count": 26,
+              "sha256": "584374640ad8b70a7c78f121e4bff97d82f52ed2268b1f3f3d2a74412929e2d1"
+            }
+          },
+          "changedSpoolControls": [
+            {
+              "id": "bulk_review_001",
+              "remaining_g": 501,
+              "spool_tare_weight_g": 200,
+              "status": "IN_STOCK",
+              "location_id": "bulk_shelf_b",
+              "home_location_id": "bulk_shelf_b"
+            }
+          ],
+          "integrity": "ok",
+          "foreignKeys": []
+        },
+        {
+          "file": "critic-r2-after-loan-rejection.json",
+          "snapshotSha256": "f21acc5c76786daca79f12659ae724158ccaed0a10db5359c1c2a29d01c4a457",
+          "changedTables": {},
+          "changedSpoolControls": [],
+          "integrity": "ok",
+          "foreignKeys": []
+        },
+        {
+          "file": "critic-r2-after-printer-rejection.json",
+          "snapshotSha256": "f21acc5c76786daca79f12659ae724158ccaed0a10db5359c1c2a29d01c4a457",
+          "changedTables": {},
+          "changedSpoolControls": [],
+          "integrity": "ok",
+          "foreignKeys": []
+        },
+        {
+          "file": "critic-r2-after-corrected-move.json",
+          "snapshotSha256": "76b2d52881298ea7b12a08a5e14821e0c4dcf2879c4a3fa64bf1d34f2bcb0f7f",
+          "changedTables": {
+            "filament_spools": {
+              "count": 72,
+              "sha256": "c12aa982c237ebee1375ea2f03bc40f3404be8061d7c206e8eea2cf1af1bb7e5"
+            },
+            "spool_history_events": {
+              "count": 27,
+              "sha256": "19333de01d530121e38fc26f302ae46c72795e0ea77f5e06ace6b9b8796ef618"
+            }
+          },
+          "changedSpoolControls": [
+            {
+              "id": "bulk_review_001",
+              "remaining_g": 501,
+              "spool_tare_weight_g": 200,
+              "status": "IN_STOCK",
+              "location_id": "bulk_shelf_a",
+              "home_location_id": "bulk_shelf_a"
+            }
+          ],
+          "integrity": "ok",
+          "foreignKeys": []
+        }
+      ]
+    }
+  ]
+}

@@ -11,11 +11,11 @@ export function useSettingsTrustedLanMessages(t: SettingsTranslator) {
     ),
     newBrowserPaired: t(
       "settings.trustedLanBrowserPairedDetected",
-      "New paired browser connected.",
+      "New paired client connected.",
     ),
     refreshBrowsersFailed: t(
       "settings.error.loadTrustedLanPairedBrowsers",
-      "Failed to refresh paired browsers.",
+      "Failed to refresh paired clients.",
     ),
   }), [t]);
 
@@ -44,9 +44,9 @@ export function useSettingsTrustedLanMessages(t: SettingsTranslator) {
   const trustedLanActionMessageLabels = useCallback(() => ({
     allBrowsersRevoked: t(
       "settings.trustedLanAllBrowsersRevoked",
-      "All trusted-LAN browsers revoked.",
+      "All trusted-LAN clients revoked.",
     ),
-    browserRevoked: t("settings.trustedLanBrowserRevoked", "Trusted-LAN browser revoked."),
+    browserRevoked: t("settings.trustedLanBrowserRevoked", "Trusted-LAN client revoked."),
     copyPairingFailed: t(
       "settings.error.copyTrustedLanPairing",
       "Failed to copy the trusted-LAN pairing link.",
@@ -62,11 +62,11 @@ export function useSettingsTrustedLanMessages(t: SettingsTranslator) {
     ),
     revokeAllBrowsersFailed: t(
       "settings.error.revokeAllTrustedLanBrowsers",
-      "Failed to revoke trusted-LAN browsers.",
+      "Failed to revoke trusted-LAN clients.",
     ),
     revokeBrowserFailed: t(
       "settings.error.revokeTrustedLanBrowser",
-      "Failed to revoke the trusted-LAN browser.",
+      "Failed to revoke the trusted-LAN client.",
     ),
   }), [t]);
 

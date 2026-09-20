@@ -1,5 +1,5 @@
+import type { SettingsBackupValidation } from "./settings_backup_model";
 import { useMemo, useState } from "react";
-import type { BackupValidationStats } from "../lib/tauri_client";
 import { isFullBackupValidationFormat } from "../lib/settings_utils";
 import { buildSettingsBackupValidationState } from "./settings_backup_model";
 
@@ -8,7 +8,7 @@ export function useSettingsBackupValidationState() {
   const [lastFullBackupValidatedAt, setLastFullBackupValidatedAt] = useState<string | null>(null);
   const [lastFullBackupImportedAt, setLastFullBackupImportedAt] = useState<string | null>(null);
   const [lastBackupValidation, setLastBackupValidation] =
-    useState<BackupValidationStats | null>(null);
+    useState<SettingsBackupValidation | null>(null);
 
   const backupValidationState = useMemo(
     () =>
@@ -31,7 +31,7 @@ export function useSettingsBackupValidationState() {
     setLastBackupValidation(null);
   }
 
-  function recordExportedBackupValidation(summary: BackupValidationStats, exportedAt: string) {
+  function recordExportedBackupValidation(summary: SettingsBackupValidation, exportedAt: string) {
     setLastFullBackupExportedAt(exportedAt);
     setLastBackupValidation(summary);
     setLastFullBackupValidatedAt(isFullBackupValidationFormat(summary.format) ? exportedAt : null);
@@ -41,7 +41,7 @@ export function useSettingsBackupValidationState() {
     setLastFullBackupImportedAt(importedAt);
   }
 
-  function recordBackupValidation(summary: BackupValidationStats, validatedAt: string) {
+  function recordBackupValidation(summary: SettingsBackupValidation, validatedAt: string) {
     setLastBackupValidation(summary);
     if (isFullBackupValidationFormat(summary.format)) {
       setLastFullBackupValidatedAt(validatedAt);

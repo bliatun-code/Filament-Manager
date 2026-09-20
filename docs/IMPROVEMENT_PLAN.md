@@ -8,6 +8,10 @@
 | Sist oppdatert | 2026-09-19     |
 | Eier           | Prosjektteamet |
 
+## Datatilkoblet UI-vurdering
+
+[Evalueringen 19. september 2026](UI_USABILITY_REVIEW_2026-09-19.md) dokumenterer fire kritikerrunder, gjennomførte rettelser, områdescorer og dekningshull. Agentvurderingen erstatter ikke målene for tester med faktiske brukere nedenfor.
+
 ## Mål
 
 Filament Manager skal bli raskere og enklere i daglig bruk, gi konsistente svar på tvers av desktop, Client og Companion, og ha et sterkere sikkerhetsnett for data, oppgraderinger og distribusjon. Eksisterende arkitektur skal forbedres trinnvis; planen legger ikke opp til en full omskriving.

@@ -37,10 +37,12 @@ import {
   executeInventoryBulkMutationForInventory,
 } from "./inventory_bulk_actions_data_source";
 import { downloadTextFile } from "./download_file";
-import { toErrorMessage } from "./error_text";
+import { appErrorCode, toErrorMessage } from "./error_text";
 import type { useI18n } from "./i18n";
 import {
   formatInventoryStatusLabel,
+  formatInventoryDisplayTitle,
+  formatRollReference,
   type InventorySpool,
 } from "./inventory_list_model";
 import type { InventoryLocationRow } from "./tauri_location_client";
@@ -87,11 +89,10 @@ export function inventoryBulkActionsCopy(t: TranslateFn): InventoryBulkActionsCo
   return {
     archivedLocation: (name) =>
       `${name} (${t("common.archived", "Archived")})`,
-    atomicWarning: (affectedCount) =>
+    atomicWarning: () =>
       t(
         "inventory.bulkAtomicWarning",
-        "All {count} changes and their history are committed together, or none are written.",
-        { count: affectedCount },
+        "All selected changes are saved together. If any change fails, nothing is saved.",
       ),
     cancel: t("common.cancel", "Cancel"),
     clearSelection: t("inventory.bulkClearSelection", "Clear selection"),
@@ -200,6 +201,8 @@ function validationErrorMessage(
         "{count, plural, one {# affected roll is removed} other {# affected rolls are removed}}. Restore them before using bulk actions.",
         { count },
       );
+    case "REACTIVATION_REQUIRES_WEIGHT":
+      return t("inventory.error.refillRequiresWeight", "Set measured total weight above empty spool weight before reactivating.");
     case "NO_CHANGES":
       return t(
         "inventory.bulkNoChanges",
@@ -227,6 +230,9 @@ function validationErrorMessage(
 }
 
 function routingErrorMessage(error: unknown, t: TranslateFn): string | null {
+  if (appErrorCode(error) === "inventory.bulk.reactivation_requires_weight") {
+    return t("inventory.error.refillRequiresWeight", "Set measured total weight above empty spool weight before reactivating.");
+  }
   if (error instanceof InventoryBulkMutationRoutingError) {
     if (error.code === "PAIRING_REQUIRED") {
       return t(
@@ -347,6 +353,7 @@ export function useInventoryBulkActions({
         locationId: spool.locationId ?? null,
         spoolId: spool.id,
         status: spool.status,
+        remainingGrams: spool.remainingGrams ?? null,
       })),
     [activeLoanSpoolIds, printerSlotBySpoolId, spools],
   );
@@ -447,10 +454,17 @@ export function useInventoryBulkActions({
   const reportPlanError = useCallback(
     (result: InventoryBulkPlanResult<InventoryBulkMutationPlan>) => {
       if (!result.ok) {
-        setError(validationErrorMessage(result.issues, t));
+        const ids = result.issues[0]?.spoolIds ?? [];
+        const names = ids.slice(0, 3).map(id => {
+          const spool = spools.find(row => row.id === id);
+          return spool ? `${formatInventoryDisplayTitle(spool.material, spool.filamentName, spool.colorName)} (${formatRollReference(spool)})` : id;
+        });
+        const remainder = ids.length > names.length ? ` … (+${ids.length - names.length})` : "";
+        const details = names.length ? ` ${names.join("; ")}${remainder}` : "";
+        setError(`${validationErrorMessage(result.issues, t)}${details}`);
       }
     },
-    [setError, t],
+    [setError, spools, t],
   );
 
   const requestMoveReview = useCallback(
@@ -554,7 +568,7 @@ export function useInventoryBulkActions({
         setInfoMessage(
           t(
             "inventory.bulkMutationDone",
-            "{count, plural, one {# roll was} other {# rolls were}} updated atomically.",
+            "Updated rolls: {count}.",
             { count: receipt.affected_count },
           ),
         );
