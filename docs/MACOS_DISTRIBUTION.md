@@ -74,20 +74,21 @@ app. This fallback is described in
 [Apple's Login Items documentation](https://developer.apple.com/documentation/servicemanagement/updating-helper-executables-from-earlier-versions-of-macos).
 The publisher's signing identity remains part of the app's valid signature.
 
-This source version uses an app-embedded Service Management launcher on macOS
-13 and newer; macOS 11/12 retain the associated legacy LaunchAgent. Automatic
+Starting with v0.31.0, Filament Manager uses an app-embedded Service Management
+launcher on macOS 13 and newer; macOS 11/12 retain the associated legacy LaunchAgent. Automatic
 transition requires an owned, stock registration that both the app preference
 and macOS permit. Missing, disabled, or customized registrations do not silently
 opt in. Disabling the modern launcher leaves the main application running.
 
 The association repair fixed the icon of the installed 0.30.0 app, but its old
-publisher grouping remained after restart. A signed local upgrade using the
-modern implementation subsequently showed Filament Manager with its icon;
+publisher grouping remained after restart. A signed local candidate tested on
+September 12 using the modern implementation showed Filament Manager with its icon;
 the old publisher row disappeared during the same session. Background launch,
 explicit disable/re-enable and OS-denial preservation passed locally. The final
 signed candidate also passed a real logout/login: one app process started with
 `--background`, with no on-screen window at the first passive check, and the app
-name/icon remained correct. No new release has been published.
+name/icon remained correct. These observations concern that local candidate;
+the implementation is included in v0.31.0.
 Existing Settings history may take longer to clear on other Macs; no system-wide
 cache reset is required or performed. See the
 [follow-up verification record](MACOS_BACKGROUND_SERVICE_2026-09-12.md) for
