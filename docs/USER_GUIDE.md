@@ -70,6 +70,18 @@ Client means the desktop app connects to another Host.
 
 Use Client when this machine should use a library owned by another desktop.
 
+During a network outage, the Client retains the known Host name and explains
+that displayed data may be outdated. **Refresh** retries the connection. A
+revoked or removed pairing requires pairing again under **Settings → Library
+and web app**; an ordinary network failure does not itself remove the pairing.
+Roll history that could not be loaded is shown as unavailable, not as an empty
+history. Changes rejected while the Host is unavailable are not queued for
+automatic saving later. Check the data after reconnecting and try again.
+
+Update the Host and desktop Clients to the same version. Newer protected
+inventory and printer operations require support on the Host; an older Host
+can reject them even when the Client has been updated.
+
 ### Webapp and Paired Browsers
 
 The webapp is a local companion interface served by the desktop app.
@@ -82,6 +94,13 @@ The webapp is a local companion interface served by the desktop app.
 - The host can revoke browser sessions from settings.
 
 The webapp is useful at the printer: check stock, inspect printer slots, loan out filament, return filament, add spools, and update weight.
+
+Companion previews total weight minus empty-spool tare before saving weighing,
+loan, return, and printer operations. Enter whole grams. Save the empty-spool
+weight in the roll details when the default value is incorrect. Loan selection
+searches all eligible rolls, including those not yet displayed in the incremental
+list. If the connection fails, Companion warns that previously loaded data may
+be outdated; a successful refresh clears the warning.
 
 #### Stable Local Companion Address
 
@@ -231,6 +250,13 @@ You can:
 
 Inventory cards group identical filament and color entries while still showing individual spools and locations. This keeps the inventory easy to scan without losing traceability.
 
+The default **All** filter hides rolls with **Empty** status. Choose **Empty**
+to find them again, inspect history, or prepare them for reuse. Marking a roll
+empty does not delete it. **Mark as used up (empty)** in the roll details sets
+remaining weight to 0 g and releases any printer slot in one save. History, tare, home
+location, and ownership are retained. A status-only bulk change instead retains
+the recorded weight.
+
 Large filtered inventories are rendered progressively to keep the view
 responsive. The result counter shows how many spools are currently displayed
 out of the complete matching set; choose **Show more** to continue. Search and
@@ -249,6 +275,13 @@ has been removed, none of the changes are written. Label sheets and CSV/JSON
 exports use exactly the selected rolls, including rolls in a non-stock status
 that you explicitly selected. If filters hide part of the selection, the action
 bar shows both the total selected count and the count in the current view.
+
+An empty roll must have positive recorded filament weight before it can return
+to **In stock**, including through a bulk action. Weigh the roll in its details
+first. If one selected empty roll lacks valid weight, the whole change is
+rejected; the other selected rolls are not partially updated. The error names
+up to three affected rolls with their references, followed by the number of any
+additional affected rolls.
 
 Inventory CSV/JSON includes vendor, nominal/current/remaining weight, spool tare,
 user storage locations, ownership/counterparty details, and
@@ -591,9 +624,19 @@ an app running from a disk image or a temporary App Translocation path cannot
 enable the setting. The operating system's login-item or startup-app controls
 can still disable an entry independently.
 
-Neither setting installs an operating-system service. The app does not continue
-after sign-out, shutdown or while the computer is asleep. A desktop configured
-as a Client is designed to pause its frontend host-refresh timers while hidden
+On macOS 13 and newer, startup is registered through a helper belonging to the
+app, associating background activity with **Filament Manager** and its icon.
+Upgrading migrates an existing enabled standard login entry; an off preference
+is not turned on by the upgrade. If macOS requires approval, open **System
+Settings → General → Login Items & Extensions** and allow Filament Manager's
+background activity. The app explains when the system permission is missing.
+Older entries may remain in macOS history for a while. macOS 11 and 12 retain
+the older login mechanism.
+
+Neither setting installs a system service that runs without a user login.
+The app does not continue after sign-out, shutdown or while the computer is
+asleep. A desktop configured as a Client is designed to pause its frontend
+host-refresh timers while hidden
 and resume them when the window is restored; the Rust background tasks
 described above remain active. On macOS, quitting from the application menu or
 tray menu enters the coordinated shutdown path. Native operating-system
@@ -667,6 +710,11 @@ before completion, the job is marked interrupted when status is next checked;
 start a new refresh explicitly when ready. Client job tracking requires an
 updated Host. Job receipts are local operational data and are not included in
 portable backups.
+
+Green confirmations in Settings disappear after 20 seconds. A completed catalog
+job retains its result without announcing the same success each time the page
+opens. A successful job that imports products while you are on another page
+notifies you when you return. Errors and warnings are not cleared by this timer.
 
 Program maintenance:
 
@@ -1054,6 +1102,13 @@ Manual weight updates are useful when:
 
 A manual update can affect the spool's remaining weight and usage statistics when it is connected to the correct printer/slot context.
 
+Enter the measured total including the spool; the preview subtracts empty-spool
+tare and shows the remaining filament before saving. Weighing an empty roll
+above its tare reactivates it in the same save: **Assigned** if it still has a
+printer slot, otherwise **In stock**. Weight, any usage entry, and reactivation
+are saved together. A weight increase is a correction, not negative usage, and
+repeating the same measurement does not record usage twice.
+
 The AMS action is deliberately narrower than a manual weigh-in. It is available
 only for fresh telemetry from the loaded slot, an exact RFID match, and the same
 inventory spool. AMS percentages remain estimates; use a physical scale and the
@@ -1070,6 +1125,11 @@ Manual flow:
 - Load the spool into the slot.
 - Update weight when needed.
 - Clear the slot when the spool is removed.
+
+Loading from Inventory does not replace another roll in an occupied slot. Open
+the slot under Printers and use its replacement flow when swapping rolls.
+Weight, usage, and assignment are saved together. If the roll or slot changes
+while a dialog is open, reopen the action with the updated data.
 
 The collapsed printer card keeps assigned slot swatches and material names
 visible. Expand **Show slots** only when you need assignment, weight, RFID, or
@@ -1154,13 +1214,14 @@ The Backup panel shows when this device last completed a validated full-backup
 download. The timestamp is a device-local activity hint; it does not inspect
 the downloaded file later and is not included in the portable backup.
 
-The local database uses schema version 5. Before writing to an existing database
-at startup, the app performs a read-only schema compatibility preflight and
-SQLite `quick_check`. A database from a newer schema, or one that fails the
+The local database uses schema version 7, unchanged from v0.30.0. Before writing
+to an existing database at startup, the app performs a read-only schema
+compatibility preflight and SQLite `quick_check`. A database from a newer
+schema, or one that fails the
 integrity check, is stopped instead of being silently rewritten.
 
-Before automatically upgrading an existing unversioned, schema-v1, schema-v2,
-schema-v3, or schema-v4 database to schema v5, the app creates and verifies a
+Before automatically upgrading an existing unversioned database or a supported
+older schema to the current schema, the app creates and verifies a
 local recovery snapshot. A verified snapshot is also created before a full
 restore and before storage migrations that replace or merge an existing
 database. If the snapshot cannot be created and verified, the upgrade, restore,
@@ -1185,6 +1246,17 @@ not by itself block a compatible restore.
 When you select a valid full backup, the app asks for confirmation because the
 restore replaces the current library. The verified recovery snapshot described
 above is stored next to the active database.
+
+Inventory import and full restore have different effects. Inventory CSV/JSON
+creates rolls or updates rolls with the same ID; a full JSON backup replaces
+the library after confirmation. Export a full backup first if you want to be
+able to undo an import. Validation alone does not change the library.
+The validation summary identifies its source filename and clears when a new
+file is processed. Empty files, malformed JSON, unsupported backup formats, and
+invalid inventory data receive guidance for the selected file. Check required
+fields and whole, non-negative gram values when inventory data is invalid.
+Rejected imports do not save partial results. **Cancel** in the confirmation
+leaves the library unchanged.
 
 Unlike the portable export, the recovery snapshot is a local copy of the
 pre-restore database and can contain this machine's credentials and pairings.

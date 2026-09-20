@@ -9,6 +9,13 @@ running for Companion to work from a phone, tablet, or workshop browser.
 All names, identifiers, QR targets, counts, loans, printer assignments, and
 live observations shown in the tour are synthetic.
 
+The tour images were refreshed for **v0.31.0** on 20 September 2026 using an
+isolated, populated SQLite fixture. Desktop captures use the native macOS app;
+Companion captures use an authenticated browser connected to that test app.
+The English dark-theme screenshots illustrate workflows, not every supported
+theme, language, or operating system. The [capture manifest](screenshots/manifest-v0.31.0.json)
+records the scenarios, dimensions, and image hashes.
+
 ## Quick Preview
 
 <p align="center">
@@ -64,9 +71,21 @@ sessions rather than all-time inventory changes.
 Searchable spool cards with remaining weight, location, material/vendor badges,
 ownership, and low-stock state. The normal view stays compact until **Select
 multiple** is enabled; large result sets render progressively with a shown/total
-counter and **Show more** control.
+counter and **Show more** control. **All** excludes empty rolls; use **Empty**
+to find them. Active filters remain visible and can be cleared without losing
+the current multi-selection. Bulk changes have a separate review and name the
+rolls that block an action; reactivating an empty roll requires positive
+measured remaining weight.
 
 ![Inventory grid](screenshots/inventory.jpg)
+
+### Review A Bulk Change
+
+The review shows the full selected count, affected and unchanged rolls, and
+the target status before confirmation. The pictured two-roll change is an
+unsaved example; cancelling keeps both rolls unchanged.
+
+![Review an inventory bulk status change](screenshots/inventory-bulk-review.jpg)
 
 ### Locations
 
@@ -169,8 +188,8 @@ Printer and multi-material slot state with current assignments, collapsed slot
 swatches/material labels, usage statistics, and manual/non-live printer
 coverage. Optional live observations, RFID matching, and candidate suggestions
 appear in the same workspace when Bambu Live is enabled. This capture includes
-fresh, connected Bambu telemetry from the sanitized rich QA fixture described
-above.
+simulated connected Bambu telemetry from the sanitized rich QA fixture. No
+physical printer is contacted for this tour.
 
 ![Printer slot overview](screenshots/printers.jpg)
 
@@ -323,6 +342,24 @@ confirmed.
 
 ![Guided library role change](screenshots/settings-library-role-change.jpg)
 
+### Pair A Companion Browser
+
+Give a browser or desktop Client a recognizable name before creating its
+single-use pairing link.
+The example uses an isolated loopback server and shows the controls before a
+temporary pairing link or QR code is created.
+
+![Companion browser pairing](screenshots/settings-library-pairing.jpg)
+
+### Manage Paired Browsers
+
+The client list separates active access from revoked history. Revocation
+identifies the affected client before confirmation. This capture shows a
+synthetic workshop tablet and one revoked example; neither has a usable
+credential for a real library.
+
+![Manage Companion browser access](screenshots/settings-library-browsers.jpg)
+
 ### Bambu Live Diagnostics
 
 Bambu Live diagnostics show connection health, observed AMS slots, matching
@@ -365,6 +402,8 @@ Backup validation, import/export, reset actions, and other local maintenance
 tools live in the maintenance tab. Portable full backups omit device-local
 credentials and pairing state. A full restore requires confirmation and creates
 a validated local SQLite recovery snapshot before replacing library data.
+The selected file, validation result, and separate import or restore action
+remain visible so checking a file cannot be mistaken for applying it.
 
 ![Settings maintenance](screenshots/settings-maintenance.jpg)
 
@@ -411,6 +450,14 @@ The lending sheet keeps the selected roll, borrower, outgoing weight, and note
 fields in a compact phone flow.
 
 ![Companion phone lend spool](screenshots/companion-phone-lend-spool.jpg)
+
+### Phone Return Loan
+
+The return sheet distinguishes the measured total from the empty-spool tare,
+calculates remaining filament and consumption, and names the roll being
+returned before saving.
+
+![Companion phone return loan](screenshots/companion-phone-return-loan.jpg)
 
 ### Phone Detail
 

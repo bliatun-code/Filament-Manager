@@ -56,12 +56,12 @@ Start with the user guide for product behavior and workflows:
 
 Release notes:
 
+- [v0.31.0](docs/releases/RELEASE_NOTES_v0.31.0.md)
 - [v0.30.0](docs/releases/RELEASE_NOTES_v0.30.0.md)
 - [v0.29.0](docs/releases/RELEASE_NOTES_v0.29.0.md)
-- [v0.28.0](docs/releases/RELEASE_NOTES_v0.28.0.md)
 
 The repository keeps the three most recent release-note files. Older notes
-remain available in the [v0.29.0 source snapshot](https://github.com/bliatun-code/Filament-Manager/tree/v0.29.0),
+remain available in the [v0.30.0 source snapshot](https://github.com/bliatun-code/Filament-Manager/tree/v0.30.0),
 and published release tags are retained.
 
 ## Feature Overview
@@ -69,6 +69,8 @@ and published release tags are retained.
 - Inventory for owned and borrowed-in filament spools, with progressive
   rendering, shown/total controls for large result sets, compact normal browsing,
   and an explicit multi-selection mode for reviewed atomic bulk actions.
+  The default **All** view hides empty rolls; **Empty** keeps them available for
+  history and reuse. Reactivating an empty roll requires positive filament weight.
 - Stable user-managed storage locations can be created, renamed, archived,
   restored, merged, and—when completely unreferenced—deleted. Association counts
   open the exact filtered inventory view, while printer and loan locations stay
@@ -121,6 +123,8 @@ and published release tags are retained.
 - Local companion/webapp for paired phones, tablets, and workshop browsers;
   long inventory and loan lists use incremental result controls, and library
   reads and writes require an authenticated paired session.
+  Weighing previews show total minus tare before saving; loan selection searches
+  all eligible rolls. Connection warnings identify potentially outdated data.
 - Optional desktop background operation on macOS and Windows can hide a close
   request to the menu bar or system tray and start the app hidden when the
   current user signs in. Companion, Host/LAN reconciliation, mDNS, and Bambu
@@ -370,7 +374,7 @@ Validate the ordinary local Universal 2 DMG after the build:
 
 ```bash
 npm run verify:macos-local -- \
-  /path/to/Filament\ Manager_0.30.0_universal.dmg \
+  /path/to/Filament\ Manager_0.31.0_universal.dmg \
   --architectures=arm64,x86_64
 ```
 
@@ -426,7 +430,7 @@ download and checksum flow.
 ## Release Status
 
 - Latest release page: https://github.com/bliatun-code/Filament-Manager/releases/latest
-- Current version: `0.30.0`
+- Current version: `0.31.0`
 - Version source of truth must stay aligned across:
   - `package.json`
   - `package-lock.json`
@@ -527,10 +531,10 @@ Windows:
 Before writing to an existing database at startup, the app performs a read-only
 schema compatibility preflight and SQLite `quick_check`. A database created by
 a newer schema or one that fails the integrity check is stopped rather than
-silently rewritten. An existing unversioned, schema-v1, schema-v2, schema-v3,
-or schema-v4 database receives a verified local recovery snapshot before its
-automatic schema-v5 upgrade. Location, purchase-metadata, and pricing-standard
-migrations run in one transaction. The same safeguard is used before a full
+silently rewritten. The current schema is 7, unchanged from v0.30.0. An existing
+unversioned database or a supported older schema receives a verified local
+recovery snapshot before its automatic upgrade. Structural migrations run in
+one transaction. The same safeguard is used before a full
 restore and storage migrations that replace or merge an existing database; the
 operation does not continue if its snapshot cannot be created and verified.
 

@@ -70,6 +70,18 @@ Klient betyr at desktop-appen kobler seg til en Vert.
 
 Velg Klient når denne maskinen skal bruke et bibliotek som allerede eies av en annen desktop.
 
+Ved nettbrudd beholder klienten det kjente vertsnavnet og forklarer at viste
+data kan være utdaterte. **Oppdater** prøver forbindelsen igjen. En avvist eller
+fjernet paring krever ny paring under **Innstillinger → Bibliotek og webapp**;
+en vanlig nettverksfeil betyr ikke i seg selv at paringen er borte. Rullhistorikk
+som ikke kunne lastes, vises som utilgjengelig, ikke som en tom historikk.
+Endringer som avvises mens verten er utilgjengelig, køes ikke for automatisk
+lagring senere. Kontroller dataene etter gjenopprettet forbindelse og prøv igjen.
+
+Oppdater vert og desktop-klienter til samme versjon. Nyere beskyttede lager- og
+printerhandlinger krever at verten støtter dem; en eldre vert kan avvise dem selv
+om klienten er oppdatert.
+
 ### Webapp og nettlesere
 
 Webappen er en lokal companion-flate som serveres fra desktop-appen.
@@ -82,6 +94,13 @@ Webappen er en lokal companion-flate som serveres fra desktop-appen.
 - Vertsmaskinen kan trekke tilbake nettleserøkter fra innstillingene.
 
 Webappen er nyttig for raske operasjoner ved printeren: sjekke lager, se printerspor, låne ut, returnere, legge til ruller og oppdatere vekt.
+
+Companion viser totalvekt minus tomspolevekt før veiing, utlån, retur og
+printerhandlinger lagres. Angi hele gram. Lagre tomspolevekten i rullens detaljer
+når standardverdien ikke stemmer. Søk i lånevelgeren gjelder alle valgbare ruller,
+også ruller som ennå ikke er vist i den trinnvise listen. Ved brutt forbindelse
+varsler Companion om at tidligere lastede data kan være utdaterte; en vellykket
+oppdatering fjerner varselet.
 
 #### Stabil lokal Companion-adresse
 
@@ -233,6 +252,13 @@ Her kan du:
 - håndtere ønskeliste og bestillinger
 
 Lagerkort grupperer like filamenttyper og farger, men viser fortsatt individuelle ruller og plasseringer. Dette gjør at lageret er lett å skanne uten å miste sporbarhet.
+
+Standardfilteret **Alle** skjuler ruller med status **Tom**. Velg **Tom** for å
+finne dem igjen og se historikk eller klargjøre dem for gjenbruk. Rullen slettes
+ikke når den merkes tom. **Marker som oppbrukt (tom)** i rulldetaljene setter
+gjenværende vekt til 0 g og frigjør et eventuelt printerspor samlet. Historikk, tomspolevekt,
+hjemmelokasjon og eierskap beholdes. En ren statusendring gjennom massehandling
+beholder derimot den lagrede vekten.
 
 Store filtrerte lager vises trinnvis for å holde visningen responsiv.
 Resultattelleren viser hvor mange ruller som vises av alle treffene; velg **Vis
@@ -604,9 +630,18 @@ eller en midlertidig App Translocation-sti. Operativsystemets egne innloggings-
 eller oppstartsinnstillinger kan fortsatt deaktivere oppføringen uavhengig av
 programmet.
 
-Ingen av valgene installerer en operativsystemtjeneste. Programmet kjører ikke
-videre etter utlogging, avslåing eller mens maskinen sover. En desktop
-konfigurert som Klient er utformet for å pause frontend-timerne for oppdatering
+På macOS 13 og nyere registreres oppstart med en hjelper som tilhører appen,
+slik at bakgrunnsaktiviteten knyttes til **Filament Manager** og appikonet.
+Oppgradering overfører en eksisterende, aktivert standardoppføring; et avslått
+valg blir ikke slått på av oppgraderingen. Hvis macOS krever godkjenning, åpner
+du **Systeminnstillinger → Generelt → Påloggingsobjekter og utvidelser** og
+tillater Filament Manager under bakgrunnsaktivitet. Appen viser veiledning når
+systemtillatelsen mangler. Eldre oppføringer kan bli liggende i macOS-historikken
+en stund. macOS 11 og 12 bruker den eldre innloggingsmekanismen.
+
+Ingen av valgene installerer en systemtjeneste som kjører uten brukerinnlogging.
+Programmet kjører ikke videre etter utlogging, avslåing eller mens maskinen
+sover. En desktop konfigurert som Klient er utformet for å pause frontend-timerne for oppdatering
 fra verten mens vinduet er skjult og starte dem igjen når vinduet hentes frem;
 Rust-bakgrunnsoppgavene beskrevet over forblir aktive. På macOS bruker
 avslutning fra programmenyen eller statusmenyen den koordinerte
@@ -682,6 +717,12 @@ vertsappen avsluttes før jobben er ferdig, markeres jobben som avbrutt ved nest
 statussjekk. Start da en ny oppdatering når du er klar. Jobbsporing fra klient
 krever en oppdatert vert. Jobbkvitteringer er lokale driftsdata og følger ikke
 med i portable sikkerhetskopier.
+
+Grønne bekreftelser i Innstillinger forsvinner etter 20 sekunder. En fullført
+katalogjobb beholder resultatet sitt uten å vise den samme suksessmeldingen på
+nytt hver gang siden åpnes. En vellykket jobb som importerer produkter mens du
+er på en annen side, varsler når du kommer tilbake. Feil og advarsler forsvinner ikke med denne
+tidsgrensen.
 
 Programvedlikehold:
 
@@ -1072,6 +1113,13 @@ Manuelle vektoppdateringer er nyttige når:
 
 Manuell oppdatering kan påvirke rullens gjenværende vekt og forbruksstatistikk når den er knyttet til riktig printer/spor.
 
+Angi målt totalvekt med spole; forhåndsvisningen trekker fra tomspolevekten og
+viser gjenværende filament før lagring. Hvis en tom rull veies over tomspolevekten,
+reaktiveres den i samme lagring: **Tildelt** hvis den fortsatt har et printerspor,
+ellers **På lager**. Vekt, eventuell forbruksregistrering og reaktivering lagres
+samlet. En vektøkning er en korrigering, ikke negativt forbruk, og samme måling
+på nytt registrerer ikke dobbelt forbruk.
+
 AMS-handlingen er med vilje snevrere enn en manuell innveiing. Den er bare
 tilgjengelig for ferske live-data fra det lastede sporet, en eksakt RFID-match
 og samme lagerrull. AMS-prosenten er fortsatt et estimat; bruk fysisk vekt og
@@ -1088,6 +1136,11 @@ Manuelt:
 - Last inn rullen i sporet.
 - Oppdater vekt ved behov.
 - Tøm sporet når rullen fjernes.
+
+Innlasting fra Lager erstatter ikke en annen rull i et opptatt spor. Åpne
+sporet under Printere og bruk bytteflyten når en rull skal erstattes. Veiing,
+forbruk og tildeling lagres samlet. Hvis rullen eller sporet endrer seg mens en
+dialog er åpen, må du åpne handlingen på nytt med oppdaterte data.
 
 Det minimerte printerkortet beholder swatcher og materialnavn for tildelte spor.
 Utvid **Vis spor** bare når du trenger tildeling, vekt, RFID eller handling for å
@@ -1174,15 +1227,16 @@ nedlasting av en full sikkerhetskopi. Tidspunktet er bare et lokalt
 aktivitetshint; appen leser ikke den nedlastede filen senere, og opplysningen
 blir ikke med i den flyttbare sikkerhetskopien.
 
-Den lokale databasen bruker skjemaversjon 5. Før appen skriver til en eksisterende
-database ved oppstart, gjennomfører den en skrivebeskyttet kompatibilitetskontroll
-av skjemaet og SQLite `quick_check`. En database med nyere skjema, eller en som
+Den lokale databasen bruker skjemaversjon 7, uendret fra v0.30.0. Før appen
+skriver til en eksisterende database ved oppstart, gjennomfører den en
+skrivebeskyttet kompatibilitetskontroll av skjemaet og SQLite `quick_check`.
+En database med nyere skjema, eller en som
 ikke består integritetskontrollen, stoppes i stedet for å bli overskrevet uten
 varsel.
 
-Før en eksisterende database uten registrert skjemaversjon eller med skjema v1,
-v2, v3 eller v4 oppgraderes automatisk til skjema v5, oppretter og verifiserer appen
-en lokal gjenopprettingskopi. En verifisert kopi opprettes også før full
+Før en eksisterende database uten registrert skjemaversjon eller med et støttet,
+eldre skjema oppgraderes automatisk til gjeldende skjema, oppretter og verifiserer
+appen en lokal gjenopprettingskopi. En verifisert kopi opprettes også før full
 gjenoppretting og før lagringsmigreringer som erstatter eller slår sammen en
 eksisterende database. Hvis kopien ikke kan opprettes og verifiseres, fortsetter
 ikke oppgraderingen, gjenopprettingen eller migreringen.
@@ -1209,6 +1263,16 @@ Når du velger en gyldig full sikkerhetskopi, ber appen om bekreftelse fordi
 gjenopprettingen erstatter det aktive biblioteket. Den verifiserte
 gjenopprettingskopien som er beskrevet ovenfor, lagres ved siden av den aktive
 databasen.
+
+Lagerimport og full gjenoppretting har ulike virkninger. Lager-CSV/JSON oppretter
+ruller eller oppdaterer ruller med samme ID; en full JSON-sikkerhetskopi erstatter
+biblioteket etter bekreftelse. Eksporter en full sikkerhetskopi først hvis du vil
+kunne angre en import. Validering alene endrer ikke biblioteket.
+Valideringsoppsummeringen viser filnavnet og fjernes når en ny fil behandles.
+Tomme filer, ødelagt JSON, ustøttet backupformat og ugyldige lagerdata gir
+veiledning om den valgte filen. Kontroller obligatoriske felt og hele,
+ikke-negative gramverdier ved ugyldige lagerdata. Avvist import lagrer ikke et
+delvis resultat. **Avbryt** i bekreftelsen lar biblioteket være uendret.
 
 I motsetning til den flyttbare eksporten er gjenopprettingskopien en lokal kopi
 av hele databasen før gjenoppretting og kan inneholde maskinens
