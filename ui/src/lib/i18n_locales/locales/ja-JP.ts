@@ -49,6 +49,7 @@ export const jaJPDictionary: DictionaryNode = {
     "optional": "任意"
   },
   "errors": {
+    "inventoryBulkReactivationRequiresWeight": "再起動する前に、測定された総重量を空のスプール重量よりも高く設定してください。",
       hostUnavailable: "ホストに接続できません。再接続するまで変更は保存できません。ホストとネットワークを確認してから更新してください。",
       "inventoryWeightHostUnsupported": "ロールの実測重量を保存する前にホストを更新してください。変更は送信されていません。",
       "inventoryStatusHostUnsupported": "ロールの状態を変更する前にホストを更新してください。変更は送信されていません。",
@@ -469,7 +470,7 @@ export const jaJPDictionary: DictionaryNode = {
     "bulkTarget": "変更先",
     "bulkReviewTarget": "{action}の変更先：{target}",
     "bulkReviewChanged": "選択またはスプールデータが変更されました。再度アクションを確認してください。",
-    "bulkAtomicWarning": "すべての{count}の変更とその履歴は一緒にコミットされ、または何も書かれていません。",
+    "bulkAtomicWarning": "選択した変更はすべて一緒に保存されます。いずれかの変更に失敗した場合、何も保存されません。",
     "bulkConfirmAction": "{count} 件の{action}を確定",
     "bulkActiveLoanBlocked": "{count, plural, one {#に影響したスプールには有効なローンの残高があります。配置またはステータスを変更する前に返却してください。} other {#に影響を受けたスプールには有効なローンの残高があります。配置またはステータスを変更する前に返却してください。}}",
     "bulkPrinterSlotBlocked": "{count, plural, one {#に影響を受けたスプールはプリンターにロードされています。代わりにプリンタースロットのアクションを使用してください。} other {#の影響を受けたスプールはプリンターにロードされます。代わりにプリンタースロットのアクションを使用してください。}}",
@@ -479,7 +480,7 @@ export const jaJPDictionary: DictionaryNode = {
     "bulkInvalidLocation": "アクティブなストレージ場所を選択します。",
     "bulkStaleSelection": "選択したスプールが変更されました。アクションをもう一度更新して確認してください。",
     "bulkLegacyHostUnsupported": "接続されているホストは、原子的な在庫の大量アクションをサポートしていません。ホストをアップグレードして、もう一度試してください。",
-    "bulkMutationDone": "{count, plural, one {#スプールが原子的に更新されました。} other {#スプールが原子的に更新されました。}}",
+    "bulkMutationDone": "更新したスプール：{count}。",
     "bulkMutationFailed": "一括アクションが失敗しました。部分的な変更は書き込まれませんでした。",
     "bulkReceiptMismatch": "ホストから予期しない大量の結果が返されました。再度試す前に在庫を更新してください。",
     "bulkExportDone": "{count, plural, one {エクスポートされた#は{format}として選択されました。} other {エクスポートされた#は、選択されたスプールを{format}として選択しました。}}",

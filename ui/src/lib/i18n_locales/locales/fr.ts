@@ -49,6 +49,7 @@ export const frDictionary: DictionaryNode = {
     optional: "Facultatif",
   },
   errors: {
+    "inventoryBulkReactivationRequiresWeight": "Définissez un poids total mesuré supérieur au poids de la bobine vide avant de la réactiver.",
       hostUnavailable: "L’hôte est indisponible. Les modifications ne peuvent pas être enregistrées avant la reconnexion. Vérifiez l’hôte et le réseau, puis actualisez.",
       "inventoryWeightHostUnsupported": "Mettez à jour l’hôte avant d’enregistrer le poids mesuré d’une bobine. Aucune modification n’a été envoyée.",
       "inventoryStatusHostUnsupported": "Mettez à jour l’hôte avant de modifier le statut d’une bobine. Aucune modification n’a été envoyée.",
@@ -507,7 +508,7 @@ export const frDictionary: DictionaryNode = {
     bulkReviewChanged:
       "La sélection ou les données des bobines ont changé. Vérifiez de nouveau l’action.",
     bulkAtomicWarning:
-      "Les {count} modifications et leur historique sont enregistrés ensemble, ou rien n’est écrit.",
+      "Toutes les modifications sélectionnées sont enregistrées ensemble. Si l’une échoue, rien n’est enregistré.",
     bulkConfirmAction: "Confirmer {action} pour {count}",
     bulkActiveLoanBlocked:
       "{count, plural, one {# bobine concernée a} other {# bobines concernées ont}} un prêt actif. Terminez-le avant de modifier l’emplacement ou le statut.",
@@ -523,7 +524,7 @@ export const frDictionary: DictionaryNode = {
     bulkLegacyHostUnsupported:
       "L’hôte connecté ne prend pas en charge les actions groupées atomiques. Mettez-le à jour et réessayez.",
     bulkMutationDone:
-      "{count, plural, one {# bobine mise à jour} other {# bobines mises à jour}} atomiquement.",
+      "Bobines mises à jour : {count}.",
     bulkMutationFailed:
       "L’action groupée a échoué. Aucune modification partielle n’a été enregistrée.",
     bulkReceiptMismatch:

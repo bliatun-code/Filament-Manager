@@ -195,6 +195,7 @@ export const nlNLDictionary: DictionaryNode = {
     "legacyLowStockFallback": "Terugvalwaarde van 200 g voor oudere host"
   },
   "errors": {
+    "inventoryBulkReactivationRequiresWeight": "Stel het gemeten totale gewicht boven het lege spoelgewicht in voordat u opnieuw activeert.",
       hostUnavailable: "De host is niet bereikbaar. Wijzigingen kunnen pas na herstel van de verbinding worden opgeslagen. Controleer de host en het netwerk en vernieuw daarna.",
       "inventoryWeightHostUnsupported": "Werk de host bij voordat je een gemeten rolgewicht opslaat. Er zijn geen wijzigingen verzonden.",
       "inventoryStatusHostUnsupported": "Werk de host bij voordat je de status van een rol wijzigt. Er zijn geen wijzigingen verzonden.",
@@ -523,7 +524,7 @@ export const nlNLDictionary: DictionaryNode = {
     "bulkTarget": "Doel",
     "bulkReviewTarget": "Doel van {action}: {target}",
     "bulkReviewChanged": "De selectie of rolgegevens zijn gewijzigd. Controleer de actie opnieuw.",
-    "bulkAtomicWarning": "Alle {count} wijzigingen en hun geschiedenis worden samen vastgelegd, of er wordt niets geschreven.",
+    "bulkAtomicWarning": "Alle geselecteerde wijzigingen worden samen opgeslagen. Als een wijziging mislukt, wordt niets opgeslagen.",
     "bulkConfirmAction": "{action} voor {count} bevestigen",
     "bulkActiveLoanBlocked": "{count, plural, one {# betrokken rol heeft} other {# betrokken rollen hebben}} een actieve uitlening. Retourneer deze voordat u plaatsing of status wijzigt.",
     "bulkPrinterSlotBlocked": "{count, plural, one {# betrokken rol is} other {# betrokken rollen zijn}} in een printer geladen. Gebruik in plaats daarvan de acties voor printersleuven.",
@@ -533,7 +534,7 @@ export const nlNLDictionary: DictionaryNode = {
     "bulkInvalidLocation": "Kies een actieve opslaglocatie.",
     "bulkStaleSelection": "De geselecteerde rollen zijn gewijzigd. Vernieuw en controleer de actie opnieuw.",
     "bulkLegacyHostUnsupported": "De verbonden host ondersteunt geen atomische voorraadbulkacties. Werk de host bij en probeer het opnieuw.",
-    "bulkMutationDone": "{count, plural, one {# rol bijgewerkt} other {# rollen bijgewerkt}} als één geheel.",
+    "bulkMutationDone": "Bijgewerkte spoelen: {count}.",
     "bulkMutationFailed": "De bulkactie is mislukt. Er zijn geen gedeeltelijke wijzigingen geschreven.",
     "bulkReceiptMismatch": "De host gaf een onverwacht bulkresultaat terug. Vernieuw de voorraad voordat u het opnieuw probeert.",
     "bulkExportDone": "{count, plural, one {# geselecteerde rol} other {# geselecteerde rollen}} geëxporteerd als {format}.",

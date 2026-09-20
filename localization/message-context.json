@@ -2,6 +2,30 @@
   "schemaVersion": 1,
   "messages": [
     {
+      "surface": "companion",
+      "key": "errors.inventoryBulkReactivationRequiresWeight",
+      "meaning": "The entire bulk status change was rejected because an empty roll has no positive measured filament weight. Weigh that roll before retrying the selection.",
+      "screenshot": "docs/screenshots/companion-phone-inventory.jpg"
+    },
+    {
+      "surface": "desktop",
+      "key": "errors.inventoryBulkReactivationRequiresWeight",
+      "meaning": "The entire bulk status change was rejected because an empty roll has no positive measured filament weight. Weigh that roll before retrying the selection.",
+      "screenshot": "docs/screenshots/inventory.jpg"
+    },
+    {
+      "surface": "desktop",
+      "key": "inventory.bulkMutationDone",
+      "meaning": "Success receipt after a confirmed bulk write. Count is the number actually changed, excluding selected rolls that already had the target value. Use plain language, not database transaction terminology.",
+      "screenshot": "docs/screenshots/inventory.jpg"
+    },
+    {
+      "surface": "desktop",
+      "key": "inventory.bulkAtomicWarning",
+      "meaning": "Before bulk confirmation: all requested changes are saved together or none are saved if one fails. Applies to both one and many changed rolls; counts are displayed separately.",
+      "screenshot": "docs/screenshots/inventory.jpg"
+    },
+    {
       "surface": "desktop",
       "key": "settings.importFileEmpty",
       "meaning": "This file is empty. Choose an export containing data.",

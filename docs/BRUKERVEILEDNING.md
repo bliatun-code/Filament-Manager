@@ -254,6 +254,12 @@ valgt en status utenfor lagerbeholdningen. Hvis filtre skjuler deler av
 utvalget, viser handlingslinjen både totalt antall valgte og antallet i den
 gjeldende visningen.
 
+En tom rull må ha positiv lagret nettovekt før den kan settes tilbake til
+**På lager**, også ved massehandling. Vei rullen i detaljvisningen først.
+Hvis én valgt tom rull mangler gyldig vekt, avvises hele endringen; de andre
+valgte rullene blir ikke delvis oppdatert. Feilmeldingen viser opptil tre
+berørte ruller med navn og rullreferanse, samt antallet øvrige berørte ruller.
+
 Lagerets CSV-/JSON-format tar med leverandør, nominell/nåværende/gjenstående
 vekt, spolevekt, egne lagersteder, eierskap/eierkontakt og
 innkjøps-/prisbeskyttelse. Det er en lettvektsutveksling av ruller, ikke en full

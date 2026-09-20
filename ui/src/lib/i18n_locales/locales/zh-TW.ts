@@ -49,6 +49,7 @@ export const zhTWDictionary: DictionaryNode = {
     "optional": "選填"
   },
   "errors": {
+    "inventoryBulkReactivationRequiresWeight": "在重新啟動之前，將測得的總重量設定為高於空線材捲重量。",
       hostUnavailable: "主機無法使用。恢復連線之前無法儲存變更。請檢查主機和網路，然後重新整理。",
       "inventoryWeightHostUnsupported": "儲存測得的料卷重量前，請先更新主機。未傳送任何變更。",
       "inventoryStatusHostUnsupported": "變更料卷狀態前請更新主機。未傳送任何變更。",
@@ -469,7 +470,7 @@ export const zhTWDictionary: DictionaryNode = {
     "bulkTarget": "目標",
     "bulkReviewTarget": "{action} 目標：{target}",
     "bulkReviewChanged": "選擇或耗材捲資料已更改。再次檢查操作。",
-    "bulkAtomicWarning": "所有 {count} 的變更及其歷史都一起提交，或者沒有寫任何變更。",
+    "bulkAtomicWarning": "所有選取的變更將一併儲存。如果任何變更失敗，則不儲存任何變更。",
     "bulkConfirmAction": "確認對 {count} 個耗材捲執行{action}",
     "bulkActiveLoanBlocked": "{count, plural, one {# 個受影響的耗材捲正在借出。變更位置或狀態前請先歸還。} other {# 個受影響的耗材捲正在借出。變更位置或狀態前請先歸還。}}",
     "bulkPrinterSlotBlocked": "{count, plural, one {# 個受影響的耗材捲已裝入印表機。請改用印表機槽位操作。} other {# 個受影響的耗材捲已裝入印表機。請改用印表機槽位操作。}}",
@@ -479,7 +480,7 @@ export const zhTWDictionary: DictionaryNode = {
     "bulkInvalidLocation": "選擇一個活躍的儲存位置。",
     "bulkStaleSelection": "選定的耗材捲變更了。再次重新整理並檢視操作。",
     "bulkLegacyHostUnsupported": "連線的主機不支援原子化庫存批次操作。升級主機並再試一次。",
-    "bulkMutationDone": "{count, plural, one {已完整更新 # 個耗材捲。} other {已完整更新 # 個耗材捲。}}",
+    "bulkMutationDone": "已更新料捲：{count}。",
     "bulkMutationFailed": "批次操作失敗。未記錄任何部分更改。",
     "bulkReceiptMismatch": "主機回饋了一個意想不到的大批次結果。請重新整理庫存後再試一次。",
     "bulkExportDone": "{count, plural, one {已將選取的 # 個耗材捲匯出為 {format}。} other {已將選取的 # 個耗材捲匯出為 {format}。}}",

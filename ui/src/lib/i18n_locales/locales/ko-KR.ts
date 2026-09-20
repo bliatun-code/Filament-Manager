@@ -49,6 +49,7 @@ export const koKRDictionary: DictionaryNode = {
     "optional": "선택 과목"
   },
   "errors": {
+    "inventoryBulkReactivationRequiresWeight": "다시 활성화하기 전에 측정된 총 중량을 빈 스풀 중량보다 높게 설정하십시오.",
       hostUnavailable: "호스트에 연결할 수 없습니다. 다시 연결될 때까지 변경 사항을 저장할 수 없습니다. 호스트와 네트워크를 확인한 후 새로고침하세요.",
       "inventoryWeightHostUnsupported": "측정한 롤 무게를 저장하기 전에 호스트를 업데이트하세요. 변경 사항은 전송되지 않았습니다.",
       "inventoryStatusHostUnsupported": "롤 상태를 변경하기 전에 호스트를 업데이트하세요. 변경 사항은 전송되지 않았습니다.",
@@ -469,7 +470,7 @@ export const koKRDictionary: DictionaryNode = {
     "bulkTarget": "표적",
     "bulkReviewTarget": "{action} 타겟: {target}",
     "bulkReviewChanged": "선택 또는 스풀 데이터가 변경되었습니다. 작업을 다시 검토하십시오.",
-    "bulkAtomicWarning": "모든 {count} 변경 사항과 그 기록은 함께 기록되거나 기록되지 않습니다.",
+    "bulkAtomicWarning": "선택한 변경 사항은 모두 함께 저장됩니다. 하나라도 실패하면 아무것도 저장되지 않습니다.",
     "bulkConfirmAction": "{count}에 대해 {action}를 확인하십시오.",
     "bulkActiveLoanBlocked": "{count, plural, one {#에 영향을 받은 스풀에는 활성 대출이 있습니다. 배치 또는 상태를 변경하기 전에 반환하십시오.} other {#에 영향을 받은 스풀에는 활성 대출이 있습니다. 배치 또는 상태를 변경하기 전에 반환하십시오.}}",
     "bulkPrinterSlotBlocked": "{count, plural, one {#에 영향을 받은 스풀이 프린터에 로드되었습니다. 대신 프린터 슬롯 동작을 사용하십시오.} other {#에 영향을 받은 스풀이 프린터에 로드됩니다. 대신 프린터 슬롯 작업을 사용하십시오.}}",
@@ -479,7 +480,7 @@ export const koKRDictionary: DictionaryNode = {
     "bulkInvalidLocation": "활성 저장 위치를 선택합니다.",
     "bulkStaleSelection": "선택된 스풀이 변경되었습니다. 다시 액션을 새로고침하고 검토하세요.",
     "bulkLegacyHostUnsupported": "연결된 호스트는 원자 재고 대량 작업을 지원하지 않습니다. 호스트를 업그레이드하고 다시 시도하십시오.",
-    "bulkMutationDone": "{count, plural, one {# 스풀이 원자적으로 업데이트되었습니다.} other {# 스풀이 원자적으로 업데이트되었습니다.}}",
+    "bulkMutationDone": "업데이트된 스풀: {count}개.",
     "bulkMutationFailed": "대량 작업이 실패했습니다. 부분적인 변경 사항이 작성되지 않았습니다.",
     "bulkReceiptMismatch": "호스트에서 예상치 못한 대량 결과가 반환되었습니다. 다시 시도하기 전에 재고를 새로 고치세요.",
     "bulkExportDone": "{count, plural, one {내보낸 #가 {format}로 선택되었습니다.} other {수출된 #가 {format}로 선택된 스풀입니다.}}",

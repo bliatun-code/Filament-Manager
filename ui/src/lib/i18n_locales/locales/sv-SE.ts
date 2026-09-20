@@ -71,6 +71,7 @@ export const svSEDictionary: DictionaryNode = {
     "optional": "Valfritt"
   },
   "errors": {
+    "inventoryBulkReactivationRequiresWeight": "Ställ in uppmätt totalvikt över tomspolevikten innan du återaktiverar.",
       hostUnavailable: "Värden är inte tillgänglig. Ändringar kan inte sparas förrän anslutningen är tillbaka. Kontrollera värden och nätverket och uppdatera sedan.",
       "inventoryWeightHostUnsupported": "Uppdatera värden innan du sparar en uppmätt rullvikt. Inga ändringar har skickats.",
       "inventoryStatusHostUnsupported": "Uppdatera värden innan du ändrar en rulles status. Inga ändringar skickades.",
@@ -1245,7 +1246,7 @@ export const svSEDictionary: DictionaryNode = {
     "bulkTarget": "Mål",
     "bulkReviewTarget": "Mål för {action}: {target}",
     "bulkReviewChanged": "Urvalet eller rulldata har ändrats. Granska åtgärden på nytt.",
-    "bulkAtomicWarning": "Alla {count} ändringar och deras historik sparas tillsammans, annars skrivs inga ändringar.",
+    "bulkAtomicWarning": "Alla valda ändringar sparas tillsammans. Om någon ändring misslyckas sparas ingenting.",
     "bulkConfirmAction": "Bekräfta {action} för {count}",
     "bulkActiveLoanBlocked": "{count, plural, one {# berörd rulle har} other {# berörda rullar har}} ett aktivt utlån. Returnera den innan du ändrar placering eller status.",
     "bulkPrinterSlotBlocked": "{count, plural, one {# berörd rulle är} other {# berörda rullar är}} laddad i en skrivare. Använd åtgärderna för skrivarplatsen i stället.",
@@ -1255,7 +1256,7 @@ export const svSEDictionary: DictionaryNode = {
     "bulkInvalidLocation": "Välj en aktiv lagerplats.",
     "bulkStaleSelection": "De valda rullarna har ändrats. Uppdatera och granska åtgärden på nytt.",
     "bulkLegacyHostUnsupported": "Den anslutna värden stöder inte atomiska massåtgärder för lagret. Uppdatera värden och försök igen.",
-    "bulkMutationDone": "{count, plural, one {# rulle uppdaterad} other {# rullar uppdaterade}} atomiskt.",
+    "bulkMutationDone": "Uppdaterade rullar: {count}.",
     "bulkMutationFailed": "Massåtgärden misslyckades. Inga delvisa ändringar skrevs.",
     "bulkReceiptMismatch": "Värden returnerade ett oväntat resultat för massåtgärden. Uppdatera lagret innan du försöker igen.",
     "bulkExportDone": "Exporterade {count, plural, one {# vald rulle} other {# valda rullar}} som {format}.",

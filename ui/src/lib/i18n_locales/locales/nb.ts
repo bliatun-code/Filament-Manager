@@ -49,6 +49,7 @@ export const nbDictionary: DictionaryNode = {
       optional: "Valgfritt",
     },
     errors: {
+      "inventoryBulkReactivationRequiresWeight": "Sett målt totalvekt høyere enn tom rull-vekt før reaktivering.",
       hostUnavailable: "Verten er utilgjengelig. Endringer kan ikke lagres før forbindelsen er tilbake. Sjekk verten og nettverket, og oppdater deretter.",
       "inventoryWeightHostUnsupported": "Oppdater verten før du lagrer en målt rullvekt. Ingen endringer ble sendt.",
       "inventoryStatusHostUnsupported": "Oppdater verten før du endrer statusen til en rull. Ingen endringer ble sendt.",
@@ -561,7 +562,7 @@ export const nbDictionary: DictionaryNode = {
       bulkReviewTarget: "Mål for {action}: {target}",
       bulkReviewChanged: "Utvalget eller rulledataene ble endret. Se gjennom handlingen på nytt.",
       bulkAtomicWarning:
-        "Alle {count} endringer og historikken deres lagres sammen, eller så lagres ingenting.",
+        "Alle valgte endringer lagres samlet. Hvis én endring feiler, lagres ingenting.",
       bulkConfirmAction: "Bekreft {action} for {count}",
       bulkActiveLoanBlocked:
         "{count, plural, one {# berørt rull har} other {# berørte ruller har}} et aktivt lån. Returner dem før du endrer plassering eller status.",
@@ -576,7 +577,7 @@ export const nbDictionary: DictionaryNode = {
       bulkLegacyHostUnsupported:
         "Den tilkoblede verten støtter ikke atomiske massehandlinger. Oppgrader verten og prøv igjen.",
       bulkMutationDone:
-        "{count, plural, one {# rull ble oppdatert} other {# ruller ble oppdatert}} atomisk.",
+        "Oppdaterte ruller: {count}.",
       bulkMutationFailed: "Massehandlingen mislyktes. Ingen delvise endringer ble lagret.",
       bulkReceiptMismatch:
         "Verten returnerte et uventet resultat. Oppdater lageret før du prøver igjen.",

@@ -49,6 +49,7 @@ export const fiFIDictionary: DictionaryNode = {
     "optional": "valinnainen"
   },
   "errors": {
+    "inventoryBulkReactivationRequiresWeight": "Aseta mitattu kokonaispaino tyhjän kelan painon yläpuolelle ennen uudelleenaktivointia.",
       hostUnavailable: "Isäntä ei ole käytettävissä. Muutoksia ei voi tallentaa ennen yhteyden palautumista. Tarkista isäntä ja verkko ja päivitä sitten.",
       "inventoryWeightHostUnsupported": "Päivitä isäntäkone ennen rullan mitatun painon tallentamista. Muutoksia ei lähetetty.",
       "inventoryStatusHostUnsupported": "Päivitä isäntä ennen rullan tilan muuttamista. Muutoksia ei lähetetty.",
@@ -469,7 +470,7 @@ export const fiFIDictionary: DictionaryNode = {
     "bulkTarget": "maali",
     "bulkReviewTarget": "{action} kohde: {target}",
     "bulkReviewChanged": "Valinta tai rulladata on muuttunut. Tarkista toiminto uudelleen.",
-    "bulkAtomicWarning": "Kaikki {count}:n muutokset ja niiden historia on tallennettu yhdessä, tai niitä ei ole kirjoitettu.",
+    "bulkAtomicWarning": "Kaikki valitut muutokset tallennetaan yhdessä. Jos jokin muutos epäonnistuu, mitään ei tallenneta.",
     "bulkConfirmAction": "Vahvista {action} {count}:lle",
     "bulkActiveLoanBlocked": "{count, plural, one {# valitulla kelalla on aktiivinen laina. Palauta se ennen sijainnin tai tilan muuttamista.} other {# valitulla kelalla on aktiivinen laina. Palauta ne ennen sijainnin tai tilan muuttamista.}}",
     "bulkPrinterSlotBlocked": "{count, plural, one {# valittu kela on ladattu tulostimeen. Käytä sen sijaan tulostinpaikan toimintoja.} other {# valittua kelaa on ladattu tulostimeen. Käytä sen sijaan tulostinpaikan toimintoja.}}",
@@ -479,7 +480,7 @@ export const fiFIDictionary: DictionaryNode = {
     "bulkInvalidLocation": "Valitse aktiivinen tallennuspaikka.",
     "bulkStaleSelection": "Valitut kelat ovat muuttuneet. Päivitä ja tarkista toiminto uudelleen.",
     "bulkLegacyHostUnsupported": "Yhdistetty isäntä ei tue atomivaraston massatoimintoja. Päivitä isäntä ja yritä uudelleen.",
-    "bulkMutationDone": "{count, plural, one {# kela päivitettiin kokonaan.} other {# kelaa päivitettiin kokonaan.}}",
+    "bulkMutationDone": "Päivitetyt kelat: {count}.",
     "bulkMutationFailed": "Suuri toiminto epäonnistui. Ei osittaisia muutoksia kirjoitettu.",
     "bulkReceiptMismatch": "Isäntä palautti odottamattoman massatuloksen. Päivitä varasto ennen kuin yrität uudelleen.",
     "bulkExportDone": "{count, plural, one {# valittu kela vietiin muodossa {format}.} other {# valittua kelaa vietiin muodossa {format}.}}",

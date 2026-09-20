@@ -231,6 +231,7 @@ export const ptBRDictionary: DictionaryNode = {
     legacyLowStockFallback: "Valor alternativo de 200 g para host antigo",
   },
   errors: {
+    "inventoryBulkReactivationRequiresWeight": "Defina o peso total medido acima do peso da bobina vazia antes de reativar.",
       hostUnavailable: "O host está indisponível. As alterações só podem ser salvas após a reconexão. Verifique o host e a rede e atualize.",
       "inventoryWeightHostUnsupported": "Atualize o Host antes de salvar o peso medido de um rolo. Nenhuma alteração foi enviada.",
       "inventoryStatusHostUnsupported": "Atualize o Host antes de alterar o estado de um rolo. Nenhuma alteração foi enviada.",
@@ -683,7 +684,7 @@ export const ptBRDictionary: DictionaryNode = {
     bulkReviewChanged:
       "A seleção ou os dados das bobinas mudaram. Revise a ação novamente.",
     bulkAtomicWarning:
-      "Todas as {count} alterações e seus históricos são confirmados juntos, ou nenhuma é gravada.",
+      "Todas as alterações selecionadas são salvas juntas. Se alguma falhar, nada será salvo.",
     bulkConfirmAction: "Confirmar {action} para {count}",
     bulkActiveLoanBlocked:
       "{count, plural, one {# bobina afetada tem} other {# bobinas afetadas têm}} um empréstimo ativo. Devolva-a antes de alterar o posicionamento ou o status.",
@@ -699,7 +700,7 @@ export const ptBRDictionary: DictionaryNode = {
     bulkLegacyHostUnsupported:
       "O host conectado não oferece suporte a ações em massa atômicas no inventário. Atualize o host e tente novamente.",
     bulkMutationDone:
-      "{count, plural, one {# bobina atualizada} other {# bobinas atualizadas}} de forma atômica.",
+      "Carretéis atualizados: {count}.",
     bulkMutationFailed:
       "A ação em massa falhou. Nenhuma alteração parcial foi gravada.",
     bulkReceiptMismatch:

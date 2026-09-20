@@ -49,6 +49,7 @@ export const deDictionary: DictionaryNode = {
     optional: "Optional",
   },
   errors: {
+    "inventoryBulkReactivationRequiresWeight": "Setze vor der Reaktivierung das gemessene Gesamtgewicht höher als das Leerrollengewicht.",
       hostUnavailable: "Der Host ist nicht erreichbar. Änderungen können erst nach der Wiederverbindung gespeichert werden. Prüfe Host und Netzwerk und aktualisiere dann.",
       "inventoryWeightHostUnsupported": "Aktualisiere den Host, bevor du ein gemessenes Rollengewicht speicherst. Es wurden keine Änderungen gesendet.",
       "inventoryStatusHostUnsupported": "Aktualisiere den Host, bevor du den Status einer Rolle änderst. Es wurden keine Änderungen gesendet.",
@@ -506,7 +507,7 @@ export const deDictionary: DictionaryNode = {
     bulkReviewTarget: "Ziel für {action}: {target}",
     bulkReviewChanged: "Die Auswahl oder Rollendaten haben sich geändert. Prüfe die Aktion erneut.",
     bulkAtomicWarning:
-      "Alle {count} Änderungen und ihre Verläufe werden gemeinsam gespeichert, oder es wird nichts geschrieben.",
+      "Alle ausgewählten Änderungen werden gemeinsam gespeichert. Schlägt eine Änderung fehl, wird nichts gespeichert.",
     bulkConfirmAction: "{action} für {count} bestätigen",
     bulkActiveLoanBlocked:
       "{count, plural, one {# betroffene Rolle hat} other {# betroffene Rollen haben}} eine aktive Ausleihe. Beende sie, bevor Platzierung oder Status geändert werden.",
@@ -521,7 +522,7 @@ export const deDictionary: DictionaryNode = {
     bulkLegacyHostUnsupported:
       "Der verbundene Host unterstützt keine atomischen Bestands-Massenaktionen. Aktualisiere den Host und versuche es erneut.",
     bulkMutationDone:
-      "{count, plural, one {# Rolle wurde} other {# Rollen wurden}} atomisch aktualisiert.",
+      "Aktualisierte Spulen: {count}.",
     bulkMutationFailed: "Die Massenaktion ist fehlgeschlagen. Es wurden keine Teiländerungen gespeichert.",
     bulkReceiptMismatch:
       "Der Host hat ein unerwartetes Ergebnis zurückgegeben. Aktualisiere den Bestand vor dem nächsten Versuch.",

@@ -195,6 +195,7 @@ export const csCZDictionary: DictionaryNode = {
     "legacyLowStockFallback": "Záložní limit 200 g pro starší verzi hostitele"
   },
   "errors": {
+    "inventoryBulkReactivationRequiresWeight": "Před opětovnou aktivací nastavte naměřenou celkovou hmotnost nad hmotnost prázdné cívky.",
       hostUnavailable: "Host není dostupný. Změny nelze uložit, dokud se spojení neobnoví. Zkontrolujte host a síť a poté obnovte data.",
       "inventoryWeightHostUnsupported": "Před uložením naměřené hmotnosti cívky aktualizujte hostitele. Žádné změny nebyly odeslány.",
       "inventoryStatusHostUnsupported": "Před změnou stavu cívky aktualizujte hostitele. Nebyly odeslány žádné změny.",
@@ -865,7 +866,7 @@ export const csCZDictionary: DictionaryNode = {
     "bulkTarget": "Cíl",
     "bulkReviewTarget": "Cíl akce „{action}“: {target}",
     "bulkReviewChanged": "Výběr nebo data cívek se změnily. Zkontrolujte akci znovu.",
-    "bulkAtomicWarning": "Všech {count} změn a jejich historie se uloží společně, nebo se neuloží nic.",
+    "bulkAtomicWarning": "Všechny vybrané změny se uloží společně. Pokud některá selže, nic se neuloží.",
     "bulkConfirmAction": "Potvrdit akci „{action}“ pro {count}",
     "bulkActiveLoanBlocked": "{count, plural, one {# dotčená cívka má} few {# dotčené cívky mají} many {# dotčených cívek má} other {# dotčené cívky mají}} aktivní výpůjčku. Před změnou umístění nebo stavu ji vraťte.",
     "bulkPrinterSlotBlocked": "{count, plural, one {# dotčená cívka je vložena} few {# dotčené cívky jsou vloženy} many {# dotčených cívek je vloženo} other {# dotčené cívky jsou vloženy}} v tiskárně. Použijte místo toho akce pozice tiskárny.",
@@ -875,7 +876,7 @@ export const csCZDictionary: DictionaryNode = {
     "bulkInvalidLocation": "Zvolte aktivní skladové umístění.",
     "bulkStaleSelection": "Vybrané cívky se změnily. Obnovte data a zkontrolujte akci znovu.",
     "bulkLegacyHostUnsupported": "Připojený hostitel nepodporuje atomické hromadné akce se skladem. Aktualizujte hostitele a zkuste to znovu.",
-    "bulkMutationDone": "{count, plural, one {# cívka byla aktualizována} few {# cívky byly aktualizovány} many {# cívek bylo aktualizováno} other {# cívky byly aktualizovány}} atomicky.",
+    "bulkMutationDone": "Aktualizované cívky: {count}.",
     "bulkMutationFailed": "Hromadná akce se nezdařila. Nebyly zapsány žádné částečné změny.",
     "bulkReceiptMismatch": "Hostitel vrátil neočekávaný výsledek hromadné akce. Před dalším pokusem obnovte sklad.",
     "bulkExportDone": "Exportováno {count, plural, one {# vybraná cívka} few {# vybrané cívky} many {# vybraných cívek} other {# vybrané cívky}} ve formátu {format}.",

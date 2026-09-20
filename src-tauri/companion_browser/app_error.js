@@ -92,6 +92,10 @@ export const ERROR_MESSAGE_DESCRIPTORS = Object.freeze({
     "errors.inventoryBulkInvalidSelection",
     "The selected rolls are invalid. Clear the selection and choose them again.",
   ],
+  "inventory.bulk.reactivation_requires_weight": [
+    "errors.inventoryBulkReactivationRequiresWeight",
+    "Set measured total weight above empty spool weight before reactivating.",
+  ],
   "inventory.bulk.stale_snapshot": [
     "errors.inventoryBulkStaleReview",
     "The selected rolls changed. Reload inventory and review the bulk action again.",

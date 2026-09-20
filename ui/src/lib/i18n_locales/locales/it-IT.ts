@@ -224,6 +224,7 @@ export const itITDictionary: DictionaryNode = {
     totalSpoolsSubtitle: "In tutte le località",
   },
   errors: {
+    "inventoryBulkReactivationRequiresWeight": "Impostare il peso totale misurato sopra il peso della bobina vuota prima di riattivare.",
       hostUnavailable: "L’host non è disponibile. Le modifiche possono essere salvate solo dopo la riconnessione. Controlla l’host e la rete, poi aggiorna.",
       "inventoryWeightHostUnsupported": "Aggiorna l’Host prima di salvare il peso misurato di una bobina. Nessuna modifica è stata inviata.",
       "inventoryStatusHostUnsupported": "Aggiorna l’Host prima di cambiare lo stato di una bobina. Non è stata inviata alcuna modifica.",
@@ -1059,7 +1060,7 @@ export const itITDictionary: DictionaryNode = {
     bulkReviewChanged:
       "La selezione o i dati delle bobine sono cambiati. Rivedi nuovamente l’azione.",
     bulkAtomicWarning:
-      "Tutte le {count} modifiche e la relativa cronologia vengono salvate insieme, oppure non viene scritto nulla.",
+      "Tutte le modifiche selezionate vengono salvate insieme. Se una non riesce, non viene salvato nulla.",
     bulkConfirmAction: "Conferma {action} per {count}",
     bulkActiveLoanBlocked:
       "{count, plural, one {# bobina interessata ha} other {# bobine interessate hanno}} un prestito attivo. Restituiscilo prima di modificare la posizione o lo stato.",
@@ -1075,7 +1076,7 @@ export const itITDictionary: DictionaryNode = {
     bulkLegacyHostUnsupported:
       "L’host connesso non supporta le azioni multiple atomiche sull’inventario. Aggiorna l’host e riprova.",
     bulkMutationDone:
-      "{count, plural, one {# bobina aggiornata} other {# bobine aggiornate}} in modo atomico.",
+      "Bobine aggiornate: {count}.",
     bulkMutationFailed:
       "L’azione multipla non è riuscita. Non sono state scritte modifiche parziali.",
     bulkReceiptMismatch:

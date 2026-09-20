@@ -195,6 +195,7 @@ export const trTRDictionary: DictionaryNode = {
     "totalSpoolsSubtitle": "Tüm lokasyonlarda"
   },
   "errors": {
+    "inventoryBulkReactivationRequiresWeight": "Yeniden etkinleştirmeden önce ölçülen toplam ağırlığı boş makara ağırlığının üstüne ayarlayın.",
       hostUnavailable: "Ana makineye ulaşılamıyor. Bağlantı yeniden kurulana kadar değişiklikler kaydedilemez. Ana makineyi ve ağı kontrol edip yenileyin.",
       "inventoryWeightHostUnsupported": "Ölçülen makara ağırlığını kaydetmeden önce ana bilgisayarı güncelleyin. Hiçbir değişiklik gönderilmedi.",
       "inventoryStatusHostUnsupported": "Makara durumunu değiştirmeden önce Host’u güncelleyin. Hiçbir değişiklik gönderilmedi.",
@@ -864,7 +865,7 @@ export const trTRDictionary: DictionaryNode = {
     "bulkTarget": "Hedef",
     "bulkReviewTarget": "{action} hedefi: {target}",
     "bulkReviewChanged": "Seçim veya makara verileri değişti. İşlemi yeniden inceleyin.",
-    "bulkAtomicWarning": "{count} değişikliğin tümü ve geçmişleri birlikte kaydedilir veya hiçbir şey yazılmaz.",
+    "bulkAtomicWarning": "Seçilen tüm değişiklikler birlikte kaydedilir. Herhangi biri başarısız olursa hiçbir şey kaydedilmez.",
     "bulkConfirmAction": "{count} için {action} işlemini onayla",
     "bulkActiveLoanBlocked": "{count, plural, one {Etkilenen # makaranın} other {Etkilenen # makaranın}} aktif ödüncü var. Konumu veya durumu değiştirmeden önce iade edin.",
     "bulkPrinterSlotBlocked": "{count, plural, one {Etkilenen # makara} other {Etkilenen # makara}} bir yazıcıya yüklü. Bunun yerine yazıcı yuvası işlemlerini kullanın.",
@@ -874,7 +875,7 @@ export const trTRDictionary: DictionaryNode = {
     "bulkInvalidLocation": "Aktif bir depolama konumu seçin.",
     "bulkStaleSelection": "Seçili makaralar değişti. Yenileyip işlemi yeniden inceleyin.",
     "bulkLegacyHostUnsupported": "Bağlı host atomik envanter toplu işlemlerini desteklemiyor. Hostu güncelleyip tekrar deneyin.",
-    "bulkMutationDone": "{count, plural, one {# makara} other {# makara}} atomik olarak güncellendi.",
+    "bulkMutationDone": "Güncellenen makaralar: {count}.",
     "bulkMutationFailed": "Toplu işlem başarısız oldu. Kısmi değişiklik yazılmadı.",
     "bulkReceiptMismatch": "Host beklenmeyen bir toplu işlem sonucu döndürdü. Yeniden denemeden önce envanteri yenileyin.",
     "bulkExportDone": "Seçili {count, plural, one {# makara} other {# makara}} {format} olarak dışa aktarıldı.",

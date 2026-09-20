@@ -71,6 +71,7 @@ export const daDKDictionary: DictionaryNode = {
     "optional": "Valgfrit"
   },
   "errors": {
+    "inventoryBulkReactivationRequiresWeight": "Indstil den målte totalvægt over den tomme spolevægt før genaktivering.",
       hostUnavailable: "Værten er utilgængelig. Ændringer kan ikke gemmes, før forbindelsen er tilbage. Kontrollér værten og netværket, og opdater derefter.",
       "inventoryWeightHostUnsupported": "Opdater værten, før du gemmer en målt rullevægt. Ingen ændringer blev sendt.",
       "inventoryStatusHostUnsupported": "Opdater værten, før du ændrer en rulles status. Ingen ændringer blev sendt.",
@@ -1245,7 +1246,7 @@ export const daDKDictionary: DictionaryNode = {
     "bulkTarget": "Mål",
     "bulkReviewTarget": "Mål for {action}: {target}",
     "bulkReviewChanged": "Markeringen eller rulledataene er ændret. Gennemgå handlingen igen.",
-    "bulkAtomicWarning": "Alle {count} ændringer og deres historik gemmes samlet, ellers skrives ingen af dem.",
+    "bulkAtomicWarning": "Alle valgte ændringer gemmes samlet. Hvis en ændring mislykkes, gemmes intet.",
     "bulkConfirmAction": "Bekræft {action} for {count}",
     "bulkActiveLoanBlocked": "{count, plural, one {# berørt rulle har} other {# berørte ruller har}} et aktivt udlån. Returnér det, før du ændrer placering eller status.",
     "bulkPrinterSlotBlocked": "{count, plural, one {# berørt rulle er} other {# berørte ruller er}} lagt i en printer. Brug handlingerne for printerpladsen i stedet.",
@@ -1255,7 +1256,7 @@ export const daDKDictionary: DictionaryNode = {
     "bulkInvalidLocation": "Vælg en aktiv lagerlokation.",
     "bulkStaleSelection": "De valgte ruller er ændret. Opdater, og gennemgå handlingen igen.",
     "bulkLegacyHostUnsupported": "Den tilsluttede vært understøtter ikke atomiske massehandlinger på lageret. Opdater værten, og prøv igen.",
-    "bulkMutationDone": "{count, plural, one {# rulle opdateret} other {# ruller opdateret}} atomisk.",
+    "bulkMutationDone": "Opdaterede ruller: {count}.",
     "bulkMutationFailed": "Massehandlingen mislykkedes. Ingen delvise ændringer blev skrevet.",
     "bulkReceiptMismatch": "Værten returnerede et uventet resultat for massehandlingen. Opdater lageret, før du prøver igen.",
     "bulkExportDone": "Eksporterede {count, plural, one {# valgt rulle} other {# valgte ruller}} som {format}.",

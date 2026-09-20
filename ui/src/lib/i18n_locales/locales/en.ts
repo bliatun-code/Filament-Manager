@@ -49,6 +49,7 @@ export const enDictionary: DictionaryNode = {
       optional: "Optional",
     },
     errors: {
+      "inventoryBulkReactivationRequiresWeight": "Set measured total weight above empty spool weight before reactivating.",
       hostUnavailable: "Host is unavailable. Changes cannot be saved until it reconnects. Check the host and network, then refresh.",
       "inventoryWeightHostUnsupported": "Update the Host before saving a measured roll weight. No changes were sent.",
       "inventoryStatusHostUnsupported": "Update the Host before changing a roll’s status. No changes were sent.",
@@ -560,7 +561,7 @@ export const enDictionary: DictionaryNode = {
       bulkReviewTarget: "{action} target: {target}",
       bulkReviewChanged: "The selection or roll data changed. Review the action again.",
       bulkAtomicWarning:
-        "All {count} changes and their history are committed together, or none are written.",
+        "All selected changes are saved together. If any change fails, nothing is saved.",
       bulkConfirmAction: "Confirm {action} for {count}",
       bulkActiveLoanBlocked:
         "{count, plural, one {# affected roll has} other {# affected rolls have}} an active loan. Return it before changing placement or status.",
@@ -575,7 +576,7 @@ export const enDictionary: DictionaryNode = {
       bulkLegacyHostUnsupported:
         "The connected Host does not support atomic inventory bulk actions. Upgrade the Host and try again.",
       bulkMutationDone:
-        "{count, plural, one {# roll updated} other {# rolls updated}} atomically.",
+        "Updated rolls: {count}.",
       bulkMutationFailed: "The bulk action failed. No partial changes were written.",
       bulkReceiptMismatch:
         "The Host returned an unexpected bulk result. Refresh inventory before trying again.",

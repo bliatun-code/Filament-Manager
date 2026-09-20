@@ -195,6 +195,7 @@ export const plPLDictionary: DictionaryNode = {
     "legacyLowStockFallback": "Zapasowy próg 200 g dla starszej wersji hosta"
   },
   "errors": {
+    "inventoryBulkReactivationRequiresWeight": "Przed ponownym włączeniem ustawić zmierzoną masę całkowitą powyżej masy pustej szpuli.",
       hostUnavailable: "Host jest niedostępny. Zmian nie można zapisać do czasu przywrócenia połączenia. Sprawdź host i sieć, a następnie odśwież dane.",
       "inventoryWeightHostUnsupported": "Zaktualizuj hosta przed zapisaniem zmierzonej wagi szpuli. Nie wysłano żadnych zmian.",
       "inventoryStatusHostUnsupported": "Zaktualizuj hosta przed zmianą statusu szpuli. Nie wysłano żadnych zmian.",
@@ -865,7 +866,7 @@ export const plPLDictionary: DictionaryNode = {
     "bulkTarget": "Cel",
     "bulkReviewTarget": "Cel operacji „{action}”: {target}",
     "bulkReviewChanged": "Zaznaczenie lub dane szpuli uległy zmianie. Ponownie sprawdź operację.",
-    "bulkAtomicWarning": "Wszystkie zmiany ({count}) wraz z ich historią zostaną zapisane razem albo żadna z nich nie zostanie zapisana.",
+    "bulkAtomicWarning": "Wszystkie wybrane zmiany są zapisywane razem. Jeśli jedna się nie powiedzie, nic nie zostanie zapisane.",
     "bulkConfirmAction": "Potwierdź operację „{action}” dla: {count}",
     "bulkActiveLoanBlocked": "Aktywne wypożyczenie dotyczy {count, plural, one {# zmienianej szpuli} few {# zmienianych szpul} many {# zmienianych szpul} other {# zmienianych szpul}}. Zarejestruj zwrot przed zmianą miejsca lub stanu.",
     "bulkPrinterSlotBlocked": "W drukarce załadowano {count, plural, one {# zmienianą szpulę} few {# zmieniane szpule} many {# zmienianych szpul} other {# zmienianych szpul}}. Zamiast tego użyj operacji gniazda drukarki.",
@@ -875,7 +876,7 @@ export const plPLDictionary: DictionaryNode = {
     "bulkInvalidLocation": "Wybierz aktywne miejsce składowania.",
     "bulkStaleSelection": "Wybrane szpule uległy zmianie. Odśwież dane i ponownie sprawdź operację.",
     "bulkLegacyHostUnsupported": "Połączony host nie obsługuje atomowych operacji zbiorczych w magazynie. Zaktualizuj hosta i spróbuj ponownie.",
-    "bulkMutationDone": "{count, plural, one {Zaktualizowano atomowo # szpulę} few {Zaktualizowano atomowo # szpule} many {Zaktualizowano atomowo # szpul} other {Zaktualizowano atomowo # szpuli}}.",
+    "bulkMutationDone": "Zaktualizowane szpule: {count}.",
     "bulkMutationFailed": "Operacja zbiorcza nie powiodła się. Nie zapisano żadnych częściowych zmian.",
     "bulkReceiptMismatch": "Host zwrócił nieoczekiwany wynik operacji zbiorczej. Odśwież magazyn przed ponowną próbą.",
     "bulkExportDone": "Wyeksportowano {count, plural, one {# wybraną szpulę} few {# wybrane szpule} many {# wybranych szpul} other {# wybranej szpuli}} jako {format}.",

@@ -15,7 +15,13 @@ use super::database_spool_price_lock::lock_spool_price_for_historical_status;
 use super::inventory_domain::SpoolStatus;
 
 const BULK_SOURCE: &str = "INVENTORY_BULK_ACTION";
-type StoredSpoolSnapshot = (String, Option<String>, Option<String>, Option<String>);
+type StoredSpoolSnapshot = (
+    String,
+    Option<String>,
+    Option<String>,
+    Option<String>,
+    Option<i64>,
+);
 
 #[derive(Clone, Debug)]
 enum BulkTarget {
@@ -36,6 +42,7 @@ struct ActualSpoolSnapshot {
     assigned_to_printer: bool,
     removed: bool,
     affected: bool,
+    remaining_g: Option<i64>,
 }
 
 pub(crate) fn execute_inventory_bulk_mutation(
@@ -139,6 +146,15 @@ pub(crate) fn execute_inventory_bulk_mutation(
         actual.affected = is_affected(&actual, &target);
         if actual.affected {
             validate_affected_spool(&actual)?;
+            if matches!(target, BulkTarget::Status(SpoolStatus::InStock))
+                && actual.status == SpoolStatus::Empty
+                && actual.remaining_g.unwrap_or(0) <= 0
+            {
+                return Err(invalid_bulk_operation(
+                    "inventory.bulk.reactivation_requires_weight",
+                    "Set a positive measured filament weight before reactivating an empty roll.",
+                ));
+            }
         }
         actual_snapshots.push(actual);
     }
@@ -225,15 +241,23 @@ fn load_actual_snapshot(
 ) -> InventoryResult<Option<ActualSpoolSnapshot>> {
     let stored: Option<StoredSpoolSnapshot> = connection
         .query_row(
-            "SELECT status, location_id, home_location_id, deleted_at
+            "SELECT status, location_id, home_location_id, deleted_at, remaining_g
              FROM filament_spools
              WHERE id = ?1
              LIMIT 1",
             params![spool_id],
-            |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?, row.get(3)?)),
+            |row| {
+                Ok((
+                    row.get(0)?,
+                    row.get(1)?,
+                    row.get(2)?,
+                    row.get(3)?,
+                    row.get(4)?,
+                ))
+            },
         )
         .optional()?;
-    let Some((raw_status, location_id, home_location_id, deleted_at)) = stored else {
+    let Some((raw_status, location_id, home_location_id, deleted_at, remaining_g)) = stored else {
         return Ok(None);
     };
     let status = SpoolStatus::from_raw(Some(&raw_status));
@@ -247,6 +271,7 @@ fn load_actual_snapshot(
         removed: deleted_at.is_some()
             || matches!(status, SpoolStatus::Missing | SpoolStatus::Deleted),
         affected: false,
+        remaining_g,
     }))
 }
 

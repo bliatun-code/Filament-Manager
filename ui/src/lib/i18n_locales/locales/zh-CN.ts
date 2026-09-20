@@ -49,6 +49,7 @@ export const zhCNDictionary: DictionaryNode = {
     "optional": "可选"
   },
   "errors": {
+    "inventoryBulkReactivationRequiresWeight": "在重新激活之前，将测得的总重量设置为高于空线轴重量。",
       hostUnavailable: "主机不可用。恢复连接之前无法保存更改。请检查主机和网络，然后刷新。",
       "inventoryWeightHostUnsupported": "保存测得的料卷重量前，请先更新主机。未发送任何更改。",
       "inventoryStatusHostUnsupported": "更改料卷状态前请更新主机。未发送任何更改。",
@@ -469,7 +470,7 @@ export const zhCNDictionary: DictionaryNode = {
     "bulkTarget": "目标",
     "bulkReviewTarget": "{action}目标：{target}",
     "bulkReviewChanged": "选择或耗材卷数据发生了变化。请再次检查操作。",
-    "bulkAtomicWarning": "所有{count}的更改和它们的历史都一起提交，或者没有写任何更改。",
+    "bulkAtomicWarning": "所有选定的更改将一并保存。如果任何更改失败，则不保存任何更改。",
     "bulkConfirmAction": "确认对 {count} 个耗材卷执行{action}",
     "bulkActiveLoanBlocked": "{count, plural, one {# 个受影响的耗材卷正在借出。更改位置或状态前请先归还。} other {# 个受影响的耗材卷正在借出。更改位置或状态前请先归还。}}",
     "bulkPrinterSlotBlocked": "{count, plural, one {# 个受影响的耗材卷已装入打印机。请改用打印机槽位操作。} other {# 个受影响的耗材卷已装入打印机。请改用打印机槽位操作。}}",
@@ -479,7 +480,7 @@ export const zhCNDictionary: DictionaryNode = {
     "bulkInvalidLocation": "选择一个活跃的存储位置。",
     "bulkStaleSelection": "选定的耗材卷发生了变化。再次刷新并审查操作。",
     "bulkLegacyHostUnsupported": "连接的主机不支持原子库存批量操作。升级主机后再试。",
-    "bulkMutationDone": "{count, plural, one {已完整更新 # 个耗材卷。} other {已完整更新 # 个耗材卷。}}",
+    "bulkMutationDone": "已更新料卷：{count}。",
     "bulkMutationFailed": "批量操作失败，未写入任何部分更改。",
     "bulkReceiptMismatch": "主机返回了一个意想不到的大批量结果。请在再次尝试前刷新库存。",
     "bulkExportDone": "{count, plural, one {已将选中的 # 个耗材卷导出为 {format}。} other {已将选中的 # 个耗材卷导出为 {format}。}}",

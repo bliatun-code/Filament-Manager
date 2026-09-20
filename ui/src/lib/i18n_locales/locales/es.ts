@@ -49,6 +49,7 @@ export const esDictionary: DictionaryNode = {
     optional: "Opcional",
   },
   errors: {
+    "inventoryBulkReactivationRequiresWeight": "Establezca el peso total medido por encima del peso del rollo vacío antes de reactivar.",
       hostUnavailable: "El host no está disponible. Los cambios no se pueden guardar hasta que se restablezca la conexión. Comprueba el host y la red, y actualiza.",
       "inventoryWeightHostUnsupported": "Actualiza el anfitrión antes de guardar el peso medido de una bobina. No se envió ningún cambio.",
       "inventoryStatusHostUnsupported": "Actualiza el Host antes de cambiar el estado de una bobina. No se envió ningún cambio.",
@@ -979,7 +980,7 @@ export const esDictionary: DictionaryNode = {
     bulkReviewChanged:
       "La selección o los datos de las bobinas han cambiado. Revisa de nuevo la acción.",
     bulkAtomicWarning:
-      "Los {count} cambios y su historial se confirman juntos, o no se escribe ninguno.",
+      "Todos los cambios seleccionados se guardan juntos. Si alguno falla, no se guarda nada.",
     bulkConfirmAction: "Confirmar {action} para {count}",
     bulkActiveLoanBlocked:
       "{count, plural, one {# bobina afectada tiene} other {# bobinas afectadas tienen}} un préstamo activo. Devuélvela antes de cambiar la ubicación o el estado.",
@@ -995,7 +996,7 @@ export const esDictionary: DictionaryNode = {
     bulkLegacyHostUnsupported:
       "El host conectado no admite acciones en lote atómicas sobre el inventario. Actualiza el host y vuelve a intentarlo.",
     bulkMutationDone:
-      "{count, plural, one {# bobina actualizada} other {# bobinas actualizadas}} de forma atómica.",
+      "Bobinas actualizadas: {count}.",
     bulkMutationFailed:
       "La acción en lote ha fallado. No se ha escrito ningún cambio parcial.",
     bulkReceiptMismatch:

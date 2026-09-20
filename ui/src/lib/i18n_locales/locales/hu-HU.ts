@@ -71,6 +71,7 @@ export const huHUDictionary: DictionaryNode = {
     "optional": "Opcionális"
   },
   "errors": {
+    "inventoryBulkReactivationRequiresWeight": "Újraaktiválás előtt állítsa a mért össztömeget az üres orsó súlya fölé.",
       hostUnavailable: "A gazdagép nem érhető el. A módosítások csak a kapcsolat helyreállítása után menthetők. Ellenőrizze a gazdagépet és a hálózatot, majd frissítsen.",
       "inventoryWeightHostUnsupported": "Frissítse a gazdagépet a tekercs mért tömegének mentése előtt. Nem történt módosításküldés.",
       "inventoryStatusHostUnsupported": "A tekercs állapotának módosítása előtt frissítse a gazdagépet. Nem történt módosításküldés.",
@@ -1138,7 +1139,7 @@ export const huHUDictionary: DictionaryNode = {
     "bulkTarget": "Cél",
     "bulkReviewTarget": "A(z) {action} célja: {target}",
     "bulkReviewChanged": "A kijelölés vagy a tekercsadatok megváltoztak. Tekintse át ismét a műveletet.",
-    "bulkAtomicWarning": "Mind a(z) {count} módosítás és előzményeik együtt kerülnek mentésre, vagy egyik sem.",
+    "bulkAtomicWarning": "Az összes kijelölt módosítás együtt mentődik. Ha bármelyik sikertelen, semmi sem lesz mentve.",
     "bulkConfirmAction": "A(z) {action} megerősítése {count} elemhez",
     "bulkActiveLoanBlocked": "{count, plural, one {# érintett tekercshez} other {# érintett tekercshez}} aktív kölcsönzés tartozik. A hely vagy állapot módosítása előtt vegye vissza.",
     "bulkPrinterSlotBlocked": "{count, plural, one {# érintett tekercs} other {# érintett tekercs}} nyomtatóba van töltve. Használja inkább a nyomtatóhely műveleteit.",
@@ -1148,7 +1149,7 @@ export const huHUDictionary: DictionaryNode = {
     "bulkInvalidLocation": "Válasszon egy aktív tárolóhelyet.",
     "bulkStaleSelection": "A kijelölt tekercsek megváltoztak. Frissítsen, majd tekintse át ismét a műveletet.",
     "bulkLegacyHostUnsupported": "A csatlakoztatott gazdagép nem támogatja az atomi készletműveleteket. Frissítse a gazdagépet, majd próbálja újra.",
-    "bulkMutationDone": "{count, plural, one {# tekercs frissítve} other {# tekercs frissítve}} atomi művelettel.",
+    "bulkMutationDone": "Frissített tekercsek: {count}.",
     "bulkMutationFailed": "A tömeges művelet sikertelen volt. Részleges módosítás nem került mentésre.",
     "bulkReceiptMismatch": "A gazdagép váratlan tömeges eredményt adott vissza. Újabb próbálkozás előtt frissítse a készletet.",
     "bulkExportDone": "{count, plural, one {# kijelölt tekercs} other {# kijelölt tekercs}} exportálva {format} formátumban.",

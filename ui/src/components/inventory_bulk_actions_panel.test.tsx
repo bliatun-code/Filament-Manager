@@ -448,3 +448,14 @@ test("select-visible checkbox exposes controlled, accessible multi-selection", (
   });
   assert.equal(selectVisibleChecked, false);
 });
+
+test("status review shows the translated target name instead of the storage token", () => {
+  const review = unwrapMutationPlan(buildInventoryBulkMutationPlan({
+    action: "STATUS", targetStatus: "EMPTY", selectedSpoolIds: ["spool-a"], snapshots,
+  }));
+  const html = renderToStaticMarkup(<InventoryBulkActionsPanelView {...panelProps({
+    review, copy: { ...copy, statusName: () => "Tom" },
+  })} />);
+  assert.match(html, /STATUS target: Tom/);
+  assert.doesNotMatch(html, /STATUS target: EMPTY/);
+});
