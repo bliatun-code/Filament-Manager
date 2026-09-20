@@ -3,6 +3,42 @@
   "messages": [
     {
       "surface": "desktop",
+      "key": "settings.importFileEmpty",
+      "meaning": "This file is empty. Choose an export containing data.",
+      "screenshot": "docs/screenshots/settings-maintenance.jpg"
+    },
+    {
+      "surface": "desktop",
+      "key": "settings.importJsonInvalid",
+      "meaning": "The JSON file is damaged or incomplete. Export or download it again, then retry.",
+      "screenshot": "docs/screenshots/settings-maintenance.jpg"
+    },
+    {
+      "surface": "desktop",
+      "key": "settings.importBackupUnsupported",
+      "meaning": "This backup version is not supported. Update Filament Manager or choose a backup exported by this version.",
+      "screenshot": "docs/screenshots/settings-maintenance.jpg"
+    },
+    {
+      "surface": "desktop",
+      "key": "settings.importBackupInvalid",
+      "meaning": "This is not a complete Filament Manager backup. Choose a full backup JSON exported from Program maintenance.",
+      "screenshot": "docs/screenshots/settings-maintenance.jpg"
+    },
+    {
+      "surface": "desktop",
+      "key": "settings.importInventoryInvalid",
+      "meaning": "Invalid inventory data. Use an exported inventory CSV or JSON. Each row needs spool_id, material, filament_name and color_name; weights must be non-negative whole grams.",
+      "screenshot": "docs/screenshots/settings-maintenance.jpg"
+    },
+    {
+      "surface": "desktop",
+      "key": "settings.importDataScopeHint",
+      "meaning": "Inventory CSV/JSON creates or updates spools with matching IDs. A full backup replaces the library after confirmation. Export a full backup first to keep a recovery copy.",
+      "screenshot": "docs/screenshots/settings-maintenance.jpg"
+    },
+    {
+      "surface": "desktop",
       "key": "errors.hostUnavailable",
       "meaning": "The paired library Host cannot currently be reached. Saved pairing is distinct from live connectivity: no offline write is queued or reported saved. Ask the user to restore Host/network availability and refresh. Missing pairing uses a separate message.",
       "screenshot": "docs/screenshots/settings-library-network.jpg"

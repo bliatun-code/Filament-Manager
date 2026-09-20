@@ -1696,6 +1696,13 @@ export const esDictionary: DictionaryNode = {
     },
   },
   settings: {
+    importFileEmpty: "Este archivo está vacío. Elige una exportación que contenga datos.",
+    importJsonInvalid: "El archivo JSON está dañado o incompleto. Expórtalo o descárgalo de nuevo y vuelve a intentarlo.",
+    importBackupUnsupported: "Esta versión de copia de seguridad no es compatible. Actualiza Filament Manager o elige una copia exportada por esta versión.",
+    importBackupInvalid: "Este archivo no es una copia completa de Filament Manager. Elige una copia JSON completa exportada desde el mantenimiento del programa.",
+    importInventoryInvalid: "Datos de inventario no válidos. Usa un CSV o JSON exportado del inventario. Cada fila necesita spool_id, material, filament_name y color_name; los pesos deben ser gramos enteros no negativos.",
+    importDataScopeHint: "El CSV/JSON de inventario crea bobinas o actualiza las que tienen el mismo ID. Una copia completa reemplaza la biblioteca tras confirmarlo. Exporta primero una copia completa para poder restaurarla.",
+
     "bambuDiscoveryTitle": "Buscar impresora Bambu",
     "bambuDiscoveryHint": "Escucha brevemente los anuncios locales de impresoras Bambu. No se envía ningún código de acceso.",
     "bambuDiscoveryFind": "Buscar impresoras Bambu",

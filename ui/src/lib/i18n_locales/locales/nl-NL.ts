@@ -1144,6 +1144,13 @@ export const nlNLDictionary: DictionaryNode = {
     "withToolheads": "Multitoolkop"
   },
   "settings": {
+    "importFileEmpty": "Dit bestand is leeg. Kies een export met gegevens.",
+    "importJsonInvalid": "Het JSON-bestand is beschadigd of onvolledig. Exporteer of download het opnieuw en probeer het nogmaals.",
+    "importBackupUnsupported": "Deze back-upversie wordt niet ondersteund. Werk Filament Manager bij of kies een back-up die met deze versie is geëxporteerd.",
+    "importBackupInvalid": "Dit is geen volledige Filament Manager-back-up. Kies een volledige JSON-back-up die via programmaonderhoud is geëxporteerd.",
+    "importInventoryInvalid": "Ongeldige voorraadgegevens. Gebruik een geëxporteerde voorraad-CSV of -JSON. Elke rij vereist spool_id, material, filament_name en color_name; gewichten moeten hele grammen van nul of hoger zijn.",
+    "importDataScopeHint": "Voorraad-CSV/JSON maakt spoelen aan of werkt spoelen met hetzelfde ID bij. Een volledige back-up vervangt de bibliotheek na bevestiging. Exporteer eerst een volledige back-up om de gegevens te kunnen herstellen.",
+
     "bambuDiscoveryTitle": "Bambu-printer zoeken",
     "bambuDiscoveryHint": "Luister kort naar lokale aankondigingen van Bambu-printers. Er wordt geen toegangscode verzonden.",
     "bambuDiscoveryFind": "Bambu-printers zoeken",

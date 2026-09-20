@@ -18,6 +18,7 @@ async function buildHarness() {
     import {createRoot} from "react-dom/client";
     import {flushSync} from "react-dom";
     import {useSettingsBackupFileActions} from ${file("./use_settings_backup_file_actions.ts")};
+    import {useSettingsBackupValidationState} from ${file("./use_settings_backup_validation_state.ts")};
     import {SettingsBackupImportConfirmation} from ${file("../components/settings_backup_import_confirmation.tsx")};
     import ${file("../index.css")};
     const t = (key, fallback="") => fallback;
@@ -46,9 +47,10 @@ async function buildHarness() {
       throw Error("Unexpected command "+command);
     }};
     function BackupActions({busy,setBusy,error,setError,info,setInfo}) {
+      const validationState=useSettingsBackupValidationState();
       actions=useSettingsBackupFileActions({
-        busy,clearBackupValidation:noOp,clearConfirmResetAction:noOp,librarySyncModeDraft:config.mode,
-        locale:"en",recordBackupValidation:()=>calls.validated++,recordImportedFullBackup:()=>calls.recorded++,
+        busy,clearBackupValidation:validationState.clearBackupValidation,clearConfirmResetAction:noOp,librarySyncModeDraft:config.mode,
+        locale:"en",recordBackupValidation:(summary,at)=>{calls.validated++;validationState.recordBackupValidation(summary,at);},recordImportedFullBackup:()=>calls.recorded++,
         reloadSettings:async()=>{
           calls.reloaded++;
           if(config.reloadChangesIdentity) {
@@ -69,7 +71,7 @@ async function buildHarness() {
           inventoryImportDone:"Inventory imported",librarySyncImportedOnClientHint:"Prepare Host",
           rows:"Rows",updated:"updated"}),tauri:config.tauri,t,
       });
-      state={busy,error,info,pending:actions.backupImportConfirmation.fileName};
+      state={busy,error,info,pending:actions.backupImportConfirmation.fileName,validation:validationState.lastBackupValidation};
       return <>
         <button data-testid="background">Settings background</button>
         {config.tab==="MAINTENANCE"?<>
@@ -267,7 +269,7 @@ test("backup file import uses explicit app confirmation in a real browser", asyn
         await idle(page);
         assert.deepEqual(await importCalls(page),[],"Importer would succeed; the UI must not send a declared backup after preflight failure");
         assert.equal(await dialog(page).count(),0,"Failed validation must not offer a false confirmation");
-        assert.equal((await inspect(page)).state.error,"Import failed");
+        assert.equal((await inspect(page)).state.error,"selected-backup.json: Import failed");
         assert.equal((await inspect(page)).state.info,null);
         assert.equal((await inspect(page)).calls.recorded,0);
       });
@@ -290,7 +292,7 @@ test("backup file import uses explicit app confirmation in a real browser", asyn
       await selectFile(page,"malformed full backup");
       await idle(page);
       assert.equal(await dialog(page).count(),0);
-      assert.equal((await inspect(page)).state.error,"Import failed");
+      assert.equal((await inspect(page)).state.error,"selected-backup.json: Import failed");
       assert.equal((await inspect(page)).state.info,null);
       assert.equal((await inspect(page)).calls.recorded,0);
     });
@@ -359,6 +361,38 @@ test("backup file import uses explicit app confirmation in a real browser", asyn
         assert.equal(await dialog(page).count(),0);
       });
     }
+
+    await scenario("a rejected validation cannot retain the previous file's compatible summary",async page=>{
+      await page.evaluate("qa.choose('valid backup',{validateOnly:true})");
+      await idle(page);
+      assert.equal((await inspect(page)).state.validation.total_rows,1663);
+      assert.equal((await inspect(page)).state.validation.fileName,"captured-backup.json");
+      await page.evaluate("qa.update({validation:'reject'})");
+      await page.evaluate("qa.choose('invalid backup',{validateOnly:true})");
+      await idle(page);
+      assert.equal((await inspect(page)).state.validation,null);
+      assert.equal((await inspect(page)).state.info,null);
+      assert.equal((await inspect(page)).state.error,"captured-backup.json: Validation failed");
+      assert.deepEqual(await importCalls(page),[]);
+      await page.evaluate("qa.update({validation:'valid'})");
+      await page.evaluate("qa.choose('valid retry',{validateOnly:true})");
+      await idle(page);
+      assert.equal((await inspect(page)).state.validation.total_rows,1663);
+      assert.equal((await inspect(page)).state.validation.fileName,"captured-backup.json");
+      assert.equal((await inspect(page)).state.error,null);
+    });
+
+    await scenario("reading a newly selected validation file hides an obsolete compatible summary",async page=>{
+      await page.evaluate("qa.choose('old valid file',{validateOnly:true})");
+      await idle(page);
+      await page.evaluate("void qa.choose('new file',{validateOnly:true,deferRead:true})");
+      await page.waitForFunction("qa.inspect().state.busy");
+      assert.equal((await inspect(page)).state.validation,null);
+      await page.evaluate("qa.resolveRead()");
+      await idle(page);
+      assert.equal((await inspect(page)).state.validation.total_rows,1663);
+      assert.equal((await inspect(page)).state.validation.fileName,"captured-backup.json");
+    });
 
     await scenario("read-only validation reports valid backup without opening import",async page=>{
       await page.evaluate("qa.update({client:true})");

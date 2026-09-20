@@ -1374,6 +1374,13 @@ export const daDKDictionary: DictionaryNode = {
     }
   },
   "settings": {
+    "importFileEmpty": "Filen er tom. Vælg en eksport, der indeholder data.",
+    "importJsonInvalid": "JSON-filen er beskadiget eller ufuldstændig. Eksportér eller hent den igen, og prøv på ny.",
+    "importBackupUnsupported": "Denne backupversion understøttes ikke. Opdatér Filament Manager, eller vælg en backup eksporteret med denne version.",
+    "importBackupInvalid": "Dette er ikke en fuldstændig Filament Manager-backup. Vælg en fuld JSON-backup eksporteret fra programvedligeholdelse.",
+    "importInventoryInvalid": "Ugyldige lagerdata. Brug en eksporteret lagerfil i CSV- eller JSON-format. Hver række kræver spool_id, material, filament_name og color_name; vægte skal være hele gram fra nul og opefter.",
+    "importDataScopeHint": "Lager-CSV/JSON opretter ruller eller opdaterer ruller med samme ID. En fuld backup erstatter biblioteket efter bekræftelse. Eksportér først en fuld backup, så du kan gendanne.",
+
     "bambuDiscoveryTitle": "Find Bambu-printer",
     "bambuDiscoveryHint": "Lyt kort efter lokale Bambu-printerannoncer. Ingen adgangskode sendes.",
     "bambuDiscoveryFind": "Find Bambu-printere",

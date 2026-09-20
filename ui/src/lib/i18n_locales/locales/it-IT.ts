@@ -1418,6 +1418,13 @@ export const itITDictionary: DictionaryNode = {
     withToolheads: "Testa multiutensile",
   },
   settings: {
+    importFileEmpty: "Il file è vuoto. Scegli un’esportazione contenente dati.",
+    importJsonInvalid: "Il file JSON è danneggiato o incompleto. Esportalo o scaricalo di nuovo, poi riprova.",
+    importBackupUnsupported: "Questa versione del backup non è supportata. Aggiorna Filament Manager o scegli un backup esportato da questa versione.",
+    importBackupInvalid: "Questo non è un backup completo di Filament Manager. Scegli un backup JSON completo esportato dalla manutenzione del programma.",
+    importInventoryInvalid: "Dati di inventario non validi. Usa un CSV o JSON esportato dall’inventario. Ogni riga richiede spool_id, material, filament_name e color_name; i pesi devono essere grammi interi non negativi.",
+    importDataScopeHint: "Il CSV/JSON dell’inventario crea bobine o aggiorna quelle con lo stesso ID. Un backup completo sostituisce la libreria dopo la conferma. Esporta prima un backup completo per poter ripristinare i dati.",
+
     "bambuDiscoveryTitle": "Trova stampante Bambu",
     "bambuDiscoveryHint": "Ascolta brevemente gli annunci locali delle stampanti Bambu. Non viene inviato alcun codice di accesso.",
     "bambuDiscoveryFind": "Trova stampanti Bambu",

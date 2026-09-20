@@ -1374,6 +1374,13 @@ export const zhTWDictionary: DictionaryNode = {
     }
   },
   "settings": {
+    "importFileEmpty": "此檔案為空。請選擇含有資料的匯出檔案。",
+    "importJsonInvalid": "JSON 檔案已損毀或不完整。請重新匯出或下載後再試。",
+    "importBackupUnsupported": "不支援此備份版本。請更新 Filament Manager，或選擇由目前版本匯出的備份。",
+    "importBackupInvalid": "這不是完整的 Filament Manager 備份。請選擇在程式維護中匯出的完整 JSON 備份。",
+    "importInventoryInvalid": "庫存資料無效。請使用匯出的庫存 CSV 或 JSON。每列必須包含 spool_id、material、filament_name 和 color_name；重量必須為非負整數公克。",
+    "importDataScopeHint": "庫存 CSV/JSON 會建立料捲或更新 ID 相同的料捲。完整備份會在確認後取代資料庫。請先匯出完整備份，以便還原。",
+
     "filamentDefaultsUnknownWeight": "未知的名義重量",
     "filamentDefaultsLoadError": "無法載入線材預設值。",
     "filamentDefaultsSaveCurrencyError": "無法儲存預設貨幣。",

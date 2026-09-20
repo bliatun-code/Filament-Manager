@@ -1374,6 +1374,13 @@ export const koKRDictionary: DictionaryNode = {
     }
   },
   "settings": {
+    "importFileEmpty": "파일이 비어 있습니다. 데이터가 포함된 내보내기 파일을 선택하세요.",
+    "importJsonInvalid": "JSON 파일이 손상되었거나 불완전합니다. 다시 내보내거나 다운로드한 후 재시도하세요.",
+    "importBackupUnsupported": "지원되지 않는 백업 버전입니다. Filament Manager를 업데이트하거나 현재 버전에서 내보낸 백업을 선택하세요.",
+    "importBackupInvalid": "완전한 Filament Manager 백업이 아닙니다. 프로그램 유지 관리에서 내보낸 전체 JSON 백업을 선택하세요.",
+    "importInventoryInvalid": "재고 데이터가 올바르지 않습니다. 내보낸 재고 CSV 또는 JSON을 사용하세요. 각 행에는 spool_id, material, filament_name, color_name이 필요하며 무게는 0 이상의 정수 그램이어야 합니다.",
+    "importDataScopeHint": "재고 CSV/JSON은 스풀을 만들거나 ID가 같은 스풀을 업데이트합니다. 전체 백업은 확인 후 라이브러리를 대체합니다. 복구할 수 있도록 먼저 전체 백업을 내보내세요.",
+
     "filamentDefaultsUnknownWeight": "알 수 없는 명목 중량",
     "filamentDefaultsLoadError": "필라멘트 기본 설정 로드에 실패했습니다.",
     "filamentDefaultsSaveCurrencyError": "기본 통화를 저장할 수 없었습니다.",

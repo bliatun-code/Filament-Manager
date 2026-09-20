@@ -1144,6 +1144,13 @@ export const csCZDictionary: DictionaryNode = {
     "withToolheads": "Vícenástrojová hlava"
   },
   "settings": {
+    "importFileEmpty": "Soubor je prázdný. Vyberte export obsahující data.",
+    "importJsonInvalid": "Soubor JSON je poškozený nebo neúplný. Znovu jej exportujte nebo stáhněte a opakujte akci.",
+    "importBackupUnsupported": "Tato verze zálohy není podporována. Aktualizujte Filament Manager nebo vyberte zálohu exportovanou touto verzí.",
+    "importBackupInvalid": "Toto není úplná záloha Filament Manager. Vyberte úplnou zálohu JSON exportovanou v údržbě programu.",
+    "importInventoryInvalid": "Neplatná data skladu. Použijte export skladu CSV nebo JSON. Každý řádek vyžaduje spool_id, material, filament_name a color_name; hmotnosti musí být nezáporná celá čísla v gramech.",
+    "importDataScopeHint": "Skladový CSV/JSON vytváří cívky nebo aktualizuje cívky se stejným ID. Úplná záloha po potvrzení nahradí knihovnu. Nejprve exportujte úplnou zálohu, abyste mohli data obnovit.",
+
     "bambuDiscoveryTitle": "Najít tiskárnu Bambu",
     "bambuDiscoveryHint": "Krátce naslouchejte místním oznámením tiskáren Bambu. Přístupový kód se neodesílá.",
     "bambuDiscoveryFind": "Najít tiskárny Bambu",

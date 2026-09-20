@@ -1144,6 +1144,13 @@ export const plPLDictionary: DictionaryNode = {
     "withToolheads": "Głowica wielofunkcyjna"
   },
   "settings": {
+    "importFileEmpty": "Ten plik jest pusty. Wybierz eksport zawierający dane.",
+    "importJsonInvalid": "Plik JSON jest uszkodzony lub niekompletny. Wyeksportuj lub pobierz go ponownie i spróbuj jeszcze raz.",
+    "importBackupUnsupported": "Ta wersja kopii zapasowej nie jest obsługiwana. Zaktualizuj Filament Manager lub wybierz kopię wyeksportowaną przez tę wersję.",
+    "importBackupInvalid": "To nie jest pełna kopia zapasowa Filament Manager. Wybierz pełną kopię JSON wyeksportowaną w sekcji konserwacji programu.",
+    "importInventoryInvalid": "Nieprawidłowe dane magazynu. Użyj eksportu magazynu CSV lub JSON. Każdy wiersz wymaga spool_id, material, filament_name i color_name; masa musi być nieujemną liczbą całkowitą gramów.",
+    "importDataScopeHint": "CSV/JSON magazynu tworzy szpule lub aktualizuje szpule o tym samym ID. Pełna kopia zastępuje bibliotekę po potwierdzeniu. Najpierw wyeksportuj pełną kopię, aby móc przywrócić dane.",
+
     "bambuDiscoveryTitle": "Znajdź drukarkę Bambu",
     "bambuDiscoveryHint": "Krótko nasłuchuj lokalnych ogłoszeń drukarek Bambu. Kod dostępu nie jest wysyłany.",
     "bambuDiscoveryFind": "Znajdź drukarki Bambu",

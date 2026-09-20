@@ -1374,6 +1374,13 @@ export const fiFIDictionary: DictionaryNode = {
     }
   },
   "settings": {
+    "importFileEmpty": "Tiedosto on tyhjä. Valitse tietoja sisältävä vientitiedosto.",
+    "importJsonInvalid": "JSON-tiedosto on vioittunut tai puutteellinen. Vie tai lataa se uudelleen ja yritä sitten uudestaan.",
+    "importBackupUnsupported": "Tätä varmuuskopion versiota ei tueta. Päivitä Filament Manager tai valitse tällä versiolla viety varmuuskopio.",
+    "importBackupInvalid": "Tämä ei ole täydellinen Filament Manager -varmuuskopio. Valitse ohjelman ylläpidosta viety täydellinen JSON-varmuuskopio.",
+    "importInventoryInvalid": "Virheelliset varastotiedot. Käytä vietyä varaston CSV- tai JSON-tiedostoa. Jokainen rivi tarvitsee kentät spool_id, material, filament_name ja color_name; painojen on oltava ei-negatiivisia kokonaislukuja grammoina.",
+    "importDataScopeHint": "Varaston CSV/JSON luo keloja tai päivittää kelat, joilla on sama ID. Täydellinen varmuuskopio korvaa kirjaston vahvistuksen jälkeen. Vie ensin täydellinen varmuuskopio palauttamista varten.",
+
     "filamentDefaultsUnknownWeight": "Tuntematon nimellinen paino",
     "filamentDefaultsLoadError": "Filamenttien oletusasetusten lataus epäonnistui.",
     "filamentDefaultsSaveCurrencyError": "Päävaluuttaa ei voitu tallentaa.",

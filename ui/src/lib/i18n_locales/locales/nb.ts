@@ -1625,6 +1625,13 @@ export const nbDictionary: DictionaryNode = {
       },
     },
     settings: {
+    importFileEmpty: "Filen er tom. Velg en eksport som inneholder data.",
+    importJsonInvalid: "JSON-filen er skadet eller ufullstendig. Eksporter eller last den ned på nytt, og prøv igjen.",
+    importBackupUnsupported: "Denne backupversjonen støttes ikke. Oppdater Filament Manager eller velg en backup eksportert med denne versjonen.",
+    importBackupInvalid: "Dette er ikke en fullstendig Filament Manager-backup. Velg en full backup i JSON-format eksportert fra Programvedlikehold.",
+    importInventoryInvalid: "Ugyldige lagerdata. Bruk en eksportert lagerfil i CSV- eller JSON-format. Hver rad må ha spool_id, material, filament_name og color_name. Vekt må være hele gram, minst null.",
+    importDataScopeHint: "Lager-CSV/JSON oppretter ruller eller oppdaterer ruller med samme ID. En full backup erstatter biblioteket etter bekreftelse. Eksporter en full backup først, slik at du kan gjenopprette.",
+
       filamentDefaultsUnknownWeight: "Ukjent nominell vekt",
       filamentDefaultsLoadError: "Kunne ikke laste filamentstandardene.",
       filamentDefaultsSaveCurrencyError: "Kunne ikke lagre standardvalutaen.",

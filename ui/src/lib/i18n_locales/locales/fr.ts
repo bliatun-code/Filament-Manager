@@ -1640,6 +1640,13 @@ export const frDictionary: DictionaryNode = {
     },
   },
   settings: {
+    importFileEmpty: "Ce fichier est vide. Choisissez un export contenant des données.",
+    importJsonInvalid: "Le fichier JSON est endommagé ou incomplet. Exportez-le ou téléchargez-le à nouveau, puis réessayez.",
+    importBackupUnsupported: "Cette version de sauvegarde n’est pas prise en charge. Mettez Filament Manager à jour ou choisissez une sauvegarde exportée par cette version.",
+    importBackupInvalid: "Ce fichier n’est pas une sauvegarde complète de Filament Manager. Choisissez une sauvegarde JSON complète exportée depuis la maintenance du programme.",
+    importInventoryInvalid: "Données de stock invalides. Utilisez un export CSV ou JSON du stock. Chaque ligne doit contenir spool_id, material, filament_name et color_name ; les poids doivent être des grammes entiers positifs ou nuls.",
+    importDataScopeHint: "Le CSV/JSON du stock crée des bobines ou met à jour celles ayant le même identifiant. Une sauvegarde complète remplace la bibliothèque après confirmation. Exportez d’abord une sauvegarde complète pour pouvoir restaurer les données.",
+
     filamentDefaultsUnknownWeight: "Poids nominal inconnu",
     filamentDefaultsLoadError: "Impossible de charger les valeurs par défaut du filament.",
     filamentDefaultsSaveCurrencyError: "Impossible d’enregistrer la devise par défaut.",

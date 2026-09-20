@@ -1374,6 +1374,13 @@ export const ukUADictionary: DictionaryNode = {
     }
   },
   "settings": {
+    "importFileEmpty": "Файл порожній. Виберіть експорт із даними.",
+    "importJsonInvalid": "Файл JSON пошкоджений або неповний. Експортуйте чи завантажте його знову та повторіть спробу.",
+    "importBackupUnsupported": "Ця версія резервної копії не підтримується. Оновіть Filament Manager або виберіть копію, експортовану цією версією.",
+    "importBackupInvalid": "Це не повна резервна копія Filament Manager. Виберіть повну копію JSON, експортовану в розділі обслуговування програми.",
+    "importInventoryInvalid": "Некоректні дані запасів. Використайте експорт запасів CSV або JSON. Кожен рядок має містити spool_id, material, filament_name і color_name; вага має бути цілим невід’ємним числом грамів.",
+    "importDataScopeHint": "CSV/JSON запасів створює котушки або оновлює котушки з тим самим ID. Повна копія замінює бібліотеку після підтвердження. Спершу експортуйте повну копію для можливості відновлення.",
+
     "filamentDefaultsUnknownWeight": "Невідома номінальна вага",
     "filamentDefaultsLoadError": "Не вдалося завантажити стандарти філаменту.",
     "filamentDefaultsSaveCurrencyError": "Не вдалося зберегти заздалегідь встановлену валюту.",

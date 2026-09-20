@@ -1374,6 +1374,13 @@ export const zhCNDictionary: DictionaryNode = {
     }
   },
   "settings": {
+    "importFileEmpty": "此文件为空。请选择包含数据的导出文件。",
+    "importJsonInvalid": "JSON 文件已损坏或不完整。请重新导出或下载后重试。",
+    "importBackupUnsupported": "不支持此备份版本。请更新 Filament Manager，或选择由当前版本导出的备份。",
+    "importBackupInvalid": "这不是完整的 Filament Manager 备份。请选择在程序维护中导出的完整 JSON 备份。",
+    "importInventoryInvalid": "库存数据无效。请使用导出的库存 CSV 或 JSON。每行必须包含 spool_id、material、filament_name 和 color_name；重量必须为非负整数克。",
+    "importDataScopeHint": "库存 CSV/JSON 会新建料卷或更新 ID 相同的料卷。完整备份将在确认后替换库。请先导出完整备份，以便恢复。",
+
     "filamentDefaultsUnknownWeight": "未知名义重量",
     "filamentDefaultsLoadError": "无法加载耗材默认值。",
     "filamentDefaultsSaveCurrencyError": "无法保存默认货币。",

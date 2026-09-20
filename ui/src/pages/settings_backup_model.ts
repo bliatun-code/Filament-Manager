@@ -5,6 +5,8 @@ import {
 } from "../lib/number_display";
 import { isFullBackupValidationFormat } from "../lib/settings_utils";
 
+export type SettingsBackupValidation = BackupValidationStats & { fileName?: string };
+
 export type SettingsBackupValidationState = {
   hasExtraTables: boolean;
   hasMissingTables: boolean;

@@ -1,8 +1,8 @@
+import type { SettingsBackupValidation } from "./settings_backup_model";
 import type { Dispatch, SetStateAction } from "react";
 import type { SettingsTabKey } from "./settings_page_model";
 import type { Locale } from "../lib/i18n";
 import type {
-  BackupValidationStats,
   CatalogResetStats,
   LibrarySyncHostValidationResult,
   LibrarySyncRemoteSnapshot,
@@ -38,15 +38,15 @@ type UseSettingsMaintenanceSectionInput = {
   busy: boolean;
   catalogCount: number | string;
   clearBackupValidation: () => void;
-  lastBackupValidation: BackupValidationStats | null;
+  lastBackupValidation: SettingsBackupValidation | null;
   lastCatalogReset: CatalogResetStats | null;
   librarySyncModeDraft: LibrarySyncMode;
   locale: Locale;
   missingSwatchCount: number | string;
   printerCount: number;
-  recordBackupValidation: (summary: BackupValidationStats, validatedAt: string) => void;
+  recordBackupValidation: (summary: SettingsBackupValidation, validatedAt: string) => void;
   recordExportedBackupValidation: (
-    validationSummary: BackupValidationStats,
+    validationSummary: SettingsBackupValidation,
     exportedAt: string,
   ) => void;
   recordImportedFullBackup: (importedAt: string) => void;

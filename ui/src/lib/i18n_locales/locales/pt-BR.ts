@@ -1457,6 +1457,13 @@ export const ptBRDictionary: DictionaryNode = {
     withToolheads: "Multi-ferramenta",
   },
   settings: {
+    importFileEmpty: "Este arquivo está vazio. Escolha uma exportação com dados.",
+    importJsonInvalid: "O arquivo JSON está danificado ou incompleto. Exporte ou baixe novamente e tente outra vez.",
+    importBackupUnsupported: "Esta versão de backup não é compatível. Atualize o Filament Manager ou escolha um backup exportado por esta versão.",
+    importBackupInvalid: "Este não é um backup completo do Filament Manager. Escolha um backup JSON completo exportado pela manutenção do programa.",
+    importInventoryInvalid: "Dados de estoque inválidos. Use um CSV ou JSON exportado do estoque. Cada linha precisa de spool_id, material, filament_name e color_name; os pesos devem ser gramas inteiros não negativos.",
+    importDataScopeHint: "O CSV/JSON de estoque cria carretéis ou atualiza os que têm o mesmo ID. Um backup completo substitui a biblioteca após confirmação. Exporte antes um backup completo para poder restaurar os dados.",
+
     "bambuDiscoveryTitle": "Localizar impressora Bambu",
     "bambuDiscoveryHint": "Escute brevemente os anúncios locais de impressoras Bambu. Nenhum código de acesso é enviado.",
     "bambuDiscoveryFind": "Localizar impressoras Bambu",

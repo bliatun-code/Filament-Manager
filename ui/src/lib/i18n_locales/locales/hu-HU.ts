@@ -1374,6 +1374,13 @@ export const huHUDictionary: DictionaryNode = {
     }
   },
   "settings": {
+    "importFileEmpty": "A fájl üres. Válasszon adatokat tartalmazó exportot.",
+    "importJsonInvalid": "A JSON-fájl sérült vagy hiányos. Exportálja vagy töltse le újra, majd próbálja ismét.",
+    "importBackupUnsupported": "Ez a biztonságimásolat-verzió nem támogatott. Frissítse a Filament Managert, vagy válasszon ezzel a verzióval exportált másolatot.",
+    "importBackupInvalid": "Ez nem teljes Filament Manager biztonsági másolat. Válasszon a programkarbantartásból exportált teljes JSON-másolatot.",
+    "importInventoryInvalid": "Érvénytelen készletadatok. Használjon exportált készlet-CSV- vagy JSON-fájlt. Minden sorhoz szükséges a spool_id, material, filament_name és color_name; a tömeg nemnegatív egész gramm lehet.",
+    "importDataScopeHint": "A készlet-CSV/JSON tekercseket hoz létre vagy azonos ID esetén frissít. A teljes biztonsági másolat megerősítés után lecseréli a könyvtárat. Előbb exportáljon teljes másolatot a visszaállításhoz.",
+
     "bambuDiscoveryTitle": "Bambu nyomtató keresése",
     "bambuDiscoveryHint": "Rövid ideig figyeli a helyi Bambu nyomtatók bejelentéseit. A hozzáférési kód nem kerül elküldésre.",
     "bambuDiscoveryFind": "Bambu nyomtatók keresése",

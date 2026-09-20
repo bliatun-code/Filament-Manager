@@ -1374,6 +1374,13 @@ export const jaJPDictionary: DictionaryNode = {
     }
   },
   "settings": {
+    "importFileEmpty": "このファイルは空です。データを含むエクスポートを選択してください。",
+    "importJsonInvalid": "JSON ファイルが破損しているか不完全です。再度エクスポートまたはダウンロードしてからやり直してください。",
+    "importBackupUnsupported": "このバックアップのバージョンはサポートされていません。Filament Manager を更新するか、現在のバージョンでエクスポートしたバックアップを選択してください。",
+    "importBackupInvalid": "これは完全な Filament Manager バックアップではありません。プログラムのメンテナンスからエクスポートした完全な JSON バックアップを選択してください。",
+    "importInventoryInvalid": "在庫データが無効です。エクスポートした在庫 CSV または JSON を使用してください。各行には spool_id、material、filament_name、color_name が必要です。重量はゼロ以上の整数グラムで指定してください。",
+    "importDataScopeHint": "在庫 CSV/JSON はスプールを作成するか、同じ ID のスプールを更新します。完全バックアップは確認後にライブラリを置き換えます。復元できるように、先に完全バックアップをエクスポートしてください。",
+
     "filamentDefaultsUnknownWeight": "不明の名目重量",
     "filamentDefaultsLoadError": "フィラメントデフォルトの読み込みに失敗しました。",
     "filamentDefaultsSaveCurrencyError": "デフォルト通貨を保存できませんでした。",

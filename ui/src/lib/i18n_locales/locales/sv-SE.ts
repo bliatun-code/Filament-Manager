@@ -1374,6 +1374,13 @@ export const svSEDictionary: DictionaryNode = {
     }
   },
   "settings": {
+    "importFileEmpty": "Filen är tom. Välj en export som innehåller data.",
+    "importJsonInvalid": "JSON-filen är skadad eller ofullständig. Exportera eller ladda ner den igen och försök på nytt.",
+    "importBackupUnsupported": "Den här säkerhetskopians version stöds inte. Uppdatera Filament Manager eller välj en kopia exporterad med den här versionen.",
+    "importBackupInvalid": "Detta är inte en fullständig Filament Manager-säkerhetskopia. Välj en fullständig JSON-kopia exporterad från programunderhåll.",
+    "importInventoryInvalid": "Ogiltiga lagerdata. Använd en exporterad lagerfil i CSV- eller JSON-format. Varje rad behöver spool_id, material, filament_name och color_name; vikter måste vara hela gram från noll och uppåt.",
+    "importDataScopeHint": "Lager-CSV/JSON skapar rullar eller uppdaterar rullar med samma ID. En fullständig säkerhetskopia ersätter biblioteket efter bekräftelse. Exportera först en fullständig kopia så att du kan återställa.",
+
     "bambuDiscoveryTitle": "Hitta Bambu-skrivare",
     "bambuDiscoveryHint": "Lyssna kort efter lokala annonser från Bambu-skrivare. Ingen åtkomstkod skickas.",
     "bambuDiscoveryFind": "Hitta Bambu-skrivare",

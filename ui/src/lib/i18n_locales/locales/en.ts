@@ -1619,6 +1619,13 @@ export const enDictionary: DictionaryNode = {
       },
     },
     settings: {
+    importFileEmpty: "This file is empty. Choose an export containing data.",
+    importJsonInvalid: "The JSON file is damaged or incomplete. Export or download it again, then retry.",
+    importBackupUnsupported: "This backup version is not supported. Update Filament Manager or choose a backup exported by this version.",
+    importBackupInvalid: "This is not a complete Filament Manager backup. Choose a full backup JSON exported from Program maintenance.",
+    importInventoryInvalid: "Invalid inventory data. Use an exported inventory CSV or JSON. Each row needs spool_id, material, filament_name and color_name; weights must be non-negative whole grams.",
+    importDataScopeHint: "Inventory CSV/JSON creates or updates spools with matching IDs. A full backup replaces the library after confirmation. Export a full backup first to keep a recovery copy.",
+
       filamentDefaultsUnknownWeight: "Unknown nominal weight",
       filamentDefaultsLoadError: "Failed to load filament defaults.",
       filamentDefaultsSaveCurrencyError: "Could not save the default currency.",

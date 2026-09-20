@@ -139,6 +139,27 @@ mod tests {
     }
 
     #[test]
+    fn document_validation_codes_do_not_expose_file_contents() {
+        for code in [
+            "document.file_empty",
+            "document.json_invalid",
+            "document.backup_invalid",
+            "document.backup_unsupported",
+            "document.inventory_invalid",
+        ] {
+            let encoded =
+                document_inventory_error_to_command_string(InventoryError::InvalidOperation {
+                    code,
+                    message: "private file contents and parser diagnostics".to_string(),
+                });
+            let parsed: serde_json::Value = serde_json::from_str(&encoded).unwrap();
+            assert_eq!(parsed["code"], code);
+            assert_eq!(parsed["safe_detail"], serde_json::Value::Null);
+            assert!(!encoded.contains("private file"));
+        }
+    }
+
+    #[test]
     fn document_inventory_errors_keep_raw_database_details_out_of_the_envelope() {
         let encoded = document_inventory_error_to_command_string(InventoryError::Db(
             "private document database detail".to_string(),

@@ -1600,6 +1600,13 @@ export const deDictionary: DictionaryNode = {
     },
   },
   settings: {
+    importFileEmpty: "Diese Datei ist leer. Wähle einen Export mit Daten.",
+    importJsonInvalid: "Die JSON-Datei ist beschädigt oder unvollständig. Exportiere oder lade sie erneut herunter und versuche es noch einmal.",
+    importBackupUnsupported: "Diese Sicherungsversion wird nicht unterstützt. Aktualisiere Filament Manager oder wähle eine mit dieser Version exportierte Sicherung.",
+    importBackupInvalid: "Dies ist keine vollständige Filament-Manager-Sicherung. Wähle eine unter Programmwartung exportierte vollständige JSON-Sicherung.",
+    importInventoryInvalid: "Ungültige Bestandsdaten. Verwende eine exportierte Bestandsdatei als CSV oder JSON. Jede Zeile benötigt spool_id, material, filament_name und color_name; Gewichte müssen ganze Gramm ab null sein.",
+    importDataScopeHint: "Bestands-CSV/JSON erstellt Spulen oder aktualisiert Spulen mit gleicher ID. Eine vollständige Sicherung ersetzt die Bibliothek nach Bestätigung. Exportiere vorher eine vollständige Sicherung zur Wiederherstellung.",
+
     filamentDefaultsUnknownWeight: "Unbekanntes Nenngewicht",
     filamentDefaultsLoadError: "Filamentstandards konnten nicht geladen werden.",
     filamentDefaultsSaveCurrencyError: "Die Standardwährung konnte nicht gespeichert werden.",

@@ -1,3 +1,4 @@
+import type { SettingsBackupValidation } from "./settings_backup_model";
 import { type Dispatch, type SetStateAction } from "react";
 import { downloadTextFile } from "../lib/download_file";
 import { toErrorMessage } from "../lib/error_text";
@@ -9,7 +10,6 @@ import {
   exportInventoryJson,
   fetchLibrarySyncFullBackupJson,
   validateFullBackupJson,
-  type BackupValidationStats,
 } from "../lib/tauri_client";
 import type { useI18n } from "../lib/i18n";
 import {
@@ -27,7 +27,7 @@ type UseSettingsBackupExportActionsInput = {
   busy: boolean;
   loadSettingsInventoryRows: () => Promise<NormalizedSpoolWithMasterRow[]>;
   recordExportedBackupValidation: (
-    validationSummary: BackupValidationStats,
+    validationSummary: SettingsBackupValidation,
     exportedAt: string,
   ) => void;
   recordFullBackupExport: (exportedAt: string) => void;
@@ -88,14 +88,15 @@ export function useSettingsBackupExportActions({
           )
         : await exportFullBackupJson();
       const validationSummary = await validateFullBackupJson(payload.content);
+      const fileName = `filament-manager-backup-${Date.now()}.json`;
       downloadTextFile(
         payload.content,
-        `filament-manager-backup-${Date.now()}.json`,
+        fileName,
         "application/json;charset=utf-8",
       );
       const exportedAt = new Date().toISOString();
       recordFullBackupExport(exportedAt);
-      recordExportedBackupValidation(validationSummary, exportedAt);
+      recordExportedBackupValidation({ ...validationSummary, fileName }, exportedAt);
       setInfo(buildSettingsBackupExportSuccessMessage({
         backupExported: t(
           "settings.backupExported",

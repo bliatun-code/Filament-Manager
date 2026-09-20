@@ -1144,6 +1144,13 @@ export const trTRDictionary: DictionaryNode = {
     "withToolheads": "Çoklu takım başlığı"
   },
   "settings": {
+    "importFileEmpty": "Bu dosya boş. Veri içeren bir dışa aktarım seçin.",
+    "importJsonInvalid": "JSON dosyası bozuk veya eksik. Yeniden dışa aktarın ya da indirin ve tekrar deneyin.",
+    "importBackupUnsupported": "Bu yedek sürümü desteklenmiyor. Filament Manager’ı güncelleyin veya bu sürümle dışa aktarılmış bir yedek seçin.",
+    "importBackupInvalid": "Bu, tam bir Filament Manager yedeği değil. Program bakımı bölümünden dışa aktarılmış tam bir JSON yedeği seçin.",
+    "importInventoryInvalid": "Geçersiz envanter verileri. Dışa aktarılmış envanter CSV veya JSON dosyasını kullanın. Her satırda spool_id, material, filament_name ve color_name olmalıdır; ağırlıklar sıfır veya daha büyük tam gram olmalıdır.",
+    "importDataScopeHint": "Envanter CSV/JSON dosyası makara oluşturur veya aynı kimliğe sahip makaraları günceller. Tam yedek, onaydan sonra kitaplığı değiştirir. Geri yükleyebilmek için önce tam bir yedek dışa aktarın.",
+
     "bambuDiscoveryTitle": "Bambu yazıcı bul",
     "bambuDiscoveryHint": "Yerel Bambu yazıcı duyurularını kısa süre dinleyin. Erişim kodu gönderilmez.",
     "bambuDiscoveryFind": "Bambu yazıcıları bul",
