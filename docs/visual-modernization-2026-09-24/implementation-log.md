@@ -78,3 +78,11 @@ Supplerende verifikasjon:
 De ni automatiske E2E-responsbildenes tidsmerking viste seg å ligge foran senere UI-tilstander. Kritikerens rapport bruker derfor faktisk synlig innhold, ikke navn på HTTP-kallet. Egen oppfølgingskjøring bekreftet «Qty 2» etter delvis mottak og opprettet et nytt aktivt lån, ventet på de synlige radene og tok egne bilder. Funksjonell databaseverifikasjon fra første kjøring står separat fra bildebeviset.
 
 Hele smoke-pakken etter runde-5-rettingene passerte: bygg, lint, Companion, scripts, tilgjengelighet, lånedialoger, 2067 UI-tester, ytelse, kontrakter og doctor. Rust-portene kjører separat. Første forsøk avdekket en foreldreløs preferansemodul etter fjerning av språk-toast; temavelgeren gjenbruker nå modulens eksisterende tematekster, og den fulle kontraktkontrollen passerte etterpå.
+
+### Runde 6 – synlig eksportresultat i aktive dialoger
+
+Kritikeren lagret en PNG-etikett fra native-dialogen, fant filen, men så ingen bekreftelse i dialogen. Etikettens lagringshandling returnerer nå det faktiske resultatet til den åpne dialogen. Den viser lokal suksess eller feil, knyttet til den eksporterte etikettutformingen. Tilsvarende beholder PDF-arket en synlig feil ved mislykket eksport, slik at forhåndsvisningen kan brukes til et eksplisitt nytt forsøk.
+
+Bygg, lint, 39 målrettede etikett-/verktøytester og 23 arkeksporttester passerte. Arkeksportens feiltest kontrollerer nå også at meldingen faktisk finnes som et alert-element inne i dialogen. Native kontroll av PNG-bekreftelsen gjenstår etter siste HMR-oppdatering.
+
+32 oppdaterte Companion-oppgavebilder i Bambu/Prusa ved 320/390/834/1440 px: ingen axe-brudd, opptaksfeil eller horisontal dokumentoverflyt. Kritikeren har separat inspisert de to bildene som viser et nytt aktivt lån og restmengde 2 etter delvis mottak.

@@ -8,9 +8,10 @@ import {
 import { useI18n } from "../lib/i18n";
 import { settingsActionButtonClass } from "../lib/settings_ui_classes";
 import { AppModal } from "./app_modal";
-import { ModalHeader } from "./modal_chrome";
+import { ModalHeader, ModalNotice } from "./modal_chrome";
 
 export type InventoryLabelSheetModalProps = {
+  error?: string | null;
   items: InventoryLabelSheetItem[];
   loading: boolean;
   onClose: () => void;
@@ -20,6 +21,7 @@ export type InventoryLabelSheetModalProps = {
 };
 
 export function InventoryLabelSheetModal({
+  error = null,
   items,
   loading,
   onClose,
@@ -223,6 +225,7 @@ export function InventoryLabelSheetModal({
               ? t("settings.inventoryOverviewPrintSaving", "Saving PDF...")
               : t("settings.inventoryOverviewPrintSave", "Save PDF to Downloads")}
           </button>
+          {error ? <ModalNotice className="mt-3" tone="danger" role="alert">{error}</ModalNotice> : null}
         </section>
       </div>
     </AppModal>

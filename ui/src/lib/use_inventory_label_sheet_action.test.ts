@@ -96,7 +96,7 @@ test('rendered label sheet lifecycle', async context => {
       });
     }
     await scenario('failed export retains preview for explicit retry',async page=>{
-      await page.evaluate('labels.open()');await ready(page);await page.evaluate("labels.hold('export');labels.save()");await page.waitForFunction("labels.snapshot().calls.some(c=>c.stage==='export')");await page.evaluate('labels.finish(4,true)');await page.waitForFunction('!labels.snapshot().saving');assert.equal((await page.evaluate('labels.snapshot()')).items.length,1);await page.evaluate('labels.save()');await page.waitForFunction("labels.snapshot().calls.filter(c=>c.stage==='export').length===2");await page.evaluate('labels.finish(6)');await page.waitForFunction('!labels.snapshot().open');
+      await page.evaluate('labels.open()');await ready(page);await page.evaluate("labels.hold('export');labels.save()");await page.waitForFunction("labels.snapshot().calls.some(c=>c.stage==='export')");await page.evaluate('labels.finish(4,true)');await page.waitForFunction('!labels.snapshot().saving');assert.match(await page.getByRole('dialog').getByRole('alert').innerText(), /Failed to create inventory label sheets/);assert.equal((await page.evaluate('labels.snapshot()')).items.length,1);await page.evaluate('labels.save()');await page.waitForFunction("labels.snapshot().calls.filter(c=>c.stage==='export').length===2");await page.evaluate('labels.finish(6)');await page.waitForFunction('!labels.snapshot().open');
     });
     for(const props of ['{workspace:"LOCATIONS"}','{ready:false}','{loadingInventory:true}','{busy:true}','{tauri:false}','{generation:2}','{library:"other"}']) {
       await scenario(`changed eligibility or authority blocks old callbacks: ${props}`,async page=>{

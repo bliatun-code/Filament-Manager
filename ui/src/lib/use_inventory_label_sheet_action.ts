@@ -47,6 +47,7 @@ export function useInventoryLabelSheetAction({
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [exportError, setExportError] = useState<string | null>(null);
   const [items, setItems] = useState<InventoryLabelSheetItem[]>([]);
   const authorityKey = JSON.stringify([workspaceView, ready, clientReadOnly, clientHostBaseUrl,
     clientLibraryId, clientTargetGeneration, locale]);
@@ -62,6 +63,7 @@ export function useInventoryLabelSheetAction({
     setOpen(false);
     setLoading(false);
     setSaving(false);
+    setExportError(null);
     setItems([]);
     return () => { current.current = null; };
   }, [scope]);
@@ -76,6 +78,7 @@ export function useInventoryLabelSheetAction({
     setOpen(false);
     setLoading(false);
     setSaving(false);
+    setExportError(null);
     setItems([]);
   }, [scope]);
 
@@ -173,6 +176,7 @@ export function useInventoryLabelSheetAction({
     const isCurrent = () => current.current === operation && operation.session === session;
     operation.phase = "saving";
     setSaving(true);
+    setExportError(null);
     setError(null);
     setInfoMessage(null);
     try {
@@ -195,18 +199,16 @@ export function useInventoryLabelSheetAction({
       closeLabelSheet(session);
     } catch (printError) {
       if (!isCurrent()) return;
-      setError(
-        toErrorMessage(
-          printError,
-          t("settings.error.inventoryOverviewPrint", "Failed to create inventory label sheets."),
-        ),
-      );
+      const message = toErrorMessage(printError, t("settings.error.inventoryOverviewPrint", "Failed to create inventory label sheets."));
+      setExportError(message);
+      setError(message);
     } finally {
       if (isCurrent()) { operation.phase = "ready"; setSaving(false); }
     }
   }, [available, open, renderedSession, items, closeLabelSheet, setError, setInfoMessage, t]);
 
   const modalProps: InventoryLabelSheetModalProps = {
+    error: exportError,
     items,
     loading,
     onClose: () => closeLabelSheet(renderedSession),

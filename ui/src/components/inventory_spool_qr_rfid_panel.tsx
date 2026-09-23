@@ -27,7 +27,7 @@ import { InventoryDetailTintPanel } from "./inventory_detail_fact_card";
 import { inventorySwatchInsetStyle } from "../lib/inventory_swatch_style";
 import type { ResolvedTheme } from "../lib/theme_mode";
 import { AppModal } from "./app_modal";
-import { ModalHeader } from "./modal_chrome";
+import { ModalHeader, ModalNotice } from "./modal_chrome";
 
 type InventorySpoolQrRfidPanelProps = {
   companionAvailable: boolean;
@@ -36,7 +36,7 @@ type InventorySpoolQrRfidPanelProps = {
   loading: boolean;
   initialLabelPanelOpen?: boolean;
   labelPanelRequestId?: number;
-  onPrintLabel: (labelSize: FilamentLabelSize, pngDataUrl: string) => Promise<void>;
+  onPrintLabel: (labelSize: FilamentLabelSize, pngDataUrl: string) => Promise<{ message: string; success: boolean } | void>;
   onStartRfidCapture: () => void;
   resolvedTheme: ResolvedTheme;
   runtimeAvailable: boolean;
@@ -86,6 +86,7 @@ export function InventorySpoolQrRfidPanel({
   } | null>(null);
   const [labelPreviewBusy, setLabelPreviewBusy] = useState(false);
   const [labelExportBusy, setLabelExportBusy] = useState(false);
+  const [labelExportFeedback, setLabelExportFeedback] = useState<{ message: string; success: boolean; renderKey: string } | null>(null);
   const handledLabelPanelRequestRef = useRef(labelPanelRequestId);
 
   const customDimensions = useMemo(
@@ -250,12 +251,14 @@ export function InventorySpoolQrRfidPanel({
   };
 
   const exportLabel = async () => {
-    if (!currentLabelPreview || !labelSize || labelExportBusy) {
+    if (!currentLabelPreview || !labelSize || !labelRenderKey || labelExportBusy) {
       return;
     }
     setLabelExportBusy(true);
+    setLabelExportFeedback(null);
     try {
-      await onPrintLabel(labelSize, currentLabelPreview);
+      const result = await onPrintLabel(labelSize, currentLabelPreview);
+      if (result) setLabelExportFeedback({ ...result, renderKey: labelRenderKey });
     } finally {
       setLabelExportBusy(false);
     }
@@ -328,7 +331,7 @@ export function InventorySpoolQrRfidPanel({
       {labelPanelOpen ? (
         <AppModal
           zIndex={80}
-          onBackdropClose={() => setLabelPanelOpen(false)}
+          onBackdropClose={() => { setLabelPanelOpen(false); setLabelExportFeedback(null); }}
           panelClassName="app-modal-panel flex max-h-[calc(100dvh-3rem)] w-[min(92vw,58rem)] flex-col overflow-hidden rounded-2xl border"
         >
           <ModalHeader
@@ -339,7 +342,7 @@ export function InventorySpoolQrRfidPanel({
               "Choose a physical size, check the preview, and save a print-ready PNG.",
             )}
             closeLabel={t("common.close", "Close")}
-            onClose={() => setLabelPanelOpen(false)}
+            onClose={() => { setLabelPanelOpen(false); setLabelExportFeedback(null); }}
           />
           <div id="inventory-label-builder" className="grid min-h-0 gap-5 overflow-y-auto p-5 md:grid-cols-[minmax(0,1.35fr)_minmax(16rem,0.65fr)]">
             <div className="app-modal-inset flex min-h-64 items-center rounded-xl border p-5">
@@ -492,6 +495,11 @@ export function InventorySpoolQrRfidPanel({
                   ? t("inventory.labelSaving", "Saving PNG...")
                   : t("inventory.labelSaveDownloads", "Save PNG to Downloads")}
               </button>
+              {labelExportFeedback && labelExportFeedback.renderKey === labelRenderKey ? (
+                <ModalNotice className="mt-3" tone={labelExportFeedback.success ? "success" : "danger"} role={labelExportFeedback.success ? "status" : "alert"}>
+                  {labelExportFeedback.message}
+                </ModalNotice>
+              ) : null}
             </div>
           </div>
         </AppModal>
