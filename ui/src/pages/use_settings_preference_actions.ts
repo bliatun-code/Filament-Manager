@@ -1,8 +1,5 @@
 import type { ThemeMode } from "../lib/theme_mode";
 import type { Locale, useI18n } from "../lib/i18n";
-import {
-  buildSettingsLocaleSelectionMessage,
-} from "./settings_preferences_model";
 
 type SettingsTranslator = ReturnType<typeof useI18n>["t"];
 
@@ -16,7 +13,6 @@ type UseSettingsPreferenceActionsInput = {
 export function useSettingsPreferenceActions({
   setInfo,
   setLocale,
-  t,
   updateThemeMode,
 }: UseSettingsPreferenceActionsInput) {
   function handleThemeSelection(mode: ThemeMode) {
@@ -28,7 +24,7 @@ export function useSettingsPreferenceActions({
 
   function handleLocaleSelection(nextLocale: Locale) {
     setLocale(nextLocale);
-    setInfo(buildSettingsLocaleSelectionMessage(nextLocale, t));
+    setInfo(null);
   }
 
   return {

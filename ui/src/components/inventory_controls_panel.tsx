@@ -128,9 +128,10 @@ export function InventoryHeaderActions({
 
   return (
     <div className="page-header-actions">
-      <div className="page-header-tools">
+      <div className="flex flex-wrap gap-2">
         <PageHeaderButton
           onClick={onAddSpool}
+          responsive={false}
           variant="primary"
           disabled={primaryActionsDisabled}
         >
@@ -138,6 +139,7 @@ export function InventoryHeaderActions({
         </PageHeaderButton>
         <PageHeaderButton
           onClick={onCreateLabelSheet}
+          responsive={false}
           disabled={labelSheetDisabled}
         >
           {t("inventory.labelSheetAllAction", "Create label sheet for all stock")}

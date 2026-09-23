@@ -223,10 +223,12 @@
 
 /*
  * Brand themes deliberately inherit the complete, tested dark token set via
- * data-theme-mode="dark". Only shell-level semantic tokens are replaced here;
- * filament --swatch-* and printer --brand-* variables stay data-driven.
+ * data-theme-mode="dark". Shell and data-surface bases follow the brand;
+ * filament colors and printer --brand-rgb stay data-driven.
  */
 :root[data-theme="bambu"] {
+  --swatch-surface-base: rgb(5, 23, 22);
+  --printer-surface-base: rgb(5, 23, 22);
   --bg-top: #071a13;
   --bg-bottom: #020c09;
   --bg-glow-primary: rgba(0, 174, 66, 0.2);
@@ -259,6 +261,8 @@
 }
 
 :root[data-theme="prusa"] {
+  --swatch-surface-base: rgb(30, 21, 19);
+  --printer-surface-base: rgb(30, 21, 19);
   --bg-top: #24120a;
   --bg-bottom: #100805;
   --bg-glow-primary: rgba(253, 80, 0, 0.2);

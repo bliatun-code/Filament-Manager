@@ -135,7 +135,7 @@ test("companion shell defines reusable status and panel surface tokens", () => {
   assert.match(css, /\.task-sheet\.add-filament-sheet \.task-sheet-header\s*\{[\s\S]*var\(--surface-panel\)/);
 });
 
-test("brand themes keep AA text contrast without replacing filament swatch tokens", () => {
+test("brand surfaces keep AA text contrast without replacing filament colors", () => {
   const css = readCssBundle();
   const themes = [
     {
@@ -163,7 +163,7 @@ test("brand themes keep AA text contrast without replacing filament swatch token
     assert.ok(contrastRatio(hexToRgb(mutedText), hexToRgb(surface)) >= 4.5);
     assert.ok(contrastRatio(hexToRgb(accentColor), hexToRgb(accentContrast)) >= 4.5);
     assert.ok(contrastRatio(hexToRgb(controlBorder), hexToRgb(surface)) >= 3);
-    assert.doesNotMatch(block, /--swatch-/);
+    assert.doesNotMatch(block, /--swatch-(?!surface-base:)/);
     assert.doesNotMatch(block, /--brand-rgb/);
   }
 

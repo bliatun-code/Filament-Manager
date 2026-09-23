@@ -1,3 +1,4 @@
+import { settingsThemeModeLabel } from "../pages/settings_preferences_model";
 import type { Locale } from "../lib/i18n";
 import { SELECTABLE_LOCALES } from "../../../src-tauri/companion_browser/supported_locales.js";
 import type { MessageParams } from "../../../src-tauri/companion_browser/message_format.js";
@@ -101,11 +102,7 @@ export function SettingsGeneralTab({
                   onClick={() => onThemeSelection(mode)}
                   className={chipButtonClass(themeMode === mode)}
                 >
-                  {mode === "auto"
-                    ? t("settings.auto", "Auto (system)")
-                    : mode === "light"
-                      ? t("settings.light", "Light")
-                      : t("settings.dark", "Dark")}
+                  {settingsThemeModeLabel(mode, t)}
                 </button>
               ))}
             </div>

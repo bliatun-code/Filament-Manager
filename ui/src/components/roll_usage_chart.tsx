@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { formatDateTime, parseDateTime } from "../lib/date_time";
+import { formatDateTime, parseDateTime, parseDateTimeMs } from "../lib/date_time";
 import { useI18n } from "../lib/i18n";
 import { formatGrams } from "../lib/weight_display";
 
@@ -81,14 +81,20 @@ export function RollUsageChart({
     if (!stats || chartPoints.length === 0) {
       return "";
     }
+    const firstTime = parseDateTimeMs(stats.first.captured_at);
+    const lastTime = parseDateTimeMs(stats.last.captured_at);
     const innerWidth = CHART_WIDTH - CHART_PADDING * 2;
     const innerHeight = CHART_HEIGHT - CHART_PADDING * 2;
     return chartPoints
       .map((point, index) => {
+        const time = parseDateTimeMs(point.captured_at);
+        const fraction = firstTime !== null && lastTime !== null && time !== null && lastTime > firstTime
+          ? (time - firstTime) / (lastTime - firstTime)
+          : index / Math.max(chartPoints.length - 1, 1);
         const x =
           chartPoints.length === 1
             ? CHART_WIDTH / 2
-            : CHART_PADDING + (index / (chartPoints.length - 1)) * innerWidth;
+            : CHART_PADDING + fraction * innerWidth;
         const normalized = point.remaining / stats.scaleMax;
         const y = CHART_PADDING + (1 - normalized) * innerHeight;
         return `${x},${y}`;
@@ -114,13 +120,19 @@ export function RollUsageChart({
 
   return (
     <div className="mt-3 space-y-3">
+      <div className="grid grid-cols-[auto_minmax(0,1fr)] gap-x-2 gap-y-1">
+        <div className="flex h-40 flex-col justify-between py-[18px] text-right text-xs tabular-nums text-slate-600 dark:text-slate-300" aria-hidden="true">
+          {[stats.scaleMax, stats.scaleMax / 2, 0].map((value) => <span key={value}>{formatGrams(value, "zero", locale)}</span>)}
+        </div>
       <svg
         viewBox={`0 0 ${CHART_WIDTH} ${CHART_HEIGHT}`}
-        className="app-modal-inset-soft w-full rounded-lg border text-[var(--app-theme-accent)] shadow-inner dark:shadow-none"
+        preserveAspectRatio="none"
+        className="app-modal-inset-soft h-40 w-full rounded-lg border text-[var(--app-theme-accent)] shadow-inner dark:shadow-none"
         role="img"
         aria-label={t("chart.rollUsageAria", "Roll usage chart")}
       >
-        {[0.25, 0.5, 0.75].map((ratio) => {
+        <title>{`${toDisplayTime(stats.first.captured_at, locale)} – ${toDisplayTime(stats.last.captured_at, locale)}; ${formatGrams(stats.scaleMax, "zero", locale)} – ${formatGrams(0, "zero", locale)}`}</title>
+        {[0, 0.5, 1].map((ratio) => {
           const y = CHART_PADDING + ratio * (CHART_HEIGHT - CHART_PADDING * 2);
           return (
             <line
@@ -164,12 +176,18 @@ export function RollUsageChart({
         {chartPoints.length === 1 ? (
           <circle
             cx={CHART_WIDTH / 2}
-            cy={CHART_HEIGHT / 2}
+            cy={CHART_PADDING + (1 - stats.last.remaining / stats.scaleMax) * (CHART_HEIGHT - CHART_PADDING * 2)}
             r="3.5"
             fill="currentColor"
           />
         ) : null}
       </svg>
+        <div />
+        <div className="flex justify-between gap-3 text-xs text-slate-600 dark:text-slate-300">
+          <time dateTime={stats.first.captured_at}>{toDisplayTime(stats.first.captured_at, locale)}</time>
+          <time className="text-right" dateTime={stats.last.captured_at}>{toDisplayTime(stats.last.captured_at, locale)}</time>
+        </div>
+      </div>
       <div className="grid grid-cols-1 gap-1 text-xs text-slate-600 dark:text-slate-300">
         <div>
           {t("chart.latest", "Latest")}:{" "}

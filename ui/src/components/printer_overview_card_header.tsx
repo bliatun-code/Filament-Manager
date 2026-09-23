@@ -69,7 +69,7 @@ export function PrinterOverviewCardHeader({
             {configuredSetup}
             {liveConnectionIndicator ? (
               <>
-                <span className="text-slate-400 dark:text-slate-500"> · </span>
+                <span aria-hidden="true" className="text-slate-400 dark:text-slate-500"> · </span>
                 <span className="inline-flex items-center gap-1.5 font-medium text-slate-500 dark:text-slate-400">
                   <span
                     aria-hidden="true"

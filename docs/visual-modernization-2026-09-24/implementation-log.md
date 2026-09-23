@@ -59,3 +59,22 @@ Verifikasjon:
 - Kritikerens datasett har nå også 1032 syntetiske vektmålinger, i tillegg til gyldige lånedatoer, 172 ruller og befolket hendelseshistorikk.
 
 Godkjenning gjenstår. Interaktiv native/Host/Client, systemtema, responsivitet og de øvrige tilstandene skal fortsatt dokumenteres uten å overføre karakterer fra uinspiserte flater.
+
+### Runde 5 – smale vinduer, validering og diagrammenes datagrunnlag
+
+Kritikeren kontrollerte faktisk native-app i et 856 px bredt vindu. Lagerets to hovedhandlinger deler nå en rad når tekstene får plass; kortene begynner omtrent 46 px tidligere. Språkbytte fjerner den overflødige bekreftelsen som brukte forrige språk. Temperaturenes etiketter har sterkere tekstkontrast i lyst tema. Companion Bambu/Prusa bruker samme merkegrunnlag også under filamentflatene; de faktiske swatch-fargene er bevart.
+
+En ugyldig låneinnsending viste tidligere feilen over en lang rullvelger, utenfor synsfeltet. Feil for låntaker, vekt og dato står nå ved feltet, beskriver kontrollen med ARIA og flytter fokus og rulling til den. Ugyldig paringslenke får tilsvarende lokal tilbakemelding. Den misvisende «Maks tilgjengelig» i utlån er erstattet med faktisk registrert restvekt: en ny måling kan bevisst korrigere lagervekten, og er ikke begrenset av det gamle tallet.
+
+Rulldetaljens og diagnostikkens diagrammer viser skala og begge ender av tidsintervallet. Bredden mellom målinger følger faktisk medgått tid. En enkelt måling tegnes på riktig vertikal verdi. Kompakt grafhøyde bevarer plass til forklaringer og øvrige detaljer.
+
+Supplerende verifikasjon:
+- 402 Companion-tester passerte. 16 nye Bambu/Prusa-rotbilder ved 390/834 px hadde ingen axe-brudd eller horisontal dokumentoverflyt. Måling mot faktisk tegnet bakgrunn passerte for synlige tekster i 16 Companion-rotflater, fire temaer.
+- Desktop-måling etter etikettendringen passerte for synlige tekster på lager, utlån, printere, statistikk og innstillinger i fire temaer. Dashboard-utvalget viste bare lasting og er uttrykkelig utelatt fra den konklusjonen.
+- Lånedialogenes seks regresjonsforløp passerte, inkludert ny kontroll av fokus, synlig feilmelding og manglende lagringskall ved ugyldig innsendelse i smalt vindu. To nye diagramtester kontrollerer ujevne tidsintervaller og korrekt enkeltpunkt.
+- Kritikeren bekreftet grafens skala/tidsintervall og paringsfeltets lokale feil i kjørende native-app. Fullt oppdatert temamatrise og øvrige funksjonsgrenser gjenstår.
+- Separate normale Host/Client-prosesser fullførte veiledet rollebytte med faktisk eksport og automatisk validering av syntetisk sikkerhetskopi. Bonjour-registrering feilet foreløpig med tidsavbrudd, også etter oppstart via Launch Services. Dette er et åpent testmiljøproblem; ingen vellykket paring påstås.
+
+De ni automatiske E2E-responsbildenes tidsmerking viste seg å ligge foran senere UI-tilstander. Kritikerens rapport bruker derfor faktisk synlig innhold, ikke navn på HTTP-kallet. Egen oppfølgingskjøring bekreftet «Qty 2» etter delvis mottak og opprettet et nytt aktivt lån, ventet på de synlige radene og tok egne bilder. Funksjonell databaseverifikasjon fra første kjøring står separat fra bildebeviset.
+
+Hele smoke-pakken etter runde-5-rettingene passerte: bygg, lint, Companion, scripts, tilgjengelighet, lånedialoger, 2067 UI-tester, ytelse, kontrakter og doctor. Rust-portene kjører separat. Første forsøk avdekket en foreldreløs preferansemodul etter fjerning av språk-toast; temavelgeren gjenbruker nå modulens eksisterende tematekster, og den fulle kontraktkontrollen passerte etterpå.
