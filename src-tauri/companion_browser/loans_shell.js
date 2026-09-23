@@ -353,9 +353,6 @@ export function renderLoanReturnTaskSheetBody(options) {
   const metadata = [
     loanRow.vendor || t(locale, "loans.unknownVendor", "Unknown vendor"),
     reference,
-    direction === "INBOUND"
-      ? `${t(locale, "detail.borrowedFrom", "Borrowed from")}: ${counterparty}`
-      : `${t(locale, "loans.borrower", "Borrower")}: ${counterparty}`,
   ].filter(Boolean);
 
   return `

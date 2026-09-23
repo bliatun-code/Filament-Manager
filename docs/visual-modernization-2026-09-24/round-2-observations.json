@@ -1,0 +1,24 @@
+{
+  "round": 2,
+  "codeFreeze": "R2 first implementation freeze",
+  "notes": {
+    "native/en/dark/inventory-overview": "White/orange/black grouped cards. Tint quieter than R1; substantial multirow header still consumes vertical space. Actual white/black swatches distinguishable.",
+    "native/en/dark/selected-roll": "White PLA Matte Ivory White #w_0159 selected by QA scenario. Quieter data panels; secondary labels visibly clearer. Modal footer visible, close has focus ring. This differs from R1 ABS fixture selection.",
+    "native/en/dark/dashboard-overview": "Metrics now visible immediately after title. Setup still says 1 of2 complete versus Complete3. F01 improved; F08 informational mismatch remains.",
+    "native/en/dark/dashboard-onboarding": "Same populated setup snapshot as dashboard-overview; not separate interaction proof.",
+    "native/en/dark/dashboard-consumption": "Scenario fixture consumption3520g; horizontal grid with no labelled y scale, quantities require separate tooltip inspection. Ownership cards/health/recent activity visually readable.",
+    "native/en/dark/inventory-locations": "One synthetic active shelf with165 rolls/327links. Clear create/rename/archive, but broader location states not exercised by screenshot.",
+    "native/en/dark/add-filament": "eSUN Dark Blue13 matches, selected card/checkmark, ownership and weight/home form plus prominent Add spool CTA. Readable, practical two columns.",
+    "native/en/dark/wishlist-queue": "Scenario expands fixture to5 queue rows then On order filter1. Exact duplicate page title/subtitle repeated in framed inner controls (F07); selected On order looks disabled inside row. Quantity spinner visually lacks nearby quantity label; requires interaction evaluation."
+  },
+  "inspected": [
+    "native/en/dark/inventory-overview",
+    "native/en/dark/selected-roll",
+    "native/en/dark/dashboard-overview",
+    "native/en/dark/dashboard-onboarding",
+    "native/en/dark/dashboard-consumption",
+    "native/en/dark/inventory-locations",
+    "native/en/dark/add-filament",
+    "native/en/dark/wishlist-queue"
+  ]
+}

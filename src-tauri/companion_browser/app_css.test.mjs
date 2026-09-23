@@ -108,19 +108,10 @@ test("light swatches keep neutral edges while dark swatches preserve their exist
   assert.match(css, /\.swatch-dot\s*\{[\s\S]*border: 1px solid var\(--swatch-dot-border\);/);
 });
 
-test("swatch action buttons reuse the selected filament color", () => {
+test("filament actions keep semantic theme colors and selection cards retain swatches", () => {
   const css = readCssBundle();
-
-  assert.match(css, /\.primary-button\.swatch-action-button,\s*\.secondary-button\.swatch-action-button\s*\{/);
-  assert.match(css, /var\(--swatch-action-start\) 0%/);
-  assert.match(css, /var\(--swatch-action-end\) 100%/);
-  assert.match(css, /border-color: var\(--swatch-action-border\);/);
-  assert.match(css, /color: var\(--swatch-action-contrast\);/);
-  assert.match(css, /0 18px 36px -24px rgb\(var\(--swatch-action-shadow-rgb\) \/ 0\.74\)/);
-  assert.match(
-    css,
-    /\.primary-button\.swatch-action-button:hover,\s*\.secondary-button\.swatch-action-button:hover\s*\{\s*opacity: 1;/,
-  );
+  assert.doesNotMatch(css, /background:[^}]*var\(--swatch-action-start\)/);
+  assert.match(css, /\.primary-button\s*\{[^}]*background: var\(--accent\);[^}]*color: var\(--accent-contrast\);/);
   assert.match(css, /\.companion-selection-card\s*\{[\s\S]*display: grid;[\s\S]*gap: 0\.72rem;/);
   assert.match(css, /\.companion-selection-card-head\s*\{[\s\S]*display: flex;[\s\S]*justify-content: space-between;/);
   assert.match(css, /\.loan-create-card,\s*\.loan-return-card\s*\{[\s\S]*display: grid;[\s\S]*gap: 0\.72rem;/);

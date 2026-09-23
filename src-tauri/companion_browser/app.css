@@ -198,33 +198,7 @@
   background: rgba(127, 156, 187, 0.08);
 }
 
-.primary-button.swatch-action-button,
-.secondary-button.swatch-action-button {
-  background:
-    linear-gradient(
-      135deg,
-      var(--swatch-action-start) 0%,
-      var(--swatch-action-end) 100%
-    );
-  border-color: var(--swatch-action-border);
-  color: var(--swatch-action-contrast);
-  box-shadow:
-    0 18px 36px -24px rgb(var(--swatch-action-shadow-rgb) / 0.74),
-    inset 0 1px 0 var(--swatch-action-inner);
-}
-
-.primary-button.swatch-action-button:hover,
-.secondary-button.swatch-action-button:hover {
-  opacity: 1;
-  background:
-    linear-gradient(
-      135deg,
-      color-mix(in srgb, var(--swatch-action-start) 94%, #fff) 0%,
-      color-mix(in srgb, var(--swatch-action-end) 92%, #fff) 100%
-    );
-  border-color: color-mix(in srgb, var(--swatch-action-border) 82%, #fff);
-}
-
+/* Filament colors identify material; actions use the active theme. */
 .companion-link-button {
   display: inline-flex;
   align-items: center;

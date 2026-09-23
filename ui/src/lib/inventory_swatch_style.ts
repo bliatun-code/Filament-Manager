@@ -1,5 +1,4 @@
 import {
-  buildSwatchActionButtonStyle,
   buildSwatchSurfaceStyle,
   hexToRgb,
   swatchRgba,
@@ -68,59 +67,59 @@ function inventorySwatchSurfaceStyle(
     darkTheme
       ? tone === "panel"
         ? {
-            top: 0.34,
-            mid: 0.18,
-            bottom: 0.08,
+            top: 0.10,
+            mid: 0.035,
+            bottom: 0.012,
             base: "var(--app-theme-data-panel-base)",
-            shadow: 0.42,
+            shadow: 0.12,
             ambientShadow: "var(--app-theme-data-ambient-shadow)",
             inset: "var(--app-theme-data-inset-highlight)",
           }
         : tone === "inset"
           ? {
-              top: 0.28,
-              mid: 0.14,
-              bottom: 0.06,
+              top: 0.10,
+              mid: 0.035,
+              bottom: 0.012,
               base: "var(--app-theme-data-inset-base)",
-              shadow: 0.34,
+              shadow: 0.12,
               ambientShadow: "var(--app-theme-data-ambient-shadow)",
               inset: "var(--app-theme-data-inset-highlight)",
             }
           : {
-              top: 0.3,
-              mid: 0.15,
-              bottom: 0.07,
+              top: 0.10,
+              mid: 0.035,
+              bottom: 0.012,
               base: "var(--app-theme-data-card-base)",
-              shadow: 0.38,
+              shadow: 0.12,
               ambientShadow: "var(--app-theme-data-ambient-shadow)",
               inset: "var(--app-theme-data-inset-highlight)",
             }
       : tone === "panel"
         ? {
-            top: 0.15,
-            mid: 0.075,
-            bottom: 0.025,
+            top: 0.065,
+            mid: 0.035,
+            bottom: 0.012,
             base: "var(--app-theme-data-panel-base)",
-            shadow: 0.28,
+            shadow: 0.12,
             ambientShadow: "var(--app-theme-data-ambient-shadow)",
             inset: "var(--app-theme-data-inset-highlight)",
           }
         : tone === "inset"
           ? {
-              top: 0.11,
-              mid: 0.055,
-              bottom: 0.02,
+              top: 0.065,
+              mid: 0.035,
+              bottom: 0.012,
               base: "var(--app-theme-data-inset-base)",
-              shadow: 0.22,
+              shadow: 0.12,
               ambientShadow: "var(--app-theme-data-ambient-shadow)",
               inset: "var(--app-theme-data-inset-highlight)",
             }
           : {
-              top: 0.125,
-              mid: 0.06,
-              bottom: 0.022,
+              top: 0.065,
+              mid: 0.035,
+              bottom: 0.012,
               base: "var(--app-theme-data-card-base)",
-              shadow: 0.26,
+              shadow: 0.12,
               ambientShadow: "var(--app-theme-data-ambient-shadow)",
               inset: "var(--app-theme-data-inset-highlight)",
             };
@@ -252,7 +251,15 @@ export function inventorySwatchActionButtonStyle(
   raw: string | null | undefined,
   resolvedTheme: ResolvedTheme,
 ) {
-  return buildSwatchActionButtonStyle(raw, resolvedTheme);
+  // Keep the shared control API; filament identity never determines action color.
+  void raw;
+  void resolvedTheme;
+  return {
+    background: "var(--app-theme-primary-action-background)",
+    borderColor: "var(--app-theme-primary-action-border)",
+    color: "var(--app-theme-primary-action-text)",
+    boxShadow: "var(--app-theme-primary-action-shadow)",
+  } as const;
 }
 
 export function inventoryCreatePreviewPanelStyle(

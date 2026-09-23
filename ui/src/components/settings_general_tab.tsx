@@ -82,11 +82,11 @@ export function SettingsGeneralTab({
   return (
     <>
       <SettingsSurfaceCard
-        className="min-w-0 space-y-4"
+        className="min-w-0 space-y-4 self-start"
         eyebrow={t("settings.appearance", "Appearance")}
         description={t("settings.autoHint", "Auto follows your system light/dark preference.")}
       >
-        <div className="surface-subtle p-3">
+        <div className="min-w-0">
           <div
             className="space-y-3"
             role="group"
@@ -151,14 +151,14 @@ export function SettingsGeneralTab({
       </SettingsSurfaceCard>
 
       <SettingsSurfaceCard
-        className="min-w-0 space-y-4"
+        className="min-w-0 space-y-4 self-start"
         eyebrow={t("settings.language", "Language")}
         description={t(
           "settings.languageHint",
           "Choose app language. More sections will be localized incrementally.",
         )}
       >
-        <div className="surface-subtle p-3">
+        <div className="min-w-0">
           <label className="block max-w-md">
             <span className="sr-only">{t("settings.language", "Language")}</span>
             <select
@@ -179,7 +179,7 @@ export function SettingsGeneralTab({
 
       {tauri ? (
         <SettingsSurfaceCard
-          className="min-w-0 space-y-4"
+          className="min-w-0 space-y-4 self-start"
           eyebrow={t("settings.backgroundOperation", "Background operation")}
           description={t(
             "settings.backgroundOperationHint",
@@ -340,7 +340,7 @@ export function SettingsGeneralTab({
         </SettingsSurfaceCard>
       ) : null}
 
-      <SettingsSurfaceCard className="min-w-0 space-y-4" eyebrow={t("settings.program", "Program")}>
+      <SettingsSurfaceCard className="min-w-0 space-y-4 self-start" eyebrow={t("settings.program", "Program")}>
         <div className="grid gap-3 sm:grid-cols-2">
           <div className="surface-subtle px-4 py-3">
             <div className={settingsSectionLabelClass}>
@@ -459,7 +459,7 @@ export function SettingsGeneralTab({
       </SettingsSurfaceCard>
 
       <SettingsSurfaceCard
-        className="min-w-0 space-y-4"
+        className="min-w-0 space-y-4 self-start"
         eyebrow={t("settings.help", "Help")}
         description={t(
           "settings.helpHint",

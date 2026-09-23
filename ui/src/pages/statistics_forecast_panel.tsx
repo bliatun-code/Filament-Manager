@@ -4,6 +4,8 @@ import {
 } from "../lib/number_display";
 import {
   formatForecastDate,
+  formatForecastCoverage,
+  formatForecastDepletion,
   type ConsumptionForecast,
 } from "../lib/statistics_forecast_model";
 import type { TranslateFn } from "../lib/statistics_model";
@@ -22,11 +24,9 @@ export function StatisticsForecastPanel({
   const coverageValue =
     forecast.daysOfSupply == null
       ? t("statistics.forecastUnavailable", "Not enough usage data")
-      : t("statistics.forecastDays", "{count, plural, one {# day} other {# days}}", {
-          count: forecast.daysOfSupply,
-        });
+      : formatForecastCoverage(forecast.daysOfSupply, locale ?? "en");
   const depletionValue = forecast.estimatedDepletionDate
-    ? formatForecastDate(forecast.estimatedDepletionDate, locale ?? "en")
+    ? formatForecastDepletion(forecast.estimatedDepletionDate, forecast.daysOfSupply ?? 0, locale ?? "en")
     : "—";
 
   return (

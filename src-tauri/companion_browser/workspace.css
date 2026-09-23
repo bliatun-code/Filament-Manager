@@ -2203,3 +2203,41 @@
     box-shadow: inset 0 0 0 1px var(--border-strong);
   }
 }
+
+/* Brand chrome shares semantic surface and selection tokens with the shell. */
+:root[data-theme="bambu"] .phone-bottom-nav,
+:root[data-theme="prusa"] .phone-bottom-nav {
+  background: var(--surface-strong);
+  border-color: var(--border-strong);
+}
+:root[data-theme="bambu"] .phone-nav-button[data-active="true"],
+:root[data-theme="prusa"] .phone-nav-button[data-active="true"] {
+  background: var(--accent-soft);
+  color: var(--text);
+  box-shadow: inset 0 0 0 1px var(--border-strong);
+}
+.loan-return-task-sheet .metric-value {
+  font-size: 1rem;
+  line-height: 1.4;
+}
+.loan-return-task-sheet .metric-card {
+  padding: 0.65rem 0.75rem;
+}
+@media (max-width: 767px) {
+  .task-sheet.add-filament-sheet .add-spool-catalog-list {
+    max-height: min(11rem, 25dvh);
+  }
+  .task-sheet.add-filament-sheet .add-spool-catalog-row {
+    min-height: 3.6rem;
+    padding: 0.6rem 0.7rem;
+  }
+}
+
+/* Catalog rows need room for their names, not the generic action column. */
+.task-sheet.add-filament-sheet .add-spool-catalog-row {
+  grid-template-columns: minmax(0, 1fr) auto;
+}
+.task-sheet.add-filament-sheet .add-spool-catalog-row .dense-list-side {
+  min-width: 0;
+  align-self: start;
+}

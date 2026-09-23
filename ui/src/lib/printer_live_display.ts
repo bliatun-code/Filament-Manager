@@ -84,20 +84,20 @@ export function printerSwatchSurfaceStyle(
     darkTheme
       ? tone === "panel"
         ? {
-            top: 0.15,
-            mid: 0.065,
-            bottom: 0.022,
-            base: "rgb(10, 17, 31)",
+            top: 0.10,
+            mid: 0.035,
+            bottom: 0.012,
+            base: "var(--app-theme-data-panel-base)",
             shadow: 0.24,
             border: 0.44,
             ambientShadow: "rgba(2, 6, 23, 0.5)",
             inset: "rgba(255, 255, 255, 0.03)",
           }
         : {
-            top: 0.28,
-            mid: 0.14,
-            bottom: 0.06,
-            base: "rgb(13, 21, 39)",
+            top: 0.10,
+            mid: 0.035,
+            bottom: 0.012,
+            base: "var(--app-theme-data-inset-base)",
             shadow: 0.34,
             border: 0.4,
             ambientShadow: "rgba(2, 6, 23, 0.44)",
@@ -105,9 +105,9 @@ export function printerSwatchSurfaceStyle(
           }
       : tone === "panel"
         ? {
-            top: 0.075,
-            mid: 0.03,
-            bottom: 0.01,
+            top: 0.065,
+            mid: 0.035,
+            bottom: 0.012,
             base: "rgba(252, 254, 255, 0.96)",
             shadow: 0.16,
             border: 0.18,
@@ -115,9 +115,9 @@ export function printerSwatchSurfaceStyle(
             inset: "rgba(255, 255, 255, 0.8)",
           }
         : {
-            top: 0.105,
-            mid: 0.045,
-            bottom: 0.018,
+            top: 0.065,
+            mid: 0.035,
+            bottom: 0.012,
             base: "rgba(253, 254, 255, 0.97)",
             shadow: 0.18,
             border: 0.16,

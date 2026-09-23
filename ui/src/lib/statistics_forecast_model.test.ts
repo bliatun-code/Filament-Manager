@@ -4,6 +4,8 @@ import test from "node:test";
 import {
   buildConsumptionForecast,
   formatForecastDate,
+  formatForecastCoverage,
+  formatForecastDepletion,
 } from "./statistics_forecast_model";
 import {
   normalizeSpoolWithMasterRow,
@@ -86,4 +88,13 @@ test("forecast is deterministic for identical inputs and clamps invalid grams", 
 test("forecast date formatting uses calendar dates without timezone drift", () => {
   assert.equal(formatForecastDate("2026-09-05", "en"), "Sep 5, 2026");
   assert.equal(formatForecastDate("not-a-date", "en"), "not-a-date");
+});
+
+test("forecast precision reflects its horizon in English and Norwegian", () => {
+  assert.equal(formatForecastCoverage(8481.413, "en"), "≈ 23 years");
+  assert.equal(formatForecastCoverage(8481.413, "nb"), "≈ 23 år");
+  assert.equal(formatForecastCoverage(45.37, "en"), "≈ 45 days");
+  assert.equal(formatForecastCoverage(180, "en"), "≈ 6 months");
+  assert.equal(formatForecastDepletion("2049-12-13", 8481.413, "en"), "≈ 2049");
+  assert.equal(formatForecastDepletion("2027-03-23", 180, "en"), "≈ Mar 2027");
 });
