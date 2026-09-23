@@ -178,7 +178,7 @@ export function InventoryDangerZonePanelView({
           </span>
           <span
             id="inventory-danger-zone-hint"
-            className="mt-1.5 block max-w-xl text-xs leading-5 text-rose-800/80 dark:text-rose-100/75"
+            className="mt-1.5 block max-w-xl text-xs leading-5 text-slate-600 dark:text-slate-300"
           >
             {t(
               "inventory.dangerZoneHint",
@@ -199,7 +199,7 @@ export function InventoryDangerZonePanelView({
         className="grid grid-cols-1 gap-3 border-t border-rose-200/80 px-5 pb-5 pt-4 dark:border-rose-500/30"
       >
         {blockedReason ? (
-          <div className="text-xs leading-5 text-rose-800/80 dark:text-rose-100/75" role="note">
+          <div className="text-xs leading-5 text-slate-600 dark:text-slate-300" role="note">
             {blockedReason}
           </div>
         ) : null}

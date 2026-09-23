@@ -198,8 +198,35 @@ export function normalizeHex(raw) {
   return null;
 }
 
+// Match the desktop swatch format: solid HEX, discrete multi(), or gradient().
+// Only normalized HEX stops enter CSS; malformed values retain the safe fallback.
+export function parseSwatchSpec(raw) {
+  const solid = normalizeHex(raw);
+  if (solid) return { kind: "solid", colors: [solid] };
+  const value = String(raw ?? "").trim();
+  const composite = value.match(/^(multi|gradient)\((.*)\)$/i);
+  const parts = (composite ? composite[2] : value).split(/[;,]/).map(part => part.trim()).filter(Boolean);
+  const colors = parts.map(normalizeHex);
+  if (colors.length < 2 || colors.some(color => color == null)) {
+    return { kind: "solid", colors: [SWATCH_FALLBACK] };
+  }
+  return { kind: composite ? composite[1].toLowerCase() : "gradient", colors };
+}
+
 export function toSwatchColor(raw) {
-  return normalizeHex(raw) ?? SWATCH_FALLBACK;
+  return parseSwatchSpec(raw).colors[0];
+}
+
+export function swatchCssBackground(raw, angle = 145) {
+  const { kind, colors } = parseSwatchSpec(raw);
+  if (kind === "solid") return colors[0];
+  const stops = kind === "gradient"
+    ? colors.map((color, index) => `${color} ${Math.round(index / (colors.length - 1) * 100)}%`)
+    : colors.flatMap((color, index) => [
+        `${color} ${Math.round(index / colors.length * 10000) / 100}%`,
+        `${color} ${Math.round((index + 1) / colors.length * 10000) / 100}%`,
+      ]);
+  return `linear-gradient(${angle}deg, ${stops.join(", ")})`;
 }
 
 export function hexToRgb(raw) {

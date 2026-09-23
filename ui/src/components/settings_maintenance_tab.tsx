@@ -318,7 +318,7 @@ export function SettingsMaintenanceTab({
           {t("settings.resetSectionTitle", "Reset and cleanup")}
         </div>
         <div className="mt-3 grid grid-cols-1 gap-4 lg:grid-cols-2">
-          <div className="min-h-[250px] rounded-xl border border-amber-300 bg-amber-50/90 p-4 shadow-sm shadow-amber-200/30 dark:border-amber-500/40 dark:bg-amber-500/10 dark:shadow-none">
+          <div className="surface-subtle rounded-xl border-l-2 border-l-amber-500 p-4">
             <div className="flex items-center gap-2 text-sm font-semibold text-amber-950 dark:text-amber-200">
               <span aria-hidden="true">!</span>
               {t("settings.resetCatalogs", "Repair catalog")}
@@ -349,7 +349,7 @@ export function SettingsMaintenanceTab({
                 {t("settings.resetCatalogs", "Repair catalog")}
               </button>
             )}
-            <ul className="mt-3 list-disc space-y-1 pl-5 text-xs leading-6 text-amber-900 dark:text-amber-100/90">
+            <ul className="mt-3 list-disc space-y-1 pl-5 text-xs leading-6 text-slate-600 dark:text-slate-300">
               <li>
                 {t(
                   "settings.resetCatalogsList1",
@@ -368,7 +368,7 @@ export function SettingsMaintenanceTab({
             </ul>
           </div>
 
-          <div className="min-h-[250px] rounded-xl border border-rose-300 bg-rose-50/90 p-4 shadow-sm shadow-rose-200/30 dark:border-rose-500/40 dark:bg-rose-500/10 dark:shadow-none">
+          <div className="surface-subtle rounded-xl border-l-2 border-l-rose-500 p-4">
             <div className="flex items-center gap-2 text-sm font-semibold text-rose-950 dark:text-rose-200">
               <span aria-hidden="true">!</span>
               {t("settings.resetApp", "Reset app data")}
@@ -399,7 +399,7 @@ export function SettingsMaintenanceTab({
                 {t("settings.resetApp", "Reset app data")}
               </button>
             )}
-            <ul className="mt-3 list-disc space-y-1 pl-5 text-xs leading-6 text-rose-900 dark:text-rose-100/90">
+            <ul className="mt-3 list-disc space-y-1 pl-5 text-xs leading-6 text-slate-600 dark:text-slate-300">
               <li>
                 {t("settings.resetAppList1", "Clears inventory rolls and roll lifecycle history.")}
               </li>

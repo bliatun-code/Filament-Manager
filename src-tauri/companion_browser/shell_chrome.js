@@ -1,7 +1,7 @@
 import { formatInventoryDisplayTitle } from "./formatters.js";
 import { t } from "./companion_i18n.js";
 import { buildPurchaseReceiptMetadataDraft } from "./companion_domain.js";
-import { swatchCssStyle, toSwatchColor } from "./companion_theme.js";
+import { swatchCssStyle, swatchCssBackground } from "./companion_theme.js";
 
 export const COMPANION_ROOT_FLOW_PANEL_ID = "companion-root-panel";
 
@@ -401,7 +401,7 @@ export function renderSwatchSelectionCard(options) {
       <div class="companion-selection-card-head">
         <div class="stack companion-selection-card-copy">
           <div class="swatch-line">
-            <span class="swatch-dot" style="background:${escape(toSwatchColor(swatch))};"></span>
+            <span class="swatch-dot" style="background:${escape(swatchCssBackground(swatch))};"></span>
             <span class="list-title">${escape(title)}</span>
           </div>
           ${cleanedMeta.length > 0 ? `<div class="meta-line">${cleanedMeta.join(" · ")}</div>` : ""}
@@ -543,7 +543,7 @@ export function renderSwatchListRow(options) {
     <button class="${escape(classes)}"${renderedAttributes ? ` ${renderedAttributes}` : ""}>
       <div class="dense-list-main">
         <div class="swatch-line spool-row-title">
-          <span class="swatch-dot" style="background:${escape(toSwatchColor(swatch))};"></span>
+          <span class="swatch-dot" style="background:${escape(swatchCssBackground(swatch))};"></span>
           <span class="list-title">${escape(title)}</span>
         </div>
         ${subtitle ? `<div class="list-subtitle">${escape(subtitle)}</div>` : ""}

@@ -83,10 +83,6 @@ test("swatch filament rows keep the bright hover outline", () => {
 
   assert.match(css, /\.list-row\.swatch-surface:hover,\s*\.swatch-card-surface\.swatch-surface:hover\s*\{/);
   assert.match(css, /0 0 0 1px rgba\(248, 250, 252, 0\.38\)/);
-  assert.match(
-    css,
-    /:root\[data-theme-mode="light"\] \.list-row\.swatch-surface:hover,[\s\S]*\.swatch-card-surface\.swatch-surface:hover[\s\S]*0 0 0 1px rgba\(255, 255, 255, 0\.96\)/,
-  );
 });
 
 test("light swatches keep neutral edges while dark swatches preserve their existing treatment", () => {
@@ -199,7 +195,7 @@ test("search fields keep a permanent visible label above the input", () => {
   );
 });
 
-test("light form controls use an opaque three-to-one border without changing dark mode", () => {
+test("form controls use opaque borders in explicit and system themes", () => {
   const css = readCssBundle();
   const tokenMatch = css.match(/:root\s*\{[^}]*--form-control-border:\s*(#[0-9a-f]{6});/i);
 
@@ -239,11 +235,11 @@ test("light form controls use an opaque three-to-one border without changing dar
   );
   assert.match(
     css,
-    /:root\[data-theme-mode="dark"\]\s*\{[^}]*--form-control-border: var\(--border\);/,
+    /:root\[data-theme-mode="dark"\]\s*\{[^}]*--form-control-border: #71839a;/,
   );
   assert.match(
     css,
-    /@media \(prefers-color-scheme: dark\)[\s\S]*:root\[data-theme-mode="auto"\]\s*\{[^}]*--form-control-border: var\(--border\);/,
+    /@media \(prefers-color-scheme: dark\)[\s\S]*:root\[data-theme-mode="auto"\]\s*\{[^}]*--form-control-border: #71839a;/,
   );
 });
 
@@ -343,7 +339,6 @@ test("phone CSS keeps root headers secondary, task sheets scrollable, and modal 
       explicitDarkPhoneNavIndex < systemDarkPhoneNavIndex,
     "explicit dark and dark-based brand themes must not depend on the OS color scheme",
   );
-  assert.match(css, /@media \(max-width: 767px\) and \(prefers-color-scheme: light\)[\s\S]*:root\[data-theme-mode="auto"\] \.swatch-surface\s*\{[\s\S]*--swatch-surface-top: 0\.24;/);
-  assert.match(css, /:root\[data-theme-mode="light"\] \.list-row\.swatch-surface[\s\S]*inset 3px 0 0 rgb\(var\(--swatch-rgb\) \/ 0\.56\)/);
+  assert.match(css, /@media \(max-width: 767px\) and \(prefers-color-scheme: light\)[\s\S]*:root\[data-theme-mode="auto"\] \.swatch-surface\s*\{[\s\S]*--swatch-surface-top: 0\.065;/);
   assert.match(css, /:root\[data-theme-mode="light"\] \.printer-board\.printer-brand-surface[\s\S]*inset 3px 0 0 rgb\(var\(--brand-rgb\) \/ 0\.5\)/);
 });

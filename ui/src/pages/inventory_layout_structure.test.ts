@@ -106,9 +106,13 @@ test("inventory add workflow stays out of the initial inventory bundle", () => {
   assert.match(inventoryPageWorkspaceSource, /returnFocusElement=\{returnFocusElement\}/);
 });
 
-test("inventory filters do not own header search and primary actions", () => {
+test("inventory search stays outside the advanced filters and header actions", () => {
   const headerActionsSource = inventoryControlsSource.slice(
     inventoryControlsSource.indexOf("export function InventoryHeaderActions"),
+    inventoryControlsSource.indexOf("export function InventoryStockFilters"),
+  );
+  const stockFiltersSource = inventoryControlsSource.slice(
+    inventoryControlsSource.indexOf("export function InventoryStockFilters"),
     inventoryControlsSource.indexOf("export function InventoryControlsPanel"),
   );
   const filterPanelSource = inventoryControlsSource.slice(
@@ -116,7 +120,9 @@ test("inventory filters do not own header search and primary actions", () => {
   );
 
   assert.match(headerActionsSource, /page-header-actions/);
-  assert.match(headerActionsSource, /page-header-search/);
+  assert.doesNotMatch(headerActionsSource, /type="search"/);
+  assert.match(stockFiltersSource, /type="search"/);
+  assert.match(inventoryPageWorkspaceSource, /<InventoryStockFilters/);
   assert.match(headerActionsSource, /PageHeaderButton/);
   assert.match(headerActionsSource, /variant="primary"/);
   assert.doesNotMatch(filterPanelSource, /page-header-actions/);
@@ -138,7 +144,7 @@ test("inventory header leaves loan creation to the loans page and spool detail",
 test("inventory exposes purchases as a page view and keeps queue management out of add spool", () => {
   assert.match(inventoryPageWorkspaceSource, /<InventoryWorkspaceNavigation/);
   assert.match(inventoryPageWorkspaceSource, /activeView === "STOCK"/);
-  assert.match(inventoryPageWorkspaceSource, /<WishlistQueuePanel\b[^>]*\{\.\.\.purchaseQueueProps\} \/>/);
+  assert.match(inventoryPageWorkspaceSource, /<WishlistQueuePanel\b[^>]*\{\.\.\.purchaseQueueProps\} showAddAction=\{false\} \/>/);
   assert.match(inventoryPageWorkspaceSource, /id="inventory-purchases-panel"/);
   assert.match(
     inventoryPageWorkspaceSource,

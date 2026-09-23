@@ -1,7 +1,7 @@
 import { formatFilamentDisplayTitle } from "../lib/display_format";
 import { useI18n } from "../lib/i18n";
 import { formatDisplayPercent } from "../lib/number_display";
-import { formatDateTime, formatGrams, toSwatchColor } from "../lib/printer_live_display";
+import { formatDateTime, formatGrams } from "../lib/printer_live_display";
 import type { IncomingWeightPrompt } from "../lib/printer_slot_model";
 import { modalFormInputClassName } from "./form_control_class";
 import { FeedbackBanner } from "./feedback_banner";
@@ -52,7 +52,7 @@ export function IncomingWeightModal({
         prompt.targetFilamentName,
         prompt.targetColorName,
       )}
-      swatchColor={toSwatchColor(prompt.targetHexColor)}
+      swatchColor={prompt.targetHexColor ?? undefined}
       cancelDisabled={busy}
       onCancel={onCancel}
       saveDisabled={busy}
@@ -105,7 +105,7 @@ export function IncomingWeightModal({
         ) : null}
         {prompt.requiresOutgoingWeight ? (
           <ModalFormField
-            label={t("printers.outgoingWeight", "Outgoing weight (g)")}
+            label={`${t("printers.outgoingWeight", "Outgoing weight (g)")} · ${t("inventory.measuredTotalWeight", "Measured total weight (g)")}`}
             hint={formatFilamentDisplayTitle(
               prompt.currentMaterial,
               prompt.currentFilamentName,
@@ -123,7 +123,7 @@ export function IncomingWeightModal({
           </ModalFormField>
         ) : null}
         {prompt.requiresIncomingWeight ? (
-          <ModalFormField label={t("printers.incomingWeightPromptLabel", "Measured weight (g)")}>
+          <ModalFormField label={t("inventory.measuredTotalWeight", "Measured total weight (g)")}>
             <input
               type="number"
               min={0}

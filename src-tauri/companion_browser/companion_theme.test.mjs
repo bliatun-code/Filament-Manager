@@ -6,6 +6,8 @@ import {
   companionThemeBaseMode,
   COMPANION_THEME_OPTIONS,
   normalizeHex,
+  swatchCssBackground,
+  toSwatchColor,
   normalizeThemeMode,
   persistCompanionThemeMode,
   printerBrandCssVars,
@@ -353,4 +355,21 @@ test("subscribeToMediaQueryChange supports both modern and legacy media query li
   assert.equal(legacyCalls.length, 1);
 
   assert.equal(subscribeToMediaQueryChange({}, () => {}), false);
+});
+
+
+test("composite filament samples preserve every color with desktop-compatible stops", () => {
+  assert.equal(swatchCssBackground("multi(#fff,#000)"),
+    "linear-gradient(145deg, #FFF 0%, #FFF 50%, #000 50%, #000 100%)");
+  assert.equal(swatchCssBackground("gradient(#F97316,#2563EB,#15803D)"),
+    "linear-gradient(145deg, #F97316 0%, #2563EB 50%, #15803D 100%)");
+  assert.equal(swatchCssBackground("fff;000"),
+    "linear-gradient(145deg, #FFF 0%, #000 100%)");
+  assert.equal(toSwatchColor("multi(#FFFFFF,#000000)"), "#FFFFFF");
+  for (const raw of ["#FFFFFF", "#000000", "#123456"]) {
+    assert.equal(swatchCssBackground(raw), raw);
+  }
+  for (const raw of ["multi(#fff,red)", "gradient(#fff)", "url(https://example.com)"]) {
+    assert.equal(swatchCssBackground(raw), "#CBD5E1");
+  }
 });

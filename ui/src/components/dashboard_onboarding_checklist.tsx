@@ -158,8 +158,8 @@ export function DashboardOnboardingChecklist({
               "dashboard.onboardingProgress",
               "{completed} of {total} complete",
               {
-                completed: taskGroups.requiredCompletedCount,
-                total: taskGroups.requiredTotalCount,
+                completed: state.completedCount,
+                total: state.totalCount,
               },
             )}
           </span>

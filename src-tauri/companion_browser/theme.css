@@ -93,7 +93,7 @@
   --surface-panel: rgba(17, 28, 45, 0.9);
   --border: rgba(127, 156, 187, 0.2);
   --border-strong: rgba(127, 156, 187, 0.34);
-  --form-control-border: var(--border);
+  --form-control-border: #71839a;
   --text: #f4f8fb;
   --text-muted: #b4c1cf;
   --muted: #b4c1cf;
@@ -164,7 +164,7 @@
     --surface-panel: rgba(17, 28, 45, 0.9);
     --border: rgba(127, 156, 187, 0.2);
     --border-strong: rgba(127, 156, 187, 0.34);
-    --form-control-border: var(--border);
+    --form-control-border: #71839a;
     --text: #f4f8fb;
     --text-muted: #b4c1cf;
     --muted: #b4c1cf;

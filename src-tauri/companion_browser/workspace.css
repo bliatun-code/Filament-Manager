@@ -2092,9 +2092,9 @@
   }
 
   :root[data-theme-mode="light"] .swatch-surface {
-    --swatch-surface-top: 0.24;
-    --swatch-surface-mid: 0.14;
-    --swatch-surface-bottom: 0.065;
+    --swatch-surface-top: 0.065;
+    --swatch-surface-mid: 0.035;
+    --swatch-surface-bottom: 0.012;
     --swatch-surface-border: 0.4;
   }
 }
@@ -2162,9 +2162,9 @@
 
   :root:not([data-theme-mode]) .swatch-surface,
   :root[data-theme-mode="auto"] .swatch-surface {
-    --swatch-surface-top: 0.24;
-    --swatch-surface-mid: 0.14;
-    --swatch-surface-bottom: 0.065;
+    --swatch-surface-top: 0.065;
+    --swatch-surface-mid: 0.035;
+    --swatch-surface-bottom: 0.012;
     --swatch-surface-border: 0.4;
   }
 }
@@ -2240,4 +2240,19 @@
 .task-sheet.add-filament-sheet .add-spool-catalog-row .dense-list-side {
   min-width: 0;
   align-self: start;
+}
+
+/* Keep long filament identities and actual color samples readable on phones. */
+@media (max-width: 479px) {
+  .storage-shell .dense-list-row {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .storage-shell .dense-list-side {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem;
+    min-width: 0;
+  }
 }

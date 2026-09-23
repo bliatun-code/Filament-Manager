@@ -67,7 +67,7 @@ export function InventorySpoolDetailHeader({
         swatchColor={spool.hexColor}
       >
         <div
-          className="mt-1 truncate text-xl font-semibold tracking-tight text-slate-950 dark:text-slate-50"
+          className="mt-1 break-words text-xl font-semibold tracking-tight text-slate-950 dark:text-slate-50"
           title={displayTitle}
         >
           {displayTitle}

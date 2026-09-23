@@ -60,6 +60,8 @@ type InventoryHeaderActionsProps = {
 };
 
 type InventoryControlsPanelProps = {
+  navigation?: ReactNode;
+  filters?: ReactNode;
   activeFilterCount: number;
   advancedFiltersOpen: boolean;
   bulkSelectionActive: boolean;
@@ -112,17 +114,11 @@ function ownershipLabel(ownership: OwnershipFilter, t: ReturnType<typeof useI18n
 }
 
 export function InventoryHeaderActions({
-  lowStockOnly,
   onAddSpool,
   onCreateLabelSheet,
-  onLowStockOnlyChange,
-  onSearchChange,
-  onStatusFilterChange,
   primaryActionsDisabled,
   labelSheetDisabled,
-  search,
   showStockFilters,
-  statusFilter,
 }: InventoryHeaderActionsProps) {
   const { t } = useI18n();
 
@@ -147,7 +143,18 @@ export function InventoryHeaderActions({
           {t("inventory.labelSheetAllAction", "Create label sheet for all stock")}
         </PageHeaderButton>
       </div>
-      <div className="flex w-full flex-col gap-2 min-[920px]:items-end">
+    </div>
+  );
+}
+
+export function InventoryStockFilters({
+  lowStockOnly, onLowStockOnlyChange, onSearchChange, onStatusFilterChange,
+  search, showStockFilters, statusFilter,
+}: InventoryHeaderActionsProps) {
+  const { t } = useI18n();
+  if (!showStockFilters) return null;
+  return (
+      <div className="mt-3 flex w-full flex-col gap-3 min-[1280px]:flex-row min-[1280px]:items-center">
         <input
           type="search"
           aria-label={t(
@@ -160,14 +167,14 @@ export function InventoryHeaderActions({
           )}
           value={search}
           onChange={(event) => onSearchChange(event.target.value)}
-          className="page-header-search"
+          className="app-form-control app-control-focus min-h-10 w-full rounded-lg border px-3 py-2 text-sm min-[1280px]:w-80 min-[1280px]:shrink-0"
         />
-        <div className="page-header-filter-surface">
+        <div className="min-w-0 flex-1">
           <div className="flex flex-col gap-2 min-[920px]:flex-row min-[920px]:items-center">
-            <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400 min-[920px]:w-20">
+            <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400 sr-only">
               {t("inventory.status", "Status")}
             </div>
-            <div className="flex flex-wrap gap-1.5 min-[920px]:justify-end">
+            <div className="flex flex-wrap gap-1.5" role="group" aria-label={t("inventory.status", "Status")}>
               <button
                 type="button"
                 aria-pressed={lowStockOnly}
@@ -194,11 +201,12 @@ export function InventoryHeaderActions({
           </div>
         </div>
       </div>
-    </div>
   );
 }
 
 export function InventoryControlsPanel({
+  navigation,
+  filters,
   activeFilterCount,
   advancedFiltersOpen,
   bulkSelectionActive,
@@ -227,9 +235,10 @@ export function InventoryControlsPanel({
       : t("inventory.spoolResults", "spools");
 
   return (
-      <div className="surface-subtle mt-4 px-3 py-2.5">
-        <div className="flex flex-col gap-2 min-[920px]:flex-row min-[920px]:items-center min-[920px]:justify-between">
-          <div className="flex min-w-0 flex-wrap items-center gap-2">
+      <div className="mt-4">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex min-w-0 flex-wrap items-center gap-3">
+            {navigation}
             <div
               className="text-sm font-semibold text-slate-800 dark:text-slate-100"
               aria-live="polite"
@@ -295,6 +304,8 @@ export function InventoryControlsPanel({
             </button>
           </div>
         </div>
+
+        {filters}
 
         {advancedFiltersOpen ? (
           <div

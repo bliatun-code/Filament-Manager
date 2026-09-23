@@ -148,32 +148,28 @@ export function SettingsGeneralTab({
             </div>
           </div>
         </div>
-      </SettingsSurfaceCard>
-
-      <SettingsSurfaceCard
-        className="min-w-0 space-y-4 self-start"
-        eyebrow={t("settings.language", "Language")}
-        description={t(
-          "settings.languageHint",
-          "Choose app language. More sections will be localized incrementally.",
-        )}
-      >
-        <div className="min-w-0">
-          <label className="block max-w-md">
-            <span className="sr-only">{t("settings.language", "Language")}</span>
-            <select
-              aria-label={t("settings.language", "Language")}
-              className={settingsFormControlClass}
-              value={locale}
-              onChange={(event) => onLocaleSelection(event.target.value as Locale)}
-            >
-              {SELECTABLE_LOCALES.map((definition) => (
-                <option key={definition.id} value={definition.id}>
-                  {definition.nativeLabel}
-                </option>
-              ))}
-            </select>
-          </label>
+        <div className="border-t border-slate-200 pt-4 dark:border-slate-700">
+          <div className={settingsSectionLabelClass}>{t("settings.language", "Language")}</div>
+          <p className="mt-1 mb-3 text-xs leading-5 text-slate-600 dark:text-slate-300">
+            {t("settings.languageHint", "Choose app language. More sections will be localized incrementally.")}
+          </p>
+          <div className="min-w-0">
+            <label className="block max-w-md">
+              <span className="sr-only">{t("settings.language", "Language")}</span>
+              <select
+                aria-label={t("settings.language", "Language")}
+                className={settingsFormControlClass}
+                value={locale}
+                onChange={(event) => onLocaleSelection(event.target.value as Locale)}
+              >
+                {SELECTABLE_LOCALES.map((definition) => (
+                  <option key={definition.id} value={definition.id}>
+                    {definition.nativeLabel}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </div>
         </div>
       </SettingsSurfaceCard>
 

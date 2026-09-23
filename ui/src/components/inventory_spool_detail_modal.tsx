@@ -440,6 +440,8 @@ export function InventorySpoolDetailModal({
                 status={spool.status}
               />
 
+            </div>
+            <div className="col-span-full space-y-4">
               <div
                 className={inventoryDetailPanelClassName}
                 style={inventorySwatchPanelStyle(spool.hexColor, resolvedTheme)}
