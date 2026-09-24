@@ -98,6 +98,17 @@
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
+.add-spool-ownership-control {
+  display: flex;
+}
+
+.add-spool-ownership-control .segment-button {
+  flex: 1 1 auto;
+  min-height: 2.75rem;
+  padding: 0.65rem 0.5rem;
+  font-size: 0.875rem;
+}
+
 .segmented-control[data-columns="3"] {
   grid-template-columns: repeat(3, minmax(0, 1fr));
 }
@@ -505,8 +516,29 @@
 
 .settings-shell-grid {
   display: grid;
+  align-items: start;
   gap: 0.9rem;
-  grid-template-columns: repeat(auto-fit, minmax(18rem, 1fr));
+  grid-template-columns: minmax(0, 1fr);
+}
+
+@media (min-width: 768px) {
+  .settings-shell-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .settings-shell-grid > .settings-card:first-child {
+    grid-row: span 2;
+  }
+}
+
+@media (min-width: 1200px) {
+  .settings-shell-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .settings-shell-grid > .settings-card:first-child {
+    grid-row: auto;
+  }
 }
 
 .settings-card {
@@ -1223,6 +1255,8 @@
 }
 
 .detail-modal .detail-panel-header {
+  flex-direction: row;
+  align-items: center;
   position: sticky;
   top: -0.92rem;
   z-index: 2;
@@ -1234,7 +1268,9 @@
   box-shadow: 0 16px 28px -28px rgba(15, 23, 42, 0.44);
 }
 
-.detail-modal-actions {
+.detail-modal .detail-modal-actions {
+  width: auto;
+  flex-shrink: 0;
   display: grid;
   gap: 0.34rem;
   justify-items: end;

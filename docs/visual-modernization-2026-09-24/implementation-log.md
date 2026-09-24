@@ -86,3 +86,13 @@ Kritikeren lagret en PNG-etikett fra native-dialogen, fant filen, men så ingen 
 Bygg, lint, 39 målrettede etikett-/verktøytester og 23 arkeksporttester passerte. Arkeksportens feiltest kontrollerer nå også at meldingen faktisk finnes som et alert-element inne i dialogen. Native kontroll av PNG-bekreftelsen gjenstår etter siste HMR-oppdatering.
 
 32 oppdaterte Companion-oppgavebilder i Bambu/Prusa ved 320/390/834/1440 px: ingen axe-brudd, opptaksfeil eller horisontal dokumentoverflyt. Kritikeren har separat inspisert de to bildene som viser et nytt aktivt lån og restmengde 2 etter delvis mottak.
+
+### Companion-oppfølging etter runde 6
+
+Nye 320 px-bilder bekreftet at «Borrowed-in» ble brutt over flere linjer, og at et langt rullnavn ble gjentatt i både fast dialogoverskrift og innhold. Eierskapsknappene fordeler nå plassen etter tekstbehov, med minst 44 px høyde. Dialogens fulle tilgjengelige navn er bevart, mens det synlige, lange navnet står én gang sammen med swatch og metadata. «Spool» og «Done» deler en kompakt rad. Ved 320 px er nå begge vektlagringshandlingene synlige i det kontrollerte eksemplet.
+
+Companion-innstillingene bruker én kolonne på mobil, utseende til venstre og tilkobling/lisens til høyre ved mellomstor bredde, og tre kolonner på store skjermer. Dette fjerner det kunstig høye, nesten tomme tilkoblingskortet.
+
+402 Companion-tester passerte etter siste justering. 32 nye Add/Detail-bilder dekker fire temaer og fire bredder; 16 norske bilder dekker fire temaer ved 320/390 px. Ingen axe-brudd eller horisontal dokumentoverflyt. Uavhengig vurdering av de siste bildene pågår.
+
+Hele Rust-porten passerte: `cargo test` (plattformspesifikke ignorerte tester forblir oppgitt som ignorert), formatering samt Clippy i debug og release med advarsler som feil. Diagnostikkens syntetiske datakilde oppdaterer nå også printerrevisjonen, slik at vanlig 15-sekunders polling faktisk henter nye målinger. Kritikeren har sett en befolket graf i native-app. Matrisehjelperen bruker samme mekanisme på hver genererte databasekopi; ingen printertransport eller produktkode ble lagt til for dette.
