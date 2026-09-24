@@ -16,7 +16,7 @@ async function harness() {
     const pixel='data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+a1S8AAAAASUVORK5CYII=';
     window.labelStage=(stage,data)=>{const value=stage==='shell'?'http://filament.local/companion':stage==='pdf'?'JVBERi0=':stage==='export'?'/Downloads/sheet.pdf':pixel;
       const call={stage,data};calls.push(call);if(!hold.has(stage))return Promise.resolve(value);
-      return new Promise((resolve,reject)=>{call.resolve=()=>resolve(value);call.reject=()=>reject(Error('test failure'));});};
+      return new Promise((resolve,reject)=>{call.resolve=()=>resolve(value);call.reject=(message='test failure')=>reject(Error(message));});};
     window.__TAURI__={invoke:(command,payload)=>window.labelStage('export',{command,payload})};
     const t=(_key,fallback='',params={})=>fallback.replace(/\\{(\\w+)\\}/g,(_,key)=>params[key]??key);
     const spools=['a','b'].map((id,i)=>({id,masterId:'master',status:i?'EMPTY':'IN_STOCK',material:'PLA',vendor:'Vendor',filamentName:'Basic',colorName:'Blue',ownershipType:'OWNED'}));
@@ -32,7 +32,7 @@ async function harness() {
       close:()=>api.modalProps.onClose(),save:()=>{void api.modalProps.onSave('a4');},doubleOpen:()=>{api.openLabelSheet();api.openLabelSheet();},
       doubleSave:()=>{api.modalProps.onSave('a4');api.modalProps.onSave('a4');},capture:()=>{oldSave=api.modalProps.onSave;oldClose=api.modalProps.onClose;oldOpen=api.openLabelSheet;},
       oldSave:()=>{void oldSave('a4');},oldClose:()=>oldClose(),oldOpen:()=>{void oldOpen();},hold:stage=>hold.add(stage),
-      finish:(index,fail=false)=>{fail?calls[index].reject():calls[index].resolve();},
+      finish:(index,fail=false,message)=>{fail?calls[index].reject(message):calls[index].resolve();},
       snapshot:()=>({...state,open:api.modalProps.open,loading:api.modalProps.loading,saving:api.modalProps.saving,items:api.modalProps.items,
         calls:calls.map(({stage,data})=>({stage,data}))})};
   `;
@@ -64,8 +64,17 @@ test('rendered label sheet lifecycle', async context => {
     await scenario('explicit selection includes the selected empty roll only',async page=>{
       await page.evaluate('labels.selected()');await ready(page);assert.deepEqual((await page.evaluate('labels.snapshot()')).items.map((item:{reference:string})=>item.reference),['b']);
     });
-    await scenario('stale selection closes the builder and reports an error before rendering',async page=>{
-      await page.evaluate('labels.stale()');const s=await page.evaluate('labels.snapshot()');assert.equal(s.open,false);assert.ok(s.error);assert.equal(s.calls.length,0);
+    await scenario('stale selection reports an error inside the builder before generating labels',async page=>{
+      await page.evaluate('labels.stale()');const s=await page.evaluate('labels.snapshot()');assert.equal(s.open,true);assert.equal(s.calls.length,0);assert.match(await page.getByRole('dialog').getByRole('alert').innerText(),/Failed to create inventory label sheets/);
+    });
+    await scenario('missing Companion address explains the prerequisite inside the sheet',async page=>{
+      await page.evaluate("labels.hold('shell');labels.open()");
+      await page.waitForFunction("labels.snapshot().calls.length===1");
+      await page.evaluate("labels.finish(0,true,'Companion QR link is unavailable.')");
+      const alert=page.getByRole('dialog').getByRole('alert');
+      await alert.waitFor();
+      assert.match(await alert.innerText(),/stable local address.*Settings → Library & web app/);
+      assert.equal((await page.evaluate('labels.snapshot()')).calls.length,1);
     });
     for(const stage of ['shell','qr','png']) {
       await scenario(`close during ${stage} discards late generation`,async page=>{

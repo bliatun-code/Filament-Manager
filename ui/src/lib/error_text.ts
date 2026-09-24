@@ -23,6 +23,9 @@ export function toErrorMessage(
   // The native renewal boundary still returns this fixed legacy sentinel.
   // Match it exactly; arbitrary transport text must remain out of normal UI.
   const message = error instanceof Error ? error.message : error;
+  if (message === "Companion QR link is unavailable.") {
+    return `${t("inventory.qrCompanionUnavailable", "Companion QR links require the stable local address. Make it available on the active host before creating a label.")} ${t("nav.settings", "Settings")} → ${t("settings.tabLibrary", "Library & web app")}.`;
+  }
   if (message === "Desktop client session renewal returned 401. Pairing is no longer valid.") {
     return `${t("settings.librarySyncClientAuthNeedsRepair", "Re-pair required")}. ${clientPairingActionHint(t)}`;
   }

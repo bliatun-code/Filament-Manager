@@ -303,12 +303,7 @@ export function InventorySpoolDetailModal({
               </button>
             </ModalNotice>
           ) : null}
-          <div className={inventoryTwoColumnModalGridClassName}>
-            <div
-              className={inventoryDetailPanelClassName}
-              style={inventorySwatchPanelStyle(spool.hexColor, resolvedTheme)}
-            >
-              <div className="space-y-5 text-sm text-slate-700 dark:text-slate-200">
+          {error || infoMessage ? <div className="mb-4 space-y-3">
                 {error ? (
                   <ModalNotice className="px-3 py-2 text-xs" tone="danger">
                     {error}
@@ -318,53 +313,9 @@ export function InventorySpoolDetailModal({
                   <ModalNotice tone="success">{infoMessage}</ModalNotice>
                 ) : null}
 
-                <InventorySpoolIdentityPanel
-                  assignedSlot={assignedSlot}
-                  locationValue={locationValue}
-                  rfidBindingMeta={rfidBindingMeta}
-                  resolvedTheme={resolvedTheme}
-                  spool={spool}
-                />
-
-                <InventorySpoolQrRfidPanel
-                  companionAvailable={qrCompanionAvailable}
-                  dataUrl={qrDataUrl}
-                  deterministicLabelPreferences={deterministicLabelPreferences}
-                  loading={qrLoading}
-                  initialLabelPanelOpen={initialLabelPanelOpen}
-                  labelPanelRequestId={labelPanelRequestId}
-                  onPrintLabel={onPrintLabel}
-                  onStartRfidCapture={onStartRfidCapture}
-                  resolvedTheme={resolvedTheme}
-                  runtimeAvailable={runtimeAvailable}
-                  spoolHexColor={spool.hexColor}
-                  spool={spool}
-                  supportsRfidCapture={supportsRfidCapture}
-                  target={qrTarget}
-                />
-
-                <InventoryCatalogMetadataPanel
-                  colorName={colorName}
-                  disabled={!runtimeAvailable || manageBusy}
-                  editUnlocked={masterEditUnlocked}
-                  filamentName={filamentName}
-                  hexColor={hexColor}
-                  material={material}
-                  onChangeColorName={onChangeColorName}
-                  onChangeFilamentName={onChangeFilamentName}
-                  onChangeHexColor={onChangeHexColor}
-                  onChangeMaterial={onChangeMaterial}
-                  onChangeVendor={onChangeVendor}
-                  onSave={onSaveMasterMetadata}
-                  onToggleEditUnlocked={onToggleEditUnlocked}
-                  resolvedTheme={resolvedTheme}
-                  spoolHexColor={spool.hexColor}
-                  vendor={vendor}
-                />
-              </div>
-            </div>
-
-            <div className="space-y-4">
+          </div> : null}
+          <div className={inventoryTwoColumnModalGridClassName}>
+            <div className="space-y-4 min-[900px]:col-start-2 min-[900px]:row-start-1">
               <WeightInput
                 label={t("inventory.measuredTotalWeight", "Measured total weight (g)")}
                 value={measuredTotal}
@@ -441,6 +392,57 @@ export function InventorySpoolDetailModal({
               />
 
             </div>
+            <div
+              className={`${inventoryDetailPanelClassName} min-[900px]:col-start-1 min-[900px]:row-start-1`}
+              style={inventorySwatchPanelStyle(spool.hexColor, resolvedTheme)}
+            >
+              <div className="space-y-5 text-sm text-slate-700 dark:text-slate-200">
+                <InventorySpoolIdentityPanel
+                  assignedSlot={assignedSlot}
+                  locationValue={locationValue}
+                  rfidBindingMeta={rfidBindingMeta}
+                  resolvedTheme={resolvedTheme}
+                  spool={spool}
+                />
+
+                <InventorySpoolQrRfidPanel
+                  companionAvailable={qrCompanionAvailable}
+                  dataUrl={qrDataUrl}
+                  deterministicLabelPreferences={deterministicLabelPreferences}
+                  loading={qrLoading}
+                  initialLabelPanelOpen={initialLabelPanelOpen}
+                  labelPanelRequestId={labelPanelRequestId}
+                  onPrintLabel={onPrintLabel}
+                  onStartRfidCapture={onStartRfidCapture}
+                  resolvedTheme={resolvedTheme}
+                  runtimeAvailable={runtimeAvailable}
+                  spoolHexColor={spool.hexColor}
+                  spool={spool}
+                  supportsRfidCapture={supportsRfidCapture}
+                  target={qrTarget}
+                />
+
+                <InventoryCatalogMetadataPanel
+                  colorName={colorName}
+                  disabled={!runtimeAvailable || manageBusy}
+                  editUnlocked={masterEditUnlocked}
+                  filamentName={filamentName}
+                  hexColor={hexColor}
+                  material={material}
+                  onChangeColorName={onChangeColorName}
+                  onChangeFilamentName={onChangeFilamentName}
+                  onChangeHexColor={onChangeHexColor}
+                  onChangeMaterial={onChangeMaterial}
+                  onChangeVendor={onChangeVendor}
+                  onSave={onSaveMasterMetadata}
+                  onToggleEditUnlocked={onToggleEditUnlocked}
+                  resolvedTheme={resolvedTheme}
+                  spoolHexColor={spool.hexColor}
+                  vendor={vendor}
+                />
+              </div>
+            </div>
+
             <div className="col-span-full space-y-4">
               <div
                 className={inventoryDetailPanelClassName}

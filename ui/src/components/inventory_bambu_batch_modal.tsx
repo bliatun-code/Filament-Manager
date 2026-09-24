@@ -11,6 +11,7 @@ import { AppModal } from "./app_modal";
 import {
   inventoryModalOverlayClassName,
   inventoryWideModalPanelClassName,
+  inventoryWideContentModalPanelClassName,
 } from "./inventory_modal_chrome";
 import {
   bambuBatchCodeFieldClassName,
@@ -693,7 +694,7 @@ export function InventoryBambuBatchModal({
       closeOnBackdrop={!closeLocked}
       onBackdropClose={closeLocked ? undefined : onClose}
       overlayClassName={inventoryModalOverlayClassName}
-      panelClassName={`${inventoryWideModalPanelClassName} overscroll-contain`}
+      panelClassName={`${batchRegistration ? inventoryWideContentModalPanelClassName : inventoryWideModalPanelClassName} overscroll-contain`}
       zIndex={60}
     >
       <>
@@ -712,7 +713,7 @@ export function InventoryBambuBatchModal({
           subtitleClassName="max-w-3xl text-xs leading-4"
         />
 
-        <ModalBody scroll={false} className="px-3 py-3 sm:px-4">
+        <ModalBody scroll={false} className={`px-3 py-3 sm:px-4 ${batchRegistration ? "flex flex-col" : ""}`}>
           {batchRegistration ? (
             <InventoryBambuBatchOutcomePanel
               registration={batchRegistration}

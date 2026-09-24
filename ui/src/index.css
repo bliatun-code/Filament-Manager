@@ -99,6 +99,8 @@
 
   html.dark {
     color-scheme: dark;
+    --app-theme-focus-outline: rgb(125, 211, 252);
+    --app-theme-focus-halo: rgba(125, 211, 252, 0.18);
     --app-theme-control-border: rgb(113, 131, 154);
     --app-theme-control-background: rgba(15, 23, 42, 0.76);
     --app-theme-control-hover-background: rgba(30, 41, 59, 0.88);
@@ -496,8 +498,46 @@
     background-color: var(--app-theme-modal-action-hover-background);
   }
 
+  .app-disclosure-summary {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    list-style: none;
+  }
+
+  .app-disclosure-summary::-webkit-details-marker {
+    display: none;
+  }
+
+  .app-disclosure-summary::before {
+    content: "";
+    width: 0.5rem;
+    height: 0.5rem;
+    flex-shrink: 0;
+    border-right: 2px solid currentColor;
+    border-bottom: 2px solid currentColor;
+    transform: rotate(-45deg);
+  }
+
+  details[open] > .app-disclosure-summary::before {
+    transform: rotate(45deg);
+  }
+
+  .app-disclosure-summary > span {
+    min-width: 0;
+    flex: 1;
+  }
+
+  .app-disclosure-summary:focus-visible {
+    outline-offset: -3px !important;
+  }
+
   .app-accent-control {
     accent-color: var(--app-theme-accent);
+  }
+
+  html.dark:not([data-theme="bambu"]):not([data-theme="prusa"]) .app-accent-control {
+    accent-color: var(--app-theme-primary-action-background);
   }
 
   html.dark .app-primary-action {
@@ -575,6 +615,8 @@
     background-color: var(--app-theme-control-hover-background);
   }
 
+  html.dark .app-control-focus:focus-visible,
+  html.dark .app-control-focus-subtle:focus-visible,
   html[data-theme="bambu"] .app-control-focus:focus-visible,
   html[data-theme="bambu"] .app-control-focus-subtle:focus-visible,
   html[data-theme="prusa"] .app-control-focus:focus-visible,

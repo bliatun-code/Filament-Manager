@@ -130,6 +130,7 @@ function GroupSelectionCheckbox({
         checked={checked}
         disabled={disabled}
         type="checkbox"
+        className="app-accent-control app-control-focus"
         onChange={(event) => onChange(event.target.checked)}
       />
       <span>{label}</span>
@@ -215,6 +216,7 @@ function GroupSpoolRow({
         checked={selected}
         disabled={disabled}
         type="checkbox"
+        className="app-accent-control app-control-focus"
         onChange={(event) => onSelectionChange(event.target.checked)}
       />
       <div className="min-w-0">
@@ -283,6 +285,12 @@ function BatchReceiptCard({
   onClear: () => void;
   onOpenSpoolDetail: (spoolId: string) => void;
 }) {
+  const resultRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    resultRef.current?.focus({ preventScroll: true });
+    resultRef.current?.scrollIntoView({ block: "center", behavior: "instant" });
+  }, [receipt]);
+
   const protectedCount = receipt.updated.filter(
     (entry) => entry.protectedFromBatchPricing,
   ).length;
@@ -297,7 +305,7 @@ function BatchReceiptCard({
       )}
     >
       <div className="flex flex-wrap items-start justify-between gap-3">
-        <div aria-atomic="true" aria-live="polite" role="status">
+        <div ref={resultRef} tabIndex={-1} className="app-control-focus rounded-lg" aria-atomic="true" aria-live="polite" role="status">
           <SettingsNotice tone={receipt.committed ? "success" : "danger"}>
             {receipt.committed
               ? protectedCount > 0
@@ -342,7 +350,8 @@ function BatchReceiptCard({
             const presentation = filamentPriceSkipPresentation(entry.reason);
             const content = (
               <>
-                <span className="font-semibold">{entry.spoolLabel}</span>
+                <span className="break-words font-semibold">{entry.spoolLabel}</span>
+                <span className="break-all text-xs">{formatSpoolReference(entry.spoolId)}</span>
                 <span className="text-xs font-normal text-slate-600 dark:text-slate-300">
                   {receiptReasonLabel(entry.reason, t)}
                   {entry.detail ? ` · ${entry.detail}` : ""}
@@ -395,7 +404,8 @@ function BatchReceiptCard({
                   type="button"
                   onClick={() => onOpenSpoolDetail(entry.spoolId)}
                 >
-                  <span className="font-semibold">{entry.spoolLabel}</span>
+                  <span className="break-words font-semibold">{entry.spoolLabel}</span>
+                <span className="break-all text-xs">{formatSpoolReference(entry.spoolId)}</span>
                   {entry.protectedFromBatchPricing ? (
                     <span>
                       {t(
@@ -944,7 +954,7 @@ export function SettingsFilamentDefaultsTab({
                 key={category.key}
                 open={visualQaPricingOpen ? categoryIndex === 0 : undefined}
               >
-                <summary className="cursor-pointer px-4 py-3 outline-none transition hover:bg-slate-50 focus-visible:bg-slate-50 dark:hover:bg-slate-900/55 dark:focus-visible:bg-slate-900/55">
+                <summary className="app-disclosure-summary app-control-focus cursor-pointer px-4 py-3 outline-none transition hover:bg-slate-50 focus-visible:bg-slate-50 dark:hover:bg-slate-900/55 dark:focus-visible:bg-slate-900/55">
                   <span className="flex flex-wrap items-center justify-between gap-2">
                     <span className="font-semibold text-slate-900 dark:text-slate-100">
                       {category.key === "generic"
@@ -998,7 +1008,7 @@ export function SettingsFilamentDefaultsTab({
                           ? categoryIndex === 0 && groupIndex === 0
                           : undefined}
                       >
-                        <summary className="cursor-pointer px-4 py-3 outline-none transition hover:bg-white focus-visible:bg-white dark:hover:bg-slate-900/75 dark:focus-visible:bg-slate-900/75">
+                        <summary className="app-disclosure-summary app-control-focus cursor-pointer px-4 py-3 outline-none transition hover:bg-white focus-visible:bg-white dark:hover:bg-slate-900/75 dark:focus-visible:bg-slate-900/75">
                           <span className="flex flex-wrap items-center justify-between gap-2">
                             <span>
                               <span className="block text-sm font-semibold text-slate-900 dark:text-slate-100">
@@ -1078,6 +1088,7 @@ export function SettingsFilamentDefaultsTab({
                                 disabled={disabled}
                                 name={`price-mode-${group.key}`}
                                 type="radio"
+                                className="app-accent-control app-control-focus"
                                 value="MISSING_ONLY"
                                 onChange={() => setGroupMode(group, "MISSING_ONLY")}
                               />
@@ -1096,6 +1107,7 @@ export function SettingsFilamentDefaultsTab({
                                 disabled={disabled}
                                 name={`price-mode-${group.key}`}
                                 type="radio"
+                                className="app-accent-control app-control-focus"
                                 value="OVERWRITE"
                                 onChange={() => setGroupMode(group, "OVERWRITE")}
                               />

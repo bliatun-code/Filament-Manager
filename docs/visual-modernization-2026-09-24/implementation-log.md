@@ -154,3 +154,33 @@ Native importfeil lå tidligere bare øverst på en lang innstillingsside. Backu
 Kritikeren fant at Companion-ønskelistens disclosure presset tittel og hjelpetekst inn i to svært smale kolonner ved 320 px. Registreringsseksjonenes disclosure viser nå tittel og pil øverst og hjelpeteksten i full bredde under. Nye EN/NB-opptak og individuell retest pågår.
 
 Full smoke etter commit 70801258 passerte: bygg/lint, 405 Companion, 896 scripts, AppModal/data-tilgjengelighet, lånedialoger, 2071 UI-tester, 23 ytelsestester, kontrakter og doctor. De senere rettingene ovenfor har målrettede tester; en avsluttende samlet port gjenstår når neste vurdering er stabil.
+
+### Runde 15 – vekt før etikettmetadata, og lokal PDF-feil
+
+Native rulldetaljer viser vekt og vedlikehold før QR/metadata i smale vinduer. DOM-rekkefølgen følger oppgaven; ved bredde fra 900 px beholder skjema og metadata sine høyre/venstre kolonner. Feil og lagringskvittering står over begge kolonnene.
+
+Etikettforhåndsvisning som mangler stabil Companion-adresse beholder dialogen og forklarer forutsetningen samt hvor den endres. Den viser ikke et falskt tomt lagerark. Feil står øverst også ved lagring, mens en allerede generert forhåndsvisning beholdes. Papirvalg og hovedhandling bruker felles temakontroller.
+
+Verifikasjon: 35 målrettede etikett-/detaljtester passerte, UI-bygg passerte. Åtte NB-visninger ved 856×550 i Chromium med eksplisitt fixturebro hadde ingen axe-brudd eller horisontal dokumentoverflyt. Alle åtte er individuelt inspisert: vekt synlig også med varsel, etikettfeil lesbar i alle fire temaer. Dette er supplerende reflowbevis, ikke native WebKit eller faktisk 200 % zoom; axe har fortsatt ufullstendige kontrastkontroller. Bunnluft ved feilmeldingen ble rettet etter denne bildeserien.
+
+Kritikeren lagret faktisk både A4 og US Letter fra den isolerte Host-appen, 156 etiketter fordelt på seks sider per format. Alle tolv eksporterte PDF-sider er rendret og individuelt inspisert: regelmessige marger, ingen overlapping eller sideklipping, siste side har seks etiketter. Svært lange produktnavn får ellipsis, mens fargenavn og referanse beholdes. PDF-filer og QR-bilder beholdes lokalt som testbevis; de publiseres ikke i programgalleriet. Dette er visuell eksportkontroll, ikke en fysisk utskrifts-/skanningstest.
+
+R14 full smoke fullførte grønt. Uavhengig sluttgodkjenning og resterende native funksjons-/temadekning føres fortsatt av kritikeren; disse delresultatene erstatter ikke den.
+
+R15 etterkontroll fant ytterligere to konkrete avvik: Dark-slidersporet var cyan og manglet synlig tastaturfokus, og valgt papirformats hjelpetekst var for lys på hvitt. Native aksentkontroller i Dark bruker nå hvitt, felles `app-control-focus` overstyrer `outline-none` med tydelig lys ring, og valgt papirhint arver valgt tekstfarge. Kritikeren bekreftet begge faktiske native retester. Den generelle A-familien er fortsatt ikke sluttgodkjent på dette grunnlaget alene.
+
+### Runde 16 – kompakte batchkvitteringer og prisgrupper
+
+En faktisk vellykket batch viste en nesten tom helhøy dialog. Resultatdialogen bruker nå innholdstilpasset høyde, mens større resultatlister ruller med handlingsfoten tilgjengelig. Ny rendret regresjon dekker kort kvittering og femti rader ved 600×400: siste rad nås med fokus, åpner korrekt rull-ID og handlingsfoten holder seg i vinduet. Alle elleve batch-livssyklustester i denne pakken passerte.
+
+Kritikeren fant også standard macOS-blå radio-/avkrysningskontroller og en løs pilrad i native prisgrupper. Kontrollene bruker nå felles tema og fokus; de to nivåene av åpnbare grupper har pil og tittel på samme rad. Hvit Dark-aksent omfatter også Auto når systemet er mørkt. Uavhengig retest av prisflyten pågår.
+
+Programgalleriet har foreløpig seksten oppdaterte bilder: syv native hovedflater og ni ferske Companion-visninger. Hvert valgt bilde er individuelt kontrollert for layout og synlige opplysninger. Ny manifest fører opptaksdato per bilde slik eldre bilder ikke fremstilles som oppdaterte. Ingen pare-QR, privat LAN-adresse, serienummer eller fullt RFID-ID er med i disse nye bildene.
+
+### Runde 17 – synlig og identifiserbar priskvittering
+
+Etter faktisk prisoppdatering havnet kvitteringen nedenfor elleve grupper. Statusfeltet får nå fokus og rulles inn når et nytt resultat kommer. Både oppdaterte og hoppede rader viser rullreferansen, slik like produktnavn ikke skjuler hvilke ruller som ble behandlet. Rendret regresjon med 1800 px høy gruppe krever fokus og synlig kvittering allerede før etterfølgende oppdatering er fullført. Eksisterende og utvidede tester: 20 pass; lint uten feil eller advarsler.
+
+R15 bred verifikasjon: 406 Companion-, 896 script-, 2073 UI- og 23 ytelsestester passerte, samt tilgjengelighets-/låneportene. Public-readiness stoppet først på den nye, ennå ustagede gallerimanifesten; etter staging passerte hele kontraktspakken og doctor. Runde 16/17 har i tillegg målrettede tester og bygg; sluttkjøring gjentas når produktendringene er stabile.
+
+Seks supplerende Chromium-bilder av faktisk native-komponent-CSS er individuelt inspisert ved 856×650: Light/Dark/Bambu/Prusa samt Auto med mørkt og lyst systemtema. Sliderspor følger tema, og alle har synlig hel 2 px fokusring. Dette er eksplisitt fixturebro-bevis, ikke WebKit-kontroll.

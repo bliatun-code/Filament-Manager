@@ -146,18 +146,19 @@ export function useInventoryLabelSheetAction({
       operation.phase = "ready";
     } catch (printError) {
       if (!isCurrent()) return;
-      closeLabelSheet(session);
-      setError(
+      operation.phase = "ready";
+      setExportError(
         toErrorMessage(
           printError,
           t("settings.error.inventoryOverviewPrint", "Failed to create inventory label sheets."),
+          t,
         ),
       );
     } finally {
       if (isCurrent()) setLoading(false);
     }
   }, [
-    available, closeLabelSheet,
+    available,
     clientHostBaseUrl,
     clientReadOnly,
     locale,
@@ -199,7 +200,7 @@ export function useInventoryLabelSheetAction({
       closeLabelSheet(session);
     } catch (printError) {
       if (!isCurrent()) return;
-      const message = toErrorMessage(printError, t("settings.error.inventoryOverviewPrint", "Failed to create inventory label sheets."));
+      const message = toErrorMessage(printError, t("settings.error.inventoryOverviewPrint", "Failed to create inventory label sheets."), t);
       setExportError(message);
       setError(message);
     } finally {
