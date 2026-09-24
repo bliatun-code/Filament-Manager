@@ -1,4 +1,5 @@
 import type { ChangeEvent } from "react";
+import { inventoryFormControlClassName } from "./form_control_class";
 
 import {
   INVENTORY_BULK_MANUAL_STATUSES,
@@ -413,7 +414,7 @@ export function InventoryBulkActionsPanelView({
                     onChange={(event: ChangeEvent<HTMLSelectElement>) =>
                       onMoveTargetLocationIdChange(event.currentTarget.value)
                     }
-                    className="mt-1 min-h-11 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm dark:border-slate-600 dark:bg-slate-950"
+                    className={`mt-1 min-h-11 ${inventoryFormControlClassName}`}
                   >
                     <option value="">{copy.chooseLocation}</option>
                     {locationTargets.map((location) => (
@@ -466,7 +467,7 @@ export function InventoryBulkActionsPanelView({
                         onStatusTargetChange(value);
                       }
                     }}
-                    className="mt-1 min-h-11 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm dark:border-slate-600 dark:bg-slate-950"
+                    className={`mt-1 min-h-11 ${inventoryFormControlClassName}`}
                   >
                     {INVENTORY_BULK_MANUAL_STATUSES.map((status) => (
                       <option key={status} value={status}>

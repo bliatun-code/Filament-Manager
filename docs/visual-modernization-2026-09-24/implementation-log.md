@@ -106,3 +106,15 @@ Faktisk innsending av tom låntaker og et avbrutt lagringskall viste at feilen b
 En tilsvarende detaljtest fant at innskrevet vekt 321 g ble tilbakestilt til tidligere 525 g ved mislykket lagring. Felles bevaring av endrede felt hoppet over kontroller som var midlertidig deaktivert under venting. Verdiene bevares nå også da; deaktiverte kontroller får fortsatt ikke fokus. Nye tester dekker både dialogens feilplassering/oppgaveavgrensning og feltets venting→feil→lagret-forløp. Alle 404 Companion-tester passerte. Faktisk retur-/detaljretest og kritikerens resterende temakontroller pågår.
 
 Retur og detalj er deretter kontrollert i 16 faktiske feilbilder: fire temaer × 390/834 px, ingen axe-brudd, alle innskrevne 321 g bevart. En egen Dark390-sekvens gjentok feil→prøv igjen: faktisk HTTP 200 og SQLite 321 g, deretter gjenoppretting av opprinnelige 525 g gjennom samme UI og HTTP 200/SQLite 525 g. Dette gjelder bare syntetisk `visual_edge_3` i `edges-r3.db`. To egne bilder viser ferdig lagring og gjenoppretting; kritikerens individuelle inspeksjon står separat.
+
+### Runde 10 – native kontroller og gjenopprettet serverstatus
+
+Etter at alle 204 native-bilder var tatt uten kildeendringer, ble batchens små native select-kontroller erstattet med felles lagerkontroll. Massehandlingers to select-felt bruker samme stil, pil, minimumshøyde, temafarger og fokusmarkering.
+
+Bibliotekets eksisterende klientpoll henter nå også runtime-status. Den oppdaterer visningen uten å synkronisere nettverksutkast. En faktisk frontend-regresjon gjennom fixturebroen viste før rettingen at runtime ble frisk, men paring forble deaktivert etter 6,5 sekunder; bare remount hjalp. Etter rettingen aktiveres paring automatisk, mens et ulagret portutkast på 4499 består. Reproduserbar kontroll: `node docs/visual-modernization-2026-09-24/verify-runtime-recovery.mjs` med review-fixture og Vite på 5173. Dette er frontendbevis, ikke erstatning for ekte paring.
+
+Kritikeren har deretter opprettet faktisk lenke/QR i normal Host og paret normal Client, med «Paired», korrekt vertnavn og «Host is reachable». Den tidligere Bonjour-feilen regnes derfor ikke som en fortsatt blocker. Autoritet, frakobling, gjenoppretting og revoke kontrolleres separat.
+
+Hele smoke-pakken passerte etter endringene: bygg, lint, 404 Companion-tester, 896 script-tester, tilgjengelighet, lånedialoger, 2067 UI-tester, ytelse, kontrakter og doctor. 22 målrettede eksisterende tester passerte også. Ingen Rust-logikk er endret siden den tidligere komplette Rust-porten.
+
+Companion fikk i tillegg 32 komplette tastatursykluser: fire temaer × 320/834 px × Add/Lend/Return/Detail. Detaljseksjoner ble åpnet med Enter. Henholdsvis 26/5/4/21 fokusstopp ble traversert uten skjulte/navnløse mål eller flukt fra dialogen; Shift+Tab nådde siste kontroll og Escape returnerte synlig fokus. Siste-fokusbilder og besøkslogger er tilgjengelige for uavhengig inspeksjon. 16 norske feilbilder ved 320/390 px hadde ingen axe-brudd. Disse kontrollene gir ikke alene full produktgodkjenning.

@@ -1,4 +1,5 @@
 import { useId } from "react";
+import { inventoryFormControlClassName } from "./form_control_class";
 import { useI18n } from "../lib/i18n";
 import type {
   BambuFilamentCodeBatch,
@@ -26,8 +27,7 @@ type InventoryBambuBatchReviewPanelProps = {
   tauriAvailable: boolean;
 };
 
-const bambuBatchRowSelectClassName =
-  "w-full rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-xs font-semibold text-slate-700 outline-none transition focus-visible:border-sky-300/70 focus-visible:ring-2 focus-visible:ring-sky-100 disabled:opacity-50 dark:border-slate-700 dark:bg-slate-900/70 dark:text-slate-100 dark:focus-visible:border-sky-400/60 dark:focus-visible:ring-sky-500/20";
+const bambuBatchRowSelectClassName = inventoryFormControlClassName;
 const bambuBatchReviewPanelClassName = `flex min-h-0 flex-col ${bambuBatchPanelClassName}`;
 
 export function InventoryBambuBatchReviewPanel({
