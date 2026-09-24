@@ -20,6 +20,23 @@ test("failed task submissions display feedback inside the active overlay without
   assert.doesNotMatch(reopened.slice(reopened.indexOf('class="task-sheet-backdrop"')), /Enter a borrower name/);
 });
 
+test("saved detail feedback appears once in the fixed header, including after transient status expiry", () => {
+  for (const transient of [true, false]) {
+    const html = createRenderer({ state: {
+      detailOpen: true,
+      selectedSpoolId: "spool-1",
+      detailFeedback: { spoolId: "spool-1", message: "Weight updated just now." },
+      statusOverlayContext: { detailSpoolId: "spool-1" },
+      statusMessage: transient ? "Weight updated." : "",
+      statusTone: transient ? "success" : "default",
+    } }).renderRoot();
+    const overlay = html.slice(html.indexOf('class="detail-modal-backdrop"'));
+    assert.equal(overlay.split("Weight updated just now.").length - 1, 1);
+    assert.doesNotMatch(overlay, />Weight updated\.</);
+    assert.ok(overlay.indexOf("Weight updated just now.") < overlay.indexOf('class="detail-modal-body"'));
+  }
+});
+
 function createSpoolRow(id, overrides = {}) {
   return {
     spool: {

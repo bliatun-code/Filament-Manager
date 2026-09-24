@@ -230,12 +230,10 @@ function renderDetailModal(options) {
         });
       }
     }
-    const detailFeedback =
-      state.detailFeedback?.spoolId === selectedSpool.spool.id ? state.detailFeedback.message : "";
     body = renderSelectedSpoolDetailBody({
       selectedSpool,
       selectedDetail: detailMatchesSelection ? state.selectedDetail : null,
-      detailFeedback,
+      detailFeedback: "",
       busy: state.busy || state.detailBusy,
       compactDetail: state.layoutMode === "phone",
       findAssignedSlotForSpool,

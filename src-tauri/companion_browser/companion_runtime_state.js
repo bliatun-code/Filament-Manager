@@ -1,9 +1,14 @@
 export function companionOverlayStatus(state) {
   const context = state.statusOverlayContext;
-  if (!context) return null;
-  const matches = state.detailOpen
+  const matches = context && (state.detailOpen
     ? context.detailSpoolId === state.selectedSpoolId
-    : state.activeTaskSheet && context.taskSheet === state.activeTaskSheet;
+    : state.activeTaskSheet && context.taskSheet === state.activeTaskSheet);
+  const detailFeedback = state.detailOpen && state.detailFeedback?.spoolId === state.selectedSpoolId
+    ? state.detailFeedback.message : "";
+  if (detailFeedback && (!matches || state.statusTone === "success" || !state.statusMessage ||
+    (!state.busy && state.statusTone === "default"))) {
+    return { message: detailFeedback, tone: "success", busy: false };
+  }
   return matches ? { message: state.statusMessage, tone: state.statusTone, busy: state.busy } : null;
 }
 

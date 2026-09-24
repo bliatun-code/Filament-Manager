@@ -1126,6 +1126,8 @@
 
 .detail-history-block {
   min-width: 0;
+  align-self: start;
+  align-content: start;
 }
 
 .detail-history-summary {

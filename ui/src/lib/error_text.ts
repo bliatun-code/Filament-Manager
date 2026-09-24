@@ -13,6 +13,15 @@ export function toErrorMessage(
   if (!t) {
     return fallback;
   }
+  // The native renewal boundary still returns this fixed legacy sentinel.
+  // Match it exactly; arbitrary transport text must remain out of normal UI.
+  const message = error instanceof Error ? error.message : error;
+  if (message === "Desktop client session renewal returned 401. Pairing is no longer valid.") {
+    return `${t("settings.librarySyncClientAuthNeedsRepair", "Re-pair required")}. ${t("nav.settings", "Settings")} → ${t("settings.tabLibrary", "Library & web app")}: ${t(
+      "settings.librarySyncClientAuthHint",
+      "Paste a short-lived pairing link from the host to unlock protected desktop sync actions.",
+    )}`;
+  }
   return localizedAppError(
     error,
     (key, messageFallback) => t(key, messageFallback),

@@ -48,8 +48,8 @@ async function harness() {
       render:(next={})=>{props=next;flushSync(()=>root.render(React.createElement(Harness,props)));},
       start:(value=650)=>pending.push(action()(value)),double:(value=650)=>{pending.push(action()(value));pending.push(action()(value));},
       save:kind=>{oldAction=action(kind);},old:()=>{void oldAction(650);},
-      finish:async(index,reject=false,wait=true,receipt={committed:true,affected_count:1,history_spool_count:1})=>{
-        await Promise.resolve();if(reject)calls[index].reject(Error("write rejected"));else calls[index].resolve(receipt);
+      finish:async(index,reject=false,wait=true,receipt={committed:true,affected_count:1,history_spool_count:1},errorMessage="write rejected")=>{
+        await Promise.resolve();if(reject)calls[index].reject(Error(errorMessage));else calls[index].resolve(receipt);
         if(wait&&!hold)await Promise.all(pending);flushSync(()=>{});
       },
       failure:value=>{throwRefresh=value==="throw";resolution=throwRefresh?"LIVE":value;},
@@ -95,6 +95,18 @@ test("rendered inventory measured weight", async context => {
       assert.equal((await page.evaluate("roll.snapshot()")).calls.length,1);
       assert.match(await page.getByRole("alert").innerText(),/Failed to update weight/);
       await page.evaluate("roll.start();roll.finish(1)");assert.equal((await page.evaluate("roll.snapshot()")).error,null);
+    });
+    await scenario("revoked Host pairing retains the measured draft and points to repair",async page=>{
+      await page.evaluate("roll.render({host:'host'})");
+      await page.getByRole("spinbutton").fill("955");
+      await page.getByRole("button",{name:"Save",exact:true}).click();
+      await page.evaluate("roll.finish(0,true,true,undefined,'Desktop client session renewal returned 401. Pairing is no longer valid.')");
+      assert.match(await page.getByRole("alert").innerText(), /Re-pair required.*Settings → Library & web app/);
+      assert.equal(await page.getByRole("spinbutton").inputValue(), "955");
+      const state=await page.evaluate("roll.snapshot()");
+      assert.equal(state.calls.length,1);
+      assert.equal(state.calls[0].command,"execute_library_sync_host_inventory_bulk_mutation");
+      assert.deepEqual(state.reloads,[]);
     });
     for(const next of ["{id:'roll-b'}","{host:'host',generation:2}","{open:false}"]) {
       await scenario(`late reply and saved callback cannot affect ${next}`,async page=>{

@@ -118,3 +118,19 @@ Kritikeren har deretter opprettet faktisk lenke/QR i normal Host og paret normal
 Hele smoke-pakken passerte etter endringene: bygg, lint, 404 Companion-tester, 896 script-tester, tilgjengelighet, lånedialoger, 2067 UI-tester, ytelse, kontrakter og doctor. 22 målrettede eksisterende tester passerte også. Ingen Rust-logikk er endret siden den tidligere komplette Rust-porten.
 
 Companion fikk i tillegg 32 komplette tastatursykluser: fire temaer × 320/834 px × Add/Lend/Return/Detail. Detaljseksjoner ble åpnet med Enter. Henholdsvis 26/5/4/21 fokusstopp ble traversert uten skjulte/navnløse mål eller flukt fra dialogen; Shift+Tab nådde siste kontroll og Escape returnerte synlig fokus. Siste-fokusbilder og besøkslogger er tilgjengelige for uavhengig inspeksjon. 16 norske feilbilder ved 320/390 px hadde ingen axe-brudd. Disse kontrollene gir ikke alene full produktgodkjenning.
+
+### Runde 11 – tettere ønskeliste, reparasjon av paring og Companion-fokus
+
+Ønskelistekort deler nå status og mengdehandlinger på samme rad når det er plass. Ved 856 px viser fixturebroen to hele kort i alle fire temaer, både norsk og engelsk; alle åtte opptak hadde ingen axe-brudd eller horisontal overflyt. Native kontroll står separat.
+
+Tilbakekalt desktop-paring ble korrekt avvist, men vektfeilen var generisk. Det eksakte, kjente legacy-svaret for ugyldig paring oversettes nå til eksisterende lokalisert reparasjonsbeskjed med stien Innstillinger → Bibliotek og webapp. Andre ukjente feil forblir kontrollert fallback. Målrettede tester verifiserer at 955 g-utkastet beholdes og at ingen lokal skriving skjer.
+
+Companion viste både en midlertidig og en vedvarende lagringsbekreftelse samtidig. Én vedvarende bekreftelse vises nå i dialogens faste topp, også etter at den midlertidige statusen utløper. Faktisk feil→nytt forsøk lagret 321 g og gjenopprettet 525 g gjennom UI, HTTP 200 og separat SQLite-kontroll.
+
+Kritikeren fant strukket vektlogg ved 834 px og klippet fokus ved retur på 320 px. Historikkolonnene bruker nå naturlig innholdshøyde. Felles fokusregel gir 8 px rullemargin, slik at nettleseren kan vise hele ringen. Nye tastaturopptak åpner bare lukkede detaljseksjoner og venter på overgang mellom fokusstopp. Alle 405 Companion-tester passerte med repoets testkjører. Direkte kjøring av testfilene uten repoets locale-bootstrap feilet og regnes ikke som en produktregresjon; den korrekte standardkommandoen passerte.
+
+### Runde 12 – kontrollerbart utvalg før masseendringer
+
+Faktisk native-kontroll bekreftet at utvalg beholdes over søk, at aktive lån beskyttes og at Lost→In stock beholder registrert vekt. Bekreftelsen viste imidlertid bare antall når en valgt rull var skjult av filteret. Den viser nå alle faktisk berørte ruller med filamentnavn, referanse og opprinnelig swatch. Listen henter fra hele lageret, har begrenset høyde og kan rulles med tastatur. Handlingsknappene bruker samme solide primærvariant som øvrige lagerhandlinger.
+
+Bygg, lint og 56 målrettede bulk-tester passerte, inkludert to nye forløp som bekrefter at filtrerte ruller fortsatt navngis uten at en backend-kommando sendes. Kritikerens native retest pågår; disse testene erstatter ikke visuell godkjenning.

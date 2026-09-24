@@ -62,6 +62,14 @@ test("rendered inventory bulk review lifecycle",async context=>{
   });
   try {
     for(const kind of ['MOVE','STATUS']) {
+      await scenario(`${kind}: review names affected rolls hidden by the current filter`,async page=>{
+        await page.evaluate(`bulk.prepare('${kind}');bulk.render({filtered:true})`);
+        const rows=page.getByRole('list',{name:'Affected'}).getByRole('listitem');
+        assert.equal(await rows.count(),2);
+        assert.match(await rows.nth(1).innerText(),/PLA.*Basic.*Blue/);
+        assert.match(await rows.nth(1).innerText(),/b/);
+        assert.equal((await page.evaluate('bulk.snapshot()')).calls.length,0);
+      });
       await scenario(`${kind}: same-event duplicate sends one command for both rolls`,async page=>{
         await page.evaluate(`bulk.prepare('${kind}');bulk.double()`);const state=await page.evaluate('bulk.snapshot()');assert.equal(state.calls.length,1);
         assert.equal(state.calls[0].payload.input.spools.length,2);await page.evaluate('bulk.finish(0)');

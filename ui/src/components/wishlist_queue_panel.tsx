@@ -299,7 +299,8 @@ export function WishlistQueuePanel({
                   ) : null}
                 </div>
               </div>
-              <div className="mt-4 border-t border-slate-200/80 pt-3 dark:border-slate-700/80">
+              <div className="mt-3 flex flex-wrap items-end justify-between gap-3 border-t border-slate-200/80 pt-3 dark:border-slate-700/80">
+                <div className="min-w-0">
                 <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">
                   {t("inventory.status", "Status")}
                 </div>
@@ -333,9 +334,10 @@ export function WishlistQueuePanel({
                     },
                   ]}
                 />
+                </div>
                 {confirmingRemove ? (
                   <div
-                    className="mt-3 rounded-xl border border-rose-300 bg-rose-50/95 p-3 text-rose-950 dark:border-rose-400/45 dark:bg-rose-500/15 dark:text-rose-100"
+                    className="w-full rounded-xl border border-rose-300 bg-rose-50/95 p-3 text-rose-950 dark:border-rose-400/45 dark:bg-rose-500/15 dark:text-rose-100"
                     role="alert"
                   >
                     <div className="font-semibold">
@@ -371,7 +373,7 @@ export function WishlistQueuePanel({
                     </div>
                   </div>
                 ) : (
-                  <div className="mt-3 flex flex-wrap gap-2">
+                  <div className="flex flex-wrap items-end gap-2">
                     {canStockItem ? (
                       <div className="flex items-end gap-2">
                         <label className="block">

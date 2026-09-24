@@ -784,6 +784,15 @@ export function useInventoryBulkActions({
       onSelectVisibleChange: selectVisible,
       onStatusTargetChange: (status: InventoryBulkManualStatus) => { if (canUseSelection()) { invalidateDraft(); setStatusTarget(status); setReview(null); } },
       review,
+      reviewSpools: (review?.affectedSpoolIds ?? []).map((id) => {
+        const spool = spools.find((row) => row.id === id);
+        return {
+          id,
+          label: spool ? formatInventoryDisplayTitle(spool.material, spool.filamentName, spool.colorName) : id,
+          reference: spool ? formatRollReference(spool) : "",
+          hexColor: spool?.hexColor,
+        };
+      }),
       reviewCurrent: reviewCurrent && clientDataLive && (!clientReadOnly || clientHostWritePaired),
       selectedCount: selection.spoolIds.length,
       statusTarget,

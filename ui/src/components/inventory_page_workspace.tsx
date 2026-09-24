@@ -206,7 +206,7 @@ export function InventoryPageWorkspace({
         </div>
         <InventoryHeaderActions {...headerActionsProps} />
         {activeView === "PURCHASES" ? (
-          <PageHeaderButton variant="primary" disabled={purchaseQueueProps.addPurchaseDisabled} onClick={purchaseQueueProps.onAddPurchase}>
+          <PageHeaderButton variant="primary" responsive={false} className="self-start" disabled={purchaseQueueProps.addPurchaseDisabled} onClick={purchaseQueueProps.onAddPurchase}>
             {t("inventory.addToWishlist", "Add to wishlist / order")}
           </PageHeaderButton>
         ) : null}
