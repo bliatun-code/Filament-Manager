@@ -17,6 +17,7 @@ async function buildHarness() {
     import React, {useState} from "react";
     import {createRoot} from "react-dom/client";
     import {flushSync} from "react-dom";
+    import {SettingsBackupActionFeedback} from ${file("../components/settings_backup_action_feedback.tsx")};
     import {useSettingsBackupFileActions} from ${file("./use_settings_backup_file_actions.ts")};
     import {useSettingsBackupValidationState} from ${file("./use_settings_backup_validation_state.ts")};
     import {SettingsBackupImportConfirmation} from ${file("../components/settings_backup_import_confirmation.tsx")};
@@ -79,6 +80,7 @@ async function buildHarness() {
           <input data-testid="file" type="file" hidden onChange={actions.handleImportDataFile}/>
         </>:<div>Other Settings tab</div>}
         <div data-testid="error">{error}</div><div data-testid="info">{info}</div>
+        <SettingsBackupActionFeedback error={error} info={info}/>
         <SettingsBackupImportConfirmation {...actions.backupImportConfirmation} t={t}/>
       </>;
     }
@@ -270,6 +272,11 @@ test("backup file import uses explicit app confirmation in a real browser", asyn
         assert.deepEqual(await importCalls(page),[],"Importer would succeed; the UI must not send a declared backup after preflight failure");
         assert.equal(await dialog(page).count(),0,"Failed validation must not offer a false confirmation");
         assert.equal((await inspect(page)).state.error,"selected-backup.json: Import failed");
+      const feedback=page.getByRole("alert");
+      await feedback.waitFor();
+      assert.equal(await feedback.evaluate(e=>e===document.activeElement),true);
+      const bounds=await feedback.boundingBox();
+      assert.ok(bounds && bounds.y>=0 && bounds.y+bounds.height<=page.viewportSize()!.height, "file error is scrolled into view");
         assert.equal((await inspect(page)).state.info,null);
         assert.equal((await inspect(page)).calls.recorded,0);
       });
@@ -288,6 +295,7 @@ test("backup file import uses explicit app confirmation in a real browser", asyn
     }
 
     await scenario("command-side malformed-backup rejection displays failure and no success",async page=>{
+      await page.addStyleTag({content:'[data-testid="info"] { margin-top: 1400px; }'});
       await page.evaluate("qa.update({validation:'reject',importFails:true})");
       await selectFile(page,"malformed full backup");
       await idle(page);

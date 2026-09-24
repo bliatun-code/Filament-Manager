@@ -37,7 +37,7 @@ import {
   executeInventoryBulkMutationForInventory,
 } from "./inventory_bulk_actions_data_source";
 import { downloadTextFile } from "./download_file";
-import { appErrorCode, toErrorMessage } from "./error_text";
+import { appErrorCode, clientPairingActionHint, toErrorMessage } from "./error_text";
 import type { useI18n } from "./i18n";
 import {
   formatInventoryStatusLabel,
@@ -235,10 +235,10 @@ function routingErrorMessage(error: unknown, t: TranslateFn): string | null {
   }
   if (error instanceof InventoryBulkMutationRoutingError) {
     if (error.code === "PAIRING_REQUIRED") {
-      return t(
+      return `${t(
         "inventory.clientWriteRequiresPairing",
         "Pair this desktop client with the host before running protected sync actions.",
-      );
+      )} ${clientPairingActionHint(t)}`;
     }
     return t(
       "inventory.clientHostUnavailable",

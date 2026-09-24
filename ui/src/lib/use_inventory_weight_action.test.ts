@@ -14,6 +14,7 @@ async function harness() {
     import { createRoot } from "react-dom/client";
     import { flushSync } from "react-dom";
     import { useInventoryWeightAction as useActions } from ${path("./use_inventory_weight_action.ts")};
+    import { useInventoryWriteGuards } from ${path("./use_inventory_write_guards.ts")};
     import { WeightInput } from ${path("../components/weight_input.tsx")};
     import { hasInventorySpoolLoan } from ${path("./inventory_list_model.ts")};
     import { I18nContext } from ${path("./i18n.ts")};
@@ -22,14 +23,16 @@ async function harness() {
     let resolution="LIVE", throwRefresh=false, hold=false, release;
     const t=(_key,fallback)=>fallback;
     window.__TAURI__={invoke:(command,payload)=>new Promise((resolve,reject)=>calls.push({command,payload,resolve,reject}))};
-    function Harness({id="roll-a",status="IN_STOCK",host="local",generation=1,open=true,assigned=false,loaned=false,borrowed=false,grams=500,tare=250}) {
+    function Harness({id="roll-a",status="IN_STOCK",host="local",generation=1,paired=true,open=true,assigned=false,loaned=false,borrowed=false,grams=500,tare=250}) {
       const [busy,setManageBusy]=useState(false),[error,setError]=useState(null),[info,setInfoMessage]=useState(null);
       const selectedSpool=open?{id,status,ownershipType:borrowed?"BORROWED_IN":"OWNED",locationId:assigned?"slot":"shelf",homeLocationId:"shelf",location:"Shelf",homeLocation:"Shelf",remainingGrams:grams}:null;
       const slot=assigned?{printerId:"printer",slotId:"slot"}:null;
+      const guards=useInventoryWriteGuards({clientHostBaseUrl:"http://"+host,clientHostWritePaired:paired,
+        clientLibraryId:"library",clientReadOnly:host!=="local",setError,setInfoMessage,t});
       actions=useActions({selectedSpool,assignedSlot:slot,resolvedTare:tare,
         activeLoan:hasInventorySpoolLoan(selectedSpool,new Set(loaned?[id]:[])),loanedOut:loaned,
         clientReadOnly:host!=="local",clientHostBaseUrl:"http://"+host,clientLibraryId:"library",clientTargetGeneration:generation,
-        tauriAvailable:true,manageBusy:busy,canUseClientHostWrite:()=>true,ensureLocalWriteAllowed:()=>true,
+        tauriAvailable:true,manageBusy:busy,canUseClientHostWrite:guards.canUseClientHostWrite,ensureLocalWriteAllowed:guards.ensureLocalWriteAllowed,
         cancelDangerZoneConfirmation:()=>{},setManageBusy,setError,setInfoMessage,t,
         reloadSpools:async report=>{reloads.push("spools");if(hold)await new Promise(resolve=>release=resolve);
           report?.("spools",resolution);if(throwRefresh)throw Error("refresh failed");},
@@ -95,6 +98,14 @@ test("rendered inventory measured weight", async context => {
       assert.equal((await page.evaluate("roll.snapshot()")).calls.length,1);
       assert.match(await page.getByRole("alert").innerText(),/Failed to update weight/);
       await page.evaluate("roll.start();roll.finish(1)");assert.equal((await page.evaluate("roll.snapshot()")).error,null);
+    });
+    await scenario("known unpaired Client shows the repair path before any command",async page=>{
+      await page.evaluate("roll.render({host:'host',paired:false})");
+      await page.getByRole("spinbutton").fill("955");
+      await page.getByRole("button",{name:"Save",exact:true}).click();
+      assert.match(await page.getByRole("alert").innerText(), /Settings → Library & web app.*pairing link/);
+      assert.equal(await page.getByRole("spinbutton").inputValue(), "955");
+      assert.equal((await page.evaluate("roll.snapshot()")).calls.length,0);
     });
     await scenario("revoked Host pairing retains the measured draft and points to repair",async page=>{
       await page.evaluate("roll.render({host:'host'})");

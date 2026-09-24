@@ -43,7 +43,7 @@ function createHarness() {
     return element;
   }
 
-  function createOverlay(focusables, initialFocus = focusables[0] || null) {
+  function createOverlay(focusables, initialFocus = focusables[0] || null, body = null) {
     return {
       tagName: "SECTION",
       focusCalls: [],
@@ -51,6 +51,7 @@ function createHarness() {
         return focusables.includes(element);
       },
       querySelector(selector) {
+        if (selector === ".task-sheet-body, .detail-modal-body") return body;
         if (selector === "[data-overlay-initial-focus]") {
           return initialFocus;
         }
@@ -182,6 +183,7 @@ test("overlay keydown traps Tab across buttons and summary controls and closes o
     true,
   );
   assert.equal(harness.documentRef.activeElement, closeButton);
+  assert.deepEqual(closeButton.focusCalls, [undefined], "Tab wrapping lets the browser reveal the target");
 
   assert.equal(
     lifecycle.handleKeydown({
@@ -194,6 +196,7 @@ test("overlay keydown traps Tab across buttons and summary controls and closes o
     true,
   );
   assert.equal(harness.documentRef.activeElement, summary);
+  assert.deepEqual(summary.focusCalls, [undefined], "Shift+Tab wrapping must not prevent scrolling");
 
   let stopped = 0;
   assert.equal(
@@ -274,4 +277,24 @@ test("focusable collection excludes a nested summary hidden by an outer closed d
   };
 
   assert.deepEqual(companionFocusableElements(container), []);
+});
+
+
+test("same task refresh preserves body scroll but a new task starts at its own position", () => {
+  const harness = createHarness();
+  const button = harness.createElement("button", { "data-action": "close-detail" });
+  const lifecycle = createCompanionOverlayFocusLifecycle({ documentRef: harness.documentRef });
+  const before = { scrollTop: 640, scrollLeft: 0 };
+  harness.documentRef.overlay = harness.createOverlay([button], button, before);
+  lifecycle.restoreAfterRender("detail:a");
+  lifecycle.prepareForRender("detail:a");
+  const after = { scrollTop: 0, scrollLeft: 0 };
+  harness.documentRef.overlay = harness.createOverlay([button], button, after);
+  lifecycle.restoreAfterRender("detail:a");
+  assert.equal(after.scrollTop, 640);
+  lifecycle.prepareForRender("detail:b");
+  const next = { scrollTop: 0, scrollLeft: 0 };
+  harness.documentRef.overlay = harness.createOverlay([button], button, next);
+  lifecycle.restoreAfterRender("detail:b");
+  assert.equal(next.scrollTop, 0);
 });

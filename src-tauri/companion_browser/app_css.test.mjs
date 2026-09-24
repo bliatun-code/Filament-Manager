@@ -173,7 +173,7 @@ test("brand surfaces keep AA text contrast without replacing filament colors", (
 test("companion controls use shared focus and radius primitives", () => {
   const css = readCssBundle();
 
-  assert.match(css, /a:focus-visible,\s*button:focus-visible,\s*input:focus-visible,\s*select:focus-visible,\s*textarea:focus-visible\s*\{[\s\S]*outline: 2px solid var\(--focus-ring\);[\s\S]*box-shadow: 0 0 0 4px var\(--focus-ring-shadow\);/);
+  assert.match(css, /a:focus-visible,\s*button:focus-visible,\s*input:focus-visible,\s*select:focus-visible,\s*textarea:focus-visible,\s*summary:focus-visible,\s*\[tabindex\]:focus-visible\s*\{[\s\S]*outline: 2px solid var\(--focus-ring\);[\s\S]*box-shadow: 0 0 0 4px var\(--focus-ring-shadow\);/);
   assert.match(css, /\.primary-button,\s*\.secondary-button,\s*\.ghost-button\s*\{[\s\S]*border-radius: var\(--control-radius\);/);
   assert.match(css, /\.search-input,\s*\.token-input,\s*\.weight-input,\s*\.text-input,\s*\.detail-textarea\s*\{[\s\S]*border-radius: var\(--control-radius\);/);
   assert.match(css, /\.root-flow-button,\s*\.segment-button\s*\{[\s\S]*border-radius: var\(--segmented-item-radius\);/);

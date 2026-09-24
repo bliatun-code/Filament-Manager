@@ -376,6 +376,21 @@
   background: color-mix(in srgb, var(--surface-muted) 66%, transparent);
 }
 
+.add-spool-section > .detail-collapsible-summary {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 0.35rem;
+  padding-inline-end: 1rem;
+}
+
+.add-spool-section > .detail-collapsible-summary > span:first-child {
+  padding-inline-end: 1.5rem;
+}
+
+.add-spool-section > .detail-collapsible-summary::after {
+  top: 1.2rem;
+}
+
 .task-sheet.add-filament-sheet .add-spool-section-head {
   gap: 0.16rem;
 }

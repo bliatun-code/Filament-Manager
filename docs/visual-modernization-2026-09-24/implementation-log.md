@@ -134,3 +134,23 @@ Kritikeren fant strukket vektlogg ved 834 px og klippet fokus ved retur på 320 
 Faktisk native-kontroll bekreftet at utvalg beholdes over søk, at aktive lån beskyttes og at Lost→In stock beholder registrert vekt. Bekreftelsen viste imidlertid bare antall når en valgt rull var skjult av filteret. Den viser nå alle faktisk berørte ruller med filamentnavn, referanse og opprinnelig swatch. Listen henter fra hele lageret, har begrenset høyde og kan rulles med tastatur. Handlingsknappene bruker samme solide primærvariant som øvrige lagerhandlinger.
 
 Bygg, lint og 56 målrettede bulk-tester passerte, inkludert to nye forløp som bekrefter at filtrerte ruller fortsatt navngis uten at en backend-kommando sendes. Kritikerens native retest pågår; disse testene erstatter ikke visuell godkjenning.
+
+### Runde 13 – første tastaturfokus og kjent tilbakekalt paring
+
+En direkte Shift+Tab fra lukkeknappen avslørte en forskjell fra den tidligere komplette tastatursyklusen: fokusfellen brukte `preventScroll`, slik at siste kontroll kunne bli stående utenfor det synlige området ved første besøk. Tastaturens ombryting lar nå nettleseren rulle frem målet. Rullemarginen gjelder før fokus flyttes, og summary-kontroller bruker samme tematilpassede ring. Renderrestaurering bevarer derimot rulleposisjonen. Et senere detaljforløp fant at nytegning erstattet den rullbare kroppen og kunne skjule det fokuserte feltet. Rulleposisjonen bevares nå innen samme oppgave, men overføres ikke til en annen rull/oppgave.
+
+16 direkte-fokusbilder viser begge sider av ringen ved Lend/Return i fire temaer, 320/834 px. Kontrast målt i skjermbildets faktiske piksler er minst 6,3:1, også ved nederste scrollkant. Åtte nye detaljforløp i fire temaer ved 320/834 px traverserte alle 21 fokusstopp. 406 Companion-tester passerte. Kritikeren lukket separat de tidligere funnene for dobbelt suksessbudskap, strukket History834 og klippet Return320-ring etter individuell bildeinspeksjon.
+
+Kjent manglende klientparing stoppes av frontend før en ny backend-feil. Denne grenen fikk derfor samme lokaliserte Settings → Library-veiledning i sperren og varselbanneret. 79 målrettede tester passerte, inkludert virkelig rendret sperre med 955 g bevart og null backend-kall. Kritikeren bekreftet lokal veiledning i native Client, uendret vertsvekt 800 g og bevart utkast.
+
+En mistenkt CSV-aksept viste seg å være et annet filvalg: SQLite identifiserte raden fra den gyldige filen. Korrekt valgt fil med tomt materialfelt på rad 2 ble avvist i native-app. En ny in-memory Rust-regresjon bekrefter at den gyldige første radens 525→500-endring rulles tilbake og at den ugyldige andre raden aldri opprettes. Ingen importlogikk ble endret. Fersk UI-sikkerhetskopi ble gjenopprettet og databaseinnholdet kontrollert separat av kritikeren.
+
+### Runde 14 – synlige filresultater og lesbar Companion-ønskeliste
+
+Native importfeil lå tidligere bare øverst på en lang innstillingsside. Backup/import/validering/eksport viser nå en lokal, vedvarende tilbakemelding ved filhandlingene. Feil får fokus og rulles frem; nytt filarbeid erstatter forrige resultat. Fullbackup og supportnedlasting bruker den eksisterende primærknappen. 44 backup-regresjonstester passerte, inkludert at et feilresultat 1400 px utenfor utsnittet faktisk blir fokusert og synlig. Bygg og lint passerte. Kritikeren bekreftet rettet native Dark856-feil med korrekt filnavn, synlig Import/Validate og hvit primærknapp.
+
+Åtte supplerende frontendbilder viser samme feil i fire temaer på norsk/engelsk, 856×750, uten axe-brudd. De bruker en eksplisitt syntetisk kommandofeil, og erstatter ikke native-backendbevis. 24 andre frontendbilder ved 856×550 dekker seks familier i fire temaer på norsk. Ingen dokumentoverflyt eller axe-brudd, men `color-contrast` er fortsatt maskinelt INCOMPLETE. Dette er et begrenset innholdsutsnitt i Chromium, ikke faktisk 200 % nettleserzoom eller native WebKit. En innledende feilkonfigurert QA-kjøring ga bare Dark og er ikke temadekning.
+
+Kritikeren fant at Companion-ønskelistens disclosure presset tittel og hjelpetekst inn i to svært smale kolonner ved 320 px. Registreringsseksjonenes disclosure viser nå tittel og pil øverst og hjelpeteksten i full bredde under. Nye EN/NB-opptak og individuell retest pågår.
+
+Full smoke etter commit 70801258 passerte: bygg/lint, 405 Companion, 896 scripts, AppModal/data-tilgjengelighet, lånedialoger, 2071 UI-tester, 23 ytelsestester, kontrakter og doctor. De senere rettingene ovenfor har målrettede tester; en avsluttende samlet port gjenstår når neste vurdering er stabil.

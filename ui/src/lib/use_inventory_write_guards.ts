@@ -1,3 +1,4 @@
+import { clientPairingActionHint } from "./error_text";
 import type { Dispatch, SetStateAction } from "react";
 import type { useI18n } from "./i18n";
 import { useClientWriteGuards } from "./use_client_write_guards";
@@ -35,10 +36,10 @@ export function useInventoryWriteGuards({
         "inventory.clientHostUnavailable",
         "Host connection details are missing for this client device.",
       ),
-      clientWriteRequiresPairing: t(
+      clientWriteRequiresPairing: `${t(
         "inventory.clientWriteRequiresPairing",
         "Pair this desktop client with the host before running protected sync actions.",
-      ),
+      )} ${clientPairingActionHint(t)}`,
     },
     setError,
     setInfoMessage,

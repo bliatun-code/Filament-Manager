@@ -1,3 +1,4 @@
+import { SettingsBackupActionFeedback } from "./settings_backup_action_feedback";
 import type { SettingsBackupValidation } from "../pages/settings_backup_model";
 import type { ChangeEvent, RefObject } from "react";
 import { SettingsBackupValidationSummary } from "./settings_backup_validation_summary";
@@ -72,6 +73,8 @@ function SettingsResetConfirmation({
 
 export type SettingsMaintenanceTabProps = {
   applicationDiagnostics: ApplicationDiagnostics | null;
+  backupActionError?: string | null;
+  backupActionInfo?: string | null;
   applicationDiagnosticsError: string | null;
   applicationDiagnosticsStatus: SettingsDiagnosticsRequestStatus;
   backupImportInputRef: RefObject<HTMLInputElement | null>;
@@ -109,6 +112,8 @@ export type SettingsMaintenanceTabProps = {
 };
 
 export function SettingsMaintenanceTab({
+  backupActionError = null,
+  backupActionInfo = null,
   applicationDiagnostics,
   applicationDiagnosticsError,
   applicationDiagnosticsStatus,
@@ -211,7 +216,7 @@ export function SettingsMaintenanceTab({
             <div className="mt-4 grid gap-2 sm:grid-cols-2">
               <button
                 type="button"
-                className={settingsActionButtonClass("accent")}
+                className={settingsActionButtonClass("primary")}
                 onClick={onExportFullBackup}
                 disabled={fullBackupActionDisabled}
               >
@@ -282,6 +287,7 @@ export function SettingsMaintenanceTab({
             ) : null}
           </SettingsSectionControls>
         </SettingsSectionBody>
+        {backupActionError || backupActionInfo ? <div className="px-5 pb-5"><SettingsBackupActionFeedback error={backupActionError} info={backupActionInfo} /></div> : null}
         <input
           ref={backupImportInputRef}
           type="file"

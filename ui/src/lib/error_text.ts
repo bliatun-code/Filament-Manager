@@ -5,6 +5,13 @@ import {
 } from "../../../src-tauri/companion_browser/app_error.js";
 import type { I18nContextValue } from "./i18n";
 
+export function clientPairingActionHint(t: I18nContextValue["t"]): string {
+  return `${t("nav.settings", "Settings")} → ${t("settings.tabLibrary", "Library & web app")}: ${t(
+    "settings.librarySyncClientAuthHint",
+    "Paste a short-lived pairing link from the host to unlock protected desktop sync actions.",
+  )}`;
+}
+
 export function toErrorMessage(
   error: unknown,
   fallback: string,
@@ -17,10 +24,7 @@ export function toErrorMessage(
   // Match it exactly; arbitrary transport text must remain out of normal UI.
   const message = error instanceof Error ? error.message : error;
   if (message === "Desktop client session renewal returned 401. Pairing is no longer valid.") {
-    return `${t("settings.librarySyncClientAuthNeedsRepair", "Re-pair required")}. ${t("nav.settings", "Settings")} → ${t("settings.tabLibrary", "Library & web app")}: ${t(
-      "settings.librarySyncClientAuthHint",
-      "Paste a short-lived pairing link from the host to unlock protected desktop sync actions.",
-    )}`;
+    return `${t("settings.librarySyncClientAuthNeedsRepair", "Re-pair required")}. ${clientPairingActionHint(t)}`;
   }
   return localizedAppError(
     error,

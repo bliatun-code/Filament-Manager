@@ -1,5 +1,5 @@
 import type { SettingsBackupValidation } from "./settings_backup_model";
-import type { Dispatch, SetStateAction } from "react";
+import { useCallback, useState, type Dispatch, type SetStateAction } from "react";
 import type { SettingsTabKey } from "./settings_page_model";
 import type { Locale } from "../lib/i18n";
 import type {
@@ -118,6 +118,16 @@ export function useSettingsMaintenanceSection({
   tauri,
   t,
 }: UseSettingsMaintenanceSectionInput) {
+  const [backupActionError, setBackupActionError] = useState<string | null>(null);
+  const [backupActionInfo, setBackupActionInfo] = useState<string | null>(null);
+  const reportBackupError = useCallback<Dispatch<SetStateAction<string | null>>>((value) => {
+    setError(null);
+    setBackupActionError(value);
+  }, [setError]);
+  const reportBackupInfo = useCallback<Dispatch<SetStateAction<string | null>>>((value) => {
+    setInfo(null);
+    setBackupActionInfo(value);
+  }, [setInfo]);
   const {
     diagnostics: applicationDiagnostics,
     downloadSanitizedSupportBundle,
@@ -185,8 +195,8 @@ export function useSettingsMaintenanceSection({
     recordExportedBackupValidation,
     recordFullBackupExport,
     setBusy,
-    setError,
-    setInfo,
+    setError: reportBackupError,
+    setInfo: reportBackupInfo,
     settingsBackupErrorMessageLabels,
     settingsClientHostBaseUrl,
     settingsClientHostWritePaired,
@@ -208,8 +218,8 @@ export function useSettingsMaintenanceSection({
     reloadSettings,
     setActiveTab,
     setBusy,
-    setError,
-    setInfo,
+    setError: reportBackupError,
+    setInfo: reportBackupInfo,
     setLastCatalogReset,
     setLibrarySyncHostBaseUrlDraft,
     setLibrarySyncModeDraft,
@@ -227,6 +237,8 @@ export function useSettingsMaintenanceSection({
   });
 
   const settingsMaintenanceRouteProps = buildSettingsMaintenanceRouteProps({
+    backupActionError,
+    backupActionInfo,
     backupImportInputRef,
     backupValidateInputRef,
     backupValidationHasExtraTables,

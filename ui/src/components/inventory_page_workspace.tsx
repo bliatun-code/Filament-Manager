@@ -1,3 +1,4 @@
+import { clientPairingActionHint } from "../lib/error_text";
 import { lazy, Suspense, useState, type ComponentProps } from "react";
 import { AppModal } from "./app_modal";
 import { FeedbackBanner } from "./feedback_banner";
@@ -265,7 +266,7 @@ export function InventoryPageWorkspace({
         <PageDataFallbackBanner
           message={`${clientHostDeviceName ? `${clientHostDeviceName}. ` : ""}${
             !clientHostWritePaired
-              ? t("inventory.clientWriteRequiresPairing", "Pair this desktop client with the host before running protected sync actions.")
+              ? `${t("inventory.clientWriteRequiresPairing", "Pair this desktop client with the host before running protected sync actions.")} ${clientPairingActionHint(t)}`
               : clientHostWarningVisible && clientInventorySource === "CACHED"
               ? t(
                   "inventory.clientReadOnlyCached",

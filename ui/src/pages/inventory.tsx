@@ -1,3 +1,4 @@
+import { clientPairingActionHint } from "../lib/error_text";
 import {
   lazy,
   Suspense,
@@ -1265,7 +1266,7 @@ export default function InventoryPage({
         <Suspense fallback={null}>
           <InventorySpoolDetailModal
             clientDataWarning={clientReadOnly && !clientHostWritePaired
-              ? t("inventory.clientWriteRequiresPairing", "Pair this desktop client with the host before running protected sync actions.")
+              ? `${t("inventory.clientWriteRequiresPairing", "Pair this desktop client with the host before running protected sync actions.")} ${clientPairingActionHint(t)}`
               : clientReadOnly && (clientInventorySource === "CACHED" || clientInventorySource === "OFFLINE")
                 ? t("errors.hostUnavailable", "Host is unavailable. Changes cannot be saved until it reconnects. Check the host and network, then refresh.")
                 : null}

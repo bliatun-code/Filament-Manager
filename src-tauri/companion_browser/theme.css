@@ -321,7 +321,9 @@ body[data-overlay-locked="true"] {
 button,
 input,
 select,
-textarea {
+textarea,
+summary,
+[tabindex] {
   font: inherit;
 }
 
@@ -337,12 +339,21 @@ textarea:disabled {
   opacity: 1;
 }
 
+a,
+button,
+input,
+select,
+textarea {
+  scroll-margin-block: 8px;
+}
+
 a:focus-visible,
 button:focus-visible,
 input:focus-visible,
 select:focus-visible,
-textarea:focus-visible {
-  scroll-margin-block: 8px;
+textarea:focus-visible,
+summary:focus-visible,
+[tabindex]:focus-visible {
   outline: 2px solid var(--focus-ring);
   outline-offset: 2px;
   box-shadow: 0 0 0 4px var(--focus-ring-shadow);
