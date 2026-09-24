@@ -1,3 +1,12 @@
+export function companionOverlayStatus(state) {
+  const context = state.statusOverlayContext;
+  if (!context) return null;
+  const matches = state.detailOpen
+    ? context.detailSpoolId === state.selectedSpoolId
+    : state.activeTaskSheet && context.taskSheet === state.activeTaskSheet;
+  return matches ? { message: state.statusMessage, tone: state.statusTone, busy: state.busy } : null;
+}
+
 export function createCompanionRuntimeState(options) {
   const { render, state } = options;
   const announceStatus = options?.announceStatus ?? (() => false);
@@ -18,6 +27,9 @@ export function createCompanionRuntimeState(options) {
     clearStatusTimeout();
     state.statusMessage = message;
     state.statusTone = tone;
+    state.statusOverlayContext = state.detailOpen
+      ? { detailSpoolId: state.selectedSpoolId }
+      : state.activeTaskSheet ? { taskSheet: state.activeTaskSheet } : null;
     announceStatus(message, tone);
     render();
     if (tone === "success" && String(message || "").trim()) {

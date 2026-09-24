@@ -216,7 +216,7 @@ function restoreDirtyFormControls(root, snapshots) {
       );
     });
     const control = matching[snapshot.matchIndex] || null;
-    if (!control || control.disabled || !replacementKeepsPreviousDefault(control, snapshot)) {
+    if (!control || !replacementKeepsPreviousDefault(control, snapshot)) {
       continue;
     }
     if (snapshot.checked !== null) {

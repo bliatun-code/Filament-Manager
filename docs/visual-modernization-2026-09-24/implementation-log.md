@@ -96,3 +96,13 @@ Companion-innstillingene bruker én kolonne på mobil, utseende til venstre og t
 402 Companion-tester passerte etter siste justering. 32 nye Add/Detail-bilder dekker fire temaer og fire bredder; 16 norske bilder dekker fire temaer ved 320/390 px. Ingen axe-brudd eller horisontal dokumentoverflyt. Uavhengig vurdering av de siste bildene pågår.
 
 Hele Rust-porten passerte: `cargo test` (plattformspesifikke ignorerte tester forblir oppgitt som ignorert), formatering samt Clippy i debug og release med advarsler som feil. Diagnostikkens syntetiske datakilde oppdaterer nå også printerrevisjonen, slik at vanlig 15-sekunders polling faktisk henter nye målinger. Kritikeren har sett en befolket graf i native-app. Matrisehjelperen bruker samme mekanisme på hver genererte databasekopi; ingen printertransport eller produktkode ble lagt til for dette.
+
+### Runde 9 – Companion-feil i aktive skjemaer
+
+Faktisk innsending av tom låntaker og et avbrutt lagringskall viste at feilen bare ble tegnet bak den modale oppgaven. Kritikeren bekreftet begge bildene uavhengig. Den felles dialogoverskriften viser nå oppgavens status over det rullbare innholdet. Meldingen bruker eksisterende temafarger og skjermleserannonsering. Konteksten følger den aktive oppgaven; gjenåpning får ikke med seg en gammel oppgavefeil.
+
+16 nye bilder dekker de to feiltilstandene i fire temaer ved 390/834 px, uten axe-brudd. Utfylt låntaker beholdes ved nettverksfeil. POST-kallene ble avbrutt i testnettleseren før backend; ingen lån ble opprettet i denne feiltesten. En innledende opptaksversjon ventet på lagerrader etter sidegjenlasting til en lagret lånevisning; den ferdige kjøringen bruker ordinær navigasjon mellom scenariene.
+
+En tilsvarende detaljtest fant at innskrevet vekt 321 g ble tilbakestilt til tidligere 525 g ved mislykket lagring. Felles bevaring av endrede felt hoppet over kontroller som var midlertidig deaktivert under venting. Verdiene bevares nå også da; deaktiverte kontroller får fortsatt ikke fokus. Nye tester dekker både dialogens feilplassering/oppgaveavgrensning og feltets venting→feil→lagret-forløp. Alle 404 Companion-tester passerte. Faktisk retur-/detaljretest og kritikerens resterende temakontroller pågår.
+
+Retur og detalj er deretter kontrollert i 16 faktiske feilbilder: fire temaer × 390/834 px, ingen axe-brudd, alle innskrevne 321 g bevart. En egen Dark390-sekvens gjentok feil→prøv igjen: faktisk HTTP 200 og SQLite 321 g, deretter gjenoppretting av opprinnelige 525 g gjennom samme UI og HTTP 200/SQLite 525 g. Dette gjelder bare syntetisk `visual_edge_3` i `edges-r3.db`. To egne bilder viser ferdig lagring og gjenoppretting; kritikerens individuelle inspeksjon står separat.

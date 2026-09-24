@@ -2292,3 +2292,14 @@
     min-width: 0;
   }
 }
+
+/* Keep task feedback visible when its form body is scrolled. */
+.overlay-feedback-header {
+  display: grid;
+  gap: 0.5rem;
+  min-width: 0;
+}
+
+.overlay-feedback-header .app-status-line {
+  width: 100%;
+}

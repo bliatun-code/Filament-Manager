@@ -122,6 +122,36 @@ function createDetails(key, open = false) {
   };
 }
 
+test("pending and failed writes preserve entered values while disabled controls remain unfocused", () => {
+  const entered = createInput({ value: "321", defaultValue: "525", type: "number" });
+  const pending = createInput({ value: "525", type: "number" });
+  pending.disabled = true;
+  renderMarkupPreservingFocus({
+    root: createRoot([entered], [pending]),
+    documentRef: { activeElement: entered },
+    markup: "pending",
+  });
+  assert.equal(pending.value, "321");
+  assert.equal(pending.focusCalls.length, 0);
+
+  const failed = createInput({ value: "525", type: "number" });
+  renderMarkupPreservingFocus({
+    root: createRoot([pending], [failed]),
+    documentRef: {},
+    markup: "failed",
+  });
+  assert.equal(failed.value, "321");
+
+  const saved = createInput({ value: "321", type: "number" });
+  renderMarkupPreservingFocus({
+    root: createRoot([failed], [saved]),
+    documentRef: {},
+    markup: "saved",
+  });
+  assert.equal(saved.value, "321");
+  assert.equal(saved.defaultValue, "321");
+});
+
 test("captureFocusedFormControl records the active named form control inside the app root", () => {
   const input = createInput({ value: "ABS" });
   input.selectionStart = 1;

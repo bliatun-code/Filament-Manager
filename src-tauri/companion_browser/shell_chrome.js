@@ -685,17 +685,20 @@ export function renderDetailModalShell(options) {
           tabindex="-1"
           data-companion-overlay="detail"
         >
-          <div class="detail-panel-header">
-            <div class="detail-modal-copy">
-              <p class="workflow-kicker">${escapeHtml(t(locale, "detail.spoolHeading", "Spool"))}</p>
-              <h2 id="companion-detail-dialog-title" class="sr-only">${escapeHtml(selectedTitle)}</h2>
+          <div class="overlay-feedback-header">
+            <div class="detail-panel-header">
+              <div class="detail-modal-copy">
+                <p class="workflow-kicker">${escapeHtml(t(locale, "detail.spoolHeading", "Spool"))}</p>
+                <h2 id="companion-detail-dialog-title" class="sr-only">${escapeHtml(selectedTitle)}</h2>
+              </div>
+              <div class="detail-modal-actions">
+                ${statusChips.length > 0 ? `<div class="pill-row detail-modal-status">${statusChips.join("")}</div>` : ""}
+                <button class="ghost-button compact-back-button" type="button" data-action="close-detail" data-overlay-initial-focus>
+                  ${escapeHtml(closeLabel)}
+                </button>
+              </div>
             </div>
-            <div class="detail-modal-actions">
-              ${statusChips.length > 0 ? `<div class="pill-row detail-modal-status">${statusChips.join("")}</div>` : ""}
-              <button class="ghost-button compact-back-button" type="button" data-action="close-detail" data-overlay-initial-focus>
-                ${escapeHtml(closeLabel)}
-              </button>
-            </div>
+            ${options.status ? renderStatusLine(options.status.message, options.status.tone, options.status.busy, escapeHtml, locale) : ""}
           </div>
           <div class="detail-modal-body">
             ${body}
@@ -733,15 +736,18 @@ export function renderTaskSheetShell(options) {
           tabindex="-1"
           data-companion-overlay="task-sheet"
         >
-          <div class="task-sheet-header">
-            <div class="task-sheet-copy">
-              ${kicker ? `<p class="workflow-kicker">${escapeHtml(kicker)}</p>` : ""}
-              <h2 id="companion-task-sheet-title">${escapeHtml(title)}</h2>
-              ${subtitle ? `<p class="section-copy">${escapeHtml(subtitle)}</p>` : ""}
+          <div class="overlay-feedback-header">
+            <div class="task-sheet-header">
+              <div class="task-sheet-copy">
+                ${kicker ? `<p class="workflow-kicker">${escapeHtml(kicker)}</p>` : ""}
+                <h2 id="companion-task-sheet-title">${escapeHtml(title)}</h2>
+                ${subtitle ? `<p class="section-copy">${escapeHtml(subtitle)}</p>` : ""}
+              </div>
+              <button class="ghost-button compact-back-button" type="button" data-action="close-task-sheet" data-overlay-initial-focus>
+                ${escapeHtml(closeLabel)}
+              </button>
             </div>
-            <button class="ghost-button compact-back-button" type="button" data-action="close-task-sheet" data-overlay-initial-focus>
-              ${escapeHtml(closeLabel)}
-            </button>
+            ${options.status ? renderStatusLine(options.status.message, options.status.tone, options.status.busy, escapeHtml, locale) : ""}
           </div>
           <div class="task-sheet-body">
             ${body}
