@@ -643,6 +643,20 @@
       "thumbnailSha256": "036c68361aee4d9b71438cb32c23ed04a9ebbd3c7d62ba451b1ac38224165812",
       "capturedOn": "2026-09-24",
       "source": "Authenticated Chromium against isolated Companion backend, gallery round 15"
+    },
+    {
+      "surface": "desktop",
+      "scenario": "printer-slot-readable-placement-search",
+      "file": "docs/screenshots/printer-slot-search.jpg",
+      "width": 2400,
+      "height": 1864,
+      "sha256": "64523a07b88ef5d18762b49793debe17811b286babce90cf685ba4738dff0021",
+      "thumbnail": "docs/screenshots/printer-slot-search-thumb.jpg",
+      "thumbnailWidth": 440,
+      "thumbnailHeight": 342,
+      "thumbnailSha256": "0d0a8bf589832c6b1a5c2254879df84764e4cd42bfd91fa65dab2554514d584c",
+      "capturedOn": "2026-10-01",
+      "source": "Actual native macOS isolated interactive library on 05a05d0f. Independent critic reopened the picker and searched the readable AMS placement; assignment retained 740 g. Strong colors preserved."
     }
   ],
   "captureLimitations": "Historical captures from September 20/24. September 30 restored stronger filament/printer card colors; these images predate that restoration. They do not certify complete visual coverage."

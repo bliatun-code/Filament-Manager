@@ -221,6 +221,12 @@ you want usage and remaining weight to stay accurate.
 
 ![Printer slot assignment](screenshots/printer-slot-assignment.jpg)
 
+Available-roll search shows readable storage and AMS placement names. This
+October 1 native check searches “AMS 1 · Slot 4” and keeps the roll's measured
+remaining weight intact.
+
+![Search by readable AMS placement](screenshots/printer-slot-search.jpg)
+
 ### AMS Catalog Onboarding
 
 When the AMS reports a Bambu roll that is not yet in inventory, catalog
