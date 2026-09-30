@@ -28,11 +28,11 @@ Ikke sluttgodkjent. Faktisk Review-bundle med `interactive-r4.db`, Dark, 1200×9
 
 ## Bilder
 
-- [Move-kontroll](../../tmp/visual-modernization/critic-r4-interactive/bulk-move-control-dark-r10.png)
-- [Beskyttet crossfilterutvalg](../../tmp/visual-modernization/critic-r4-interactive/bulk-protected-crossfilter-dark-r10.png)
-- [Review skjult utvalg](../../tmp/visual-modernization/critic-r4-interactive/bulk-hidden-selection-review-dark-r10.png)
-- [Lost lagret](../../tmp/visual-modernization/critic-r4-interactive/bulk-lost-saved-dark-r10.png)
-- [In stock gjenopprettet](../../tmp/visual-modernization/critic-r4-interactive/bulk-restored-instock-dark-r10.png)
+- Move-kontroll (lokalt bevis: `tmp/visual-modernization/critic-r4-interactive/bulk-move-control-dark-r10.png`)
+- Beskyttet crossfilterutvalg (lokalt bevis: `tmp/visual-modernization/critic-r4-interactive/bulk-protected-crossfilter-dark-r10.png`)
+- Review skjult utvalg (lokalt bevis: `tmp/visual-modernization/critic-r4-interactive/bulk-hidden-selection-review-dark-r10.png`)
+- Lost lagret (lokalt bevis: `tmp/visual-modernization/critic-r4-interactive/bulk-lost-saved-dark-r10.png`)
+- In stock gjenopprettet (lokalt bevis: `tmp/visual-modernization/critic-r4-interactive/bulk-restored-instock-dark-r10.png`)
 
 ## Runde 13: faktisk retest ved Dark 856
 
@@ -43,3 +43,5 @@ Bilder individuelt sett: `bulk-hidden-identity-fixed-dark856-r13.png`, `bulk-lon
 | Tilstand | H | T | L | F | K | V | I | R | D | A |
 |---|---|---|---|---|---|---|---|---|---|---|
 | Dark856 skjult + langt utvalg, rettet |9|9|9|9|9|9|9|9|9|IE|
+
+Lokale bevisfiler i `tmp/` følger ikke den publiserte rapporten. Referansene identifiserer historiske lokale opptak, ikke nedlastbare vedlegg.

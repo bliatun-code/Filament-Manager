@@ -43,9 +43,11 @@ Gjenstående: Light/Bambu/Prusa-bilder av disse faktiske statene; smal bredde/ta
 
 ## R12 actual guidance retest
 
-After the localized re-pair patch, the same actually revoked Client still showed Re-pair required in Settings. Inventory then loaded its cached host control800g. A fresh955gross Save failed with **“Pair this desktop client with the host before running protected sync actions.”** in both the amber banner and local red error. No Settings→Library route was shown. Draft955 and persisted800 remained intact. This is a different settled pairing-required path than the originally generic failure; I8 remains open until the actual path guides recovery. [R12 actual image](../../tmp/visual-modernization/critic-r4-interactive/client-revoked-guidance-retest-r12.png). Root notified to include this mapping. No new pairing or backend write occurred in this retest.
+After the localized re-pair patch, the same actually revoked Client still showed Re-pair required in Settings. Inventory then loaded its cached host control800g. A fresh955gross Save failed with **“Pair this desktop client with the host before running protected sync actions.”** in both the amber banner and local red error. No Settings→Library route was shown. Draft955 and persisted800 remained intact. This is a different settled pairing-required path than the originally generic failure; I8 remains open until the actual path guides recovery. R12 actual image (lokalt bevis: `tmp/visual-modernization/critic-r4-interactive/client-revoked-guidance-retest-r12.png`). Root notified to include this mapping. No new pairing or backend write occurred in this retest.
 
 
 ## R12 guard rettet – faktisk retest
 
 Ny avvist Save955 etter kjent tilbakekalling viser nå lokal Settings → Library & web app og instruksjon om kortlivet pairinglenke. Draft955 beholdes, persistert800 fortsatt i header. Bildet critic-r4-interactive/client-revoked-guidance-fixed-r12.png er individuelt inspisert. Øvre amberbanner i detaljen har fortsatt gammel korttekst uten sti; inventory authority banner har korrekt sti. Re-pair etter denne tilbakekallingen gjenstår.
+
+Lokale bevisfiler i `tmp/` følger ikke den publiserte rapporten. Referansene identifiserer historiske lokale opptak, ikke nedlastbare vedlegg.

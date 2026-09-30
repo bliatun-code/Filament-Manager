@@ -9,8 +9,8 @@ Normal Host har stabil Bonjour-adresse. Faktisk 156 etiketter bygget med 30 per 
 A4 Save viste Saving PDF, lukket deretter dialogen og viste vedvarende konkret filsti i Inventory. US Letter ble valgt i ny preview; papirformat/marger endret seg synlig og 30-ruters arket fikk korrekt kortere form. Letter Save viste også Saving PDF, deretter lukket dialog og konkret filsti. Ingen feil eller duplisert bekreftelse i observerte forløp.
 
 Faktiske filer (syntetiske QR-ark; ikke publiser):
-- `/Users/bliatun/Downloads/filament-inventory-labels-a4-1790212597148275000.pdf`
-- `/Users/bliatun/Downloads/filament-inventory-labels-letter-1790212838821227000.pdf`
+- `LOCAL_DOWNLOADS/filament-inventory-labels-a4-1790212597148275000.pdf`
+- `LOCAL_DOWNLOADS/filament-inventory-labels-letter-1790212838821227000.pdf`
 
 Root har renderet og individuelt sett alle seks A4-sider: 595.276×841.89pt, 30×5+6 etiketter; ingen overlapping/sideklipping, lange navn bruker ellipsis. Dette er roots selvstendige PDF-bevis, ikke kritikers egen inspeksjon av filrender. Letter-fil sendt root for tilsvarende kontroll.
 
@@ -31,3 +31,5 @@ Bilder under `tmp/visual-modernization/critic-r4-interactive/`: `label-all-stock
 - Root har også individuelt sett alle seks Letter-PDF-sider med samme156 etiketter og uten overlapping/klipping. Dette er roots filrenderbevis.
 
 Valgt papir-hint faktisk retestet i Host Dark: `label-selected-hint-fixed-host-dark-r15.png` individuelt sett, mørk dimensjonstekst på hvitt, tydelig Close-fokus. F8 lukket til9 for denne previewtilstanden. Resttemaer/keyboard/smalbredde fortsatt eksplisitt utestet.
+
+Lokale bevisfiler i `tmp/` følger ikke den publiserte rapporten. Referansene identifiserer historiske lokale opptak, ikke nedlastbare vedlegg.
