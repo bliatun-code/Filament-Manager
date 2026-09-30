@@ -2,13 +2,13 @@
 name = "bambu-filament-manager"
 version = "0.31.0"
 edition = "2024"
-rust-version = "1.88"
+rust-version = "1.90"
 license = "AGPL-3.0-or-later"
 
 [dependencies]
 filament-manager-core = { path = ".." }
-tauri = { version = "2.11.5", features = ["tray-icon"] }
-tauri-plugin-single-instance = "2.4.3"
+tauri = { version = "2.12.0", features = ["tray-icon"] }
+tauri-plugin-single-instance = "2.5.1"
 serde = { workspace = true }
 serde_json = { workspace = true }
 rusqlite = { workspace = true }
@@ -47,7 +47,7 @@ windows-sys = { version = "0.61.2", features = ["Win32_Foundation", "Win32_Secur
 winreg = "0.56.0"
 
 [build-dependencies]
-tauri-build = { version = "2.6.3", features = [] }
+tauri-build = { version = "2.7.0", features = [] }
 
 [dev-dependencies]
 filament-manager-core = { path = "..", features = ["test-support"] }

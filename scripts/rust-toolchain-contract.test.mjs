@@ -46,12 +46,12 @@ function cachePaths(step) {
   return match[1].trim().split(/\n\s*/).sort();
 }
 
-test("Cargo packages declare the supported Rust 1.88 lower bound", () => {
+test("Cargo packages declare the supported Rust 1.90 lower bound", () => {
   for (const manifest of [rootManifest, tauriManifest]) {
     const packageSection = manifest
       .slice(manifest.indexOf("[package]"))
       .split(/^\[(?!package\])/m)[0];
-    assert.match(packageSection, /^rust-version = "1\.88"$/m);
+    assert.match(packageSection, /^rust-version = "1\.90"$/m);
   }
 });
 
@@ -129,7 +129,7 @@ test("every Rust setup reads the sole release pin after Node 24 is installed", (
   }
 });
 
-test("both required smoke jobs check Rust 1.88 before full verification", () => {
+test("both required smoke jobs check Rust 1.90 before full verification", () => {
   const ciWorkflow = workflows[0][1];
   for (const jobName of ["macos-smoke", "windows-smoke"]) {
     const job = workflowJob(ciWorkflow, jobName);
@@ -140,11 +140,11 @@ test("both required smoke jobs check Rust 1.88 before full verification", () => 
     );
     assert.match(
       job,
-      /- name: Setup Rust MSRV\s+uses: dtolnay\/rust-toolchain@[0-9a-f]{40} # master\s+with:\s+toolchain: 1\.88\.0/,
+      /- name: Setup Rust MSRV\s+uses: dtolnay\/rust-toolchain@[0-9a-f]{40} # master\s+with:\s+toolchain: 1\.90\.0/,
     );
     assert.match(
       job,
-      /- name: Check Rust MSRV\s+env:\s+CARGO_TARGET_DIR: target\/msrv\s+run: cargo \+1\.88\.0 check --workspace --all-targets --all-features --locked/,
+      /- name: Check Rust MSRV\s+env:\s+CARGO_TARGET_DIR: target\/msrv\s+run: cargo \+1\.90\.0 check --workspace --all-targets --all-features --locked/,
     );
     const msrvSetupIndex = job.indexOf("- name: Setup Rust MSRV");
     const msrvCheckIndex = job.indexOf("- name: Check Rust MSRV");
@@ -264,7 +264,7 @@ test("native Rust caches save only after successful main gates and workspace cle
   const expectedCommands = [
     `cargo clean --locked --offline ${packageFlags} --target-dir target`,
     `cargo clean --locked --offline ${packageFlags} --target-dir target --release`,
-    `cargo +1.88.0 clean --locked --offline ${packageFlags} --target-dir target/msrv`,
+    `cargo +1.90.0 clean --locked --offline ${packageFlags} --target-dir target/msrv`,
   ];
   const saveCondition = "${{ success() && github.event_name == 'push' && github.ref == 'refs/heads/main' && steps.rust-cache.outputs.cache-hit != 'true' }}";
   for (const jobName of ["macos-smoke", "windows-smoke"]) {

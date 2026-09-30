@@ -7,7 +7,7 @@ every relevant push and pull request. No gate depends on a cache hit.
 
 ## Scope and keys
 
-Each native job installs Rust 1.88.0 and the reviewed compiler from
+Each native job installs Rust 1.90.0 and the reviewed compiler from
 `rust-toolchain.toml` before restoring its cache. The MSRV check uses `target/msrv`;
 ordinary verification uses the normal target directory. Cache paths cover both
 directories while keeping their compiler output separate.
@@ -42,7 +42,7 @@ pull requests only restore it. Saving happens after every smoke gate and log
 upload. On a cache miss, package-scoped `cargo clean` removes both workspace
 packages from debug, release, and MSRV output before saving the allowlisted
 directories. Each cleanup uses the matching compiler; explicit package names
-also work with Rust 1.88. Bash's fail-fast execution on macOS and explicit
+also work with Rust 1.90. Bash's fail-fast execution on macOS and explicit
 PowerShell exit-code checks on Windows stop on any failed cleanup, so the save
 step cannot run afterward. Existing cache hits are not overwritten.
 See [Cargo's clean command](https://doc.rust-lang.org/cargo/commands/cargo-clean.html).

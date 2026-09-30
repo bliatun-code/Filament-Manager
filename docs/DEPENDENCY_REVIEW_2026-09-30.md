@@ -1,5 +1,8 @@
 # Dependency review — 2026-09-30
 
+This is the initial review. The subsequently authorized larger update is recorded
+in the [stable upgrade report](DEPENDENCY_UPGRADE_2026-09-30.md).
+
 ## Local update
 
 Fetched GitHub main at `5b80cb95` and merged it into `codex/visual-modernization`

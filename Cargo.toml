@@ -2,7 +2,7 @@
 name = "filament-manager-core"
 version = "0.31.0"
 edition = "2024"
-rust-version = "1.88"
+rust-version = "1.90"
 license = "AGPL-3.0-or-later"
 publish = false
 
