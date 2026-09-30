@@ -1,3 +1,4 @@
+import { formatPlacementLabel, parsePlacementLocation } from "./display_format";
 import type {
   AssignPrinterSlotInput,
   BambuLiveIntegrationEntry,
@@ -278,16 +279,34 @@ export function filterAllowedSpoolsForSlot<Row extends SpoolWithMasterRow>(
   });
 }
 
+export function formatPrinterSpoolPlacement(
+  t: Parameters<typeof formatPlacementLabel>[0],
+  row: SpoolWithMasterRow,
+  slotLabelById?: ReadonlyMap<string, string>,
+): string {
+  const placement = parsePlacementLocation(row.spool.location_id);
+  const slotId = placement.kind === "printer_slot"
+    ? placement.slotId
+    : row.spool.location_id?.trim();
+  const knownSlotLabel = slotId ? slotLabelById?.get(slotId) : null;
+  return knownSlotLabel || formatPlacementLabel(
+    t,
+    row.location_name?.trim() || row.spool.location_id,
+    slotLabelById,
+  );
+}
+
 export function filterSlotOptionsBySearch<Row extends SpoolWithMasterRow>(
   slotOptions: Row[],
   search: string,
+  placementLabel?: (row: Row) => string,
 ): Row[] {
   const searchTerm = search.trim().toLowerCase();
   if (!searchTerm) {
     return slotOptions;
   }
   return slotOptions.filter((row) =>
-    `${row.master.vendor} ${row.master.material} ${row.master.filament_name} ${row.master.color_name} ${row.spool.id} ${row.spool.location_id ?? ""}`
+    `${row.master.vendor} ${row.master.material} ${row.master.filament_name} ${row.master.color_name} ${row.spool.id} ${placementLabel?.(row) ?? row.location_name?.trim() ?? ""} ${row.spool.location_id ?? ""}`
       .toLowerCase()
       .includes(searchTerm),
   );

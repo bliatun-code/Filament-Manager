@@ -10,6 +10,8 @@ import {
   buildSlotCatalogOnboardingPrompt,
   buildSlotCatalogOnboardingSaveState,
   findPrinterSlotById,
+  formatPrinterSpoolPlacement,
+  filterSlotOptionsBySearch,
   parseWeightInput,
   prepareMeasuredWeightUpdate,
   preparePrinterSlotAssignment,
@@ -662,4 +664,35 @@ test("buildSlotCatalogOnboardingSaveState blocks unsafe catalog slot onboarding 
     }).reason,
     null,
   );
+});
+
+const placementTestTranslate = (_key: string, fallback: string) => fallback;
+function placementTestRow(locationId: string | null, locationName?: string | null): SpoolWithMasterRow {
+  return {
+    spool: { id: "placement-test", location_id: locationId },
+    master: { vendor: "Bambu", material: "PLA", filament_name: "PLA", color_name: "White" },
+    location_name: locationName,
+  } as SpoolWithMasterRow;
+}
+
+test("printer picker displays and searches a renamed storage location instead of its opaque ID", () => {
+  const row = placementTestRow("location_opaque_uuid", "  Shelf Edited  ");
+  assert.equal(formatPrinterSpoolPlacement(placementTestTranslate, row), "Shelf Edited");
+  assert.deepEqual(filterSlotOptionsBySearch([row], "shelf edited"), [row]);
+  assert.deepEqual(filterSlotOptionsBySearch([row], "location_opaque_uuid"), [row]);
+});
+
+test("printer picker resolves raw and legacy printer slot IDs before backend display names", () => {
+  const map = new Map([["qa_bambu_slot_4", "Atlas · AMS 1 · Slot 4"]]);
+  for (const raw of ["qa_bambu_slot_4", "Printer:Atlas:qa_bambu_slot_4"]) {
+    const row = placementTestRow(raw, "Atlas · qa_bambu_slot_4");
+    assert.equal(formatPrinterSpoolPlacement(placementTestTranslate, row, map), "Atlas · AMS 1 · Slot 4");
+    assert.deepEqual(filterSlotOptionsBySearch([row], "ams 1 · slot 4",
+      (item) => formatPrinterSpoolPlacement(placementTestTranslate, item, map)), [row]);
+  }
+});
+
+test("printer picker keeps legacy storage labels and unassigned fallbacks", () => {
+  assert.equal(formatPrinterSpoolPlacement(placementTestTranslate, placementTestRow("Old Shelf", "  ")), "Old Shelf");
+  assert.equal(formatPrinterSpoolPlacement(placementTestTranslate, placementTestRow(null)), "Unassigned");
 });

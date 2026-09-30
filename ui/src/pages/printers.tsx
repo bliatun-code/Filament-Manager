@@ -13,6 +13,7 @@ import { PageLoadErrorBanner } from "../components/page_load_error_banner";
 import { PrinterOverviewCard } from "../components/printer_overview_card";
 import { RfidOverrideModal } from "../components/rfid_override_modal";
 import { SlotCatalogOnboardingModal } from "../components/slot_catalog_onboarding_modal";
+import { useInventoryPrinterSlots } from "../lib/use_inventory_printer_slots";
 import { useI18n } from "../lib/i18n";
 import { formatDateTime } from "../lib/printer_live_display";
 import { resolveDesktopVisualQaScenario } from "../lib/desktop_visual_qa_scenario";
@@ -120,6 +121,8 @@ export default function PrintersPage() {
     ),
     onInteractiveReload: handleInteractiveReload,
   });
+  const { slotLabelById } = useInventoryPrinterSlots(printers, t);
+
   const clientHostWarningVisible = shouldShowClientSnapshotWarning({
     clientReadOnly,
     initialLoadSettled: librarySyncReady && !loading,
@@ -772,6 +775,7 @@ export default function PrintersPage() {
             openDropdownSlotId={openDropdownSlotId}
             setOpenDropdownSlotId={setOpenDropdownSlotId}
             spools={spools}
+            slotLabelById={slotLabelById}
             allowedSpoolsForSlot={allowedSpoolsForSlot}
             findAllowedSpoolForSlot={findAllowedSpoolForSlot}
             getSlotDraft={getSlotDraft}

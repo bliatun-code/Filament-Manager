@@ -10,7 +10,6 @@ import {
 } from "react";
 import {
   formatFilamentDisplayTitle,
-  formatPlacementLabel,
   formatSpoolReference,
 } from "../lib/display_format";
 import { useI18n } from "../lib/i18n";
@@ -20,6 +19,7 @@ import {
 } from "../lib/printer_live_display";
 import {
   filterSlotOptionsBySearch,
+  formatPrinterSpoolPlacement,
   type SlotSwapDraft,
 } from "../lib/printer_slot_model";
 import type { ResolvedTheme } from "../lib/theme_mode";
@@ -58,6 +58,7 @@ type PrinterSlotPickerProps = {
   slotSwatchHex: string | null;
   slotSelectorStyle?: CSSProperties;
   slotOptions: SpoolWithMasterRow[];
+  slotLabelById?: ReadonlyMap<string, string>;
   draft: SlotSwapDraft;
   setOpenDropdownSlotId: Dispatch<SetStateAction<string | null>>;
   setSlotDraft: (slotId: string, next: SlotSwapDraft) => void;
@@ -81,6 +82,7 @@ export function PrinterSlotPicker({
   slotSwatchHex,
   slotSelectorStyle,
   slotOptions,
+  slotLabelById,
   draft,
   setOpenDropdownSlotId,
   setSlotDraft,
@@ -98,7 +100,8 @@ export function PrinterSlotPicker({
   const [dropdownPlacement, setDropdownPlacement] = useState<"above" | "below">("below");
   const [visibleOptionLimit, setVisibleOptionLimit] = useState(SLOT_OPTION_PAGE_SIZE);
   const filteredSlotOptions = isDropdownOpen
-    ? filterSlotOptionsBySearch(slotOptions, draft.search)
+    ? filterSlotOptionsBySearch(slotOptions, draft.search,
+        (row) => formatPrinterSpoolPlacement(t, row, slotLabelById))
     : [];
   useEffect(() => {
     setVisibleOptionLimit(SLOT_OPTION_PAGE_SIZE);
@@ -348,7 +351,7 @@ export function PrinterSlotPicker({
               </span>
             </button>
             {renderedSlotOptions.map((row) => {
-              const placementLabel = formatPlacementLabel(t, row.spool.location_id);
+              const placementLabel = formatPrinterSpoolPlacement(t, row, slotLabelById);
               const displayTitle = formatFilamentDisplayTitle(
                 row.master.material,
                 row.master.filament_name,
