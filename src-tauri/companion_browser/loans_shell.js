@@ -6,7 +6,7 @@ import {
 } from "./companion_loan_state.js";
 import { resolveSpoolTareWeight } from "./companion_spool_weight.js";
 import { formatInventoryDisplayTitle, formatRollReference } from "./formatters.js";
-import { suggestSwatchHex, toSwatchColor } from "./companion_theme.js";
+import { suggestSwatchHex, swatchCssBackground } from "./companion_theme.js";
 import {
   renderCompanionActionButton,
   renderCompanionStateCard,
@@ -209,7 +209,7 @@ function renderLoanRows(options) {
           <div class="loan-card-head">
             <div class="stack loan-card-copy">
               <div class="swatch-line">
-                <span class="swatch-dot" style="background:${escapeHtml(toSwatchColor(swatch))};"></span>
+                <span class="swatch-dot" style="background:${escapeHtml(swatchCssBackground(swatch))};"></span>
                 <span class="list-title">${escapeHtml(displayTitle)}</span>
               </div>
               <div class="list-subtitle">${subtitleBits}</div>
@@ -353,9 +353,6 @@ export function renderLoanReturnTaskSheetBody(options) {
   const metadata = [
     loanRow.vendor || t(locale, "loans.unknownVendor", "Unknown vendor"),
     reference,
-    direction === "INBOUND"
-      ? `${t(locale, "detail.borrowedFrom", "Borrowed from")}: ${counterparty}`
-      : `${t(locale, "loans.borrower", "Borrower")}: ${counterparty}`,
   ].filter(Boolean);
 
   return `
@@ -606,12 +603,6 @@ export function renderLoansShell(options) {
   const visibleSelectedLoanRows = state.selectedSpoolId
     ? loanRows.filter((row) => row.loan.spool_id === state.selectedSpoolId)
     : [];
-  const filterLabel =
-    state.loanStatusFilter === "ACTIVE"
-      ? t(locale, "loans.activeOnly", "Active only")
-      : state.loanStatusFilter === "RETURNED"
-        ? t(locale, "loans.returnedOnly", "Returned only")
-        : t(locale, "loans.allLoans", "All loans");
   const selectedLoanHiddenByFilters = Boolean(
     selectedSpool &&
       selectedLoanRows.length > 0 &&
@@ -626,11 +617,7 @@ export function renderLoansShell(options) {
           <h2>${escapeHtml(t(locale, "loans.title", "Loans"))}</h2>
           <p class="section-copy">${escapeHtml(t(locale, "loans.subtitle", "Track loans and finish returns."))}</p>
         </div>
-        <div class="workflow-header-side workflow-header-summary">
-          ${escapeHtml(
-            `${t(locale, "loans.activeFilter", "Active {count}", { count: loanSummary.active })} · ${t(locale, "loans.returnedFilter", "Returned {count}", { count: loanSummary.returned })} · ${filterLabel}`,
-          )}
-        </div>
+
       </div>
 
       <div class="workflow-toolbar">
@@ -653,12 +640,12 @@ export function renderLoansShell(options) {
               escapeHtml,
               label: t(locale, "detail.lendSpool", "Lend spool"),
             })}
-            ${renderCompanionActionButton({
+            ${state.loanSearch.trim() ? renderCompanionActionButton({
               variant: "ghost",
               attributes: { "data-action": "show-all-loans" },
               escapeHtml,
               label: t(locale, "loans.showAll", "Show all loans"),
-            })}
+            }) : ""}
           </div>
         </div>
         <div class="loan-filter-row" role="group" aria-label="${escapeHtml(t(locale, "loans.filterAria", "Loan status filters"))}">

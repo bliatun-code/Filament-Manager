@@ -1,3 +1,4 @@
+import { companionOverlayStatus } from "./companion_runtime_state.js";
 import { renderSelectedSpoolDetailBody } from "./detail_content.js";
 import { t } from "./companion_i18n.js";
 import {
@@ -229,12 +230,10 @@ function renderDetailModal(options) {
         });
       }
     }
-    const detailFeedback =
-      state.detailFeedback?.spoolId === selectedSpool.spool.id ? state.detailFeedback.message : "";
     body = renderSelectedSpoolDetailBody({
       selectedSpool,
       selectedDetail: detailMatchesSelection ? state.selectedDetail : null,
-      detailFeedback,
+      detailFeedback: "",
       busy: state.busy || state.detailBusy,
       compactDetail: state.layoutMode === "phone",
       findAssignedSlotForSpool,
@@ -250,6 +249,7 @@ function renderDetailModal(options) {
   }
 
   return renderDetailModalShell({
+    status: companionOverlayStatus(state),
     layoutMode: state.layoutMode,
     locale: state.locale,
     selectedSpool,
@@ -270,6 +270,7 @@ function renderTaskSheet(options) {
 
   if (activeTaskSheet.type === "storage-add") {
     return renderTaskSheetShell({
+      status: companionOverlayStatus(state),
       layoutMode: state.layoutMode,
       kicker: t(state.locale || "en", "storage.stockEntry", "Stock entry"),
       title: t(state.locale || "en", "storage.addFilament", "Add filament"),
@@ -300,6 +301,7 @@ function renderTaskSheet(options) {
         )
       : t(state.locale || "en", "loans.outboundLoan", "Outbound loan");
     return renderTaskSheetShell({
+      status: companionOverlayStatus(state),
       layoutMode: state.layoutMode,
       title: t(state.locale || "en", "loans.returnLoan", "Return loan"),
       subtitle: `${displayTitle} · ${borrowerName}`,
@@ -317,6 +319,7 @@ function renderTaskSheet(options) {
 
   if (activeTaskSheet.type === "loan-picker") {
     return renderTaskSheetShell({
+      status: companionOverlayStatus(state),
       layoutMode: state.layoutMode,
       title: t(state.locale || "en", "detail.lendSpool", "Lend spool"),
       subtitle: t(
@@ -350,6 +353,7 @@ function renderTaskSheet(options) {
         )
       : t(state.locale || "en", "detail.lendSpool", "Lend spool");
     return renderTaskSheetShell({
+      status: companionOverlayStatus(state),
       layoutMode: state.layoutMode,
       title: t(state.locale || "en", "detail.lendSpool", "Lend spool"),
       subtitle: displayTitle,
@@ -376,6 +380,7 @@ function renderTaskSheet(options) {
       ? `${pendingTarget.printerName} · ${slotLabel}`
       : t(state.locale || "en", "printers.chooseSlotFirst", "Choose an open slot on the board first.");
     return renderTaskSheetShell({
+      status: companionOverlayStatus(state),
       layoutMode: state.layoutMode,
       title: t(state.locale || "en", "printers.loadFilament", "Load filament"),
       subtitle,
@@ -398,6 +403,7 @@ function renderTaskSheet(options) {
       ? `${activeTaskSheet.printerName} · ${slotLabel}`
       : slotLabel;
     return renderTaskSheetShell({
+      status: companionOverlayStatus(state),
       layoutMode: state.layoutMode,
       title:
         activeTaskSheet.mode === "clear"

@@ -80,7 +80,7 @@ export function SettingsMissingSwatchesPanel({
           "Review missing swatches here, then save manual fixes or fill the visible list in bulk.",
         )}
         status={
-          <div className={inlineStatusSignalClass("warning", "text-sm")}>
+          <div className={inlineStatusSignalClass(catalogRowsAvailable && missingSwatchCount > 0 ? "warning" : "neutral", "text-sm")}>
             {t("settings.missingSwatches", "Missing swatches")}: {catalogRowsAvailable ? missingSwatchCount : "—"}
           </div>
         }

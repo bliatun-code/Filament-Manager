@@ -9,7 +9,7 @@ export type SettingsPreferenceMessageLabels = {
 
 type TranslateFn = (
   key: string,
-  fallback?: string,
+  fallback: string,
   params?: MessageParams,
 ) => string;
 

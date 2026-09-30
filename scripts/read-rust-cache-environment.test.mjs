@@ -14,7 +14,7 @@ const compiler = (release, { host = "aarch64-apple-darwin", commit = "a".repeat(
 const base = {
   reviewedVersion: "1.98.1",
   reviewedCompiler: compiler("1.98.1"),
-  msrvCompiler: compiler("1.88.0", { commit: "b".repeat(40) }),
+  msrvCompiler: compiler("1.90.0", { commit: "b".repeat(40) }),
   environment: { ImageOS: "macos26", ImageVersion: "20260908.1", RUSTFLAGS: "-D warnings" },
 };
 const hash = (changes = {}) => hashRustCacheEnvironment({ ...base, ...changes });
@@ -44,7 +44,7 @@ test("Rust cache identity is deterministic and ignores unrelated environment var
 test("Rust cache identity invalidates either compiler release, commit or host", () => {
   assert.notEqual(hash(), hash({ reviewedVersion: "1.99.0", reviewedCompiler: compiler("1.99.0") }));
   for (const field of ["reviewedCompiler", "msrvCompiler"]) {
-    const release = field === "reviewedCompiler" ? "1.98.1" : "1.88.0";
+    const release = field === "reviewedCompiler" ? "1.98.1" : "1.90.0";
     for (const changes of [{ commit: "c".repeat(40) }, { host: "x86_64-pc-windows-msvc" }]) {
       assert.notEqual(hash(), hash({ [field]: compiler(release, changes) }), `${field} must include ${Object.keys(changes)[0]}`);
     }
@@ -106,7 +106,7 @@ test("Rust cache reader selects both exact toolchains with argument arrays and n
   assert.match(result, /^[a-f0-9]{64}$/);
   assert.deepEqual(calls, [
     { command: "rustup", args: ["run", "1.123.4", "rustc", "-vV"] },
-    { command: "rustup", args: ["run", "1.88.0", "rustc", "-vV"] },
+    { command: "rustup", args: ["run", "1.90.0", "rustc", "-vV"] },
   ]);
 });
 

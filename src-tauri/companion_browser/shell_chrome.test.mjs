@@ -514,6 +514,7 @@ test("phone detail modal uses the compact header chrome", () => {
   });
 
   assert.match(html, /PLA · Basic · White/);
+  assert.match(html, /id="companion-detail-dialog-title" class="sr-only"/);
   assert.match(html, /Done/);
   assert.doesNotMatch(html, /#1/);
   assert.doesNotMatch(html, /Review this spool/);

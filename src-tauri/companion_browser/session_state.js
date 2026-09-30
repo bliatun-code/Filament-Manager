@@ -34,6 +34,7 @@ export function createInitialCompanionState() {
     reauthPromise: null,
     statusMessage: "",
     statusTone: "default",
+    statusOverlayContext: null,
     locale: "en",
     themeMode: "auto",
     resolvedTheme: "light",

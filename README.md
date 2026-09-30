@@ -239,7 +239,7 @@ Bambu Live boundaries.
 
 - Node.js `24.x`
 - npm `>=10`
-- Rust 1.88 or newer for Tauri builds; `rust-toolchain.toml` selects the
+- Rust 1.90 or newer for Tauri builds; `rust-toolchain.toml` selects the
   reviewed Rust 1.98.0 toolchain through rustup
 - Xcode app + Command Line Tools for macOS builds
 - `sqlite3` CLI is optional as a fallback for visual-QA database tooling

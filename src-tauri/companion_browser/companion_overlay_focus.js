@@ -208,6 +208,7 @@ export function createCompanionOverlayFocusLifecycle(options) {
   let renderedOverlayKey = "";
   let openerSnapshot = null;
   let overlayFocusSnapshot = null;
+  let overlayScrollSnapshot = null;
 
   function prepareForRender(nextOverlayKey = "") {
     const normalizedNextKey = normalizeValue(nextOverlayKey);
@@ -222,6 +223,13 @@ export function createCompanionOverlayFocusLifecycle(options) {
     }
 
     overlayFocusSnapshot = null;
+    overlayScrollSnapshot = null;
+    if (renderedOverlayKey && normalizedNextKey === renderedOverlayKey && overlay) {
+      const body = overlay.querySelector?.(".task-sheet-body, .detail-modal-body");
+      if (body) {
+        overlayScrollSnapshot = { top: body.scrollTop, left: body.scrollLeft };
+      }
+    }
     if (
       renderedOverlayKey &&
       normalizedNextKey === renderedOverlayKey &&
@@ -260,6 +268,14 @@ export function createCompanionOverlayFocusLifecycle(options) {
     if (!overlay) {
       return false;
     }
+    if (normalizedNextKey === previousOverlayKey && overlayScrollSnapshot) {
+      const body = overlay.querySelector?.(".task-sheet-body, .detail-modal-body");
+      if (body) {
+        body.scrollTop = overlayScrollSnapshot.top;
+        body.scrollLeft = overlayScrollSnapshot.left;
+      }
+    }
+    overlayScrollSnapshot = null;
     if (activeElementIsInside(overlay, documentRef)) {
       overlayFocusSnapshot = null;
       return true;
@@ -314,7 +330,9 @@ export function createCompanionOverlayFocusLifecycle(options) {
     const target = shouldWrapBackward
       ? focusableElements[focusableElements.length - 1]
       : focusableElements[0];
-    focusWithoutScrolling(target);
+    // Keyboard wrapping must reveal off-screen controls in the scrollable body.
+    // Render restoration above deliberately preserves the existing scroll position.
+    target.focus();
     return true;
   }
 

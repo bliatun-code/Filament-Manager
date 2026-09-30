@@ -434,6 +434,7 @@ export function renderAddFilamentTaskSheetBody(state, busy, escapeHtml) {
 
           ${renderSegmentedControl({
             action: "set-filament-ownership",
+            className: "add-spool-ownership-control",
             activeValue: isBorrowedIn ? "BORROWED_IN" : "OWNED",
             escapeHtml,
             items: [

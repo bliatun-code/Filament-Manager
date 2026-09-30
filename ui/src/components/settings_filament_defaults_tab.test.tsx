@@ -262,6 +262,7 @@ test("an app-owned receipt remains renderable after the settings route remounts"
   const html = renderTab({ batchReceipt: receipt });
   assert.match(html, /Latest pricing receipt/);
   assert.match(html, /PLA Basic · Locked/);
+  assert.match(html, /#locked/);
   assert.match(html, /Protected from batch pricing/);
 });
 

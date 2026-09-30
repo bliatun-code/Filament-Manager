@@ -9,9 +9,9 @@ build gate. The deterministic npm lockfile policy is also exercised by the
 ordinary script test suite.
 
 The reviewed Rust release has one version source, `rust-toolchain.toml`, monitored by
-Dependabot's Rust-toolchain ecosystem. Both Cargo packages declare Rust 1.88 as
+Dependabot's Rust-toolchain ecosystem. Both Cargo packages declare Rust 1.90 as
 their minimum supported version. Both required smoke jobs compile the complete
-workspace with Rust 1.88 on their supported desktop platform before running
+workspace with Rust 1.90 on their supported desktop platform before running
 ordinary verification with the exact pinned release. Both compilers are installed
 before restoring the [native CI dependency cache](CI_CACHE.md), so its key includes
 both compiler identities. Each CI, release and audit
@@ -23,7 +23,7 @@ uses that output explicitly while retaining its required components and targets.
 Dependabot therefore updates only the version source; workflow and contract
 tests do not keep another copy of the release number. Every new toolchain still
 requires ordinary verification, including formatting, tests and Clippy; the
-Rust 1.88 lower bound and formatting style remain separate, explicit contracts.
+Rust 1.90 lower bound and formatting style remain separate, explicit contracts.
 
 Dependabot surfaces major npm and Cargo upgrades as focused pull requests
 instead of suppressing them with wildcard rules. The UI has two temporary,
@@ -57,13 +57,11 @@ backend. RustSec still reports the `glib` soundness and `proc-macro-error`
 maintenance warnings in that graph, even though Filament Manager distributes
 macOS and Windows builds. The ten GTK3 maintenance advisories were withdrawn
 upstream; their absence from a current audit does not mean GTK left the lockfile.
-Separately, the unmaintained `unic`
-packages reach both supported platforms through `tauri-utils` and `urlpattern`.
-Do not classify all maintenance warnings as Linux-only. Follow a published,
-compatible Tauri update for that dependency chain; do not force an incompatible
-`urlpattern` version into the lockfile. The dated
-[dependency review](DEPENDENCY_REVIEW_2026-09-14.md) records the current paths and
-follow-up decisions. All warnings remain visible in the scheduled report, but
+The previously unmaintained `unic` chain was removed by the coordinated
+Tauri 2.12 / tauri-utils 2.10 update, which uses urlpattern 0.6. The application
+and both native CI jobs now require Rust 1.90 or newer. The dated
+[upgrade report](DEPENDENCY_UPGRADE_2026-09-30.md) records the migration and
+verification. All remaining warnings stay visible in the scheduled report;
 only vulnerability advisories fail `cargo audit`. License violations always fail.
 
 ## Policy Files
@@ -109,8 +107,8 @@ Reproduce the declared Rust lower-bound check for the current host when changing
 Rust or Cargo dependencies:
 
 ```bash
-rustup toolchain install 1.88.0 --profile minimal
-cargo +1.88.0 check --workspace --all-targets --all-features --locked
+rustup toolchain install 1.90.0 --profile minimal
+cargo +1.90.0 check --workspace --all-targets --all-features --locked
 ```
 
 The npm and RustSec audits contact their public advisory services. A registry,

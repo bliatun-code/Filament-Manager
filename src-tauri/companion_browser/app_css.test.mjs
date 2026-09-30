@@ -83,10 +83,6 @@ test("swatch filament rows keep the bright hover outline", () => {
 
   assert.match(css, /\.list-row\.swatch-surface:hover,\s*\.swatch-card-surface\.swatch-surface:hover\s*\{/);
   assert.match(css, /0 0 0 1px rgba\(248, 250, 252, 0\.38\)/);
-  assert.match(
-    css,
-    /:root\[data-theme-mode="light"\] \.list-row\.swatch-surface:hover,[\s\S]*\.swatch-card-surface\.swatch-surface:hover[\s\S]*0 0 0 1px rgba\(255, 255, 255, 0\.96\)/,
-  );
 });
 
 test("light swatches keep neutral edges while dark swatches preserve their existing treatment", () => {
@@ -108,19 +104,10 @@ test("light swatches keep neutral edges while dark swatches preserve their exist
   assert.match(css, /\.swatch-dot\s*\{[\s\S]*border: 1px solid var\(--swatch-dot-border\);/);
 });
 
-test("swatch action buttons reuse the selected filament color", () => {
+test("filament actions keep semantic theme colors and selection cards retain swatches", () => {
   const css = readCssBundle();
-
-  assert.match(css, /\.primary-button\.swatch-action-button,\s*\.secondary-button\.swatch-action-button\s*\{/);
-  assert.match(css, /var\(--swatch-action-start\) 0%/);
-  assert.match(css, /var\(--swatch-action-end\) 100%/);
-  assert.match(css, /border-color: var\(--swatch-action-border\);/);
-  assert.match(css, /color: var\(--swatch-action-contrast\);/);
-  assert.match(css, /0 18px 36px -24px rgb\(var\(--swatch-action-shadow-rgb\) \/ 0\.74\)/);
-  assert.match(
-    css,
-    /\.primary-button\.swatch-action-button:hover,\s*\.secondary-button\.swatch-action-button:hover\s*\{\s*opacity: 1;/,
-  );
+  assert.doesNotMatch(css, /background:[^}]*var\(--swatch-action-start\)/);
+  assert.match(css, /\.primary-button\s*\{[^}]*background: var\(--accent\);[^}]*color: var\(--accent-contrast\);/);
   assert.match(css, /\.companion-selection-card\s*\{[\s\S]*display: grid;[\s\S]*gap: 0\.72rem;/);
   assert.match(css, /\.companion-selection-card-head\s*\{[\s\S]*display: flex;[\s\S]*justify-content: space-between;/);
   assert.match(css, /\.loan-create-card,\s*\.loan-return-card\s*\{[\s\S]*display: grid;[\s\S]*gap: 0\.72rem;/);
@@ -148,7 +135,7 @@ test("companion shell defines reusable status and panel surface tokens", () => {
   assert.match(css, /\.task-sheet\.add-filament-sheet \.task-sheet-header\s*\{[\s\S]*var\(--surface-panel\)/);
 });
 
-test("brand themes keep AA text contrast without replacing filament swatch tokens", () => {
+test("brand surfaces keep AA text contrast without replacing filament colors", () => {
   const css = readCssBundle();
   const themes = [
     {
@@ -176,7 +163,7 @@ test("brand themes keep AA text contrast without replacing filament swatch token
     assert.ok(contrastRatio(hexToRgb(mutedText), hexToRgb(surface)) >= 4.5);
     assert.ok(contrastRatio(hexToRgb(accentColor), hexToRgb(accentContrast)) >= 4.5);
     assert.ok(contrastRatio(hexToRgb(controlBorder), hexToRgb(surface)) >= 3);
-    assert.doesNotMatch(block, /--swatch-/);
+    assert.doesNotMatch(block, /--swatch-(?!surface-base:)/);
     assert.doesNotMatch(block, /--brand-rgb/);
   }
 
@@ -186,7 +173,7 @@ test("brand themes keep AA text contrast without replacing filament swatch token
 test("companion controls use shared focus and radius primitives", () => {
   const css = readCssBundle();
 
-  assert.match(css, /a:focus-visible,\s*button:focus-visible,\s*input:focus-visible,\s*select:focus-visible,\s*textarea:focus-visible\s*\{[\s\S]*outline: 2px solid var\(--focus-ring\);[\s\S]*box-shadow: 0 0 0 4px var\(--focus-ring-shadow\);/);
+  assert.match(css, /a:focus-visible,\s*button:focus-visible,\s*input:focus-visible,\s*select:focus-visible,\s*textarea:focus-visible,\s*summary:focus-visible,\s*\[tabindex\]:focus-visible\s*\{[\s\S]*outline: 2px solid var\(--focus-ring\);[\s\S]*box-shadow: 0 0 0 4px var\(--focus-ring-shadow\);/);
   assert.match(css, /\.primary-button,\s*\.secondary-button,\s*\.ghost-button\s*\{[\s\S]*border-radius: var\(--control-radius\);/);
   assert.match(css, /\.search-input,\s*\.token-input,\s*\.weight-input,\s*\.text-input,\s*\.detail-textarea\s*\{[\s\S]*border-radius: var\(--control-radius\);/);
   assert.match(css, /\.root-flow-button,\s*\.segment-button\s*\{[\s\S]*border-radius: var\(--segmented-item-radius\);/);
@@ -208,7 +195,7 @@ test("search fields keep a permanent visible label above the input", () => {
   );
 });
 
-test("light form controls use an opaque three-to-one border without changing dark mode", () => {
+test("form controls use opaque borders in explicit and system themes", () => {
   const css = readCssBundle();
   const tokenMatch = css.match(/:root\s*\{[^}]*--form-control-border:\s*(#[0-9a-f]{6});/i);
 
@@ -248,11 +235,11 @@ test("light form controls use an opaque three-to-one border without changing dar
   );
   assert.match(
     css,
-    /:root\[data-theme-mode="dark"\]\s*\{[^}]*--form-control-border: var\(--border\);/,
+    /:root\[data-theme-mode="dark"\]\s*\{[^}]*--form-control-border: #71839a;/,
   );
   assert.match(
     css,
-    /@media \(prefers-color-scheme: dark\)[\s\S]*:root\[data-theme-mode="auto"\]\s*\{[^}]*--form-control-border: var\(--border\);/,
+    /@media \(prefers-color-scheme: dark\)[\s\S]*:root\[data-theme-mode="auto"\]\s*\{[^}]*--form-control-border: #71839a;/,
   );
 });
 
@@ -353,6 +340,5 @@ test("phone CSS keeps root headers secondary, task sheets scrollable, and modal 
     "explicit dark and dark-based brand themes must not depend on the OS color scheme",
   );
   assert.match(css, /@media \(max-width: 767px\) and \(prefers-color-scheme: light\)[\s\S]*:root\[data-theme-mode="auto"\] \.swatch-surface\s*\{[\s\S]*--swatch-surface-top: 0\.24;/);
-  assert.match(css, /:root\[data-theme-mode="light"\] \.list-row\.swatch-surface[\s\S]*inset 3px 0 0 rgb\(var\(--swatch-rgb\) \/ 0\.56\)/);
   assert.match(css, /:root\[data-theme-mode="light"\] \.printer-board\.printer-brand-surface[\s\S]*inset 3px 0 0 rgb\(var\(--brand-rgb\) \/ 0\.5\)/);
 });

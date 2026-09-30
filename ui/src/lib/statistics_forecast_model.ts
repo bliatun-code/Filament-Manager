@@ -61,6 +61,26 @@ function addUtcCalendarDays(value: string, days: number): string | null {
   return parsed.toISOString().slice(0, 10);
 }
 
+/** Display a forecast at a precision supported by a short usage sample. */
+export function formatForecastCoverage(days: number, locale = "en"): string {
+  const unit = days >= 730 ? "year" : days >= 90 ? "month" : "day";
+  const divisor = unit === "year" ? 365.25 : unit === "month" ? 30.44 : 1;
+  const amount = Math.max(0, Math.round(days / divisor));
+  return `≈ ${new Intl.NumberFormat(locale, {
+    style: "unit", unit, unitDisplay: "long", maximumFractionDigits: 0,
+  }).format(amount)}`;
+}
+
+export function formatForecastDepletion(value: string, days: number, locale = "en"): string {
+  const parsed = parseIsoCalendarDate(value);
+  if (!parsed) return value;
+  return `≈ ${new Intl.DateTimeFormat(locale, {
+    ...(days < 90 ? { day: "numeric" as const } : {}),
+    ...(days < 730 ? { month: "short" as const } : {}),
+    year: "numeric", timeZone: "UTC",
+  }).format(parsed)}`;
+}
+
 export function formatForecastDate(value: string, locale = "en"): string {
   const parsed = parseIsoCalendarDate(value);
   if (!parsed) {

@@ -39,6 +39,7 @@ export type WishlistQueuePanelProps = {
   loading: boolean;
   onCancelDeleteItem: () => void;
   onAddPurchase: () => void;
+  showAddAction?: boolean;
   onDeleteItem: (itemId: string) => void;
   onFilterChange: (filter: WishlistStatusFilter) => void;
   onQueryChange: (query: string) => void;
@@ -91,6 +92,7 @@ export function WishlistQueuePanel({
   loading,
   onCancelDeleteItem,
   onAddPurchase,
+  showAddAction = true,
   onDeleteItem,
   onFilterChange,
   onQueryChange,
@@ -173,20 +175,9 @@ export function WishlistQueuePanel({
   };
 
   return (
-    <div className="surface-card space-y-4">
-      <div className="surface-subtle p-4">
-        <div className="flex flex-col items-start justify-between gap-3 sm:flex-row">
-          <div>
-            <div className="text-sm font-semibold text-slate-900 dark:text-slate-50">
-              {t("inventory.wishlistOrders", "Wishlist & orders")}
-            </div>
-            <div className="mt-1 text-xs leading-5 text-slate-500 dark:text-slate-400">
-              {t(
-                "inventory.wishlistQueueHelp",
-                "Keep planned purchases here, move them to on order, then stock them when they arrive.",
-              )}
-            </div>
-          </div>
+    <div className="space-y-4">
+      <div className="surface-card">
+        {showAddAction ? <div className="mb-3 flex flex-col items-start justify-between gap-3 sm:flex-row">
           <PageHeaderButton
             className="w-full shrink-0 sm:w-auto"
             onClick={onAddPurchase}
@@ -196,9 +187,10 @@ export function WishlistQueuePanel({
           >
             {t("inventory.addToWishlist", "Add to wishlist / order")}
           </PageHeaderButton>
-        </div>
+        </div> : null}
+        <div className="flex flex-wrap items-end justify-between gap-3">
         <SegmentedChoiceRow
-          className="mt-4"
+          className="min-w-0"
           groupAriaLabel={t("wishlist.statusFilter", "Wishlist status filter")}
           value={value}
           onChange={onFilterChange}
@@ -225,7 +217,7 @@ export function WishlistQueuePanel({
             },
           ]}
         />
-        <div className="mt-4 grid grid-cols-[minmax(0,1fr)_auto] items-end gap-3">
+        <div className="grid min-w-0 flex-1 grid-cols-[minmax(0,1fr)_auto] items-end gap-3 sm:max-w-sm">
           <label className="block min-w-0">
             <span className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">
               {t("wishlist.searchQueueLabel", "Search purchase queue")}
@@ -244,6 +236,7 @@ export function WishlistQueuePanel({
           <span className="count-pill tabular-nums" aria-live="polite">
             {resultCount}
           </span>
+        </div>
         </div>
       </div>
 
@@ -306,7 +299,8 @@ export function WishlistQueuePanel({
                   ) : null}
                 </div>
               </div>
-              <div className="mt-4 border-t border-slate-200/80 pt-3 dark:border-slate-700/80">
+              <div className="mt-3 flex flex-wrap items-end justify-between gap-3 border-t border-slate-200/80 pt-3 dark:border-slate-700/80">
+                <div className="min-w-0">
                 <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">
                   {t("inventory.status", "Status")}
                 </div>
@@ -316,12 +310,13 @@ export function WishlistQueuePanel({
                     name: itemTitle,
                   })}
                   value={itemStatus}
-                  onChange={(nextStatus) => onStatusChange(item.id, nextStatus)}
+                  onChange={(nextStatus) => {
+                    if (nextStatus !== itemStatus) onStatusChange(item.id, nextStatus);
+                  }}
                   optionSizeClassName="px-3 py-1.5 text-[11px]"
                   isOptionDisabled={(option) =>
                     !tauriAvailable ||
                     busy ||
-                    itemStatus === option.value ||
                     (option.value === "RECEIVED" && item.quantity > 0)
                   }
                   options={[
@@ -339,9 +334,10 @@ export function WishlistQueuePanel({
                     },
                   ]}
                 />
+                </div>
                 {confirmingRemove ? (
                   <div
-                    className="mt-3 rounded-xl border border-rose-300 bg-rose-50/95 p-3 text-rose-950 dark:border-rose-400/45 dark:bg-rose-500/15 dark:text-rose-100"
+                    className="w-full rounded-xl border border-rose-300 bg-rose-50/95 p-3 text-rose-950 dark:border-rose-400/45 dark:bg-rose-500/15 dark:text-rose-100"
                     role="alert"
                   >
                     <div className="font-semibold">
@@ -377,11 +373,11 @@ export function WishlistQueuePanel({
                     </div>
                   </div>
                 ) : (
-                  <div className="mt-3 flex flex-wrap gap-2">
+                  <div className="flex flex-wrap items-end gap-2">
                     {canStockItem ? (
                       <div className="flex items-end gap-2">
                         <label className="block">
-                          <span className="sr-only">{t("wishlist.qty", "Qty")}</span>
+                          <span className="mb-1 block text-xs text-slate-600 dark:text-slate-300">{t("wishlist.qty", "Qty")}</span>
                           <input
                             type="number"
                             min={1}

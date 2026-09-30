@@ -1,3 +1,4 @@
+import { settingsThemeModeLabel } from "../pages/settings_preferences_model";
 import type { Locale } from "../lib/i18n";
 import { SELECTABLE_LOCALES } from "../../../src-tauri/companion_browser/supported_locales.js";
 import type { MessageParams } from "../../../src-tauri/companion_browser/message_format.js";
@@ -82,11 +83,11 @@ export function SettingsGeneralTab({
   return (
     <>
       <SettingsSurfaceCard
-        className="min-w-0 space-y-4"
+        className="min-w-0 space-y-4 self-start"
         eyebrow={t("settings.appearance", "Appearance")}
         description={t("settings.autoHint", "Auto follows your system light/dark preference.")}
       >
-        <div className="surface-subtle p-3">
+        <div className="min-w-0">
           <div
             className="space-y-3"
             role="group"
@@ -101,11 +102,7 @@ export function SettingsGeneralTab({
                   onClick={() => onThemeSelection(mode)}
                   className={chipButtonClass(themeMode === mode)}
                 >
-                  {mode === "auto"
-                    ? t("settings.auto", "Auto (system)")
-                    : mode === "light"
-                      ? t("settings.light", "Light")
-                      : t("settings.dark", "Dark")}
+                  {settingsThemeModeLabel(mode, t)}
                 </button>
               ))}
             </div>
@@ -148,38 +145,34 @@ export function SettingsGeneralTab({
             </div>
           </div>
         </div>
-      </SettingsSurfaceCard>
-
-      <SettingsSurfaceCard
-        className="min-w-0 space-y-4"
-        eyebrow={t("settings.language", "Language")}
-        description={t(
-          "settings.languageHint",
-          "Choose app language. More sections will be localized incrementally.",
-        )}
-      >
-        <div className="surface-subtle p-3">
-          <label className="block max-w-md">
-            <span className="sr-only">{t("settings.language", "Language")}</span>
-            <select
-              aria-label={t("settings.language", "Language")}
-              className={settingsFormControlClass}
-              value={locale}
-              onChange={(event) => onLocaleSelection(event.target.value as Locale)}
-            >
-              {SELECTABLE_LOCALES.map((definition) => (
-                <option key={definition.id} value={definition.id}>
-                  {definition.nativeLabel}
-                </option>
-              ))}
-            </select>
-          </label>
+        <div className="border-t border-slate-200 pt-4 dark:border-slate-700">
+          <div className={settingsSectionLabelClass}>{t("settings.language", "Language")}</div>
+          <p className="mt-1 mb-3 text-xs leading-5 text-slate-600 dark:text-slate-300">
+            {t("settings.languageHint", "Choose app language. More sections will be localized incrementally.")}
+          </p>
+          <div className="min-w-0">
+            <label className="block max-w-md">
+              <span className="sr-only">{t("settings.language", "Language")}</span>
+              <select
+                aria-label={t("settings.language", "Language")}
+                className={settingsFormControlClass}
+                value={locale}
+                onChange={(event) => onLocaleSelection(event.target.value as Locale)}
+              >
+                {SELECTABLE_LOCALES.map((definition) => (
+                  <option key={definition.id} value={definition.id}>
+                    {definition.nativeLabel}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </div>
         </div>
       </SettingsSurfaceCard>
 
       {tauri ? (
         <SettingsSurfaceCard
-          className="min-w-0 space-y-4"
+          className="min-w-0 space-y-4 self-start"
           eyebrow={t("settings.backgroundOperation", "Background operation")}
           description={t(
             "settings.backgroundOperationHint",
@@ -340,7 +333,7 @@ export function SettingsGeneralTab({
         </SettingsSurfaceCard>
       ) : null}
 
-      <SettingsSurfaceCard className="min-w-0 space-y-4" eyebrow={t("settings.program", "Program")}>
+      <SettingsSurfaceCard className="min-w-0 space-y-4 self-start" eyebrow={t("settings.program", "Program")}>
         <div className="grid gap-3 sm:grid-cols-2">
           <div className="surface-subtle px-4 py-3">
             <div className={settingsSectionLabelClass}>
@@ -459,7 +452,7 @@ export function SettingsGeneralTab({
       </SettingsSurfaceCard>
 
       <SettingsSurfaceCard
-        className="min-w-0 space-y-4"
+        className="min-w-0 space-y-4 self-start"
         eyebrow={t("settings.help", "Help")}
         description={t(
           "settings.helpHint",

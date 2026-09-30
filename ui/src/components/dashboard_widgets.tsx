@@ -229,18 +229,25 @@ export function UsageChart({
           {header}
         </div>
       )}
-      <div className="surface-subtle relative mt-4 h-40 w-full overflow-hidden px-2 pb-2 pt-3 sm:px-3">
+      <div className="surface-subtle relative mt-4 h-40 w-full px-2 pb-2 pt-3 pl-14 sm:pr-3">
         <div
           aria-hidden="true"
-          className="pointer-events-none absolute inset-x-2 top-3 bottom-8 flex flex-col justify-between sm:inset-x-3"
+          className="pointer-events-none absolute left-14 right-3 top-3 bottom-8 flex flex-col justify-between"
         >
-          {[0, 1, 2, 3].map((line) => (
+          {[0, 1, 2].map((line) => (
             <span
               key={line}
               className="block border-t border-slate-300/70 dark:border-slate-700/70"
             />
           ))}
         </div>
+        {!isUnavailable && !isEmptyTrend ? (
+          <div aria-hidden="true" className="pointer-events-none absolute left-2 top-3 bottom-8 flex w-10 flex-col justify-between text-right text-[10px] leading-none text-slate-600 dark:text-slate-300">
+            {[maxUsage, maxUsage / 2, 0].map((grams, index) => (
+              <span key={index}>{formatGrams(grams, "zero", locale)}</span>
+            ))}
+          </div>
+        ) : null}
         <div
           aria-label={`${title}, ${period}`}
           className="relative grid h-full grid-cols-12 gap-1 sm:gap-2"
@@ -265,7 +272,7 @@ export function UsageChart({
               >
                 <span
                   aria-hidden="true"
-                  className="pointer-events-none absolute left-1/2 top-1 z-20 -translate-x-1/2 whitespace-nowrap rounded bg-slate-950/90 px-1.5 py-0.5 text-[10px] font-semibold text-white opacity-0 shadow-sm transition-opacity group-hover:opacity-100 group-focus:opacity-100 dark:bg-white/92 dark:text-slate-950"
+                  className="pointer-events-none absolute left-1/2 top-1 z-20 -translate-x-1/2 group-first:left-0 group-first:translate-x-0 group-last:left-auto group-last:right-0 group-last:translate-x-0 whitespace-nowrap rounded bg-slate-950/90 px-1.5 py-0.5 text-[10px] font-semibold text-white opacity-0 shadow-sm transition-opacity group-hover:opacity-100 group-focus:opacity-100 dark:bg-white/92 dark:text-slate-950"
                 >
                   {formattedUsage}
                 </span>

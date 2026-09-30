@@ -196,7 +196,7 @@ export function SettingsApplicationDiagnosticsPanel({
           </button>
           <button
             type="button"
-            className={settingsActionButtonClass("accent")}
+            className={settingsActionButtonClass("primary")}
             onClick={onDownloadSanitizedSupportBundle}
             disabled={!tauri || supportBundleStatus === "loading"}
           >

@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { formatDateTime, parseDateTime } from "../lib/date_time";
+import { formatDateTime, parseDateTime, parseDateTimeMs } from "../lib/date_time";
 import { useI18n } from "../lib/i18n";
 import {
   formatDisplayInteger,
@@ -65,14 +65,20 @@ export function DiagnosticCaptureChart({
     if (!stats || chartPoints.length === 0) {
       return "";
     }
+    const firstTime = parseDateTimeMs(stats.first.observedAt);
+    const lastTime = parseDateTimeMs(stats.last.observedAt);
     const innerWidth = CHART_WIDTH - CHART_PADDING_X * 2;
     const innerHeight = CHART_HEIGHT - CHART_PADDING_Y * 2;
     return chartPoints
       .map((point, index) => {
+        const time = parseDateTimeMs(point.observedAt);
+        const fraction = firstTime !== null && lastTime !== null && time !== null && lastTime > firstTime
+          ? (time - firstTime) / (lastTime - firstTime)
+          : index / Math.max(chartPoints.length - 1, 1);
         const x =
           chartPoints.length === 1
             ? CHART_WIDTH / 2
-            : CHART_PADDING_X + (index / (chartPoints.length - 1)) * innerWidth;
+            : CHART_PADDING_X + fraction * innerWidth;
         const normalized = (point.value - stats.min) / stats.span;
         const y = CHART_HEIGHT - CHART_PADDING_Y - normalized * innerHeight;
         return `${x},${y}`;
@@ -96,13 +102,19 @@ export function DiagnosticCaptureChart({
       <div className="text-[11px] font-semibold text-slate-700 dark:text-slate-200">
         {fieldPath}
       </div>
+      <div className="grid grid-cols-[auto_minmax(0,1fr)] gap-x-2 gap-y-1">
+        <div className="flex h-40 flex-col justify-between py-[14px] text-right text-xs tabular-nums text-slate-600 dark:text-slate-300" aria-hidden="true">
+          {[stats.min + stats.span, stats.min + stats.span / 2, stats.min].map((value) => <span key={value}>{formatDisplayNumber(value, locale, { maximumFractionDigits: 2 })}</span>)}
+        </div>
       <svg
         viewBox={`0 0 ${CHART_WIDTH} ${CHART_HEIGHT}`}
-        className="w-full rounded-lg border border-slate-300/70 bg-white/70 text-sky-700 shadow-inner shadow-slate-200/35 dark:border-slate-700 dark:bg-slate-950/40 dark:text-sky-300 dark:shadow-none"
+        preserveAspectRatio="none"
+        className="app-modal-inset-soft h-40 w-full rounded-lg border text-[var(--app-theme-accent)]"
         role="img"
         aria-label={fieldPath}
       >
-        {[0.25, 0.5, 0.75].map((ratio) => {
+        <title>{`${formatObservedAt(stats.first.observedAt, locale)} – ${formatObservedAt(stats.last.observedAt, locale)}; ${stats.min} – ${stats.min + stats.span}`}</title>
+        {[0, 0.5, 1].map((ratio) => {
           const y = CHART_PADDING_Y + ratio * (CHART_HEIGHT - CHART_PADDING_Y * 2);
           return (
             <line
@@ -146,12 +158,18 @@ export function DiagnosticCaptureChart({
         {chartPoints.length === 1 ? (
           <circle
             cx={CHART_WIDTH / 2}
-            cy={CHART_HEIGHT / 2}
+            cy={CHART_HEIGHT - CHART_PADDING_Y - ((stats.last.value - stats.min) / stats.span) * (CHART_HEIGHT - CHART_PADDING_Y * 2)}
             r="3.5"
             fill="currentColor"
           />
         ) : null}
       </svg>
+        <div />
+        <div className="flex justify-between gap-3 text-xs text-slate-600 dark:text-slate-300">
+          <time dateTime={stats.first.observedAt}>{formatObservedAt(stats.first.observedAt, locale)}</time>
+          <time className="text-right" dateTime={stats.last.observedAt}>{formatObservedAt(stats.last.observedAt, locale)}</time>
+        </div>
+      </div>
       <div className="grid grid-cols-1 gap-1 text-[11px] text-slate-600 dark:text-slate-300 xl:grid-cols-3">
         <div>
           {t("settings.bambuLiveChartLatest", "Latest")}:{" "}

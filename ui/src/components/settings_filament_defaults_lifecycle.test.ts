@@ -107,9 +107,14 @@ test("rendered filament standards saves retain their library and operation", asy
       await page.locator('input[type=radio][value=OVERWRITE]').check();
       await page.getByRole('button',{name:'Review and confirm overwrite',exact:true}).click();
       await clickTwice(page,'Confirm price update for 1 spool');assert.equal(await count(page),1);
+      await page.locator('details').first().evaluate(element => { element.style.minHeight = '1800px'; });
       await page.evaluate('standards.commit()');await page.waitForFunction('standards.receipt()?.committed');
       await page.getByRole('dialog').waitFor({state:'hidden'});
       assert.equal(await page.getByRole('button',{name:'Dismiss receipt',exact:true}).count(),1);
+      const result = page.getByRole('status').filter({hasText:'1 updated'});
+      assert.equal(await result.evaluate(element => element === document.activeElement), true);
+      const bounds = await result.boundingBox();
+      assert.ok(bounds && bounds.y >= 0 && bounds.y + bounds.height <= 720, 'Pricing result must be visible below long groups');
       assert.equal(await page.getByRole('button',{name:'Save default currency',exact:true}).isDisabled(),true);
       await page.evaluate('standards.resolve()');
       await page.waitForFunction("!Array.from(document.querySelectorAll('button')).find(b=>b.textContent==='Save default currency').disabled");

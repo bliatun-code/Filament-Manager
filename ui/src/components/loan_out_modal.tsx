@@ -101,6 +101,20 @@ function LoanOutSession({
   const [loading, setLoading] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [fieldError, setFieldError] = useState<{ field: "borrower" | "weight" | "date"; message: string } | null>(null);
+  const borrowerRef = useRef<HTMLInputElement>(null);
+  const weightRef = useRef<HTMLInputElement>(null);
+  const dateRef = useRef<HTMLInputElement>(null);
+
+  function showFieldError(field: "borrower" | "weight" | "date", message: string) {
+    setError(null);
+    setFieldError({ field, message });
+    requestAnimationFrame(() => {
+      const input = { borrower: borrowerRef, weight: weightRef, date: dateRef }[field].current;
+      input?.focus({ preventScroll: true });
+      input?.scrollIntoView({ block: "center" });
+    });
+  }
   const [spools, setSpools] = useState<LoanableSpool[]>([]);
   const [selectedSpoolId, setSelectedSpoolId] = useState<string | null>(null);
   const [spoolSearchQuery, setSpoolSearchQuery] = useState("");
@@ -234,18 +248,18 @@ function LoanOutSession({
     }
     const borrower = borrowerName.trim();
     if (!borrower) {
-      setError(t("inventory.error.borrowerRequired", "Borrower name is required."));
+      showFieldError("borrower", t("inventory.error.borrowerRequired", "Borrower name is required."));
       return;
     }
     const measuredTotalGrams = parseNonNegativeWeight(gramsOut);
     if (measuredTotalGrams === null) {
-      setError(t("inventory.error.loanGrams", "Loan grams must be zero or greater."));
+      showFieldError("weight", t("inventory.error.loanGrams", "Loan grams must be zero or greater."));
       return;
     }
     const grams = toLoanedFilamentWeight(selectedSpool, measuredTotalGrams);
     const expectedReturn = validateLoanExpectedReturnDate(expectedReturnAt, today);
     if (expectedReturn.error === "INVALID") {
-      setError(
+      showFieldError("date",
         t(
           "inventory.error.expectedReturnInvalid",
           "Choose a valid expected return date.",
@@ -254,7 +268,7 @@ function LoanOutSession({
       return;
     }
     if (expectedReturn.error === "PAST") {
-      setError(
+      showFieldError("date",
         t(
           "inventory.error.expectedReturnPast",
           "Expected return date cannot be before today.",
@@ -262,6 +276,7 @@ function LoanOutSession({
       );
       return;
     }
+    setFieldError(null);
     const contact = counterpartyContact.trim() || null;
 
     submittingRef.current = true;
@@ -438,12 +453,17 @@ function LoanOutSession({
                           <ModalFormField label={t("inventory.borrowerName", "Borrower name")}>
                             <input
                               type="text"
+                              ref={borrowerRef}
+                              aria-label={t("inventory.borrowerName", "Borrower name")}
+                              aria-invalid={fieldError?.field === "borrower" || undefined}
+                              aria-describedby={fieldError?.field === "borrower" ? "loan-borrower-error" : undefined}
                               value={borrowerName}
-                              onChange={(event) => setBorrowerName(event.target.value)}
+                              onChange={(event) => { setBorrowerName(event.target.value); if (fieldError?.field === "borrower") setFieldError(null); }}
                               className={modalFormInputClassName}
                               placeholder={t("inventory.borrowerName", "Borrower name")}
                               disabled={!tauri || busy}
                             />
+                            {fieldError?.field === "borrower" ? <p id="loan-borrower-error" role="alert" className="text-sm text-red-700 dark:text-red-300">{fieldError.message}</p> : null}
                           </ModalFormField>
 
                           <ModalFormField
@@ -471,12 +491,16 @@ function LoanOutSession({
                               type="number"
                               min={0}
                               step={1}
+                              ref={weightRef}
+                              aria-label={t("inventory.measuredTotalWeight", "Measured total weight (g)")}
+                              aria-invalid={fieldError?.field === "weight" || undefined}
                               value={gramsOut}
-                              onChange={(event) => setGramsOut(event.target.value)}
+                              onChange={(event) => { setGramsOut(event.target.value); if (fieldError?.field === "weight") setFieldError(null); }}
                               className={modalFormInputClassName}
-                              aria-describedby="loan-out-weight-preview"
+                              aria-describedby={fieldError?.field === "weight" ? "loan-weight-error loan-out-weight-preview" : "loan-out-weight-preview"}
                               disabled={!tauri || busy}
                             />
+                            {fieldError?.field === "weight" ? <p id="loan-weight-error" role="alert" className="text-sm text-red-700 dark:text-red-300">{fieldError.message}</p> : null}
                             <p className={panelSubtitleClassName}>
                               {t("inventory.emptySpoolWeightHelp", "Used to subtract spool tare from measured total so remaining filament stays accurate.")}
                             </p>
@@ -485,7 +509,7 @@ function LoanOutSession({
                                 `${formatLoanOutGrams(previewTotalGrams, locale)} − ${formatLoanOutGrams(resolveLoanableSpoolTareWeight(selectedSpool), locale)} = ${formatLoanOutGrams(toLoanedFilamentWeight(selectedSpool, previewTotalGrams), locale)}`}
                             </div>
                             <p className={panelSubtitleClassName}>
-                              {t("inventory.maxAvailable", "Max available")}: {formatLoanOutGrams(toMeasuredTotalWeight(selectedSpool, selectedSpool.remainingGrams), locale)}
+                              {t("inventory.remaining", "remaining")}: {formatLoanOutGrams(selectedSpool.remainingGrams, locale)}
                             </p>
                           </ModalFormField>
 
@@ -498,11 +522,16 @@ function LoanOutSession({
                             <input
                               type="date"
                               min={today}
+                              ref={dateRef}
+                              aria-label={t("inventory.expectedReturnDateOptional", "Expected return date (optional)")}
+                              aria-invalid={fieldError?.field === "date" || undefined}
+                              aria-describedby={fieldError?.field === "date" ? "loan-date-error" : undefined}
                               value={expectedReturnAt}
-                              onChange={(event) => setExpectedReturnAt(event.target.value)}
+                              onChange={(event) => { setExpectedReturnAt(event.target.value); if (fieldError?.field === "date") setFieldError(null); }}
                               className={modalFormInputClassName}
                               disabled={!tauri || busy}
                             />
+                            {fieldError?.field === "date" ? <p id="loan-date-error" role="alert" className="text-sm text-red-700 dark:text-red-300">{fieldError.message}</p> : null}
                           </ModalFormField>
                         </div>
 

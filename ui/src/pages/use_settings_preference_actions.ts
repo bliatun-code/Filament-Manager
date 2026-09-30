@@ -1,10 +1,5 @@
 import type { ThemeMode } from "../lib/theme_mode";
 import type { Locale, useI18n } from "../lib/i18n";
-import {
-  buildSettingsLocaleSelectionMessage,
-  buildSettingsThemeSelectionMessage,
-  settingsThemeModeLabel,
-} from "./settings_preferences_model";
 
 type SettingsTranslator = ReturnType<typeof useI18n>["t"];
 
@@ -18,28 +13,18 @@ type UseSettingsPreferenceActionsInput = {
 export function useSettingsPreferenceActions({
   setInfo,
   setLocale,
-  t,
   updateThemeMode,
 }: UseSettingsPreferenceActionsInput) {
-  function settingsPreferenceMessageLabels() {
-    return {
-      themeSetTo: t("settings.themeSetTo", "Theme mode set to"),
-    };
-  }
-
   function handleThemeSelection(mode: ThemeMode) {
     updateThemeMode(mode);
-    setInfo(
-      buildSettingsThemeSelectionMessage(
-        settingsThemeModeLabel(mode, t),
-        settingsPreferenceMessageLabels(),
-      ),
-    );
+    // The applied theme and aria-pressed state provide immediate feedback.
+    // Avoid inserting a banner above the control that was just activated.
+    setInfo(null);
   }
 
   function handleLocaleSelection(nextLocale: Locale) {
     setLocale(nextLocale);
-    setInfo(buildSettingsLocaleSelectionMessage(nextLocale, t));
+    setInfo(null);
   }
 
   return {

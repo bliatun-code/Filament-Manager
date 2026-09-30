@@ -212,7 +212,8 @@ test("loan return task sheet renders the compact return form", () => {
   assert.match(html, /surface-card companion-selection-card swatch-surface compact-loan-card loan-return-card/);
   assert.match(html, /companion-selection-card-head/);
   assert.match(html, /PLA · Basic · White/);
-  assert.match(html, /Bambu · #1 · Borrower: Alex/);
+  assert.match(html, /Bambu · #1<\/div>/);
+  assert.equal((html.match(/Alex/g) ?? []).length, 1);
   const returnButton = html.match(/<button[^>]*>Complete return<\/button>/)?.[0] ?? "";
   assert.match(returnButton, /class="primary-button" type="submit"/);
   assert.doesNotMatch(returnButton, /swatch-action-button|disabled/);

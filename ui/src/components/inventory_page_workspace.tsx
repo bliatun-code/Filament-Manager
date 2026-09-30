@@ -1,3 +1,4 @@
+import { clientPairingActionHint } from "../lib/error_text";
 import { lazy, Suspense, useState, type ComponentProps } from "react";
 import { AppModal } from "./app_modal";
 import { FeedbackBanner } from "./feedback_banner";
@@ -5,6 +6,7 @@ import type { InventoryAddModalProps } from "./inventory_add_modal";
 import {
   InventoryControlsPanel,
   InventoryHeaderActions,
+  InventoryStockFilters,
 } from "./inventory_controls_panel";
 import { InventorySpoolCollection } from "./inventory_spool_collection";
 import type { InventoryBulkActionsPanelViewProps } from "./inventory_bulk_actions_panel";
@@ -18,6 +20,7 @@ import {
   type InventoryWorkspaceView,
 } from "./inventory_workspace_navigation";
 import { PageDataFallbackBanner } from "./page_data_fallback_banner";
+import { PageHeaderButton } from "./page_header_button";
 import { PageLoadErrorBanner } from "./page_load_error_banner";
 import { WishlistQueuePanel, type WishlistQueuePanelProps } from "./wishlist_queue_panel";
 import { formatDateTime } from "../lib/date_time";
@@ -203,24 +206,39 @@ export function InventoryPageWorkspace({
           </div>
         </div>
         <InventoryHeaderActions {...headerActionsProps} />
+        {activeView === "PURCHASES" ? (
+          <PageHeaderButton variant="primary" responsive={false} className="self-start" disabled={purchaseQueueProps.addPurchaseDisabled} onClick={purchaseQueueProps.onAddPurchase}>
+            {t("inventory.addToWishlist", "Add to wishlist / order")}
+          </PageHeaderButton>
+        ) : null}
       </div>
-
-      <InventoryWorkspaceNavigation
-        activeView={activeView}
-        inventoryCount={totalInventoryCount}
-        locationCount={totalLocationCount}
-        onViewChange={onActiveViewChange}
-        purchaseCount={totalPurchaseCount}
-      />
 
       {activeView === "STOCK" ? (
         <InventoryControlsPanel
           {...controlsProps}
+          navigation={<InventoryWorkspaceNavigation
+            activeView={activeView}
+            inventoryCount={totalInventoryCount}
+            locationCount={totalLocationCount}
+            onViewChange={onActiveViewChange}
+            purchaseCount={totalPurchaseCount}
+          />}
+          filters={<InventoryStockFilters {...headerActionsProps} />}
           bulkSelectionActive={bulkSelectionTriggerProps.active}
           bulkSelectionDisabled={bulkSelectionTriggerProps.disabled}
           onBulkSelectionActiveChange={bulkSelectionTriggerProps.onActiveChange}
         />
-      ) : null}
+      ) : (
+        <div className="mt-4">
+          <InventoryWorkspaceNavigation
+            activeView={activeView}
+            inventoryCount={totalInventoryCount}
+            locationCount={totalLocationCount}
+            onViewChange={onActiveViewChange}
+            purchaseCount={totalPurchaseCount}
+          />
+        </div>
+      )}
 
       {error && !addModalActive ? (
         <FeedbackBanner tone="danger" className="mt-4">
@@ -248,7 +266,7 @@ export function InventoryPageWorkspace({
         <PageDataFallbackBanner
           message={`${clientHostDeviceName ? `${clientHostDeviceName}. ` : ""}${
             !clientHostWritePaired
-              ? t("inventory.clientWriteRequiresPairing", "Pair this desktop client with the host before running protected sync actions.")
+              ? `${t("inventory.clientWriteRequiresPairing", "Pair this desktop client with the host before running protected sync actions.")} ${clientPairingActionHint(t)}`
               : clientHostWarningVisible && clientInventorySource === "CACHED"
               ? t(
                   "inventory.clientReadOnlyCached",
@@ -315,7 +333,7 @@ export function InventoryPageWorkspace({
           hidden={activeView !== "PURCHASES"}
         >
           {activeView === "PURCHASES" ? (
-            <WishlistQueuePanel key={purchaseQueueProps.authorityKey} {...purchaseQueueProps} />
+            <WishlistQueuePanel key={purchaseQueueProps.authorityKey} {...purchaseQueueProps} showAddAction={false} />
           ) : null}
         </div>
         <div

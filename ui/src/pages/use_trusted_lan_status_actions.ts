@@ -2,6 +2,7 @@ import { useCallback, type Dispatch, type MutableRefObject, type SetStateAction 
 import { toErrorMessage } from "../lib/error_text";
 import { parsePositiveInt, waitForMs } from "../lib/settings_utils";
 import {
+  getTrustedLanCompanionStatus,
   listTrustedLanPairedBrowsers,
   updateTrustedLanCompanionConfig,
   type TrustedLanCompanionStatus,
@@ -139,7 +140,21 @@ export function useTrustedLanStatusActions({
       }
       refreshInFlightRef.current = true;
       try {
-        const nextBrowsers = await listTrustedLanPairedBrowsers();
+        const [statusResult, browsersResult] = await Promise.allSettled([
+          getTrustedLanCompanionStatus(),
+          listTrustedLanPairedBrowsers(),
+        ]);
+        // Runtime readiness can recover after a delayed local-name retry. Refresh
+        // the displayed status without replacing the user's network drafts.
+        if (statusResult.status === "fulfilled") {
+          setTrustedLanStatus(statusResult.value);
+        } else {
+          console.error(statusResult.reason);
+        }
+        if (browsersResult.status === "rejected") {
+          throw browsersResult.reason;
+        }
+        const nextBrowsers = browsersResult.value;
         const newActiveIds = findNewTrustedLanActiveBrowserIds(
           trustedLanPairedBrowsersRef.current,
           nextBrowsers,
@@ -148,7 +163,7 @@ export function useTrustedLanStatusActions({
         if (options?.announceNewPairing && newActiveIds.length > 0) {
           setInfo(buildTrustedLanLoadMessage("newBrowserPaired", trustedLanLoadMessageLabels()));
         }
-        return true;
+        return statusResult.status === "fulfilled";
       } catch (refreshError) {
         console.error(refreshError);
         if (!options?.suppressErrors) {
@@ -169,6 +184,7 @@ export function useTrustedLanStatusActions({
       setError,
       setInfo,
       setTrustedLanPairedBrowsers,
+      setTrustedLanStatus,
       tauri,
       trustedLanLoadMessageLabels,
       trustedLanPairedBrowsersRef,

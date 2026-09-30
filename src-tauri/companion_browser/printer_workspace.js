@@ -10,7 +10,7 @@ import {
   printerBrandCssVars,
   styleObjectToString,
   suggestSwatchHex,
-  toSwatchColor,
+  swatchCssBackground,
 } from "./companion_theme.js";
 import {
   buildLiveInventoryCandidateRows,
@@ -168,7 +168,7 @@ function renderPrinterLiveTelemetry(telemetry, locale, escapeHtml) {
     ? telemetry.humidity.scale
         .map(
           (item) =>
-            `<span class="printer-live-humidity-step${item.active ? " is-active" : ""}" aria-label="${escapeHtml(item.letter)}"></span>`,
+            `<span class="printer-live-humidity-step${item.active ? " is-active" : ""}" aria-hidden="true"></span>`,
         )
         .join("")
     : "";
@@ -590,7 +590,7 @@ function renderLiveInventoryCandidateRows(slot, spoolRows, activePrinter, locale
               data-rfid-tag="${escapeHtml(observedRfid)}"
               data-rfid-observed-at="${escapeHtml(observedAt)}"
             >
-              <span class="swatch-dot" style="background:${escapeHtml(toSwatchColor(swatch))};"></span>
+              <span class="swatch-dot" style="background:${escapeHtml(swatchCssBackground(swatch))};"></span>
               <span class="slot-live-candidate-main">
                 <span class="slot-live-candidate-title">${escapeHtml(title)}</span>
                 <span class="slot-live-candidate-meta">${escapeHtml(meta)}</span>
@@ -653,7 +653,7 @@ function renderSlotCards(options) {
         : slotHasLiveLoaded
           ? liveMaterialBits || t(locale, "printers.liveDetected", "Live filament detected")
           : t(locale, "printers.empty", "Empty");
-      const slotContentColor = slotUsesSwatchSurface ? toSwatchColor(slotSwatch) : "";
+      const slotContentColor = slotUsesSwatchSurface ? swatchCssBackground(slotSwatch) : "";
       const slotSummary = slot.spool_id
         ? [formatStatusLabel(slot.spool_status || "ASSIGNED", locale), formatRollReference({ id: slot.spool_id }, locale)]
             .filter(Boolean)

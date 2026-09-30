@@ -175,6 +175,27 @@ test("batch receipt controls preserve authority and scanner lifecycle in the rea
       assert.equal(result.state.registration, null);
     });
 
+    await scenario("receipts fit short results and keep long results scrollable", async page => {
+      await page.evaluate("batchUI.outcome('COMPLETE',{spoolIds:['saved-first','saved-second']})");
+      const compact = await batchDialog(page).boundingBox();
+      assert.ok(compact && compact.height < 500, "A two-row receipt should fit its content");
+      await page.evaluate(() => {
+        const rows = Array.from({length:50}, (_, index) => ({label:`Synthetic roll ${index + 1}`,code:"53400"}));
+        (window as unknown as {batchUI:{outcome:(status:string, extra:{rows:typeof rows;spoolIds:string[]})=>void}}).batchUI.outcome("COMPLETE", {rows,spoolIds:rows.map((_, index) => `saved-${index}`)});
+      });
+      await page.setViewportSize({width:600,height:400});
+      const footer = await batchDialog(page).getByRole("button", {name:"Start new batch",exact:true}).boundingBox();
+      assert.ok(footer && footer.y >= 0 && footer.y + footer.height <= 400);
+      const list = batchDialog(page).locator("ol").locator("..");
+      assert.ok(await list.evaluate(element => element.scrollHeight > element.clientHeight));
+      const last = batchDialog(page).getByRole("button", {name:"Open roll: 50. Synthetic roll 50",exact:true});
+      await last.focus();
+      const lastBounds = await last.boundingBox();
+      assert.ok(lastBounds && lastBounds.y >= 0 && lastBounds.y + lastBounds.height <= 400);
+      await last.click();
+      assert.deepEqual((await page.evaluate("batchUI.inspect()")).calls.opened, ["saved-49"]);
+    });
+
     await scenario("rejection returns to edit without a write and pre-send failures stay in the portal", async page => {
       await page.evaluate("batchUI.outcome('REJECTED',{error:'Invalid location'})");
       await batchDialog(page).getByRole("button", {name:"Edit batch",exact:true}).click();

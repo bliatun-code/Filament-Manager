@@ -1,5 +1,4 @@
 import {
-  buildSwatchActionButtonStyle,
   buildSwatchSurfaceStyle,
   hexToRgb,
   swatchRgba,
@@ -252,7 +251,15 @@ export function inventorySwatchActionButtonStyle(
   raw: string | null | undefined,
   resolvedTheme: ResolvedTheme,
 ) {
-  return buildSwatchActionButtonStyle(raw, resolvedTheme);
+  // Keep the shared control API; filament identity never determines action color.
+  void raw;
+  void resolvedTheme;
+  return {
+    background: "var(--app-theme-primary-action-background)",
+    borderColor: "var(--app-theme-primary-action-border)",
+    color: "var(--app-theme-primary-action-text)",
+    boxShadow: "var(--app-theme-primary-action-shadow)",
+  } as const;
 }
 
 export function inventoryCreatePreviewPanelStyle(

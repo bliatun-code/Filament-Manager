@@ -106,7 +106,7 @@ jobs:
       - name: Setup Rust MSRV
         uses: dtolnay/rust-toolchain@02cb101ec7c40f2c49e1d9714d64511d8e1b74de # master
         with:
-          toolchain: 1.88.0
+          toolchain: 1.90.0
 
       - name: Read Rust toolchain
         id: rust-toolchain
@@ -146,7 +146,7 @@ jobs:
       - name: Check Rust MSRV
         env:
           CARGO_TARGET_DIR: target/msrv
-        run: cargo +1.88.0 check --workspace --all-targets --all-features --locked
+        run: cargo +1.90.0 check --workspace --all-targets --all-features --locked
 
       - name: Install root dependencies
         run: npm ci
@@ -243,7 +243,7 @@ jobs:
         run: |
           cargo clean --locked --offline --package filament-manager-core --package bambu-filament-manager --target-dir target
           cargo clean --locked --offline --package filament-manager-core --package bambu-filament-manager --target-dir target --release
-          cargo +1.88.0 clean --locked --offline --package filament-manager-core --package bambu-filament-manager --target-dir target/msrv
+          cargo +1.90.0 clean --locked --offline --package filament-manager-core --package bambu-filament-manager --target-dir target/msrv
 
       - name: Save Rust dependencies
         if: ${{ success() && github.event_name == 'push' && github.ref == 'refs/heads/main' && steps.rust-cache.outputs.cache-hit != 'true' }}
@@ -296,7 +296,7 @@ jobs:
       - name: Setup Rust MSRV
         uses: dtolnay/rust-toolchain@02cb101ec7c40f2c49e1d9714d64511d8e1b74de # master
         with:
-          toolchain: 1.88.0
+          toolchain: 1.90.0
 
       - name: Read Rust toolchain
         id: rust-toolchain
@@ -336,7 +336,7 @@ jobs:
       - name: Check Rust MSRV
         env:
           CARGO_TARGET_DIR: target/msrv
-        run: cargo +1.88.0 check --workspace --all-targets --all-features --locked
+        run: cargo +1.90.0 check --workspace --all-targets --all-features --locked
 
       - name: Install root dependencies
         run: npm ci
@@ -434,7 +434,7 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           cargo clean --locked --offline --package filament-manager-core --package bambu-filament-manager --target-dir target --release
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          cargo +1.88.0 clean --locked --offline --package filament-manager-core --package bambu-filament-manager --target-dir target/msrv
+          cargo +1.90.0 clean --locked --offline --package filament-manager-core --package bambu-filament-manager --target-dir target/msrv
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
       - name: Save Rust dependencies

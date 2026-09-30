@@ -532,7 +532,6 @@ export default function StatisticsPage({ onOpenFilamentDefaults }: StatisticsPag
           title={t("statistics.totalConsumption", "Total Consumption")}
           value={totals ? gramsToKgText(totals.totalUsed, locale) : "—"}
           subtitle={t("statistics.acrossPrinters", "Across all printers")}
-          trend={periodRangeLabel}
           accent="amber"
           actionLabel={t("statistics.viewDetails", "View details")}
           opensDialog
@@ -545,7 +544,6 @@ export default function StatisticsPage({ onOpenFilamentDefaults }: StatisticsPag
           value={totals ? formatDisplayInteger(totals.totalJobs, locale) : "—"}
           subtitle={t("statistics.linkedActivity", "Printer-linked activity")}
           accent="sky"
-          trend={periodRangeLabel}
           actionLabel={periodReport ? t("statistics.viewDetails", "View details") : undefined}
           opensDialog={periodReport != null}
           onClick={periodReport ? () => setMetricModalKind("LOGGED_JOBS") : undefined}
@@ -572,7 +570,7 @@ export default function StatisticsPage({ onOpenFilamentDefaults }: StatisticsPag
                     : 0,
                   locale,
                 )
-              : periodRangeLabel
+              : undefined
           }
           accent="rose"
           actionLabel={periodReport ? t("statistics.viewDetails", "View details") : undefined}

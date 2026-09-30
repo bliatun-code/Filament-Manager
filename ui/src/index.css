@@ -17,7 +17,7 @@
     --app-theme-accent: rgb(2, 132, 199);
     --app-theme-accent-soft: rgba(14, 165, 233, 0.14);
     --app-theme-selection: rgba(14, 165, 233, 0.24);
-    --app-theme-focus-outline: rgba(2, 132, 199, 0.58);
+    --app-theme-focus-outline: rgb(3, 105, 161);
     --app-theme-focus-halo: rgba(14, 165, 233, 0.14);
     --app-theme-control-border: rgba(71, 85, 105, 0.68);
     --app-theme-control-background: rgba(255, 255, 255, 0.94);
@@ -46,7 +46,7 @@
     --app-theme-modal-inset-border: rgba(203, 213, 225, 0.9);
     --app-theme-modal-inset-background: rgba(248, 250, 252, 0.9);
     --app-theme-modal-inset-soft-background: rgba(248, 250, 252, 0.58);
-    --app-theme-modal-control-border: rgba(203, 213, 225, 0.94);
+    --app-theme-modal-control-border: rgb(113, 131, 154);
     --app-theme-modal-control-background: rgb(255, 255, 255);
     --app-theme-modal-action-border: rgb(2, 132, 199);
     --app-theme-modal-action-background: rgb(3, 105, 161);
@@ -99,7 +99,9 @@
 
   html.dark {
     color-scheme: dark;
-    --app-theme-control-border: rgba(71, 85, 105, 0.9);
+    --app-theme-focus-outline: rgb(125, 211, 252);
+    --app-theme-focus-halo: rgba(125, 211, 252, 0.18);
+    --app-theme-control-border: rgb(113, 131, 154);
     --app-theme-control-background: rgba(15, 23, 42, 0.76);
     --app-theme-control-hover-background: rgba(30, 41, 59, 0.88);
     --app-theme-control-text: rgb(226, 232, 240);
@@ -126,7 +128,7 @@
     --app-theme-modal-inset-border: rgba(51, 65, 85, 0.76);
     --app-theme-modal-inset-background: rgba(2, 6, 23, 0.38);
     --app-theme-modal-inset-soft-background: rgba(2, 6, 23, 0.24);
-    --app-theme-modal-control-border: rgba(71, 85, 105, 0.9);
+    --app-theme-modal-control-border: rgb(113, 131, 154);
     --app-theme-modal-control-background: rgba(2, 6, 23, 0.68);
     --app-theme-modal-action-border: rgb(56, 189, 248);
     --app-theme-modal-action-background: rgb(3, 105, 161);
@@ -427,6 +429,7 @@
   }
 
   .app-modal-primary-action:hover:not(:disabled) {
+    --app-theme-primary-action-background: var(--app-theme-primary-action-hover-background);
     background-color: var(--app-theme-modal-action-hover-background);
   }
 
@@ -446,6 +449,17 @@
     background-color: var(--app-theme-control-background);
     color: var(--app-theme-control-text);
     box-shadow: var(--app-theme-control-shadow);
+  }
+
+  select.app-form-control,
+  select.app-modal-control {
+    appearance: none;
+    min-height: 2.5rem;
+    padding-right: 2rem;
+    background-image: linear-gradient(45deg, transparent 50%, currentColor 50%), linear-gradient(135deg, currentColor 50%, transparent 50%);
+    background-position: calc(100% - 16px) 50%, calc(100% - 12px) 50%;
+    background-size: 4px 4px;
+    background-repeat: no-repeat;
   }
 
   .app-form-control::placeholder {
@@ -470,6 +484,7 @@
   }
 
   .app-primary-action:hover:not(:disabled) {
+    --app-theme-primary-action-background: var(--app-theme-primary-action-hover-background);
     background-color: var(--app-theme-primary-action-hover-background);
   }
 
@@ -483,8 +498,46 @@
     background-color: var(--app-theme-modal-action-hover-background);
   }
 
+  .app-disclosure-summary {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    list-style: none;
+  }
+
+  .app-disclosure-summary::-webkit-details-marker {
+    display: none;
+  }
+
+  .app-disclosure-summary::before {
+    content: "";
+    width: 0.5rem;
+    height: 0.5rem;
+    flex-shrink: 0;
+    border-right: 2px solid currentColor;
+    border-bottom: 2px solid currentColor;
+    transform: rotate(-45deg);
+  }
+
+  details[open] > .app-disclosure-summary::before {
+    transform: rotate(45deg);
+  }
+
+  .app-disclosure-summary > span {
+    min-width: 0;
+    flex: 1;
+  }
+
+  .app-disclosure-summary:focus-visible {
+    outline-offset: -3px !important;
+  }
+
   .app-accent-control {
     accent-color: var(--app-theme-accent);
+  }
+
+  html.dark:not([data-theme="bambu"]):not([data-theme="prusa"]) .app-accent-control {
+    accent-color: var(--app-theme-primary-action-background);
   }
 
   html.dark .app-primary-action {
@@ -562,6 +615,8 @@
     background-color: var(--app-theme-control-hover-background);
   }
 
+  html.dark .app-control-focus:focus-visible,
+  html.dark .app-control-focus-subtle:focus-visible,
   html[data-theme="bambu"] .app-control-focus:focus-visible,
   html[data-theme="bambu"] .app-control-focus-subtle:focus-visible,
   html[data-theme="prusa"] .app-control-focus:focus-visible,

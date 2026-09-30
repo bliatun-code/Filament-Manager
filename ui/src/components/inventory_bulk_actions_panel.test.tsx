@@ -154,6 +154,7 @@ function panelProps(
     onStatusTargetChange: () => {},
     review: null,
     reviewCurrent: true,
+    reviewSpools: [],
     selectedCount: 3,
     statusTarget: "EMPTY",
     visibleCount: 3,

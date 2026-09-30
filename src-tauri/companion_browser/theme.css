@@ -93,7 +93,7 @@
   --surface-panel: rgba(17, 28, 45, 0.9);
   --border: rgba(127, 156, 187, 0.2);
   --border-strong: rgba(127, 156, 187, 0.34);
-  --form-control-border: var(--border);
+  --form-control-border: #71839a;
   --text: #f4f8fb;
   --text-muted: #b4c1cf;
   --muted: #b4c1cf;
@@ -164,7 +164,7 @@
     --surface-panel: rgba(17, 28, 45, 0.9);
     --border: rgba(127, 156, 187, 0.2);
     --border-strong: rgba(127, 156, 187, 0.34);
-    --form-control-border: var(--border);
+    --form-control-border: #71839a;
     --text: #f4f8fb;
     --text-muted: #b4c1cf;
     --muted: #b4c1cf;
@@ -223,10 +223,12 @@
 
 /*
  * Brand themes deliberately inherit the complete, tested dark token set via
- * data-theme-mode="dark". Only shell-level semantic tokens are replaced here;
- * filament --swatch-* and printer --brand-* variables stay data-driven.
+ * data-theme-mode="dark". Shell and data-surface bases follow the brand;
+ * filament colors and printer --brand-rgb stay data-driven.
  */
 :root[data-theme="bambu"] {
+  --swatch-surface-base: rgb(5, 23, 22);
+  --printer-surface-base: rgb(5, 23, 22);
   --bg-top: #071a13;
   --bg-bottom: #020c09;
   --bg-glow-primary: rgba(0, 174, 66, 0.2);
@@ -259,6 +261,8 @@
 }
 
 :root[data-theme="prusa"] {
+  --swatch-surface-base: rgb(30, 21, 19);
+  --printer-surface-base: rgb(30, 21, 19);
   --bg-top: #24120a;
   --bg-bottom: #100805;
   --bg-glow-primary: rgba(253, 80, 0, 0.2);
@@ -317,7 +321,9 @@ body[data-overlay-locked="true"] {
 button,
 input,
 select,
-textarea {
+textarea,
+summary,
+[tabindex] {
   font: inherit;
 }
 
@@ -333,11 +339,21 @@ textarea:disabled {
   opacity: 1;
 }
 
+a,
+button,
+input,
+select,
+textarea {
+  scroll-margin-block: 8px;
+}
+
 a:focus-visible,
 button:focus-visible,
 input:focus-visible,
 select:focus-visible,
-textarea:focus-visible {
+textarea:focus-visible,
+summary:focus-visible,
+[tabindex]:focus-visible {
   outline: 2px solid var(--focus-ring);
   outline-offset: 2px;
   box-shadow: 0 0 0 4px var(--focus-ring-shadow);

@@ -107,7 +107,7 @@ export function PrinterLiveTelemetryStrip({ telemetry }: PrinterLiveTelemetryStr
           icon={<NozzleIcon />}
           label={t("printers.liveTelemetryNozzle", "Nozzle")}
         >
-          <span className="uppercase tracking-[0.14em] text-slate-400 dark:text-slate-500">
+          <span className="uppercase tracking-[0.14em] text-slate-600 dark:text-slate-300">
             {t("printers.liveTelemetryNozzle", "Nozzle")}
           </span>
           <span className="ml-1 font-semibold text-slate-800 dark:text-slate-100">
@@ -118,7 +118,7 @@ export function PrinterLiveTelemetryStrip({ telemetry }: PrinterLiveTelemetryStr
 
       {telemetry.bedTempLabel ? (
         <TelemetrySegment icon={<BedIcon />} label={t("printers.liveTelemetryBed", "Bed")}>
-          <span className="uppercase tracking-[0.14em] text-slate-400 dark:text-slate-500">
+          <span className="uppercase tracking-[0.14em] text-slate-600 dark:text-slate-300">
             {t("printers.liveTelemetryBed", "Bed")}
           </span>
           <span className="ml-1 font-semibold text-slate-800 dark:text-slate-100">
@@ -132,7 +132,7 @@ export function PrinterLiveTelemetryStrip({ telemetry }: PrinterLiveTelemetryStr
           icon={<DropletIcon />}
           label={t("printers.liveTelemetryAmsHumidity", "AMS humidity")}
         >
-          <span className="uppercase tracking-[0.14em] text-slate-400 dark:text-slate-500">
+          <span className="uppercase tracking-[0.14em] text-slate-600 dark:text-slate-300">
             {t("printers.liveTelemetryAmsHumidityShort", "AMS")}
           </span>
           <span className="ml-1 font-semibold text-slate-800 dark:text-slate-100">

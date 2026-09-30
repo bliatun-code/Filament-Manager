@@ -23,6 +23,21 @@ test("commandErrorText keeps the legacy call name for command handlers", () => {
   assert.equal(commandErrorText(new Error("failed"), "Could not save"), "Could not save");
 });
 
+test("revoked native pairing explains recovery without exposing transport details", () => {
+  const message = "Desktop client session renewal returned 401. Pairing is no longer valid.";
+  const t = (key: string, fallback = "") => ({
+    "settings.librarySyncClientAuthNeedsRepair": "Ny paring kreves",
+    "nav.settings": "Innstillinger",
+    "settings.tabLibrary": "Bibliotek og nettapp",
+    "settings.librarySyncClientAuthHint": "Lim inn en ny paringslenke fra verten.",
+  }[key] ?? fallback);
+  for (const error of [message, new Error(message)]) {
+    assert.equal(commandErrorText(error, "Kunne ikke lagre.", t),
+      "Ny paring kreves. Innstillinger → Bibliotek og nettapp: Lim inn en ny paringslenke fra verten.");
+  }
+  assert.equal(commandErrorText(`${message} Private transport context`, "Fallback", t), "Fallback");
+});
+
 test("structured command errors resolve safely while diagnostics stay explicit", () => {
   const error = new Error(
     JSON.stringify({

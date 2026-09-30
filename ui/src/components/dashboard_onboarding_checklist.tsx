@@ -130,7 +130,7 @@ export function DashboardOnboardingChecklist({
   };
 
   return (
-    <section className="surface-card mt-6" aria-labelledby="dashboard-onboarding-title">
+    <section className="surface-card dashboard-onboarding mt-4" aria-labelledby="dashboard-onboarding-title">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div className="min-w-0 max-w-3xl">
           <div className="section-eyebrow">
@@ -138,11 +138,11 @@ export function DashboardOnboardingChecklist({
           </div>
           <h2
             id="dashboard-onboarding-title"
-            className="mt-2 text-lg font-semibold text-slate-950 dark:text-slate-50"
+            className="mt-1 text-base font-semibold text-slate-950 dark:text-slate-50"
           >
             {t("dashboard.onboardingTitle", "Finish setup")}
           </h2>
-          <p className="mt-1 text-sm leading-6 text-slate-600 dark:text-slate-300">
+          <p className="mt-1 text-sm leading-5 text-slate-600 dark:text-slate-300">
             {t(
               "dashboard.onboardingDescription",
               "Use the steps that fit your setup. Printer and browser access are optional.",
@@ -158,8 +158,8 @@ export function DashboardOnboardingChecklist({
               "dashboard.onboardingProgress",
               "{completed} of {total} complete",
               {
-                completed: taskGroups.requiredCompletedCount,
-                total: taskGroups.requiredTotalCount,
+                completed: state.completedCount,
+                total: state.totalCount,
               },
             )}
           </span>
@@ -173,51 +173,54 @@ export function DashboardOnboardingChecklist({
         </div>
       </div>
 
-      {taskGroups.pendingRequired.length > 0 ? (
-        <section
-          className="mt-4"
-          aria-labelledby="dashboard-onboarding-required-title"
-          data-onboarding-group="required"
-        >
-          <div className="flex items-center gap-2">
-            <h3
-              id="dashboard-onboarding-required-title"
-              className="section-eyebrow"
-            >
-              {t("dashboard.onboardingPending", "To do")}
-            </h3>
-            <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">
-              {taskGroups.pendingRequired.length}
-            </span>
-          </div>
-          <div className="mt-2 grid grid-cols-1 gap-3 min-[720px]:grid-cols-2">
-            {taskGroups.pendingRequired.map(renderPendingTask)}
-          </div>
-        </section>
-      ) : null}
+      <div className="mt-3 grid gap-3 min-[900px]:grid-cols-2">
+        {taskGroups.pendingRequired.length > 0 ? (
+          <section
+            className="onboarding-pending-group"
+            aria-labelledby="dashboard-onboarding-required-title"
+            data-onboarding-group="required"
+          >
+            <div className="flex items-center gap-2">
+              <h3
+                id="dashboard-onboarding-required-title"
+                className="section-eyebrow"
+              >
+                {t("dashboard.onboardingPending", "To do")}
+              </h3>
+              <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">
+                {taskGroups.pendingRequired.length}
+              </span>
+            </div>
+            <div className="mt-2 grid gap-2">
+              {taskGroups.pendingRequired.map(renderPendingTask)}
+            </div>
+          </section>
+        ) : null}
 
-      {taskGroups.pendingOptional.length > 0 ? (
-        <section
-          className="mt-4 border-t border-slate-200/80 pt-4 dark:border-slate-700/75"
-          aria-labelledby="dashboard-onboarding-optional-title"
-          data-onboarding-group="optional"
-        >
-          <div className="flex items-center gap-2">
-            <h3
-              id="dashboard-onboarding-optional-title"
-              className="section-eyebrow"
-            >
-              {t("dashboard.onboardingOptional", "Optional")}
-            </h3>
-            <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">
-              {taskGroups.pendingOptional.length}
-            </span>
-          </div>
-          <div className="mt-2 grid grid-cols-1 gap-3 min-[720px]:grid-cols-2">
-            {taskGroups.pendingOptional.map(renderPendingTask)}
-          </div>
-        </section>
-      ) : null}
+        {taskGroups.pendingOptional.length > 0 ? (
+          <section
+            className="onboarding-pending-group"
+            aria-labelledby="dashboard-onboarding-optional-title"
+            data-onboarding-group="optional"
+          >
+            <div className="flex items-center gap-2">
+              <h3
+                id="dashboard-onboarding-optional-title"
+                className="section-eyebrow"
+              >
+                {t("dashboard.onboardingOptional", "Optional")}
+              </h3>
+              <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">
+                {taskGroups.pendingOptional.length}
+              </span>
+            </div>
+            <div className="mt-2 grid gap-2">
+              {taskGroups.pendingOptional.map(renderPendingTask)}
+            </div>
+          </section>
+        ) : null}
+
+      </div>
 
       {taskGroups.completed.length > 0 ? (
         <details

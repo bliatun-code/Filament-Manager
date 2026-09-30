@@ -1,7 +1,7 @@
 import { formatInventoryDisplayTitle } from "./formatters.js";
 import { t } from "./companion_i18n.js";
 import { buildPurchaseReceiptMetadataDraft } from "./companion_domain.js";
-import { swatchCssStyle, toSwatchColor } from "./companion_theme.js";
+import { swatchCssStyle, swatchCssBackground } from "./companion_theme.js";
 
 export const COMPANION_ROOT_FLOW_PANEL_ID = "companion-root-panel";
 
@@ -401,7 +401,7 @@ export function renderSwatchSelectionCard(options) {
       <div class="companion-selection-card-head">
         <div class="stack companion-selection-card-copy">
           <div class="swatch-line">
-            <span class="swatch-dot" style="background:${escape(toSwatchColor(swatch))};"></span>
+            <span class="swatch-dot" style="background:${escape(swatchCssBackground(swatch))};"></span>
             <span class="list-title">${escape(title)}</span>
           </div>
           ${cleanedMeta.length > 0 ? `<div class="meta-line">${cleanedMeta.join(" · ")}</div>` : ""}
@@ -543,7 +543,7 @@ export function renderSwatchListRow(options) {
     <button class="${escape(classes)}"${renderedAttributes ? ` ${renderedAttributes}` : ""}>
       <div class="dense-list-main">
         <div class="swatch-line spool-row-title">
-          <span class="swatch-dot" style="background:${escape(toSwatchColor(swatch))};"></span>
+          <span class="swatch-dot" style="background:${escape(swatchCssBackground(swatch))};"></span>
           <span class="list-title">${escape(title)}</span>
         </div>
         ${subtitle ? `<div class="list-subtitle">${escape(subtitle)}</div>` : ""}
@@ -672,7 +672,6 @@ export function renderDetailModalShell(options) {
     layoutMode === "phone"
       ? t(options.locale || "en", "shell.done", "Done")
       : t(options.locale || "en", "shell.close", "Close");
-  const showSelectedTitleInHeader = layoutMode === "phone";
 
   return `
     <div class="detail-modal-backdrop" data-layout="${escapeHtml(layoutMode)}">
@@ -686,17 +685,20 @@ export function renderDetailModalShell(options) {
           tabindex="-1"
           data-companion-overlay="detail"
         >
-          <div class="detail-panel-header">
-            <div class="detail-modal-copy">
-              <p class="workflow-kicker">${escapeHtml(t(locale, "detail.spoolHeading", "Spool"))}</p>
-              <h2 id="companion-detail-dialog-title"${showSelectedTitleInHeader ? "" : ' class="sr-only"'}>${escapeHtml(selectedTitle)}</h2>
+          <div class="overlay-feedback-header">
+            <div class="detail-panel-header">
+              <div class="detail-modal-copy">
+                <p class="workflow-kicker">${escapeHtml(t(locale, "detail.spoolHeading", "Spool"))}</p>
+                <h2 id="companion-detail-dialog-title" class="sr-only">${escapeHtml(selectedTitle)}</h2>
+              </div>
+              <div class="detail-modal-actions">
+                ${statusChips.length > 0 ? `<div class="pill-row detail-modal-status">${statusChips.join("")}</div>` : ""}
+                <button class="ghost-button compact-back-button" type="button" data-action="close-detail" data-overlay-initial-focus>
+                  ${escapeHtml(closeLabel)}
+                </button>
+              </div>
             </div>
-            <div class="detail-modal-actions">
-              ${statusChips.length > 0 ? `<div class="pill-row detail-modal-status">${statusChips.join("")}</div>` : ""}
-              <button class="ghost-button compact-back-button" type="button" data-action="close-detail" data-overlay-initial-focus>
-                ${escapeHtml(closeLabel)}
-              </button>
-            </div>
+            ${options.status ? renderStatusLine(options.status.message, options.status.tone, options.status.busy, escapeHtml, locale) : ""}
           </div>
           <div class="detail-modal-body">
             ${body}
@@ -734,15 +736,18 @@ export function renderTaskSheetShell(options) {
           tabindex="-1"
           data-companion-overlay="task-sheet"
         >
-          <div class="task-sheet-header">
-            <div class="task-sheet-copy">
-              ${kicker ? `<p class="workflow-kicker">${escapeHtml(kicker)}</p>` : ""}
-              <h2 id="companion-task-sheet-title">${escapeHtml(title)}</h2>
-              ${subtitle ? `<p class="section-copy">${escapeHtml(subtitle)}</p>` : ""}
+          <div class="overlay-feedback-header">
+            <div class="task-sheet-header">
+              <div class="task-sheet-copy">
+                ${kicker ? `<p class="workflow-kicker">${escapeHtml(kicker)}</p>` : ""}
+                <h2 id="companion-task-sheet-title">${escapeHtml(title)}</h2>
+                ${subtitle ? `<p class="section-copy">${escapeHtml(subtitle)}</p>` : ""}
+              </div>
+              <button class="ghost-button compact-back-button" type="button" data-action="close-task-sheet" data-overlay-initial-focus>
+                ${escapeHtml(closeLabel)}
+              </button>
             </div>
-            <button class="ghost-button compact-back-button" type="button" data-action="close-task-sheet" data-overlay-initial-focus>
-              ${escapeHtml(closeLabel)}
-            </button>
+            ${options.status ? renderStatusLine(options.status.message, options.status.tone, options.status.busy, escapeHtml, locale) : ""}
           </div>
           <div class="task-sheet-body">
             ${body}

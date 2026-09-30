@@ -1,0 +1,196 @@
+{
+  "round": 1,
+  "note": "Companion 36 PNG individually inspected; native captures supplement CUA screenshots in tool log. Representative native two saved PNG correspond to observed states. No unseen captures approved.",
+  "captures": [
+    {
+      "path": "tmp/visual-modernization/critic-r1/native/white-detail-dark.png",
+      "sha256": "8c94aa880fbd46bb5271b0888c5f3bffb9f2d15bf4b3bb09b468be761d784276",
+      "inspected": true
+    },
+    {
+      "path": "tmp/visual-modernization/critic-r1/native/general-prusa.png",
+      "sha256": "fec7cb3c719a1540f9757112131d8f2db27552600ecd3eef1797eccb91aaa2da",
+      "inspected": true
+    },
+    {
+      "path": "tmp/visual-modernization/critic-r1/companion-bambu/companion-phone-inventory.png",
+      "sha256": "229cc104bc6494a379cde34d1a9e728d862c79d2c338b453272e4e0460f52062",
+      "inspected": true
+    },
+    {
+      "path": "tmp/visual-modernization/critic-r1/companion-bambu/companion-phone-return-loan.png",
+      "sha256": "d03dfb7854316e21b593a598f761f34ca30fcfefdfc79cb7b1682e89e26295d3",
+      "inspected": true
+    },
+    {
+      "path": "tmp/visual-modernization/critic-r1/companion-bambu/companion-phone-detail.png",
+      "sha256": "5d48b569e93f043f3351e0cd7b413b1a09fbe143bb890ac436014384f32fe485",
+      "inspected": true
+    },
+    {
+      "path": "tmp/visual-modernization/critic-r1/companion-bambu/companion-phone-add-spool.png",
+      "sha256": "583c08b450e47c9f8d1507f2521f55f048f44644b27dc9d4e27ef4490b01b175",
+      "inspected": true
+    },
+    {
+      "path": "tmp/visual-modernization/critic-r1/companion-bambu/companion-phone-lend-spool.png",
+      "sha256": "db504761ca39690087a902bcc083da478e6ee96c6b10de881db7fbd18ab8eec5",
+      "inspected": true
+    },
+    {
+      "path": "tmp/visual-modernization/critic-r1/companion-bambu/companion-phone-settings.png",
+      "sha256": "4cd6a40f5b34a2c64f8956578fb3cc5650216647cd0229adcda426b985afdebb",
+      "inspected": true
+    },
+    {
+      "path": "tmp/visual-modernization/critic-r1/companion-dark/companion-tablet-settings.png",
+      "sha256": "4885b13a8d97948f2cee35dda93e1ead305bf88d97ed8c590a0e355357f32528",
+      "inspected": true
+    },
+    {
+      "path": "tmp/visual-modernization/critic-r1/companion-dark/companion-wide-detail.png",
+      "sha256": "047979a7a110a98e6c7ec90aeb2315d8b461980d569b5dc92484adae51399220",
+      "inspected": true
+    },
+    {
+      "path": "tmp/visual-modernization/critic-r1/companion-dark/companion-tablet-add-spool.png",
+      "sha256": "b853bf73a2477c6f2ac4f944719bd3e410e1c62c7425c4cf2126c3c82876c96e",
+      "inspected": true
+    },
+    {
+      "path": "tmp/visual-modernization/critic-r1/companion-dark/companion-tablet-lend-spool.png",
+      "sha256": "261b630711937734bbc7d43babf57383b6ae8f60e13636d36311fbe8af95bb1a",
+      "inspected": true
+    },
+    {
+      "path": "tmp/visual-modernization/critic-r1/companion-dark/companion-wide-settings.png",
+      "sha256": "f8976775fa6f0a5e902599d2b3692ef8b6bc3695210d82a24a77a153913d3a46",
+      "inspected": true
+    },
+    {
+      "path": "tmp/visual-modernization/critic-r1/companion-dark/companion-phone-inventory.png",
+      "sha256": "bd37a8da079aa548d5f29dc016eb92be5f44327cbc63abee4c0bc5166e22cc62",
+      "inspected": true
+    },
+    {
+      "path": "tmp/visual-modernization/critic-r1/companion-dark/companion-wide-inventory.png",
+      "sha256": "dc54b6bc881a461a7d7dc7b988f929fe372a8aaccbca38dcbaa5969765ce811d",
+      "inspected": true
+    },
+    {
+      "path": "tmp/visual-modernization/critic-r1/companion-dark/companion-phone-return-loan.png",
+      "sha256": "581a30705d49b0af8e909d37c41b11000fea1f63df7f238f91dac9469f6e70f2",
+      "inspected": true
+    },
+    {
+      "path": "tmp/visual-modernization/critic-r1/companion-dark/companion-tablet-detail.png",
+      "sha256": "6cdc62b9979ea57cb6874f6b5d9622fd4711abc63e21e3c50f804d1208fcbf92",
+      "inspected": true
+    },
+    {
+      "path": "tmp/visual-modernization/critic-r1/companion-dark/companion-wide-lend-spool.png",
+      "sha256": "0f82efaa7370356fce31c8ab3042807cb08f7152eb6e81e900d043d77e27a2ec",
+      "inspected": true
+    },
+    {
+      "path": "tmp/visual-modernization/critic-r1/companion-dark/companion-phone-detail.png",
+      "sha256": "f9c41e663d27f2cdc8c41f4d09d68e41c34410344d8bff65bbbdfdcc5a69ea2f",
+      "inspected": true
+    },
+    {
+      "path": "tmp/visual-modernization/critic-r1/companion-dark/companion-wide-add-spool.png",
+      "sha256": "5f74a960fbf939c0ae5cd25d3560df3adfdac0b8aaec62fafcf1d45394aeec7b",
+      "inspected": true
+    },
+    {
+      "path": "tmp/visual-modernization/critic-r1/companion-dark/companion-phone-add-spool.png",
+      "sha256": "8c882e983f76f397304913ef55fb02f2b0b6ecd8f5f505a584571228e1e2913b",
+      "inspected": true
+    },
+    {
+      "path": "tmp/visual-modernization/critic-r1/companion-dark/companion-tablet-return-loan.png",
+      "sha256": "476ac7668d253c127d0fac56bdaa5f34d6aa736b168b454e855e5c2148a183a1",
+      "inspected": true
+    },
+    {
+      "path": "tmp/visual-modernization/critic-r1/companion-dark/companion-phone-lend-spool.png",
+      "sha256": "2d281668a8772acd58b40003e16bb9e8296b2175b94895963a20cf3a68bf361a",
+      "inspected": true
+    },
+    {
+      "path": "tmp/visual-modernization/critic-r1/companion-dark/companion-tablet-inventory.png",
+      "sha256": "55e1c4b6ef21047cabb64d149c00cfe000676b9ec14d4d62a9be8e5aaeb4ef02",
+      "inspected": true
+    },
+    {
+      "path": "tmp/visual-modernization/critic-r1/companion-dark/companion-wide-return-loan.png",
+      "sha256": "47f9e1110be84c0491b2e917a82669bb49efe69b58a8d59bc44ffbf15b5bf3d4",
+      "inspected": true
+    },
+    {
+      "path": "tmp/visual-modernization/critic-r1/companion-dark/companion-phone-settings.png",
+      "sha256": "7ef68d0dc24e1fd2f80b6f1fb038ccc4b63cfa5f2ee6bffaf1792d92122d4659",
+      "inspected": true
+    },
+    {
+      "path": "tmp/visual-modernization/critic-r1/companion-light/companion-phone-inventory.png",
+      "sha256": "e330a7bd582b86372b0be19d14a7ffd2aad427398be37f27e23c588ebfa66437",
+      "inspected": true
+    },
+    {
+      "path": "tmp/visual-modernization/critic-r1/companion-light/companion-phone-return-loan.png",
+      "sha256": "5abf83cd7045780b48a681fbfd3be87853192b07edf58c9e81a229d62d8c074d",
+      "inspected": true
+    },
+    {
+      "path": "tmp/visual-modernization/critic-r1/companion-light/companion-phone-detail.png",
+      "sha256": "185fdce7a6edeccd35c9ca0a748bfb3e3bd8e3e15d192fdbcdb2559fc2f45af4",
+      "inspected": true
+    },
+    {
+      "path": "tmp/visual-modernization/critic-r1/companion-light/companion-phone-add-spool.png",
+      "sha256": "b3f787a08ca83044834aca24064e5a523535e30c134cf8d554048ff52da3346a",
+      "inspected": true
+    },
+    {
+      "path": "tmp/visual-modernization/critic-r1/companion-light/companion-phone-lend-spool.png",
+      "sha256": "df88fb835ba82df7e89ddffe518b036c094b28f9f05523b7cbd771b48a526ba9",
+      "inspected": true
+    },
+    {
+      "path": "tmp/visual-modernization/critic-r1/companion-light/companion-phone-settings.png",
+      "sha256": "6007a5d1c532d05ee47f43ce94c1aab0d9baf64b1b3b3b904fef35b12350cf1f",
+      "inspected": true
+    },
+    {
+      "path": "tmp/visual-modernization/critic-r1/companion-prusa/companion-phone-inventory.png",
+      "sha256": "dbab85b46ff12c13412bbf86b713a1559ae6bf705c8b0def2b16f868ded1454a",
+      "inspected": true
+    },
+    {
+      "path": "tmp/visual-modernization/critic-r1/companion-prusa/companion-phone-return-loan.png",
+      "sha256": "228c91ddf48870235446af827e9e7f9eb8d613b4e532ba171f858322dea81ff1",
+      "inspected": true
+    },
+    {
+      "path": "tmp/visual-modernization/critic-r1/companion-prusa/companion-phone-detail.png",
+      "sha256": "449d9a4966053a00a5d6526235843b6dba2fefb7dc1f4b210e7fe3bd65db2228",
+      "inspected": true
+    },
+    {
+      "path": "tmp/visual-modernization/critic-r1/companion-prusa/companion-phone-add-spool.png",
+      "sha256": "02b92e7e1f726543cf8c5e66ca9db914a830ca75e2f171f3aec5f146b2572fdb",
+      "inspected": true
+    },
+    {
+      "path": "tmp/visual-modernization/critic-r1/companion-prusa/companion-phone-lend-spool.png",
+      "sha256": "6f544700d5a7b189a4bb37197b3a345add8a71969cf896a5b854d06a22954f62",
+      "inspected": true
+    },
+    {
+      "path": "tmp/visual-modernization/critic-r1/companion-prusa/companion-phone-settings.png",
+      "sha256": "a77a4ec90660025c9828ec1fc7ffe1b967fcd776634c5466261f38669cbe0b66",
+      "inspected": true
+    }
+  ]
+}

@@ -815,6 +815,25 @@ mod tests {
     }
 
     #[test]
+    fn csv_invalid_second_row_rolls_back_first_row_update() {
+        let conn = Connection::open_in_memory().expect("open database");
+        apply_schema_migrations(&conn, SCHEMA_SQL).expect("apply schema");
+        import_json(
+            &conn,
+            r#"[{"spool_id":"first","material":"PLA","filament_name":"Spectrum","color_name":"Polar","remaining_g":525}]"#,
+        );
+        let rows = crate::backend::database_import::parse_inventory_spools_csv(
+            "spool_id,material,filament_name,color_name,remaining_g\r\nfirst,PLA,Spectrum,Polar,500\r\nrejected,,Spectrum,Polar,500\r\n",
+        ).expect("parse CSV with a missing required value");
+        assert!(import_inventory_spools_rows(&conn, &rows).is_err());
+        let values: (i64, i64) = conn.query_row(
+            "SELECT remaining_g, (SELECT COUNT(*) FROM filament_spools WHERE id='rejected') FROM filament_spools WHERE id='first'",
+            [], |row| Ok((row.get(0)?, row.get(1)?)),
+        ).expect("read unchanged inventory");
+        assert_eq!(values, (525, 0));
+    }
+
+    #[test]
     fn explicit_false_cannot_unlock_lost_or_empty_spool_during_reactivation() {
         let conn = Connection::open_in_memory().expect("open database");
         apply_schema_migrations(&conn, SCHEMA_SQL).expect("apply schema");

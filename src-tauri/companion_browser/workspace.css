@@ -98,6 +98,17 @@
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
+.add-spool-ownership-control {
+  display: flex;
+}
+
+.add-spool-ownership-control .segment-button {
+  flex: 1 1 auto;
+  min-height: 2.75rem;
+  padding: 0.65rem 0.5rem;
+  font-size: 0.875rem;
+}
+
 .segmented-control[data-columns="3"] {
   grid-template-columns: repeat(3, minmax(0, 1fr));
 }
@@ -365,6 +376,21 @@
   background: color-mix(in srgb, var(--surface-muted) 66%, transparent);
 }
 
+.add-spool-section > .detail-collapsible-summary {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 0.35rem;
+  padding-inline-end: 1rem;
+}
+
+.add-spool-section > .detail-collapsible-summary > span:first-child {
+  padding-inline-end: 1.5rem;
+}
+
+.add-spool-section > .detail-collapsible-summary::after {
+  top: 1.2rem;
+}
+
 .task-sheet.add-filament-sheet .add-spool-section-head {
   gap: 0.16rem;
 }
@@ -505,8 +531,29 @@
 
 .settings-shell-grid {
   display: grid;
+  align-items: start;
   gap: 0.9rem;
-  grid-template-columns: repeat(auto-fit, minmax(18rem, 1fr));
+  grid-template-columns: minmax(0, 1fr);
+}
+
+@media (min-width: 768px) {
+  .settings-shell-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .settings-shell-grid > .settings-card:first-child {
+    grid-row: span 2;
+  }
+}
+
+@media (min-width: 1200px) {
+  .settings-shell-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .settings-shell-grid > .settings-card:first-child {
+    grid-row: auto;
+  }
 }
 
 .settings-card {
@@ -1094,6 +1141,8 @@
 
 .detail-history-block {
   min-width: 0;
+  align-self: start;
+  align-content: start;
 }
 
 .detail-history-summary {
@@ -1223,6 +1272,8 @@
 }
 
 .detail-modal .detail-panel-header {
+  flex-direction: row;
+  align-items: center;
   position: sticky;
   top: -0.92rem;
   z-index: 2;
@@ -1234,7 +1285,9 @@
   box-shadow: 0 16px 28px -28px rgba(15, 23, 42, 0.44);
 }
 
-.detail-modal-actions {
+.detail-modal .detail-modal-actions {
+  width: auto;
+  flex-shrink: 0;
   display: grid;
   gap: 0.34rem;
   justify-items: end;
@@ -2202,4 +2255,68 @@
   .phone-nav-button:active {
     box-shadow: inset 0 0 0 1px var(--border-strong);
   }
+}
+
+/* Brand chrome shares semantic surface and selection tokens with the shell. */
+:root[data-theme="bambu"] .phone-bottom-nav,
+:root[data-theme="prusa"] .phone-bottom-nav {
+  background: var(--surface-strong);
+  border-color: var(--border-strong);
+}
+:root[data-theme="bambu"] .phone-nav-button[data-active="true"],
+:root[data-theme="prusa"] .phone-nav-button[data-active="true"] {
+  background: var(--accent-soft);
+  color: var(--text);
+  box-shadow: inset 0 0 0 1px var(--border-strong);
+}
+.loan-return-task-sheet .metric-value {
+  font-size: 1rem;
+  line-height: 1.4;
+}
+.loan-return-task-sheet .metric-card {
+  padding: 0.65rem 0.75rem;
+}
+@media (max-width: 767px) {
+  .task-sheet.add-filament-sheet .add-spool-catalog-list {
+    max-height: min(11rem, 25dvh);
+  }
+  .task-sheet.add-filament-sheet .add-spool-catalog-row {
+    min-height: 3.6rem;
+    padding: 0.6rem 0.7rem;
+  }
+}
+
+/* Catalog rows need room for their names, not the generic action column. */
+.task-sheet.add-filament-sheet .add-spool-catalog-row {
+  grid-template-columns: minmax(0, 1fr) auto;
+}
+.task-sheet.add-filament-sheet .add-spool-catalog-row .dense-list-side {
+  min-width: 0;
+  align-self: start;
+}
+
+/* Keep long filament identities and actual color samples readable on phones. */
+@media (max-width: 479px) {
+  .storage-shell .dense-list-row {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .storage-shell .dense-list-side {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem;
+    min-width: 0;
+  }
+}
+
+/* Keep task feedback visible when its form body is scrolled. */
+.overlay-feedback-header {
+  display: grid;
+  gap: 0.5rem;
+  min-width: 0;
+}
+
+.overlay-feedback-header .app-status-line {
+  width: 100%;
 }

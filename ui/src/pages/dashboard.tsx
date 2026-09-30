@@ -465,6 +465,26 @@ export default function DashboardPage({
         />
       ) : null}
 
+      <div className="mt-5 grid grid-cols-1 gap-4 min-[720px]:grid-cols-2 xl:grid-cols-4">
+        {stats.map((stat) => (
+          <StatCard
+            key={stat.id}
+            {...stat}
+            onClick={
+              stat.id === "total"
+                ? () => onNavigate?.("inventory")
+                : stat.id === "activePrinters"
+                  ? () => onNavigate?.("printers")
+                  : stat.id === "lowStock"
+                    ? () => onOpenLowStock?.()
+                    : stat.id === "monthlyUsage"
+                      ? () => onNavigate?.("statistics")
+                      : undefined
+            }
+          />
+        ))}
+      </div>
+
       <DashboardActionPanel
         items={priorityActionItems}
         onOpenBambuLiveSettings={onOpenBambuLiveSettings}
@@ -489,25 +509,7 @@ export default function DashboardPage({
         />
       ) : null}
 
-      <div className="mt-8 grid grid-cols-1 gap-4 min-[720px]:grid-cols-2 xl:grid-cols-4">
-        {stats.map((stat) => (
-          <StatCard
-            key={stat.id}
-            {...stat}
-            onClick={
-              stat.id === "total"
-                ? () => onNavigate?.("inventory")
-                : stat.id === "activePrinters"
-                  ? () => onNavigate?.("printers")
-                  : stat.id === "lowStock"
-                    ? () => onOpenLowStock?.()
-                    : stat.id === "monthlyUsage"
-                      ? () => onNavigate?.("statistics")
-                      : undefined
-            }
-          />
-        ))}
-      </div>
+
 
       {lowStockActionItems.length > 0 || actionError || actionMessage ? (
         <div className="mt-4">

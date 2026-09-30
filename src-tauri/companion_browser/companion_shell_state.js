@@ -158,6 +158,7 @@ export function createCompanionShellState(options) {
   }
 
   function openDetailModal(rootFlow = state.activeRootFlow) {
+    state.statusOverlayContext = null;
     setDetailReturnContext(rootFlow);
     state.detailOpen = true;
     state.activeTaskSheet = null;

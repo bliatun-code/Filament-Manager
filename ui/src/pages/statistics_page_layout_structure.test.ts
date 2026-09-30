@@ -13,11 +13,8 @@ test("headline metrics keep readable card widths before the extra-wide breakpoin
 });
 
 test("period metrics use the selected range while slot count remains a current snapshot", () => {
-  assert.match(
-    source,
-    /statistics\.totalConsumption[\s\S]*trend=\{periodRangeLabel\}/,
-  );
-  assert.match(source, /statistics\.loggedJobs[\s\S]*trend=\{periodRangeLabel\}/);
+  assert.match(source, /<StatisticsPeriodPicker/);
+  assert.doesNotMatch(source, /trend=\{periodRangeLabel\}/);
   assert.match(
     source,
     /statistics\.activeAms[\s\S]*trend=\{t\("statistics\.currentSnapshot", "Current snapshot"\)\}/,

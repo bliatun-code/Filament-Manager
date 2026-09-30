@@ -139,6 +139,24 @@ async function checkReopen({ page, fixture, calls, state, fallback }) {
   assert.equal(await dialog.getByLabel("Borrower name", { exact: true }).inputValue(), "New borrower");
 }
 
+async function checkVisibleValidation({ page, calls }) {
+  await page.setViewportSize({ width: 856, height: 700 });
+  const dialog = await openLoanOut(page);
+  const submit = dialog.getByRole("button", { name: "Loan out roll", exact: true });
+  await submit.click();
+  const borrower = dialog.getByLabel("Borrower name", { exact: true });
+  await page.waitForFunction(() => document.activeElement?.getAttribute("aria-invalid") === "true");
+  assert.equal(await borrower.evaluate((input) => input === document.activeElement), true);
+  const alert = dialog.getByRole("alert");
+  assert.match(await alert.innerText(), /Borrower name is required/);
+  assert.equal(await alert.evaluate((element) => { const rect = element.getBoundingClientRect(); return rect.top >= 0 && rect.bottom <= innerHeight; }), true);
+  assert.equal(await borrower.getAttribute("aria-describedby"), await alert.getAttribute("id"));
+  assert.equal(calls.filter(({ command }) => command === "lend_spool").length, 0);
+  await borrower.fill("Valid borrower");
+  assert.equal(await borrower.getAttribute("aria-invalid"), null);
+  assert.equal(await alert.count(), 0);
+}
+
 async function checkLateLoad({ page, fixture, state, fallback }) {
   const pending = deferred();
   const started = deferred();
@@ -273,6 +291,7 @@ async function main() {
     const failures = [];
     for (const [name, check] of [
       ["failed reopen clears old selection; retry uses current assignments", checkReopen],
+      ["narrow validation focuses the invalid field and shows its message", checkVisibleValidation],
       ["late load cannot overwrite a newly opened draft", checkLateLoad],
       ["lend validation, single submission and refresh failure", checkLendPending],
       ["outbound return errors, draft retention and single submission", (ctx) => checkReturn(ctx, false)],

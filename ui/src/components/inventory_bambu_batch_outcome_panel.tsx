@@ -37,8 +37,8 @@ export function InventoryBambuBatchOutcomePanel({
   }, [registration.batchId, registration.status, saving]);
 
   return (
-    <div ref={panel} tabIndex={-1} className="flex h-full min-h-0 flex-col gap-3 outline-none">
-      <div className="min-h-0 flex-1 space-y-3 overflow-y-auto overscroll-contain">
+    <div ref={panel} tabIndex={-1} className="flex min-h-0 flex-col gap-3 outline-none">
+      <div className="min-h-0 space-y-3 overflow-y-auto overscroll-contain">
         <ModalNotice tone={complete ? "success" : registration.status === "REJECTED" ? "danger" : "neutral"}
           role="status" aria-live="polite">
           {statusMessage}

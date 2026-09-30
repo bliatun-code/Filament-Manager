@@ -113,7 +113,7 @@ export function DashboardActionPanel({
   return (
     <section
       aria-labelledby="dashboard-action-required-title"
-      className="mt-6 surface-card"
+      className="mt-4 surface-card"
       data-testid="dashboard-action-required"
     >
       <div className="flex flex-wrap items-start justify-between gap-3">
@@ -136,7 +136,7 @@ export function DashboardActionPanel({
         </span>
       </div>
 
-      <ul className="mt-4 overflow-hidden rounded-xl border border-slate-200/90 divide-y divide-slate-200/90 dark:border-slate-700/80 dark:divide-slate-700/80">
+      <ul className="mt-3 overflow-hidden rounded-xl border border-slate-200/90 divide-y divide-slate-200/90 dark:border-slate-700/80 dark:divide-slate-700/80">
         {items.map((item) => (
           <li key={item.id}>
             <article

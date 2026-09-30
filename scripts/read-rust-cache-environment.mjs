@@ -5,7 +5,7 @@ import { pathToFileURL } from "node:url";
 import { parseArgs } from "node:util";
 import { readRustToolchain } from "./read-rust-toolchain.mjs";
 
-const msrv = "1.88.0";
+const msrv = "1.90.0";
 const environmentPrefixes = [
   "CARGO", "CC", "CFLAGS", "CXX", "CMAKE", "RUST",
   "ImageOS", "ImageVersion", "MACOSX_DEPLOYMENT_TARGET", "SDKROOT",

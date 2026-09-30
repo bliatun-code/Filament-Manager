@@ -8,9 +8,10 @@ import {
 import { useI18n } from "../lib/i18n";
 import { settingsActionButtonClass } from "../lib/settings_ui_classes";
 import { AppModal } from "./app_modal";
-import { ModalHeader } from "./modal_chrome";
+import { ModalHeader, ModalNotice } from "./modal_chrome";
 
 export type InventoryLabelSheetModalProps = {
+  error?: string | null;
   items: InventoryLabelSheetItem[];
   loading: boolean;
   onClose: () => void;
@@ -20,6 +21,7 @@ export type InventoryLabelSheetModalProps = {
 };
 
 export function InventoryLabelSheetModal({
+  error = null,
   items,
   loading,
   onClose,
@@ -79,7 +81,8 @@ export function InventoryLabelSheetModal({
         onClose={onClose}
       />
 
-      <div
+      {error ? <ModalNotice className="mx-5 my-4 shrink-0" tone="danger" role="alert">{error}</ModalNotice> : null}
+      {!(error && !loading && items.length === 0) ? <div
         id="inventory-label-sheet-builder"
         className="grid min-h-0 gap-5 overflow-y-auto p-5 lg:grid-cols-[minmax(0,1.45fr)_minmax(17rem,0.55fr)]"
       >
@@ -182,10 +185,10 @@ export function InventoryLabelSheetModal({
                   key={paper.id}
                   type="button"
                   aria-pressed={selected}
-                  className={`rounded-lg border px-3 py-3 text-left text-sm transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400 ${
+                  className={`app-control-focus rounded-lg border px-3 py-3 text-left text-sm outline-none transition ${
                     selected
-                      ? "border-sky-500 bg-sky-50 text-slate-950 dark:bg-sky-950/50 dark:text-white"
-                      : "border-slate-200 bg-white text-slate-700 dark:border-slate-700 dark:bg-slate-950/40 dark:text-slate-200"
+                      ? "app-selected-control"
+                      : "app-soft-control"
                   }`}
                   onClick={() => {
                     setPaperId(paper.id);
@@ -193,7 +196,7 @@ export function InventoryLabelSheetModal({
                   }}
                 >
                   <span className="block font-semibold">{title}</span>
-                  <span className="mt-0.5 block text-xs text-slate-500 dark:text-slate-400">
+                  <span className={`mt-0.5 block text-xs ${selected ? "opacity-85" : "text-slate-500 dark:text-slate-400"}`}>
                     {hint}
                   </span>
                 </button>
@@ -215,7 +218,7 @@ export function InventoryLabelSheetModal({
 
           <button
             type="button"
-            className={`mt-4 w-full ${settingsActionButtonClass("accent")}`}
+            className={`mt-4 w-full ${settingsActionButtonClass("primary")}`}
             onClick={() => void onSave(paperId)}
             disabled={loading || saving || items.length === 0}
           >
@@ -224,7 +227,7 @@ export function InventoryLabelSheetModal({
               : t("settings.inventoryOverviewPrintSave", "Save PDF to Downloads")}
           </button>
         </section>
-      </div>
+      </div> : null}
     </AppModal>
   );
 }

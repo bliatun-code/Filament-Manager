@@ -12,7 +12,7 @@ type InventoryWorkspaceNavigationProps = {
 
 function inventoryWorkspaceTabClassName(active: boolean): string {
   const base =
-    "app-control-focus flex min-w-0 flex-1 items-center justify-between gap-3 rounded-xl border px-4 py-3 text-left text-sm font-semibold outline-none transition sm:flex-none sm:min-w-52";
+    "app-control-focus flex min-w-0 flex-1 items-center justify-between gap-3 rounded-lg border px-3 py-2 text-left text-sm font-semibold outline-none transition sm:flex-none sm:min-w-40";
   return active
     ? `${base} app-selected-control`
     : `${base} app-soft-control`;
@@ -33,7 +33,7 @@ export function InventoryWorkspaceNavigation({
 
   return (
     <div
-      className="surface-subtle mt-4 flex flex-col gap-1.5 p-1.5 sm:flex-row"
+      className="flex flex-wrap gap-2"
       role="group"
       aria-label={t("app.navigation", "Navigation")}
     >

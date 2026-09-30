@@ -1,3 +1,4 @@
+import { useId, useRef, useState } from "react";
 import { FeedbackBanner, type FeedbackTone } from "../components/feedback_banner";
 import { SettingsLibraryDeviceNameField } from "../components/settings_library_device_name_field";
 import { SettingsMetricTile } from "../components/settings_ui";
@@ -10,7 +11,7 @@ import {
   settingsTextInputClass,
   settingsValueBoxClass,
 } from "../lib/settings_ui_classes";
-import { formatSettingsDateTime } from "../lib/settings_utils";
+import { extractBaseUrlFromPairingInput, formatSettingsDateTime } from "../lib/settings_utils";
 import type {
   LibrarySyncHostValidationResult,
   LibrarySyncRemoteSnapshot,
@@ -102,6 +103,21 @@ export function SettingsLibraryClientPanel({
   const clientHostUsesStableAddress = isStableLocalCompanionBaseUrl(
     settingsClientHostBaseUrl,
   );
+  const [invalidPairingLink, setInvalidPairingLink] = useState(false);
+  const pairingInputRef = useRef<HTMLInputElement>(null);
+  const pairingErrorId = useId();
+  function submitPairing() {
+    if (!extractBaseUrlFromPairingInput(librarySyncPairingDraft.trim())) {
+      setInvalidPairingLink(true);
+      requestAnimationFrame(() => {
+        pairingInputRef.current?.focus({ preventScroll: true });
+        pairingInputRef.current?.scrollIntoView({ block: "center" });
+      });
+      return;
+    }
+    setInvalidPairingLink(false);
+    onPairHost();
+  }
   const lastValidationMessage = visibleLibrarySyncValidationMessage(
     librarySyncSettings?.last_validation_message,
   );
@@ -137,17 +153,25 @@ export function SettingsLibraryClientPanel({
               </div>
               <input
                 type="text"
+                ref={pairingInputRef}
+                aria-invalid={invalidPairingLink || undefined}
+                aria-describedby={invalidPairingLink ? pairingErrorId : undefined}
                 value={librarySyncPairingDraft}
-                onChange={(event) => onPairingDraftChange(event.target.value)}
+                onChange={(event) => { onPairingDraftChange(event.target.value); setInvalidPairingLink(false); }}
                 className={settingsTextInputClass}
                 placeholder="http://fm-7k3m9pwx.local:4278/companion?pairing=..."
                 disabled={!tauri || librarySyncBusy}
               />
             </label>
+            {invalidPairingLink ? (
+              <p id={pairingErrorId} role="alert" className="mt-2 text-sm text-red-700 dark:text-red-300">
+                {t("settings.error.librarySyncPairingLinkRequired", "Paste the full pairing link from the host so the client can detect the host automatically.")}
+              </p>
+            ) : null}
             <div className="mt-3 flex flex-wrap items-center gap-2">
               <button
                 type="button"
-                onClick={onPairHost}
+                onClick={submitPairing}
                 className={settingsActionButtonClass("accent")}
                 disabled={!tauri || librarySyncBusy || !librarySyncPairingDraft.trim()}
               >

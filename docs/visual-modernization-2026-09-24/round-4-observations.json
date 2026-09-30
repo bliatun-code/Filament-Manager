@@ -1,0 +1,42 @@
+{
+  "round": 4,
+  "scope": "Eight actual native targeted screenshots; not approved, interactions pending",
+  "inspected": [
+    "native/en/dark/inventory-overview",
+    "native/en/dark/settings-general",
+    "native/en/dark/wishlist-queue",
+    "native/en/dark/selected-roll-history",
+    "native/en/light/inventory-overview",
+    "native/en/light/settings-general",
+    "native/en/light/wishlist-queue",
+    "native/en/light/selected-roll-history"
+  ],
+  "notes": {
+    "native/en/dark/inventory-overview": "Toolbar consolidated; search/status adjacent. Clearly more stock visible with all controls present; calm accurate white/black/orange swatches.",
+    "native/en/dark/settings-general": "Language select actually40px with clear arrow. Grouping coherent. Scenario scroll places title partly behind sticky navigation; interactive check needed.",
+    "native/en/dark/wishlist-queue": "Regression duplicate Add CTA in page header and inner toolbar; inner action still costs row. Qty label and selected active status corrected. Root notified.",
+    "native/en/dark/selected-roll-history": "Full-width six-event history removes half-empty dialog, long complete title wraps. Populated weight chart exists above viewport; not inspected yet. Footer/actions remain visible.",
+    "native/en/light/inventory-overview": "Toolbar consolidated; search/status adjacent. Clearly more stock visible with all controls present; calm accurate white/black/orange swatches.",
+    "native/en/light/settings-general": "Language select actually40px with clear arrow. Grouping coherent. Scenario scroll places title partly behind sticky navigation; interactive check needed.",
+    "native/en/light/wishlist-queue": "Regression duplicate Add CTA in page header and inner toolbar; inner action still costs row. Qty label and selected active status corrected. Root notified.",
+    "native/en/light/selected-roll-history": "Full-width six-event history removes half-empty dialog, long complete title wraps. Populated weight chart exists above viewport; not inspected yet. Footer/actions remain visible."
+  },
+  "interactive": {
+    "path": "tmp/visual-modernization/critic-r4-interactive/",
+    "verified": [
+      "Actual native Light/Bambu/Prusa/Dark theme clicks update whole chrome and selected state.",
+      "Actual macOS Dark to Light to Dark with app Auto selected updates native after system settles; original Dark restored and verified.",
+      "EN to NB mouse selection and NB to EN keyboard Up/Return work. Old-language success toast remains a confirmed minor mismatch.",
+      "Language Tab goes checkbox with visible focus; ShiftTab returns picker. No checkbox toggled.",
+      "Dashboard chart12 keyboard reachable data points including0g first and193g last; visible focus and nonclipped tooltip. ShiftTab works. Enter on chart header navigates Statistics.",
+      "Statistics consumption modal: initial Close; ShiftTab wraps Reset; keyboard opener restored after Escape. AX mouse click had different initial focus, not product defect.",
+      "Actual window menu resize856x995: Statistics2x2metrics and inventory2columns fit; More filters reveals all groups. Header CTA rows still waste space."
+    ],
+    "not_verified": [
+      "Window drag did not resize; statistics-narrow.png is full-size, not reflow evidence.",
+      "language-open.png excludes OS popup; popup existence/options verified only in AX.",
+      "Inventory Spectrum search interrupted by locked Mac before state verified.",
+      "No200%zoom, no Host/Client pairing, no full revised51x4matrix."
+    ]
+  }
+}

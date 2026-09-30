@@ -3,6 +3,39 @@ import assert from "node:assert/strict";
 
 import { createCompanionAppShellRenderer } from "./companion_app_shell.js";
 import { createInitialCompanionState } from "./session_state.js";
+import { createCompanionRuntimeState } from "./companion_runtime_state.js";
+
+test("failed task submissions display feedback inside the active overlay without leaking to a new task", () => {
+  const state = createInitialCompanionState();
+  state.activeTaskSheet = { type: "loan-create", spoolId: "spool-1" };
+  const runtime = createCompanionRuntimeState({ state, render() {} });
+  runtime.setStatus("Enter a borrower name before creating a loan.", "error");
+  const html = createRenderer({ state: { ...state, apiReady: true } }).renderRoot();
+  const overlay = html.slice(html.indexOf('class="task-sheet-backdrop"'));
+  assert.match(overlay, /data-tone="error">Enter a borrower name/);
+  assert.ok(overlay.indexOf('data-tone="error"') < overlay.indexOf('class="task-sheet-body"'));
+
+  state.activeTaskSheet = { type: "loan-create", spoolId: "spool-1" };
+  const reopened = createRenderer({ state: { ...state, apiReady: true } }).renderRoot();
+  assert.doesNotMatch(reopened.slice(reopened.indexOf('class="task-sheet-backdrop"')), /Enter a borrower name/);
+});
+
+test("saved detail feedback appears once in the fixed header, including after transient status expiry", () => {
+  for (const transient of [true, false]) {
+    const html = createRenderer({ state: {
+      detailOpen: true,
+      selectedSpoolId: "spool-1",
+      detailFeedback: { spoolId: "spool-1", message: "Weight updated just now." },
+      statusOverlayContext: { detailSpoolId: "spool-1" },
+      statusMessage: transient ? "Weight updated." : "",
+      statusTone: transient ? "success" : "default",
+    } }).renderRoot();
+    const overlay = html.slice(html.indexOf('class="detail-modal-backdrop"'));
+    assert.equal(overlay.split("Weight updated just now.").length - 1, 1);
+    assert.doesNotMatch(overlay, />Weight updated\.</);
+    assert.ok(overlay.indexOf("Weight updated just now.") < overlay.indexOf('class="detail-modal-body"'));
+  }
+});
 
 function createSpoolRow(id, overrides = {}) {
   return {

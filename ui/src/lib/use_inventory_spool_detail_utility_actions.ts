@@ -115,21 +115,14 @@ export function useInventorySpoolDetailUtilityActions({
         `filament-label-${reference}-${filamentLabelSizeFilenameSuffix(labelSize)}`,
       );
       if (current.current !== operation) return;
-      setInfoMessage(
-        t("inventory.labelSaved", "Label PNG saved to Downloads.").replace(
-          "{path}",
-          exportedPath,
-        ),
-      );
+      const message = t("inventory.labelSaved", "Label PNG saved to Downloads.").replace("{path}", exportedPath);
+      setInfoMessage(message);
+      return { message, success: true };
     } catch (printError) {
       if (current.current !== operation) return;
-      setError(
-        commandErrorText(
-          printError,
-          t("inventory.error.printLabel", "Failed to generate label."),
-          t,
-        ),
-      );
+      const message = commandErrorText(printError, t("inventory.error.printLabel", "Failed to generate label."), t);
+      setError(message);
+      return { message, success: false };
     } finally {
       if (current.current === operation) { operation.busy = false; setManageBusy(false); }
     }

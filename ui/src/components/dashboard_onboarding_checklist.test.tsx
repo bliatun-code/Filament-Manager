@@ -30,7 +30,7 @@ test("dashboard onboarding separates pending required and optional work", () => 
   );
 
   assert.match(html, /Finish setup/);
-  assert.match(html, /1 of 2 complete/);
+  assert.match(html, /2 of 4 complete/);
   assert.match(html, /data-onboarding-group="required"/);
   assert.match(html, /data-onboarding-group="optional"/);
   assert.match(html, /data-onboarding-task="BACKUP"/);
@@ -65,7 +65,7 @@ test("dashboard onboarding collapses completed steps without action controls", (
     </I18nProvider>,
   );
 
-  assert.match(html, /2 of 2 complete/);
+  assert.match(html, /4 of 4 complete/);
   assert.match(html, /<details[^>]*data-onboarding-group="completed"/);
   assert.doesNotMatch(html, /<details[^>]*\sopen(?:=|>)/);
   assert.doesNotMatch(html, /data-onboarding-group="required"/);

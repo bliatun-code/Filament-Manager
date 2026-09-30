@@ -1,4 +1,6 @@
 import type { ChangeEvent } from "react";
+import { InventorySwatchChip } from "./inventory_swatch_chip";
+import { inventoryFormControlClassName } from "./form_control_class";
 
 import {
   INVENTORY_BULK_MANUAL_STATUSES,
@@ -84,6 +86,7 @@ export type InventoryBulkActionsPanelViewProps = Readonly<{
   onStatusTargetChange: (status: InventoryBulkManualStatus) => void;
   review: InventoryBulkMutationPlan | null;
   reviewCurrent: boolean;
+  reviewSpools: readonly Readonly<{ id: string; label: string; reference: string; hexColor?: string | null }>[];
   selectedCount: number;
   statusTarget: InventoryBulkManualStatus;
   visibleCount: number;
@@ -134,6 +137,7 @@ function InventoryBulkMutationReview({
   onConfirmReview,
   review,
   reviewCurrent,
+  reviewSpools,
 }: Pick<
   InventoryBulkActionsPanelViewProps,
   | "copy"
@@ -141,6 +145,7 @@ function InventoryBulkMutationReview({
   | "onCancelReview"
   | "onConfirmReview"
   | "reviewCurrent"
+  | "reviewSpools"
 > &
   Readonly<{ review: InventoryBulkMutationPlan }>) {
   return (
@@ -176,6 +181,15 @@ function InventoryBulkMutationReview({
           <dd>{copy.reviewTarget(review.action, review.action === "STATUS" ? copy.statusName(review.command.target_status) : review.targetLabel)}</dd>
         </div>
       </dl>
+      <ul className="mt-3 max-h-48 space-y-2 overflow-y-auto rounded-lg border border-current/20 p-3 text-sm" aria-label={copy.reviewAffectedTerm} tabIndex={0}>
+        {review.affectedSpoolIds.map((id) => {
+          const spool = reviewSpools.find((row) => row.id === id);
+          return <li key={id} className="flex items-start gap-2">
+            <InventorySwatchChip className="mt-0.5 h-4 w-4 rounded-full" swatchColor={spool?.hexColor} />
+            <span className="min-w-0 break-words">{spool?.label ?? id}<span className="ml-2 text-xs">{spool?.reference}</span></span>
+          </li>;
+        })}
+      </ul>
       <p className="mt-3 text-xs leading-5">
         {copy.atomicWarning(review.affectedCount)}
       </p>
@@ -187,7 +201,7 @@ function InventoryBulkMutationReview({
       <div className="mt-4 flex flex-col gap-2 sm:flex-row">
         <button
           type="button"
-          className={modalActionButtonClassName("primary")}
+          className={modalActionButtonClassName("solid")}
           disabled={disabled || !reviewCurrent}
           onClick={() => onConfirmReview(review)}
         >
@@ -236,6 +250,7 @@ export function InventoryBulkActionsPanelView({
   onStatusTargetChange,
   review,
   reviewCurrent,
+  reviewSpools,
   selectedCount,
   statusTarget,
   visibleCount,
@@ -288,6 +303,7 @@ export function InventoryBulkActionsPanelView({
           onConfirmReview={onConfirmReview}
           review={review}
           reviewCurrent={reviewCurrent}
+          reviewSpools={reviewSpools}
         />
       ) : (
         <>
@@ -307,7 +323,7 @@ export function InventoryBulkActionsPanelView({
                   aria-controls="inventory-bulk-move-editor"
                   aria-expanded={activeMutationAction === "MOVE"}
                   className={modalActionButtonClassName(
-                    activeMutationAction === "MOVE" ? "primary" : "secondary",
+                    activeMutationAction === "MOVE" ? "solid" : "secondary",
                   )}
                   disabled={disabled}
                   onClick={() =>
@@ -324,7 +340,7 @@ export function InventoryBulkActionsPanelView({
                   aria-controls="inventory-bulk-status-editor"
                   aria-expanded={activeMutationAction === "STATUS"}
                   className={modalActionButtonClassName(
-                    activeMutationAction === "STATUS" ? "primary" : "secondary",
+                    activeMutationAction === "STATUS" ? "solid" : "secondary",
                   )}
                   disabled={disabled}
                   onClick={() =>
@@ -413,7 +429,7 @@ export function InventoryBulkActionsPanelView({
                     onChange={(event: ChangeEvent<HTMLSelectElement>) =>
                       onMoveTargetLocationIdChange(event.currentTarget.value)
                     }
-                    className="mt-1 min-h-11 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm dark:border-slate-600 dark:bg-slate-950"
+                    className={`mt-1 min-h-11 ${inventoryFormControlClassName}`}
                   >
                     <option value="">{copy.chooseLocation}</option>
                     {locationTargets.map((location) => (
@@ -431,7 +447,7 @@ export function InventoryBulkActionsPanelView({
                 </label>
                 <button
                   type="button"
-                  className={modalActionButtonClassName("primary")}
+                  className={modalActionButtonClassName("solid")}
                   disabled={actionsDisabled || !selectedLocation}
                   onClick={() => {
                     if (selectedLocation) {
@@ -466,7 +482,7 @@ export function InventoryBulkActionsPanelView({
                         onStatusTargetChange(value);
                       }
                     }}
-                    className="mt-1 min-h-11 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm dark:border-slate-600 dark:bg-slate-950"
+                    className={`mt-1 min-h-11 ${inventoryFormControlClassName}`}
                   >
                     {INVENTORY_BULK_MANUAL_STATUSES.map((status) => (
                       <option key={status} value={status}>
@@ -477,7 +493,7 @@ export function InventoryBulkActionsPanelView({
                 </label>
                 <button
                   type="button"
-                  className={modalActionButtonClassName("primary")}
+                  className={modalActionButtonClassName("solid")}
                   disabled={actionsDisabled}
                   onClick={() => {
                     onRequestStatusReview(statusTarget);

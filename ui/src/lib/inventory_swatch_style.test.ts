@@ -100,13 +100,14 @@ test("inventory catalog rows add semantic blue selected and hover emphasis in li
   assert.match(selectedDark.boxShadow, /rgba\(226, 232, 240, 0\.12\)/);
 });
 
-test("inventory swatch action buttons derive contrast from the swatch", () => {
-  assert.equal(inventorySwatchActionButtonStyle("#F8FAFC", "light").color, "#0F172A");
-  assert.equal(inventorySwatchActionButtonStyle("#0F172A", "dark").color, "#FFFFFF");
-  assert.match(
-    inventorySwatchActionButtonStyle("#000000", "dark").background,
-    /rgb\(62, 72, 86\) 0%, rgb\(7, 11, 19\) 100%/,
-  );
+test("filament action colors remain semantic across light, dark and composite swatches", () => {
+  for (const color of ["#FFFFFF", "#000000", "#FF8000", "multi(#FFFFFF,#000000)"]) {
+    for (const theme of ["light", "dark"] as const) {
+      const style = inventorySwatchActionButtonStyle(color, theme);
+      assert.equal(style.color, "var(--app-theme-primary-action-text)");
+      assert.equal(style.background, "var(--app-theme-primary-action-background)");
+    }
+  }
 });
 
 test("inventory create preview panel adds stronger create emphasis", () => {
