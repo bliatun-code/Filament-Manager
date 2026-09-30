@@ -124,11 +124,14 @@ function inventorySwatchSurfaceStyle(
               inset: "var(--app-theme-data-inset-highlight)",
             };
 
-  return buildSwatchSurfaceStyle(raw, strength satisfies SwatchSurfaceStrength, {
-    midStop: darkTheme ? "24%" : "38%",
-    bottomStop: darkTheme ? "66%" : "74%",
-    borderColor: inventorySwatchSurfaceBorderColor(raw, resolvedTheme),
-  });
+  return {
+    ...buildSwatchSurfaceStyle(raw, strength satisfies SwatchSurfaceStrength, {
+      midStop: darkTheme ? "24%" : "38%",
+      bottomStop: darkTheme ? "66%" : "74%",
+      borderColor: inventorySwatchSurfaceBorderColor(raw, resolvedTheme),
+    }),
+    "--app-swatch-muted-text": darkTheme ? "rgb(241, 245, 249)" : "rgb(30, 41, 59)",
+  };
 }
 
 export function inventorySwatchCardStyle(
