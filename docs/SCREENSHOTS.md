@@ -9,12 +9,17 @@ running for Companion to work from a phone, tablet, or workshop browser.
 All names, identifiers, QR targets, counts, loans, printer assignments, and
 live observations shown in the tour are synthetic.
 
-The tour images were refreshed for **v0.31.0** on 20 September 2026 using an
-isolated, populated SQLite fixture. Desktop captures use the native macOS app;
-Companion captures use an authenticated browser connected to that test app.
-The English dark-theme screenshots illustrate workflows, not every supported
-theme, language, or operating system. The [capture manifest](screenshots/manifest-v0.31.0.json)
-records the scenarios, dimensions, and image hashes.
+The tour is being refreshed with the visual modernization of **v0.31.0**.
+The [capture manifest](screenshots/manifest-visual-modernization-2026-09-24.json)
+records each image's capture date, dimensions, and hashes. September 24 images
+use an isolated library with 172 synthetic rolls and twelve months of history;
+images marked September 20 retain the earlier fixture. Desktop captures use
+the native macOS app; Companion captures use an authenticated test browser.
+The English dark-theme tour illustrates workflows. The separate visual review
+ledger records theme, language, interaction, and accessibility coverage.
+These captures predate the September 30 restoration of stronger filament and
+printer card colors; they document the captured workflows, not the final color
+strength.
 
 ## Quick Preview
 

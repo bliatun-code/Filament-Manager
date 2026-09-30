@@ -481,6 +481,7 @@ export function SettingsFilamentDefaultsTab({
     new Set(JSON.parse(defaultSelectionSignature) as string[]),
   );
   const [activeMutation, setActiveMutation] = useState<string | null>(null);
+  const [overwriteTrigger, setOverwriteTrigger] = useState<HTMLButtonElement | null>(null);
   const [pendingOverwrite, setPendingOverwrite] = useState<PendingOverwrite | null>(null);
   const [localBatchReceipt, setLocalBatchReceipt] =
     useState<FilamentPriceBatchReceipt | null>(null);
@@ -754,7 +755,7 @@ export function SettingsFilamentDefaultsTab({
     }
   }
 
-  function requestBatch(group: FilamentPriceGroup) {
+  function requestBatch(group: FilamentPriceGroup, trigger: HTMLButtonElement) {
     if (disabled) return;
     const request = buildRequest(group);
     if (!request) {
@@ -762,6 +763,7 @@ export function SettingsFilamentDefaultsTab({
     }
     if (request.mode === "OVERWRITE") {
       setLocalError(null);
+      setOverwriteTrigger(trigger);
       setPendingOverwrite({ group, request, reviewKey });
     } else {
       void applyRequest(request);
@@ -1244,7 +1246,7 @@ export function SettingsFilamentDefaultsTab({
                             className={settingsActionButtonClass(mode === "OVERWRITE" ? "warning" : "primary")}
                             disabled={disabled || !requestValid}
                             type="button"
-                            onClick={() => requestBatch(group)}
+                            onClick={(event) => requestBatch(group, event.currentTarget)}
                           >
                             {mode === "OVERWRITE"
                               ? t("settings.filamentDefaultsReviewOverwrite", "Review and confirm overwrite")
@@ -1285,6 +1287,7 @@ export function SettingsFilamentDefaultsTab({
         return (
           <AppModal
             ariaLabel={t("settings.filamentDefaultsConfirmOverwrite", "Confirm price overwrite")}
+            returnFocusElement={overwriteTrigger}
             closeOnBackdrop
             onBackdropClose={() => setPendingOverwrite(null)}
             panelClassName="app-modal-panel max-h-[calc(100dvh-3rem)] w-full max-w-xl overflow-y-auto overscroll-contain rounded-2xl border p-5"
@@ -1342,8 +1345,25 @@ export function SettingsFilamentDefaultsTab({
                   </dd>
                 </div>
               </dl>
+              <ul tabIndex={0} aria-label={t("inventory.bulkAffected", "Affected")}
+                className="app-control-focus max-h-48 space-y-2 overflow-y-auto rounded-lg border border-slate-300 p-3 text-sm dark:border-slate-600">
+                {pendingOverwrite.group.spoolRows.filter(row => preview.selectedSpoolIds.includes(row.spoolId)).map(row => (
+                  <li key={row.spoolId} className="flex flex-wrap items-start justify-between gap-2">
+                    <span className="min-w-0 flex-1">
+                      <span className="block break-words font-semibold">{filamentDefaultsSpoolLabel(row)}</span>
+                      <span className="block break-all text-xs text-slate-600 dark:text-slate-300">{formatSpoolReference(row.spoolId)}</span>
+                    </span>
+                    <span className="text-xs">
+                      {preview.eligibleSpoolIds.includes(row.spoolId)
+                        ? t("settings.filamentDefaultsWillUpdate", "Will update")
+                        : t("settings.filamentDefaultsWillSkip", "Will skip")}
+                    </span>
+                  </li>
+                ))}
+              </ul>
               <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
                 <button
+                  autoFocus
                   className={settingsActionButtonClass("neutral")}
                   disabled={disabled}
                   type="button"

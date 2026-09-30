@@ -2,6 +2,7 @@
 // and after the interactive test application has been closed. Never opens the
 // production application or production database.
 import { spawn } from 'node:child_process';
+import { startSyntheticDiagnosticFeed } from './synthetic-diagnostic-feed.mjs';
 import { readFileSync, writeFileSync, mkdirSync, existsSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { runLaunchedDesktopScreenshotGate } from '../../scripts/run-desktop-screenshot-gate.mjs';
@@ -34,14 +35,23 @@ for (const themeMode of themes) {
       result=await runLaunchedDesktopScreenshotGate({
         sourcePath, profile:'rich', processName:'Filament Visual Review',
         scenario:scenario.id, themeMode, locale, outputDir, name:scenario.id,
-        captureDelayMs:3500, startupTimeoutMs:45000,
+        captureDelayMs:scenario.id.startsWith('settings-printer-diagnostics') && !scenario.id.endsWith('paused') ? 55000 : 3500, startupTimeoutMs:45000,
         keep:false, keepAppOnFail:false,
-        spawnFn:(_command,_args,options)=>spawn(executable,[],{
-          ...options,
-          env:{...options.env,
-            FILAMENT_MANAGER_VISUAL_QA_WINDOW_SIZE:process.env.CRITIC_CAPTURE_SIZE || '1440x960',
-          },
-        }),
+        spawnFn:(_command,_args,options)=>{
+          const stopFeed = scenario.id.startsWith('settings-printer-diagnostics') && !scenario.id.endsWith('paused')
+            ? startSyntheticDiagnosticFeed(options.env.FILAMENT_MANAGER_DB_PATH) : () => {};
+          try {
+            const child = spawn(executable,[],{
+              ...options,
+              env:{...options.env,
+                FILAMENT_MANAGER_VISUAL_QA_WINDOW_SIZE:process.env.CRITIC_CAPTURE_SIZE || '1440x960',
+              },
+            });
+            child.once('exit', stopFeed);
+            child.once('error', stopFeed);
+            return child;
+          } catch (error) { stopFeed(); throw error; }
+        },
       });
     } catch(error) {
       result={scenario:scenario.id,themeMode,locale,errors:[String(error?.message||error)],
