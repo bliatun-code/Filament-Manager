@@ -195,7 +195,7 @@ fn auto_sync_live_slots(
         if tray.matched_inventory_mode.as_deref() != Some("exact_rfid") {
             continue;
         }
-        if !identity_is_recent(tray.last_identity_seen_at.as_deref(), 10) {
+        if !live_tray_has_recent_assignment_evidence(observed, tray) {
             continue;
         }
         let Some(slot) = slot else {
@@ -1239,6 +1239,36 @@ fn normalized_print_state(value: Option<&str>) -> Option<String> {
         .map(str::trim)
         .filter(|value| !value.is_empty())
         .map(|value| value.to_ascii_uppercase())
+}
+
+// MQTT deltas can refresh weight without repeating the RFID. The merger keeps
+// that identity only while the tray remains compatible, and clears both identity
+// and weight on removal/replacement. Do not refresh the identity timestamp here:
+// an explicit manual clear still requires a newer RFID observation below.
+fn live_tray_has_recent_assignment_evidence(
+    observed: &BambuLiveObservedStateRow,
+    tray: &BambuLiveObservedTrayRow,
+) -> bool {
+    if identity_is_recent(tray.last_identity_seen_at.as_deref(), 10) {
+        return true;
+    }
+    if !observed.online
+        || !observed.mqtt_connected
+        || !tray.loaded
+        || tray.remaining_grams.is_none()
+        || !identity_is_recent(tray.last_weight_seen_at.as_deref(), 10)
+    {
+        return false;
+    }
+    let Some(identity_at) = parse_flexible_timestamp(tray.last_identity_seen_at.as_deref()) else {
+        return false;
+    };
+    let Some(weight_at) = parse_flexible_timestamp(tray.last_weight_seen_at.as_deref()) else {
+        return false;
+    };
+    weight_at >= identity_at
+        && parse_flexible_timestamp(tray.last_empty_seen_at.as_deref())
+            .is_none_or(|empty_at| empty_at < identity_at)
 }
 
 fn identity_is_recent(raw: Option<&str>, max_age_minutes: i64) -> bool {

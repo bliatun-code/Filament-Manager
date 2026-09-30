@@ -7695,3 +7695,150 @@ fn merge_tray_snapshots_allows_empty_update_to_clear_loaded_state() {
     assert_eq!(merged[0].remaining_grams, None);
     assert_eq!(merged[0].last_weight_seen_at, None);
 }
+
+fn four_slot_rfid_delta_fixture() -> (
+    FilamentDatabase,
+    crate::backend::filament_database::BambuLiveObservedStateRow,
+) {
+    let db = FilamentDatabase::open(":memory:").unwrap();
+    db.apply_schema().unwrap();
+    db.upsert_printer_with_ams("printer_delta", "Bambu Lab P1S", "Synthetic delta", 1, 4)
+        .unwrap();
+    let master_id = db
+        .upsert_manual_master(ManualMasterInput {
+            material: "PLA",
+            filament_name: "Basic",
+            color_name: "White",
+            hex_color: Some("#FFFFFF"),
+            product_url: None,
+            vendor: Some("Bambu"),
+            default_weight: Some(1000),
+        })
+        .unwrap();
+    let now = super::now_iso_string();
+    let old = (time::OffsetDateTime::now_utc() - time::Duration::hours(2))
+        .format(&time::format_description::well_known::Rfc3339)
+        .unwrap();
+    let mut observed = super::default_offline_state();
+    observed.online = true;
+    observed.mqtt_connected = true;
+    observed.last_seen_at = Some(now.clone());
+    for index in 0..4 {
+        let id = format!("synthetic-roll-{index}");
+        let rfid = format!("synthetic-rfid-{index}");
+        let mut spool = make_inventory_spool(&id, Some(&rfid)).spool;
+        spool.master_id = master_id.clone();
+        db.insert_spool(&spool).unwrap();
+        let mut tray = make_tray();
+        tray.ams_index = Some(0);
+        tray.tray_index = index;
+        tray.observed_rfid_tag = None;
+        tray.tray_uuid = Some(rfid);
+        tray.remaining_grams = None;
+        tray.last_identity_seen_at = Some(if index == 3 { old.clone() } else { now.clone() });
+        if index == 3 {
+            tray = merge_tray_payload(
+                Some(&tray),
+                Some(0),
+                3,
+                &serde_json::json!({"id":3,"remain":5,"tray_weight":1000}),
+                &now,
+                Some(true),
+            );
+            assert_eq!(tray.last_identity_seen_at.as_deref(), Some(old.as_str()));
+            assert_eq!(tray.remaining_grams, Some(50));
+        }
+        observed.trays.push(tray);
+    }
+    (db, observed)
+}
+
+#[test]
+fn live_slot_four_assigns_exact_rfid_after_fresh_weight_delta() {
+    let (db, observed) = four_slot_rfid_delta_fixture();
+    let enriched =
+        crate::bambu_live_sync::enrich_with_match_status(&db, "printer_delta", observed).unwrap();
+    assert_eq!(
+        enriched.trays[3].matched_inventory_mode.as_deref(),
+        Some("exact_rfid")
+    );
+    let overview = db.get_printer_overview("printer_delta").unwrap().unwrap();
+    for index in 1..=4 {
+        let slot = overview
+            .slots
+            .iter()
+            .find(|slot| slot.ams_id.ends_with("_ams_1") && slot.slot_index == index)
+            .unwrap();
+        assert_eq!(
+            slot.spool_id,
+            Some(format!("synthetic-roll-{}", index - 1)),
+            "Slot {index} should be assigned"
+        );
+    }
+}
+
+#[test]
+fn live_slot_four_delta_recovery_keeps_identity_safety_guards() {
+    for case in [
+        "stale_weight",
+        "missing_identity_time",
+        "offline",
+        "disconnected",
+        "removed",
+        "manual_clear",
+        "replacement",
+        "ambiguous",
+    ] {
+        let (db, mut observed) = four_slot_rfid_delta_fixture();
+        let old = observed.trays[3].last_identity_seen_at.clone();
+        let now = super::now_iso_string();
+        match case {
+            "stale_weight" => observed.trays[3].last_weight_seen_at = old,
+            "missing_identity_time" => observed.trays[3].last_identity_seen_at = None,
+            "offline" => observed.online = false,
+            "disconnected" => observed.mqtt_connected = false,
+            "removed" => observed.trays[3].loaded = false,
+            "manual_clear" => db
+                .assign_spool_to_ams_slot(
+                    "printer_delta",
+                    "printer_delta_ams_1_slot_4",
+                    None,
+                    None,
+                    None,
+                    true,
+                )
+                .unwrap(),
+            "replacement" => {
+                observed.trays[3] = merge_tray_payload(
+                    Some(&observed.trays[3]),
+                    Some(0),
+                    3,
+                    &serde_json::json!({"id":3,"tray_type":"PETG","tray_color":"FF0000FF","remain":5,"tray_weight":1000}),
+                    &now,
+                    Some(true),
+                );
+                assert!(observed.trays[3].tray_uuid.is_none());
+            }
+            "ambiguous" => {
+                let mut duplicate =
+                    make_inventory_spool("duplicate-rfid", Some("synthetic-rfid-3")).spool;
+                duplicate.master_id = db
+                    .get_spool_with_master_by_id("synthetic-roll-3")
+                    .unwrap()
+                    .unwrap()
+                    .spool
+                    .master_id;
+                db.insert_spool(&duplicate).unwrap();
+            }
+            _ => unreachable!(),
+        }
+        crate::bambu_live_sync::enrich_with_match_status(&db, "printer_delta", observed).unwrap();
+        let overview = db.get_printer_overview("printer_delta").unwrap().unwrap();
+        let slot = overview
+            .slots
+            .iter()
+            .find(|slot| slot.slot_id == "printer_delta_ams_1_slot_4")
+            .unwrap();
+        assert_eq!(slot.spool_id, None, "Unsafe recovery: {case}");
+    }
+}
