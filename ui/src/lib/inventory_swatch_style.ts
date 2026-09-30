@@ -67,59 +67,59 @@ function inventorySwatchSurfaceStyle(
     darkTheme
       ? tone === "panel"
         ? {
-            top: 0.10,
-            mid: 0.035,
-            bottom: 0.012,
+            top: 0.34,
+            mid: 0.18,
+            bottom: 0.08,
             base: "var(--app-theme-data-panel-base)",
-            shadow: 0.12,
+            shadow: 0.42,
             ambientShadow: "var(--app-theme-data-ambient-shadow)",
             inset: "var(--app-theme-data-inset-highlight)",
           }
         : tone === "inset"
           ? {
-              top: 0.10,
-              mid: 0.035,
-              bottom: 0.012,
+              top: 0.28,
+              mid: 0.14,
+              bottom: 0.06,
               base: "var(--app-theme-data-inset-base)",
-              shadow: 0.12,
+              shadow: 0.34,
               ambientShadow: "var(--app-theme-data-ambient-shadow)",
               inset: "var(--app-theme-data-inset-highlight)",
             }
           : {
-              top: 0.10,
-              mid: 0.035,
-              bottom: 0.012,
+              top: 0.3,
+              mid: 0.15,
+              bottom: 0.07,
               base: "var(--app-theme-data-card-base)",
-              shadow: 0.12,
+              shadow: 0.38,
               ambientShadow: "var(--app-theme-data-ambient-shadow)",
               inset: "var(--app-theme-data-inset-highlight)",
             }
       : tone === "panel"
         ? {
-            top: 0.065,
-            mid: 0.035,
-            bottom: 0.012,
+            top: 0.15,
+            mid: 0.075,
+            bottom: 0.025,
             base: "var(--app-theme-data-panel-base)",
-            shadow: 0.12,
+            shadow: 0.28,
             ambientShadow: "var(--app-theme-data-ambient-shadow)",
             inset: "var(--app-theme-data-inset-highlight)",
           }
         : tone === "inset"
           ? {
-              top: 0.065,
-              mid: 0.035,
-              bottom: 0.012,
+              top: 0.11,
+              mid: 0.055,
+              bottom: 0.02,
               base: "var(--app-theme-data-inset-base)",
-              shadow: 0.12,
+              shadow: 0.22,
               ambientShadow: "var(--app-theme-data-ambient-shadow)",
               inset: "var(--app-theme-data-inset-highlight)",
             }
           : {
-              top: 0.065,
-              mid: 0.035,
-              bottom: 0.012,
+              top: 0.125,
+              mid: 0.06,
+              bottom: 0.022,
               base: "var(--app-theme-data-card-base)",
-              shadow: 0.12,
+              shadow: 0.26,
               ambientShadow: "var(--app-theme-data-ambient-shadow)",
               inset: "var(--app-theme-data-inset-highlight)",
             };

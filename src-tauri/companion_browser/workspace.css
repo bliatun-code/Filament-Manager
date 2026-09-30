@@ -2145,9 +2145,9 @@
   }
 
   :root[data-theme-mode="light"] .swatch-surface {
-    --swatch-surface-top: 0.065;
-    --swatch-surface-mid: 0.035;
-    --swatch-surface-bottom: 0.012;
+    --swatch-surface-top: 0.24;
+    --swatch-surface-mid: 0.14;
+    --swatch-surface-bottom: 0.065;
     --swatch-surface-border: 0.4;
   }
 }
@@ -2215,9 +2215,9 @@
 
   :root:not([data-theme-mode]) .swatch-surface,
   :root[data-theme-mode="auto"] .swatch-surface {
-    --swatch-surface-top: 0.065;
-    --swatch-surface-mid: 0.035;
-    --swatch-surface-bottom: 0.012;
+    --swatch-surface-top: 0.24;
+    --swatch-surface-mid: 0.14;
+    --swatch-surface-bottom: 0.065;
     --swatch-surface-border: 0.4;
   }
 }

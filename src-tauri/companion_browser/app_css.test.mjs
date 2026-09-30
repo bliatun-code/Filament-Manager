@@ -339,6 +339,6 @@ test("phone CSS keeps root headers secondary, task sheets scrollable, and modal 
       explicitDarkPhoneNavIndex < systemDarkPhoneNavIndex,
     "explicit dark and dark-based brand themes must not depend on the OS color scheme",
   );
-  assert.match(css, /@media \(max-width: 767px\) and \(prefers-color-scheme: light\)[\s\S]*:root\[data-theme-mode="auto"\] \.swatch-surface\s*\{[\s\S]*--swatch-surface-top: 0\.065;/);
+  assert.match(css, /@media \(max-width: 767px\) and \(prefers-color-scheme: light\)[\s\S]*:root\[data-theme-mode="auto"\] \.swatch-surface\s*\{[\s\S]*--swatch-surface-top: 0\.24;/);
   assert.match(css, /:root\[data-theme-mode="light"\] \.printer-board\.printer-brand-surface[\s\S]*inset 3px 0 0 rgb\(var\(--brand-rgb\) \/ 0\.5\)/);
 });
