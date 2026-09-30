@@ -9,17 +9,19 @@ running for Companion to work from a phone, tablet, or workshop browser.
 All names, identifiers, QR targets, counts, loans, printer assignments, and
 live observations shown in the tour are synthetic.
 
-The tour is being refreshed with the visual modernization of **v0.31.0**.
-The [capture manifest](screenshots/manifest-visual-modernization-2026-09-24.json)
-records each image's capture date, dimensions, and hashes. September 24 images
-use an isolated library with 172 synthetic rolls and twelve months of history;
-images marked September 20 retain the earlier fixture. Desktop captures use
+The [capture manifest](screenshots/manifest-visual-modernization-2026-10-01.json)
+records each image's date, dimensions and hashes. The October 1 desktop views
+show the restored strong filament and printer colors, using an isolated library
+with 172 synthetic rolls and twelve months of history. The independent critic
+inspected each refreshed native view. Roll details, Inventory and loan preview
+also include the local text-contrast correction.
+
+Other images retain their September 20 or 24 capture dates in the manifest;
+those older views predate the stronger color restoration. Desktop captures use
 the native macOS app; Companion captures use an authenticated test browser.
-The English dark-theme tour illustrates workflows. The separate visual review
-ledger records theme, language, interaction, and accessibility coverage.
-These captures predate the September 30 restoration of stronger filament and
-printer card colors; they document the captured workflows, not the final color
-strength.
+This English dark-theme tour illustrates workflows. Theme, language,
+interaction and accessibility coverage belongs to the separate visual review
+ledger, and is not implied by the gallery.
 
 ## Quick Preview
 
