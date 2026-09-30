@@ -62,8 +62,10 @@ packages reach both supported platforms through `tauri-utils` and `urlpattern`.
 Do not classify all maintenance warnings as Linux-only. Follow a published,
 compatible Tauri update for that dependency chain; do not force an incompatible
 `urlpattern` version into the lockfile. The dated
-[dependency review](DEPENDENCY_REVIEW_2026-09-14.md) records the current paths and
-follow-up decisions. All warnings remain visible in the scheduled report, but
+[dependency review](DEPENDENCY_REVIEW_2026-09-30.md) records the current paths and
+follow-up decisions. Tauri 2.12 now provides the stable upstream update, but it
+requires Rust 1.90; adopting it must explicitly update the current Rust 1.88
+support contract and its CI checks alongside the Tauri CLI/API/backend. All warnings remain visible in the scheduled report, but
 only vulnerability advisories fail `cargo audit`. License violations always fail.
 
 ## Policy Files
