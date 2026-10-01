@@ -43,14 +43,44 @@ upload. On a cache miss, package-scoped `cargo clean` removes both workspace
 packages from debug, release, and MSRV output before saving the allowlisted
 directories. Each cleanup uses the matching compiler; explicit package names
 also work with Rust 1.90. Bash's fail-fast execution on macOS and explicit
-PowerShell exit-code checks on Windows stop on any failed cleanup, so the save
-step cannot run afterward. Existing cache hits are not overwritten.
+PowerShell exit-code checks on Windows stop on any failed cleanup. Saving requires
+the cleanup step's actual `outcome` to be `success`, even though cache maintenance
+errors are tolerated. Existing cache hits are not overwritten.
 See [Cargo's clean command](https://doc.rust-lang.org/cargo/commands/cargo-clean.html).
 
 Failed jobs do not save partial state. This follows
 [GitHub's cache scope rules](https://docs.github.com/en/actions/reference/workflows-and-actions/dependency-caching#restrictions-for-accessing-a-cache):
 pull requests may restore a default-branch cache, while a pull-request cache is
 not available to the default branch.
+
+## Cache maintenance budget
+
+Each native job records its clock in its first step, before checkout and setup.
+After all verification gates and log uploads, the
+[budget planner](../scripts/plan-rust-cache-save.mjs) checks the remaining time
+against the job's existing limit (45 minutes on macOS, 60 on Windows). Cache
+maintenance starts only when at least ten minutes remain. A missing or invalid
+clock disables saving; it never authorizes a write. The reserve covers one minute
+each for marker preparation and cleanup, five minutes for packing/uploading, and
+three minutes for reporting and teardown.
+
+Marker preparation and cleanup each have a one-minute step limit; saving has a
+five-minute limit. These cache-only steps use `continue-on-error`, so a timeout or
+cache service error cannot change a successful verification result into a failed
+job. Saving still requires successful marker preparation and package cleanup;
+an unsuccessful cleanup never publishes a partially cleaned archive. Skipped
+budgets and failed maintenance steps produce a warning and a job-summary
+explanation; reporting is also optional and limited to one minute. Cache-action
+service warnings that it handles internally remain in that action's log.
+GitHub distinguishes the failed step's `outcome` from the tolerated `conclusion`;
+see [step contexts](https://docs.github.com/en/actions/reference/workflows-and-actions/contexts#steps-context)
+and [step timeouts/error handling](https://docs.github.com/en/actions/reference/workflows-and-actions/workflow-syntax#jobsjob_idstepscontinue-on-error).
+
+All MSRV, test, build, database and installed-application gates remain blocking
+and unconditional. Their existing job timeouts remain in force. Cache paths,
+exact environment keys and the successful-main-only write policy are unchanged.
+Compiled debug, release and MSRV dependencies remain useful: full verification
+includes release Clippy as well as debug tests.
 
 The first PR run is expected to be cold. After merge, a successful ordinary main
 run populates the cache; a later ordinary PR run can demonstrate reuse. Do not
@@ -104,3 +134,21 @@ independently establish equal runner images and compiler environments between
 them. Full verification also includes work beyond Rust compilation. The shorter
 observed totals therefore cannot be attributed entirely to caching, particularly
 because the main run also uploaded caches. No extra benchmark run was started.
+
+## Windows timeout after #144 on 2026-10-01
+
+In [main CI 36875290437](https://github.com/bliatun-code/Filament-Manager/actions/runs/36875290437),
+Windows missed its exact Rust cache. Setup and MSRV checks took about eight
+minutes, full verification passed in 29 minutes 20 seconds, and MSI build,
+verification and clean installation also passed. Cache preparation and cleanup
+completed around minute 43. `Save Rust dependencies` then spent over 17 minutes
+in `tar`/`zstd` packing before the whole job reached its 60-minute limit and was
+cancelled. No cache upload was visible in the log. macOS, migration integrity,
+shared contracts and CodeQL passed.
+
+This demonstrates an unbounded optional packing step, not a failing application
+test. Previously saved Windows caches were about 1.3 GB compressed; the failed
+archive's size and the reason for that unusually slow compression were not
+recorded. The new budget bounds the optional work while preserving demonstrated
+compiled-dependency reuse. It does not claim that compression itself is faster;
+actual save/reuse behavior must be confirmed in ordinary main/PR runs.

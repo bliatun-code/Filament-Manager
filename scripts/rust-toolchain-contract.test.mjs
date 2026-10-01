@@ -224,14 +224,16 @@ test("native Rust cache paths exclude application bundles, credentials and fixtu
 });
 
 test("native cache cleanup prepares valid target markers inside the workflow run block", () => {
-  const saveCondition = "${{ success() && github.event_name == 'push' && github.ref == 'refs/heads/main' && steps.rust-cache.outputs.cache-hit != 'true' }}";
+  const markerCondition = "${{ success() && steps.rust-cache-budget.outputs.can-save == 'true' }}";
   const signature = "Signature: 8a477f597d28d172789f06886806bc55";
   for (const jobName of ["macos-smoke", "windows-smoke"]) {
     const job = workflowJob(workflows[0][1], jobName);
     const markerName = "Prepare cache-clean target markers";
     const marker = workflowStep(job, markerName);
-    assert.equal(marker.match(/^        if: (.+)$/m)?.[1], saveCondition, `${jobName} markers must follow the trusted successful-write policy`);
-    assert.doesNotMatch(marker, /^        continue-on-error:/m);
+    assert.equal(marker.match(/^        if: (.+)$/m)?.[1], markerCondition, `${jobName} markers require an authorized cache budget`);
+    assert.match(marker, /^        id: rust-cache-markers$/m);
+    assert.match(marker, /^        timeout-minutes: 1$/m);
+    assert.match(marker, /^        continue-on-error: true$/m);
     const windows = jobName === "windows-smoke";
     assert.match(marker, windows ? /^        shell: pwsh$/m : /^        shell: bash$/m, `${jobName} must prepare markers using its native supported shell`);
 
@@ -255,7 +257,7 @@ test("native cache cleanup prepares valid target markers inside the workflow run
   }
 });
 
-test("native Rust caches save only after successful main gates and workspace cleanup", () => {
+test("native Rust caches save only after an authorized budget and successful workspace cleanup", () => {
   const members = JSON.parse(rootManifest.match(/^members = (\[[^\n]+\])$/m)?.[1]);
   const packages = [rootManifest, ...members.map((member) => repoFile(`${member}/Cargo.toml`))]
     .map((manifest) => manifest.match(/^\[package\]\nname = "([^"]+)"$/m)?.[1]);
@@ -266,14 +268,20 @@ test("native Rust caches save only after successful main gates and workspace cle
     `cargo clean --locked --offline ${packageFlags} --target-dir target --release`,
     `cargo +1.90.0 clean --locked --offline ${packageFlags} --target-dir target/msrv`,
   ];
-  const saveCondition = "${{ success() && github.event_name == 'push' && github.ref == 'refs/heads/main' && steps.rust-cache.outputs.cache-hit != 'true' }}";
+  const cleanupCondition = "${{ success() && steps.rust-cache-budget.outputs.can-save == 'true' && steps.rust-cache-markers.outcome == 'success' }}";
+  const saveCondition = "${{ success() && steps.rust-cache-budget.outputs.can-save == 'true' && steps.rust-cache-clean.outcome == 'success' }}";
   for (const jobName of ["macos-smoke", "windows-smoke"]) {
     const job = workflowJob(workflows[0][1], jobName);
     const cleanup = workflowStep(job, "Clean workspace artifacts for cache");
     const save = workflowStep(job, "Save Rust dependencies");
-    for (const [name, step] of [["cleanup", cleanup], ["save", save]]) {
-      assert.equal(step.match(/^        if: (.+)$/m)?.[1], saveCondition, `${jobName} ${name} must follow the trusted successful-write policy`);
-      assert.doesNotMatch(step, /^        continue-on-error:/m);
+    assert.equal(cleanup.match(/^        if: (.+)$/m)?.[1], cleanupCondition, `${jobName} cleanup requires prepared markers and an authorized budget`);
+    assert.equal(save.match(/^        if: (.+)$/m)?.[1], saveCondition, `${jobName} saving requires successful cleanup, including when failures are tolerated`);
+    assert.match(cleanup, /^        id: rust-cache-clean$/m);
+    assert.match(cleanup, /^        timeout-minutes: 1$/m);
+    assert.match(save, /^        id: rust-cache-save$/m);
+    assert.match(save, /^        timeout-minutes: 5$/m);
+    for (const step of [cleanup, save]) {
+      assert.match(step, /^        continue-on-error: true$/m);
     }
     const windows = jobName === "windows-smoke";
     assert.match(cleanup, windows ? /^        shell: pwsh$/m : /^        shell: bash$/m, `${jobName} must use its native supported shell`);
@@ -294,6 +302,39 @@ test("native Rust caches save only after successful main gates and workspace cle
       /^          (?:restore-keys|enableCrossOsArchive):/m,
       `${jobName} must save only under the restored primary key`,
     );
+  }
+});
+
+test("cache maintenance reserves time before the job deadline and reports degradation", () => {
+  const trustedMainMiss = "${{ success() && github.event_name == 'push' && github.ref == 'refs/heads/main' && steps.rust-cache.outputs.cache-hit != 'true' }}";
+  for (const jobName of ["macos-smoke", "windows-smoke"]) {
+    const job = workflowJob(workflows[0][1], jobName);
+    const clock = workflowStep(job, "Record cache budget clock");
+    assert.match(job, /^    steps:\n      - name: Record cache budget clock\n/m, "capture the clock before checkout or toolchain setup");
+    assert.match(clock, /^        id: job-clock$/m);
+    assert.match(clock, /started-at=.*(?:date \+%s|ToUnixTimeSeconds)/);
+    assert.match(clock, /GITHUB_OUTPUT/);
+    const budget = workflowStep(job, "Check cache save budget");
+    assert.match(budget, /^        id: rust-cache-budget$/m);
+    assert.equal(budget.match(/^        if: (.+)$/m)?.[1], trustedMainMiss);
+    assert.match(budget, /^          CI_JOB_STARTED_AT: \$\{\{ steps\.job-clock\.outputs\.started-at \}\}$/m);
+    const jobMinutes = job.match(/^    timeout-minutes: (\d+)$/m)?.[1];
+    assert.equal(budget.match(/--job-timeout-minutes=(\d+)/)?.[1], jobMinutes, "cache deadline must use the actual job timeout");
+    assert.match(budget, /run: node \.\/scripts\/plan-rust-cache-save\.mjs .*--github-output/);
+    assert.match(budget, /^        timeout-minutes: 1$/m);
+    assert.match(budget, /^        continue-on-error: true$/m);
+    assert.ok(job.indexOf("- name: Check cache save budget") > job.lastIndexOf("- name: Upload "), "budget is evaluated after every verification gate and log upload");
+    assert.ok(job.indexOf("- name: Check cache save budget") < job.indexOf("- name: Prepare cache-clean target markers"));
+    const report = workflowStep(job, "Report cache maintenance");
+    assert.equal(report.match(/^        if: (.+)$/m)?.[1], trustedMainMiss);
+    assert.match(report, /^        timeout-minutes: 1$/m);
+    assert.match(report, /^        continue-on-error: true$/m);
+    for (const id of ["rust-cache-markers", "rust-cache-clean", "rust-cache-save"]) {
+      assert.ok(report.includes(`steps.${id}.outcome`), "report real outcomes despite continue-on-error");
+    }
+    assert.ok(report.includes("steps.rust-cache-budget.outputs.can-save"));
+    assert.ok(report.includes("::warning::"));
+    assert.ok(report.includes("GITHUB_STEP_SUMMARY"));
   }
 });
 
