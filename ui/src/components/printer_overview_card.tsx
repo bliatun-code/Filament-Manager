@@ -33,6 +33,7 @@ type PrinterOverviewCardProps = {
   openDropdownSlotId: string | null;
   setOpenDropdownSlotId: Dispatch<SetStateAction<string | null>>;
   spools: SpoolWithMasterRow[];
+  slotLabelById?: ReadonlyMap<string, string>;
   allowedSpoolsForSlot: (slotSpoolId?: string | null) => SpoolWithMasterRow[];
   findAllowedSpoolForSlot: (
     slotSpoolId: string | null | undefined,
@@ -84,6 +85,7 @@ export function PrinterOverviewCard({
   openDropdownSlotId,
   setOpenDropdownSlotId,
   spools,
+  slotLabelById,
   allowedSpoolsForSlot,
   findAllowedSpoolForSlot,
   getSlotDraft,
@@ -180,6 +182,7 @@ export function PrinterOverviewCard({
               openDropdownSlotId={openDropdownSlotId}
               setOpenDropdownSlotId={setOpenDropdownSlotId}
               spools={spools}
+              slotLabelById={slotLabelById}
               allowedSpoolsForSlot={allowedSpoolsForSlot}
               findAllowedSpoolForSlot={findAllowedSpoolForSlot}
               getSlotDraft={getSlotDraft}

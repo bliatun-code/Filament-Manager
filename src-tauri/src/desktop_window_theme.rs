@@ -1,3 +1,5 @@
+#[cfg(target_os = "macos")]
+use objc2_app_kit::NSAppearanceCustomization;
 use serde::Deserialize;
 #[cfg(target_os = "macos")]
 use tauri::TitleBarStyle;
@@ -60,7 +62,49 @@ pub(crate) fn set_native_window_theme(
         })
         .map_err(|error| error.to_string())?;
 
+    #[cfg(target_os = "macos")]
+    apply_macos_window_appearance(&window, appearance, input.background_color.is_none())?;
+
     Ok(())
+}
+
+#[cfg(target_os = "macos")]
+fn apply_macos_window_appearance(
+    window: &tauri::WebviewWindow,
+    appearance: Option<Theme>,
+    use_system_background: bool,
+) -> Result<(), String> {
+    let native_window = window.clone();
+    window
+        .run_on_main_thread(move || {
+            let Ok(raw_window) = native_window.ns_window() else {
+                return;
+            };
+            // Tao resets an absent background to nil, rather than restoring AppKit's
+            // default. Use the dynamic system color so the title bar follows the
+            // selected appearance, including subsequent system theme changes.
+            let native_window: &objc2_app_kit::NSWindow = unsafe { &*raw_window.cast() };
+            let appearance = appearance.and_then(|theme| {
+                let name = objc2_foundation::NSString::from_str(match theme {
+                    Theme::Dark => "NSAppearanceNameDarkAqua",
+                    _ => "NSAppearanceNameAqua",
+                });
+                objc2_app_kit::NSAppearance::appearanceNamed(&name)
+            });
+            native_window.setAppearance(appearance.as_deref());
+            if use_system_background {
+                native_window
+                    .setBackgroundColor(Some(&objc2_app_kit::NSColor::windowBackgroundColor()));
+                // Tauri's Visible style enables FullSizeContentView, which leaves
+                // a white title bar on macOS even when the window is dark.
+                // Ordinary themes need AppKit's standard, separate title bar.
+                native_window.setStyleMask(
+                    native_window.styleMask()
+                        & !objc2_app_kit::NSWindowStyleMask::FullSizeContentView,
+                );
+            }
+        })
+        .map_err(|error| error.to_string())
 }
 
 #[cfg(test)]

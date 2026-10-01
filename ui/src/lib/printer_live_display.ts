@@ -125,12 +125,15 @@ export function printerSwatchSurfaceStyle(
             inset: "rgba(255, 255, 255, 0.8)",
           };
 
-  return buildSwatchSurfaceStyle(raw, strength satisfies SwatchSurfaceStrength, {
-    midStop: darkTheme ? "24%" : "40%",
-    bottomStop: darkTheme ? "66%" : "74%",
-    shadowGeometry: "0 16px 34px -30px",
-    ...(darkTheme ? {} : { borderColor: LIGHT_PRINTER_SWATCH_SURFACE_BORDER }),
-  });
+  return {
+    ...buildSwatchSurfaceStyle(raw, strength satisfies SwatchSurfaceStrength, {
+      midStop: darkTheme ? "24%" : "40%",
+      bottomStop: darkTheme ? "66%" : "74%",
+      shadowGeometry: "0 16px 34px -30px",
+      ...(darkTheme ? {} : { borderColor: LIGHT_PRINTER_SWATCH_SURFACE_BORDER }),
+    }),
+    "--app-swatch-muted-text": darkTheme ? "rgb(241, 245, 249)" : "rgb(30, 41, 59)",
+  };
 }
 
 export function printerSwatchInteractiveInsetStyle(

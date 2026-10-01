@@ -56,6 +56,8 @@
     --app-theme-modal-selection-background: rgb(240, 249, 255);
     --app-theme-modal-selection-hover-background: rgb(224, 242, 254);
     --app-theme-modal-selection-text: rgb(3, 105, 161);
+    /* Color-backed filament surfaces provide their own local muted text color. */
+    --app-swatch-muted-text: initial;
     --app-theme-data-card-base: rgba(252, 254, 255, 0.95);
     --app-theme-data-panel-base: rgba(252, 254, 255, 0.96);
     --app-theme-data-inset-base: rgba(253, 254, 255, 0.97);
@@ -961,11 +963,11 @@
   }
 
   html:not(.dark) .text-slate-500 {
-    color: rgb(71 85 105) !important;
+    color: var(--app-swatch-muted-text, rgb(71 85 105)) !important;
   }
 
   html:not(.dark) .text-slate-400 {
-    color: rgb(100 116 139) !important;
+    color: var(--app-swatch-muted-text, rgb(100 116 139)) !important;
   }
 
   html:not(.dark) .placeholder\:text-slate-500::placeholder,
@@ -1017,7 +1019,11 @@
 
   html.dark .text-slate-500,
   html.dark .text-slate-400 {
-    color: rgb(148 163 184) !important;
+    color: var(--app-swatch-muted-text, rgb(148 163 184)) !important;
+  }
+
+  html.dark .section-eyebrow {
+    color: var(--app-swatch-muted-text, rgb(148 163 184));
   }
 
   html.dark .placeholder\:text-slate-500::placeholder,
