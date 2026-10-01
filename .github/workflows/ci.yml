@@ -89,6 +89,13 @@ jobs:
     env:
       CARGO_INCREMENTAL: "0"
     steps:
+      - name: Record cache budget clock
+        id: job-clock
+        timeout-minutes: 1
+        continue-on-error: true
+        shell: bash
+        run: echo "started-at=$(date +%s)" >> "$GITHUB_OUTPUT"
+
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -229,8 +236,20 @@ jobs:
           overwrite: true
           retention-days: 7
 
-      - name: Prepare cache-clean target markers
+      - name: Check cache save budget
+        id: rust-cache-budget
         if: ${{ success() && github.event_name == 'push' && github.ref == 'refs/heads/main' && steps.rust-cache.outputs.cache-hit != 'true' }}
+        timeout-minutes: 1
+        continue-on-error: true
+        env:
+          CI_JOB_STARTED_AT: ${{ steps.job-clock.outputs.started-at }}
+        run: node ./scripts/plan-rust-cache-save.mjs --job-timeout-minutes=45 --github-output
+
+      - name: Prepare cache-clean target markers
+        id: rust-cache-markers
+        if: ${{ success() && steps.rust-cache-budget.outputs.can-save == 'true' }}
+        timeout-minutes: 1
+        continue-on-error: true
         shell: bash
         run: |
           mkdir -p target target/msrv
@@ -238,7 +257,10 @@ jobs:
           printf 'Signature: 8a477f597d28d172789f06886806bc55\n# This file is a cache directory tag.\n' > target/msrv/CACHEDIR.TAG
 
       - name: Clean workspace artifacts for cache
-        if: ${{ success() && github.event_name == 'push' && github.ref == 'refs/heads/main' && steps.rust-cache.outputs.cache-hit != 'true' }}
+        id: rust-cache-clean
+        if: ${{ success() && steps.rust-cache-budget.outputs.can-save == 'true' && steps.rust-cache-markers.outcome == 'success' }}
+        timeout-minutes: 1
+        continue-on-error: true
         shell: bash
         run: |
           cargo clean --locked --offline --package filament-manager-core --package bambu-filament-manager --target-dir target
@@ -246,7 +268,10 @@ jobs:
           cargo +1.90.0 clean --locked --offline --package filament-manager-core --package bambu-filament-manager --target-dir target/msrv
 
       - name: Save Rust dependencies
-        if: ${{ success() && github.event_name == 'push' && github.ref == 'refs/heads/main' && steps.rust-cache.outputs.cache-hit != 'true' }}
+        id: rust-cache-save
+        if: ${{ success() && steps.rust-cache-budget.outputs.can-save == 'true' && steps.rust-cache-clean.outcome == 'success' }}
+        timeout-minutes: 5
+        continue-on-error: true
         uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           key: ${{ steps.rust-cache.outputs.cache-primary-key }}
@@ -266,6 +291,27 @@ jobs:
             target/msrv/debug/build
             target/msrv/debug/.fingerprint
 
+      - name: Report cache maintenance
+        if: ${{ success() && github.event_name == 'push' && github.ref == 'refs/heads/main' && steps.rust-cache.outputs.cache-hit != 'true' }}
+        timeout-minutes: 1
+        continue-on-error: true
+        shell: bash
+        env:
+          CACHE_BUDGET: ${{ steps.rust-cache-budget.outputs.can-save }}
+          CACHE_MARKERS_OUTCOME: ${{ steps.rust-cache-markers.outcome }}
+          CACHE_CLEAN_OUTCOME: ${{ steps.rust-cache-clean.outcome }}
+          CACHE_SAVE_OUTCOME: ${{ steps.rust-cache-save.outcome }}
+        run: |
+          if [[ "$CACHE_BUDGET" != true ]]; then
+            message="Rust cache saving skipped: less than ten minutes remained, or the job clock was unavailable. All verification gates passed."
+          elif [[ "$CACHE_MARKERS_OUTCOME" != success || "$CACHE_CLEAN_OUTCOME" != success || "$CACHE_SAVE_OUTCOME" != success ]]; then
+            message="Rust cache maintenance failed or exceeded its step budget. All verification gates passed; a later run may rebuild dependencies."
+          else
+            exit 0
+          fi
+          echo "::warning::$message"
+          echo "$message" >> "$GITHUB_STEP_SUMMARY"
+
   windows-smoke:
     name: Windows Smoke
     runs-on: windows-latest
@@ -273,6 +319,13 @@ jobs:
     env:
       CARGO_INCREMENTAL: "0"
     steps:
+      - name: Record cache budget clock
+        id: job-clock
+        timeout-minutes: 1
+        continue-on-error: true
+        shell: pwsh
+        run: '"started-at=$([DateTimeOffset]::UtcNow.ToUnixTimeSeconds())" >> $env:GITHUB_OUTPUT'
+
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -413,8 +466,20 @@ jobs:
           overwrite: true
           retention-days: 7
 
-      - name: Prepare cache-clean target markers
+      - name: Check cache save budget
+        id: rust-cache-budget
         if: ${{ success() && github.event_name == 'push' && github.ref == 'refs/heads/main' && steps.rust-cache.outputs.cache-hit != 'true' }}
+        timeout-minutes: 1
+        continue-on-error: true
+        env:
+          CI_JOB_STARTED_AT: ${{ steps.job-clock.outputs.started-at }}
+        run: node ./scripts/plan-rust-cache-save.mjs --job-timeout-minutes=60 --github-output
+
+      - name: Prepare cache-clean target markers
+        id: rust-cache-markers
+        if: ${{ success() && steps.rust-cache-budget.outputs.can-save == 'true' }}
+        timeout-minutes: 1
+        continue-on-error: true
         shell: pwsh
         run: |
           $cachedirTag = @'
@@ -427,7 +492,10 @@ jobs:
           $cachedirTag | Set-Content -Path target/msrv/CACHEDIR.TAG -NoNewline
 
       - name: Clean workspace artifacts for cache
-        if: ${{ success() && github.event_name == 'push' && github.ref == 'refs/heads/main' && steps.rust-cache.outputs.cache-hit != 'true' }}
+        id: rust-cache-clean
+        if: ${{ success() && steps.rust-cache-budget.outputs.can-save == 'true' && steps.rust-cache-markers.outcome == 'success' }}
+        timeout-minutes: 1
+        continue-on-error: true
         shell: pwsh
         run: |
           cargo clean --locked --offline --package filament-manager-core --package bambu-filament-manager --target-dir target
@@ -438,7 +506,10 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
       - name: Save Rust dependencies
-        if: ${{ success() && github.event_name == 'push' && github.ref == 'refs/heads/main' && steps.rust-cache.outputs.cache-hit != 'true' }}
+        id: rust-cache-save
+        if: ${{ success() && steps.rust-cache-budget.outputs.can-save == 'true' && steps.rust-cache-clean.outcome == 'success' }}
+        timeout-minutes: 5
+        continue-on-error: true
         uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           key: ${{ steps.rust-cache.outputs.cache-primary-key }}
@@ -457,3 +528,24 @@ jobs:
             target/msrv/debug/deps
             target/msrv/debug/build
             target/msrv/debug/.fingerprint
+
+      - name: Report cache maintenance
+        if: ${{ success() && github.event_name == 'push' && github.ref == 'refs/heads/main' && steps.rust-cache.outputs.cache-hit != 'true' }}
+        timeout-minutes: 1
+        continue-on-error: true
+        shell: pwsh
+        env:
+          CACHE_BUDGET: ${{ steps.rust-cache-budget.outputs.can-save }}
+          CACHE_MARKERS_OUTCOME: ${{ steps.rust-cache-markers.outcome }}
+          CACHE_CLEAN_OUTCOME: ${{ steps.rust-cache-clean.outcome }}
+          CACHE_SAVE_OUTCOME: ${{ steps.rust-cache-save.outcome }}
+        run: |
+          if ($env:CACHE_BUDGET -ne 'true') {
+            $message = 'Rust cache saving skipped: less than ten minutes remained, or the job clock was unavailable. All verification gates passed.'
+          } elseif ($env:CACHE_MARKERS_OUTCOME -ne 'success' -or $env:CACHE_CLEAN_OUTCOME -ne 'success' -or $env:CACHE_SAVE_OUTCOME -ne 'success') {
+            $message = 'Rust cache maintenance failed or exceeded its step budget. All verification gates passed; a later run may rebuild dependencies.'
+          } else {
+            exit 0
+          }
+          Write-Output "::warning::$message"
+          $message >> $env:GITHUB_STEP_SUMMARY
