@@ -1,5 +1,7 @@
 # UI- og brukervennlighetsvurdering, 19. september 2026
 
+**Historisk dokument.** Planen eller vurderingen nedenfor beskriver denne daterte runden. Senere kontroller og rettinger er fullført og merget gjennom PR #142–143. Dagens visuelle status og konkrete evidensarv står i [sluttmatrisen 1. oktober](visual-modernization-2026-10-01/critic-current-ledger.md); reelle restoppgaver står i [forbedringsplanen](IMPROVEMENT_PLAN.md). Tidligere karakterer og dekningshull beholdes som historikk.
+
 Fire runder med en separat kritikeragent og implementering i Filament Manager.
 18 av 19 vurderte lokale områder endte på minst 8/10. Bibliotek/webapp endte
 på 7,95, og datatilkoblet native Client har ingen karakter. Hele oppdragets

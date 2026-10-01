@@ -1,5 +1,7 @@
 # Delivery status — 2026-09-30
 
+**Historical status, superseded on October 1.** The resumed review is complete and merged through [PR #143](https://github.com/bliatun-code/Filament-Manager/pull/143). Use the [final criterion matrix](../visual-modernization-2026-10-01/critic-current-ledger.md) and [final inspection](../visual-modernization-2026-10-01/critic-final-inspection.md) for current closure, restored-color verification and scope limits. The open findings below describe the earlier round, not today's backlog.
+
 This batch collects the implemented UI improvements, historical visual review
 notes and synthetic screenshots, automatic RFID assignment correction, and
 stable dependency upgrade. The user subsequently requested that all local work

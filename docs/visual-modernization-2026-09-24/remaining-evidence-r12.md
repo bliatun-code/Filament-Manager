@@ -1,5 +1,7 @@
 # Konsolidert restdekning etter runde 12
 
+**Historical status, superseded on October 1.** The resumed review is complete and merged through [PR #143](https://github.com/bliatun-code/Filament-Manager/pull/143). Use the [final criterion matrix](../visual-modernization-2026-10-01/critic-current-ledger.md) and [final inspection](../visual-modernization-2026-10-01/critic-final-inspection.md) for current closure, restored-color verification and scope limits. The open findings below describe the earlier round, not today's backlog.
+
 Dette er en arbeidsliste, ikke sluttgodkjenning. R6 inneholder204 individuelt inspiserte native bilder. IE i I/R/A gjelder hva hvert stillbilde alene beviser. De kan suppleres av konkret delt mekanismebevis og faktiske flyter; det kreves ikke204 identiske fullsykluser, men verken uinspiserte temaer eller reelle restfunn kan overstyres av en test.
 
 ## Eksplisitt gjenstående produktfunn / retest

@@ -1,5 +1,7 @@
 # Import og full gjenoppretting: UI- og datakontroll
 
+**Historisk dokument.** Planen eller vurderingen nedenfor beskriver denne daterte runden. Senere kontroller og rettinger er fullført og merget gjennom PR #142–143. Dagens visuelle status og konkrete evidensarv står i [sluttmatrisen 1. oktober](visual-modernization-2026-10-01/critic-current-ledger.md); reelle restoppgaver står i [forbedringsplanen](IMPROVEMENT_PLAN.md). Tidligere karakterer og dekningshull beholdes som historikk.
+
 Oppfølging av den brede UI-vurderingen og Host/Client-rundene i PR #132.
 Denne avgrensningen dekker eksport, validering, lagerimport, full gjenoppretting,
 avbrudd og korrigert forsøk etter ugyldig fil. Karakterene er en uavhengig

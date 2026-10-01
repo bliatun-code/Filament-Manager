@@ -1,5 +1,7 @@
 # Plan: import og gjenoppretting med befolkede testdata
 
+**Historisk dokument.** Planen eller vurderingen nedenfor beskriver denne daterte runden. Senere kontroller og rettinger er fullført og merget gjennom PR #142–143. Dagens visuelle status og konkrete evidensarv står i [sluttmatrisen 1. oktober](visual-modernization-2026-10-01/critic-current-ledger.md); reelle restoppgaver står i [forbedringsplanen](IMPROVEMENT_PLAN.md). Tidligere karakterer og dekningshull beholdes som historikk.
+
 Denne oppfølgingen tar de manuelle import- og gjenopprettingsflytene som ikke
 inngikk i den brede UI- og Host/Client-gjennomgangen. PR #132 er fortsatt åpen
 ved oppstart; ingen release eller merge inngår.

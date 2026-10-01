@@ -1,5 +1,7 @@
 # Massehandlinger i lageret: vurdering med data
 
+**Historisk dokument.** Planen eller vurderingen nedenfor beskriver denne daterte runden. Senere kontroller og rettinger er fullført og merget gjennom PR #142–143. Dagens visuelle status og konkrete evidensarv står i [sluttmatrisen 1. oktober](visual-modernization-2026-10-01/critic-current-ledger.md); reelle restoppgaver står i [forbedringsplanen](IMPROVEMENT_PLAN.md). Tidligere karakterer og dekningshull beholdes som historikk.
+
 Denne avgrensede oppfølgingen av PR #132 undersøker utvalg, flytting,
 statusendring og beskyttede ruller. Den bruker en separat native macOS-app med
 ny syntetisk Standalone-database: 72 ruller, egne lokasjoner, tildelte

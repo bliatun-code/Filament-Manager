@@ -1,5 +1,7 @@
 # Host/Client: datatilkoblet brukervennlighetsgjennomgang
 
+**Historisk dokument.** Planen eller vurderingen nedenfor beskriver denne daterte runden. Senere kontroller og rettinger er fullført og merget gjennom PR #142–143. Dagens visuelle status og konkrete evidensarv står i [sluttmatrisen 1. oktober](visual-modernization-2026-10-01/critic-current-ledger.md); reelle restoppgaver står i [forbedringsplanen](IMPROVEMENT_PLAN.md). Tidligere karakterer og dekningshull beholdes som historikk.
+
 Arbeidet startet 19. september og fortsatte 20. september 2026, på toppen av
 UI-pakken i PR #132. Dette er en avgrenset oppfølging av bibliotek/webapp og den
 native skrivebordsklienten. Masseoperasjoner og import/gjenoppretting er ikke

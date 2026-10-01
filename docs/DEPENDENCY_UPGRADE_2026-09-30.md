@@ -53,5 +53,8 @@ checks pass.
 - All 1,076 Rust tests pass; three pre-existing ignored tests remain ignored.
 - Formatting and both debug/release Clippy profiles pass with warnings denied.
 
-No installed user application, production database or printer is modified. No
-release is published. Windows execution must be verified in CI before merge.
+No installed user application, production database or printer was modified and
+no release was published by this batch. Subsequent macOS and Windows CI passed
+before [PR #142](https://github.com/bliatun-code/Filament-Manager/pull/142) was
+merged as `7ff84845`. This report retains the September 30 registry/audit snapshot;
+ongoing compatibility holds are governed by the [dependency policy](DEPENDENCY_SECURITY.md).

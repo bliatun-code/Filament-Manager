@@ -1,5 +1,7 @@
 # Dependency review — 2026-09-14
 
+**Historical dependency snapshot.** Version, minimum-Rust and audit statements below describe this date. The coordinated Tauri 2.12 / Rust 1.90 upgrade is documented in the [September 30 upgrade report](DEPENDENCY_UPGRADE_2026-09-30.md); current maintenance rules are in the [dependency policy](DEPENDENCY_SECURITY.md).
+
 This review starts from PR #120's merge, `36ff64f6`, and combines the updates
 proposed in Dependabot #121–123. All three original PRs were green when reviewed;
 their results do not substitute for verification of this combined candidate.
