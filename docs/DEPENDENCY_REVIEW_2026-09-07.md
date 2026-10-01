@@ -1,5 +1,7 @@
 # Dependency review — 2026-09-07
 
+**Historical dependency snapshot.** Version, minimum-Rust and audit statements below describe this date. The coordinated Tauri 2.12 / Rust 1.90 upgrade is documented in the [September 30 upgrade report](DEPENDENCY_UPGRADE_2026-09-30.md); current maintenance rules are in the [dependency policy](DEPENDENCY_SECURITY.md).
+
 Status updated on 2026-09-08. The dependency batches planned in this review are
 merged, following the earlier [#90](https://github.com/bliatun-code/Filament-Manager/pull/90):
 

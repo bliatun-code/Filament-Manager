@@ -1,5 +1,7 @@
 # Plan: massehandlinger i lageret
 
+**Historisk dokument.** Planen eller vurderingen nedenfor beskriver denne daterte runden. Senere kontroller og rettinger er fullført og merget gjennom PR #142–143. Dagens visuelle status og konkrete evidensarv står i [sluttmatrisen 1. oktober](visual-modernization-2026-10-01/critic-current-ledger.md); reelle restoppgaver står i [forbedringsplanen](IMPROVEMENT_PLAN.md). Tidligere karakterer og dekningshull beholdes som historikk.
+
 Følger opp den brede UI-vurderingens manglende manuelle dekning av bulkvarianter.
 PR #132 er fortsatt åpen ved oppstart. Ingen release eller merge inngår.
 

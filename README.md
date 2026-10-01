@@ -47,6 +47,10 @@ Start with the user guide for product behavior and workflows:
 - Norwegian: [docs/BRUKERVEILEDNING.md](docs/BRUKERVEILEDNING.md)
 - English: [docs/USER_GUIDE.md](docs/USER_GUIDE.md)
 - Screenshot tour: [docs/SCREENSHOTS.md](docs/SCREENSHOTS.md)
+- Current implementation status and remaining work:
+  [docs/IMPROVEMENT_PLAN.md](docs/IMPROVEMENT_PLAN.md)
+- Completed visual review and per-theme criterion matrix:
+  [October 1 final review](docs/visual-modernization-2026-10-01/critic-current-ledger.md)
 - macOS installation and verification:
   [docs/MACOS_DISTRIBUTION.md](docs/MACOS_DISTRIBUTION.md)
 - Contributing: [CONTRIBUTING.md](CONTRIBUTING.md)

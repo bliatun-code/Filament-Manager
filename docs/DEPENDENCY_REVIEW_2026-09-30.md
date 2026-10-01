@@ -1,7 +1,9 @@
 # Dependency review — 2026-09-30
 
 This is the initial review. The subsequently authorized larger update is recorded
-in the [stable upgrade report](DEPENDENCY_UPGRADE_2026-09-30.md).
+in the [stable upgrade report](DEPENDENCY_UPGRADE_2026-09-30.md), subsequently
+merged in PR #142. The initial local-main, Rust 1.88 and deferred-Tauri statements
+below describe the first maintenance stage, not the current checkout.
 
 ## Local update
 

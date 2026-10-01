@@ -2,15 +2,17 @@
 
 | Felt           | Verdi          |
 | -------------- | -------------- |
-| Planstatus     | Påbegynt       |
+| Planstatus     | Implementering ferdig; brukermålinger gjenstår |
 | Planperiode    | 12 uker        |
 | Oppstart       | 2026-08-21     |
-| Sist oppdatert | 2026-09-19     |
+| Sist oppdatert | 2026-10-01     |
 | Eier           | Prosjektteamet |
 
 ## Datatilkoblet UI-vurdering
 
-[Evalueringen 19. september 2026](UI_USABILITY_REVIEW_2026-09-19.md) dokumenterer fire kritikerrunder, gjennomførte rettelser, områdescorer og dekningshull. Agentvurderingen erstatter ikke målene for tester med faktiske brukere nedenfor.
+Den [visuelle sluttgjennomgangen 1. oktober](visual-modernization-2026-10-01/critic-current-ledger.md) er ferdig og merget i [PR #143](https://github.com/bliatun-code/Filament-Manager/pull/143) som `1ef116db`. Den uavhengige syntetiske kritikeren gir 9/10 på hvert relevant kriterium per produktfamilie og tema, med eksplisitt gjenbruk av tidligere bevis og dokumenterte avgrensninger. De sterke filament- og printerfargene er bevart. [Sluttrapporten](visual-modernization-2026-10-01/critic-final-inspection.md) og [implementeringsloggen](visual-modernization-2026-10-01/implementation-log.md) dokumenterer rettinger og retester.
+
+[Evalueringen 19. september](UI_USABILITY_REVIEW_2026-09-19.md) og eldre restlister er historiske runder, ikke dagens åpne arbeid. Agentvurderingen erstatter ikke målene for tester med faktiske brukere nedenfor.
 
 ## Mål
 
@@ -57,7 +59,7 @@ Fasen er ferdig når lav-beholdning gir samme resultat overalt, oppgradering fra
 | P0        | Legge kontekstuelle handlinger på spoledetaljen: Lån ut, Last i skriver og Skriv etikett.   | Ferdig | Valgt spole er forhåndsutfylt, og brukeren trenger ikke søke opp samme spole igjen mellom steg.              |
 | P1        | Flytte etikettark fra Settings til Inventory.                                               | Ferdig | Etikettark er tilgjengelig der spolene velges, uten tap av eksisterende funksjonalitet.                      |
 | P0        | Samle vanlige detaljendringer i én lagre-handling og varsle om ulagrede endringer.          | Ferdig | Lukking, navigasjon og avbryt beskytter ulagrede data; lagring er atomisk og gir tydelig tilbakemelding.     |
-| P1        | La filteret All vise alle statuser, eller gi det et navn som samsvarer med faktisk innhold. | Ferdig | Filternavn og resultat samsvarer og er dekket av test.                                                       |
+| P1        | La standardfilteret Alle skjule tomme ruller, med eget Tom-filter for historikk og gjenbruk. | Ferdig | Filternavn og resultat samsvarer og er dekket av test.                                                       |
 | P1        | Skille mellom tomt lager og null treff i tomtilstander.                                     | Ferdig | Brukeren får riktig forklaring og relevant neste handling i begge situasjoner.                               |
 
 ### Faseport 1
@@ -169,7 +171,27 @@ Følgende prioriteres ikke i denne 12-ukersperioden:
 
 Disse temaene vurderes på nytt etter fase 3, når kjerneflyter, kontrakter og datakvalitet er stabilisert.
 
-## Neste arbeid
+## Gjeldende status og neste arbeid — 1. oktober 2026
+
+Implementeringsfasene, Filamentstandarder, de tekniske sporene og den visuelle sluttgjennomgangen er ferdige. [PR #142](https://github.com/bliatun-code/Filament-Manager/pull/142) samlet arbeidsflyter, RFID-retting og avhengighetsoppdatering som `7ff84845`. PR #143 fullførte tittellinje, lokal tekstkontrast og lesbare plasseringsnavn/søk. Alle åtte PR-kontroller på den endelige kandidaten passerte før squash-merge. Det gjenstår ingen åpne visuelle tiltak i det avtalte omfanget.
+
+| Arbeid | Status | Neste steg |
+|---|---|---|
+| Moderert brukertest med minst fem faktiske deltakere | Klargjort; målinger ikke samlet | Gjennomfør [protokollen](USABILITY_TEST_PROTOCOL.md). Målene om minst 90 % uhjulpet fullføring og minst 30 % kortere median tid er fortsatt umålte. Faste studiebygg og syntetiske oppgavebiblioteker er dokumentert; de er historiske sammenligningsbygg, ikke dagens main. |
+| Authenticode-signering på Windows | Bevisst utsatt | Gjenoppta valg av utgiveridentitet, signeringstjeneste og beskyttet GitHub-miljø før bredere signert Windows-distribusjon. Dagens eksplisitt usignerte policy gjelder. |
+| Avhengigheter med kompatibilitetskrav | Avventer kompatibilitet eller runtime-policy | Følg [avhengighetspolicyen](DEPENDENCY_SECURITY.md) og [oppdateringsrapporten 30. september](DEPENDENCY_UPGRADE_2026-09-30.md). Tauri 2.12 og Rust-minimum 1.90 er innført; TypeScript-/Node-major og foreldrestyrte transitive versjoner oppgraderes når kontraktene tillater det. Daterte versjonsfunn er ikke en løpende registerkontroll. |
+| Neste release | Ikke startet | Siste publiserte release er v0.31.0 fra 20. september. Senere endringer er merget på main, men det er ikke publisert en ny apppakke. Velg ny kandidat og kjør gjeldende release-verifisering før publisering. |
+
+## Fremdriftslogg
+
+### 2026-10-01
+
+- PR #143 er merget som `1ef116db` etter åtte beståtte kontroller på `457102eb`. Gjeldende plan viser nå ferdig visuell gjennomgang, bevarte farger og reelle restoppgaver. Den gamle leveransestatusen er beholdt nedenfor som datert historikk.
+- Den tilgjengelige større avhengighetsoppdateringen ble merget med PR #142. Tauri 2.12, Rust-minimum 1.90 og fjerning av den gamle unic-kjeden er dokumentert i oppdateringsrapporten.
+
+### Tidligere leveransestatus — frem til 19. september 2026
+
+Følgende avsnitt er tidligere leveransehistorikk. Ord som «neste», «lokalt» og «gjenstår» beskriver statusen på det tidspunktet; gjeldende oppgaver står i tabellen ovenfor.
 
 [Avhengighetsgjennomgangen 14. september](DEPENDENCY_REVIEW_2026-09-14.md) er merget gjennom PR #124 som `22106b33`, etter én push og elleve grønne kontroller uten omkjøring. Den samler Dependabot #121–123, React 19.3, Vite 8.3 og kompatible Rust-oppdateringer, inkludert Quinn-sikkerhetsrettelser. Tauri 3 er publisert som alfa og krever en separat migrering; TypeScript 7 venter fortsatt på lintstøtte. Den daterte rapporten beskriver gjenværende varsler og hva som må utløse neste oppgradering.
 
@@ -213,16 +235,12 @@ Den tidligere lokale oppfriskingen gjenopprettet navnet bare midlertidig. Omstar
 
 [Lasting fra lager til printer](INVENTORY_LOAD_FOLLOWUP_2026-09-13.md) er merget i PR #116 som `ad3aac5c` etter åtte grønne kontroller: stabilt sporvalg, feil inne i dialogen, bekreftet lagring før oppfriskning og atomisk kontroll av at målsporet fortsatt er tomt. Lasting bevarer eksisterende vekt og avviser ruller som allerede er flyttet til en printer.
 
-1. Gjennomfør og dokumenter den modererte [brukertesten](USABILITY_TEST_PROTOCOL.md) med minst fem deltakere når faktiske brukermålinger samles inn. Faste baseline-/kandidatbygg og samme syntetiske startbibliotek er klargjort. `npm run qa:usability:prepare` lager oppgavekort, planlagt byggrekkefølge, isolerte oppgavedatabaser og en uutfylt resultatmal. AI-evalueringen og de automatiserte femflyt-testene dokumenterer arbeidsflyter og dataintegritet; målene om minst 90 % uhjulpet fullføring og minst 30 % kortere median tid er fortsatt umålte.
-2. Authenticode forblir utsatt til prosjektet eksplisitt gjenopptar valg av utgiveridentitet, signeringstjeneste og beskyttet GitHub-miljø.
-
-## Fremdriftslogg
 
 ### 2026-09-19
 
-- PR #130 er merget som `626e8c8e`. Oppfølgingen av Filamentstandarder dekker valuta, gruppepriser, lagergrenser og batchprising. Fem regresjonstester gjenskaper feil i den tidligere hooken; nettlesertestene dekker også tilbakemeldinger og overskrivingsdialogen.
+- PR #131 er merget som `548c1a4b`. Oppfølgingen av Filamentstandarder dekker valuta, gruppepriser, lagergrenser og batchprising. Fem regresjonstester gjenskaper feil i den tidligere hooken; nettlesertestene dekker også tilbakemeldinger og overskrivingsdialogen.
 
-- PR #129 er merget som `d2f37f8f`. Brukerens Client-skjermbilde avdekket et importvarsel uten tidsfrist. Oppfølgingen gir suksessmeldinger 20 sekunders levetid og hindrer at en allerede varslet katalogjobb varsles igjen ved navigasjon eller omstart. Jobbresultatet og loggen kan fortsatt gjenopprettes.
+- PR #130 er merget som `626e8c8e`. Brukerens Client-skjermbilde avdekket et importvarsel uten tidsfrist. Oppfølgingen gir suksessmeldinger 20 sekunders levetid og hindrer at en allerede varslet katalogjobb varsles igjen ved navigasjon eller omstart. Jobbresultatet og loggen kan fortsatt gjenopprettes.
 
 ### 2026-09-15
 

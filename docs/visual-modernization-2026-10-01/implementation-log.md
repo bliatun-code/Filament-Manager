@@ -159,3 +159,14 @@ new findings are closed. The final ledger supersedes intermediate IE/8 scores;
 it preserves scope limits rather than presenting synthetic review as human user
 research or universal accessibility certification. The isolated Final app and
 synthetic feed are stopped. No production library or installed app was replaced.
+
+
+## Merge and current delivery status
+
+[PR #143](https://github.com/bliatun-code/Filament-Manager/pull/143) was
+squash-merged as `1ef116db` after all eight checks passed on the exact final
+head `457102eb`. The last commit only clarified report wording that the
+publication-path guard had mistaken for a private path; approved product code
+remains `05a05d0f`. Local main was updated, and the completed PR monitor paused.
+The current backlog is in [the improvement plan](../IMPROVEMENT_PLAN.md).
+Published v0.31.0 remains separate from the subsequent merged source changes.
