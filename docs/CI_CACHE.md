@@ -152,3 +152,12 @@ archive's size and the reason for that unusually slow compression were not
 recorded. The new budget bounds the optional work while preserving demonstrated
 compiled-dependency reuse. It does not claim that compression itself is faster;
 actual save/reuse behavior must be confirmed in ordinary main/PR runs.
+
+That follow-up passed in the ordinary [main run after #145](https://github.com/bliatun-code/Filament-Manager/actions/runs/36895418581)
+on `d757c341`: Windows missed the same exact cache key as the failed run, had
+22.4 minutes remaining when planning maintenance, and logged a successful cache
+save in about 1 minute 33 seconds. Its complete job passed in about 39 minutes
+18 seconds. macOS restored its exact cache and skipped maintenance as intended;
+all other CI and CodeQL jobs passed. This confirms normal save/reuse behavior,
+not that the change itself accelerated compression or experimentally exercised
+the timeout path. The timeout/budget contracts remain covered by focused tests.

@@ -40,6 +40,7 @@ updates:
           - "version-update:semver-major"
       - dependency-name: "typescript"
         update-types:
+          - "version-update:semver-minor"
           - "version-update:semver-major"
     groups:
       ui-npm-patches:
