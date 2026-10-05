@@ -771,6 +771,25 @@ fn windows_backend_error(operation: CredentialOperation, error_code: u32) -> Cre
 }
 
 #[cfg(test)]
+fn consume_injected_failure(remaining_failures: &std::sync::atomic::AtomicUsize) -> bool {
+    use std::sync::atomic::Ordering;
+
+    let mut remaining = remaining_failures.load(Ordering::SeqCst);
+    while let Some(next) = remaining.checked_sub(1) {
+        match remaining_failures.compare_exchange_weak(
+            remaining,
+            next,
+            Ordering::SeqCst,
+            Ordering::SeqCst,
+        ) {
+            Ok(_) => return true,
+            Err(current) => remaining = current,
+        }
+    }
+    false
+}
+
+#[cfg(test)]
 #[derive(Default)]
 struct InMemoryCredentialBackend {
     values: Mutex<std::collections::HashMap<CredentialKey, SecretValue>>,
@@ -781,15 +800,7 @@ struct InMemoryCredentialBackend {
 #[cfg(test)]
 impl CredentialBackend for InMemoryCredentialBackend {
     fn get(&self, key: &CredentialKey) -> Result<Option<SecretValue>, CredentialStoreError> {
-        if self
-            .remaining_read_failures
-            .fetch_update(
-                std::sync::atomic::Ordering::SeqCst,
-                std::sync::atomic::Ordering::SeqCst,
-                |remaining| remaining.checked_sub(1),
-            )
-            .is_ok()
-        {
+        if consume_injected_failure(&self.remaining_read_failures) {
             return Err(CredentialStoreError::Backend {
                 operation: CredentialOperation::Read,
                 platform: "test credential store",
@@ -819,15 +830,7 @@ impl CredentialBackend for InMemoryCredentialBackend {
     }
 
     fn delete(&self, key: &CredentialKey) -> Result<bool, CredentialStoreError> {
-        if self
-            .remaining_delete_failures
-            .fetch_update(
-                std::sync::atomic::Ordering::SeqCst,
-                std::sync::atomic::Ordering::SeqCst,
-                |remaining| remaining.checked_sub(1),
-            )
-            .is_ok()
-        {
+        if consume_injected_failure(&self.remaining_delete_failures) {
             return Err(CredentialStoreError::Backend {
                 operation: CredentialOperation::Delete,
                 platform: "test credential store",
@@ -850,6 +853,44 @@ mod tests {
     use super::*;
     use std::sync::atomic::{AtomicUsize, Ordering};
     use std::time::Duration;
+
+    #[test]
+    fn injected_failure_budget_stops_at_zero_without_underflow() {
+        let remaining = AtomicUsize::new(1);
+
+        assert!(consume_injected_failure(&remaining));
+        assert_eq!(remaining.load(Ordering::SeqCst), 0);
+        for _ in 0..3 {
+            assert!(!consume_injected_failure(&remaining));
+            assert_eq!(remaining.load(Ordering::SeqCst), 0);
+        }
+    }
+
+    #[test]
+    fn contended_injected_failure_budget_is_consumed_exactly_once_per_failure() {
+        let remaining = AtomicUsize::new(1000);
+        let ready = std::sync::Barrier::new(8);
+        let consumed = std::thread::scope(|scope| {
+            let workers = (0..8)
+                .map(|_| {
+                    scope.spawn(|| {
+                        ready.wait();
+                        (0..256)
+                            .filter(|_| consume_injected_failure(&remaining))
+                            .count()
+                    })
+                })
+                .collect::<Vec<_>>();
+            workers
+                .into_iter()
+                .map(|worker| worker.join().expect("failure budget worker"))
+                .sum::<usize>()
+        });
+
+        assert_eq!(consumed, 1000);
+        assert_eq!(remaining.load(Ordering::SeqCst), 0);
+        assert!(!consume_injected_failure(&remaining));
+    }
 
     #[test]
     fn credential_names_are_versioned_stable_and_do_not_expose_scope() {

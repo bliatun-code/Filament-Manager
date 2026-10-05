@@ -6,6 +6,10 @@ const workflow = readFileSync(
   new URL("../.github/workflows/supply-chain.yml", import.meta.url),
   "utf8",
 );
+const releaseWorkflow = readFileSync(
+  new URL("../.github/workflows/release-build.yml", import.meta.url),
+  "utf8",
+);
 const dependabot = readFileSync(
   new URL("../.github/dependabot.yml", import.meta.url),
   "utf8",
@@ -37,7 +41,7 @@ const expectedDependabotIgnoreRules = [
   },
   {
     dependency: "typescript",
-    updateTypes: ["version-update:semver-major"],
+    updateTypes: ["version-update:semver-minor", "version-update:semver-major"],
   },
 ];
 
@@ -170,9 +174,11 @@ test("SBOM smoke uses the same pinned fail-closed generator as release", () => {
   assert.match(workflow, /^  sbom-smoke:\n    name: SBOM generation$/m);
   assert.match(
     workflow,
-    /anchore\/sbom-action@3ad7283483fc7af8ff2b4ea19663c2d5ca935e26 # v0\.24\.2/,
+    /anchore\/sbom-action@[a-f0-9]{40} # v\d+\.\d+\.\d+/,
   );
-  assert.match(workflow, /syft-version: v1\.51\.0/);
+  const sbomPin = /uses: (anchore\/sbom-action@[a-f0-9]{40}) # (v\d+\.\d+\.\d+)/;
+  assert.deepEqual(workflow.match(sbomPin)?.slice(1), releaseWorkflow.match(sbomPin)?.slice(1));
+  assert.match(workflow, /syft-version: v1\.54\.0/);
   assert.match(workflow, /dependency-snapshot: false/);
   assert.match(workflow, /upload-artifact: false/);
   assert.match(workflow, /upload-release-assets: false/);
@@ -201,7 +207,7 @@ test("Dependabot surfaces majors except for explicit UI compatibility holds", ()
   assertDependabotIgnorePolicy(dependabot);
   assert.equal(uiPackageManifest.engines.node, ">=24 <25");
   assert.match(uiPackageManifest.devDependencies["@types/node"], /^\^24\./);
-  assert.match(uiPackageManifest.devDependencies.typescript, /^\^6\./);
+  assert.match(uiPackageManifest.devDependencies.typescript, /^~6\.0\./);
 });
 
 test("Dependabot ignore policy parser accepts either YAML quote style", () => {

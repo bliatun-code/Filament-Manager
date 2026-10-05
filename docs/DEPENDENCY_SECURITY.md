@@ -28,8 +28,11 @@ Rust 1.90 lower bound and formatting style remain separate, explicit contracts.
 Dependabot surfaces major npm and Cargo upgrades as focused pull requests
 instead of suppressing them with wildcard rules. The UI has two temporary,
 named compatibility holds: `@types/node` follows the application's Node 24
-runtime contract, and TypeScript remains on 6.x until the lint toolchain
-supports TypeScript 7. The contract suite requires these holds to stay explicit
+runtime contract, and TypeScript remains on 6.0.x while typescript-eslint requires
+TypeScript below 6.1. The `~6.0.3` manifest range allows compatible patches;
+Dependabot temporarily holds its minor and major upgrades. Revisit this limit
+when the [lint toolchain's supported range](https://typescript-eslint.io/users/dependency-versions/)
+expands. The contract suite requires these holds to stay explicit
 and tied to their manifest baselines.
 
 The weekly Cargo version-update group explicitly allows both direct and
@@ -61,7 +64,9 @@ The previously unmaintained `unic` chain was removed by the coordinated
 Tauri 2.12 / tauri-utils 2.10 update, which uses urlpattern 0.6. The application
 and both native CI jobs now require Rust 1.90 or newer. The dated
 [upgrade report](DEPENDENCY_UPGRADE_2026-09-30.md) records the migration and
-verification. All remaining warnings stay visible in the scheduled report;
+verification. The [October 5 review](DEPENDENCY_REVIEW_2026-10-05.md) records the
+next stable patch/toolchain update and the remaining compatibility constraints.
+All remaining warnings stay visible in the scheduled report;
 only vulnerability advisories fail `cargo audit`. License violations always fail.
 
 ## Policy Files
