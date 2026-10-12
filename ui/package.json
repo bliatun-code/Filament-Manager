@@ -15,7 +15,7 @@
     "preview": "node ./node_modules/vite/bin/vite.js preview"
   },
   "dependencies": {
-    "@tauri-apps/api": "^2.12.1",
+    "@tauri-apps/api": "^2.12.2",
     "@zxing/browser": "^0.2.1",
     "@zxing/library": "^0.23.0",
     "pdf-lib": "^1.17.1",
@@ -37,6 +37,6 @@
     "tailwindcss": "^4.3.2",
     "typescript": "~6.0.3",
     "typescript-eslint": "^8.71.1",
-    "vite": "^8.3.2"
+    "vite": "^8.3.4"
   }
 }
