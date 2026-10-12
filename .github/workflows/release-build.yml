@@ -193,7 +193,7 @@ jobs:
             --manifest="$manifest_path"
 
       - name: Upload sanitized v0.28 fixture
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: filament-manager-v0.28.0-database-fixture-${{ github.run_id }}
           path: ${{ runner.temp }}/filament-manager-v0.28.0-fixture
@@ -210,7 +210,7 @@ jobs:
           node scripts/prepare-compatibility-release-upgrade-fixture.mjs --output="$COMPATIBILITY_FIXTURE_DIR/filament-manager-v0.30.0.db" --verify
 
       - name: Upload sanitized v0.30 compatibility fixture
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: filament-manager-v0.30.0-database-fixture-${{ github.run_id }}
           path: ${{ runner.temp }}/filament-manager-v0.30.0-fixture
@@ -436,7 +436,7 @@ jobs:
           shasum -a 256 "$dmg_name" > SHA256SUMS.txt
 
       - name: Upload verified DMG artifact
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: filament-manager-macos-dmg-${{ github.run_id }}
           path: |
@@ -492,7 +492,7 @@ jobs:
 
       - name: Upload installed macOS smoke logs
         if: always()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: filament-manager-macos-dmg-smoke-${{ github.run_id }}
           path: ${{ runner.temp }}/filament-manager-macos-dmg-smoke
@@ -594,7 +594,7 @@ jobs:
 
       - name: Upload Intel macOS smoke logs
         if: always()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: filament-manager-macos-dmg-intel-smoke-${{ github.run_id }}
           path: ${{ runner.temp }}/filament-manager-macos-dmg-intel-smoke
@@ -690,7 +690,7 @@ jobs:
             -NormalizedFileName "Filament-Manager_$($tauriConfig.version)_x64_en-US.msi"
 
       - name: Upload verified MSI artifact
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: filament-manager-windows-msi-${{ github.run_id }}
           path: |
@@ -779,7 +779,7 @@ jobs:
 
       - name: Upload release MSI smoke logs
         if: always()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: filament-manager-windows-release-msi-smoke-${{ github.run_id }}
           path: ${{ runner.temp }}/filament-manager-windows-release-msi-smoke
@@ -844,7 +844,7 @@ jobs:
           sha256sum "$sbom_name" > SHA256SUMS-sbom.txt
 
       - name: Upload verified source dependency SBOM
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: filament-manager-release-sbom-${{ github.run_id }}
           path: |
@@ -940,7 +940,7 @@ jobs:
             "release-provenance/Filament-Manager_${package_version}_provenance.sigstore.json"
 
       - name: Upload signed provenance bundle
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: filament-manager-release-provenance-${{ github.run_id }}
           path: release-provenance/*.sigstore.json
