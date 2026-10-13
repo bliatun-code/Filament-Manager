@@ -102,4 +102,13 @@ After this probe correction, all seven focused tests and the full Rust suite
 pass again: 1,080 tests, the same three existing ignored tests, formatting, and
 debug/release Clippy with warnings denied. Rust 1.90 all-targets/all-features
 locked compilation and public-readiness also pass. An independent review finds
-no blocking issue. Hosted Windows results remain a required validation step.
+no blocking issue. Hosted Windows results remained a required validation step
+at that point.
+
+Subsequent validation: [PR #162](https://github.com/bliatun-code/Filament-Manager/pull/162)
+merged as `0fb48696`. Its corrected PR checks and the ordinary
+[main CI](https://github.com/bliatun-code/Filament-Manager/actions/runs/38345387119)
+passed on their first attempt, including all seven detail/RFID scenarios on
+Windows. All three [CodeQL analyses](https://github.com/bliatun-code/Filament-Manager/actions/runs/38345387111)
+passed on the same merge commit. No test-failure rerun was used after the probe
+correction.

@@ -180,7 +180,7 @@ Implementeringsfasene, Filamentstandarder, de tekniske sporene og den visuelle s
 | Moderert brukertest med minst fem faktiske deltakere | Klargjort; målinger ikke samlet | Gjennomfør [protokollen](USABILITY_TEST_PROTOCOL.md). Målene om minst 90 % uhjulpet fullføring og minst 30 % kortere median tid er fortsatt umålte. Faste studiebygg og syntetiske oppgavebiblioteker er dokumentert; de er historiske sammenligningsbygg, ikke dagens main. |
 | Authenticode-signering på Windows | Bevisst utsatt | Gjenoppta valg av utgiveridentitet, signeringstjeneste og beskyttet GitHub-miljø før bredere signert Windows-distribusjon. Dagens eksplisitt usignerte policy gjelder. |
 | Avhengigheter med kompatibilitetskrav | Avventer kompatibilitet eller runtime-policy | Følg [avhengighetspolicyen](DEPENDENCY_SECURITY.md) og [gjennomgangen 13. oktober](DEPENDENCY_REVIEW_2026-10-13.md). Tauri 2.12 og Rust-minimum 1.90 er innført; TypeScript over 6.0.x, Node-major og foreldrestyrte transitive versjoner oppgraderes når kontraktene tillater det. Node 26 har planlagt LTS-overgang 28. oktober. Daterte versjonsfunn er ikke en løpende registerkontroll. |
-| Neste release | Ikke startet | Siste publiserte release er v0.31.0 fra 20. september. Senere endringer er merget på main, men det er ikke publisert en ny apppakke. Velg ny kandidat og kjør gjeldende release-verifisering før publisering. |
+| Versjon og distribusjon | v0.32.0 | Endringene siden v0.31.0 er samlet i [notatene for v0.32.0](releases/RELEASE_NOTES_v0.32.0.md). Offentlig publiseringsstatus og nedlastinger finnes på [GitHub Releases](https://github.com/bliatun-code/Filament-Manager/releases/latest). Release-flyten krever grønn CI og verifiserte installasjonspakker før publisering. |
 
 ## Fremdriftslogg
 
