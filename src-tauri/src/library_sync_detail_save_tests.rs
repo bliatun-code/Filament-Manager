@@ -103,7 +103,14 @@ impl ReviewedSaveHost {
         capable: bool,
         transition_at: TransitionAt,
     ) -> Self {
-        Self::start_with_setup(listener, state, scenario, capable, transition_at, || {})
+        Self::start_with_setup(
+            listener,
+            state,
+            scenario,
+            capable,
+            transition_at,
+            |_| Ok(()),
+        )
     }
 
     fn start_with_setup(
@@ -112,7 +119,7 @@ impl ReviewedSaveHost {
         scenario: String,
         capable: bool,
         transition_at: TransitionAt,
-        setup: impl FnOnce() + Send + 'static,
+        setup: impl FnOnce(&TcpListener) -> Result<(), String> + Send + 'static,
     ) -> Self {
         listener
             .set_nonblocking(true)
@@ -123,7 +130,8 @@ impl ReviewedSaveHost {
         let server_scenario = scenario.clone();
         let (ready_tx, ready_rx) = mpsc::channel();
         let server = std::thread::spawn(move || {
-            setup();
+            setup(&listener)
+                .map_err(|error| format!("{server_scenario}: fixture setup stage: {error}"))?;
             let transition = PreparedTargetTransition::new(&state).map_err(|error| {
                 format!("{server_scenario}: prepare target transition: {error}")
             })?;
@@ -420,8 +428,6 @@ fn reviewed_detail_saves_remain_correct_with_concurrent_independent_hosts() {
 #[test]
 fn reviewed_save_waits_for_fixture_setup_before_starting_health() {
     let listener = TcpListener::bind("127.0.0.1:0").unwrap();
-    listener.set_nonblocking(true).unwrap();
-    let probe = listener.try_clone().unwrap();
     let base = format!("http://{}", listener.local_addr().unwrap());
     let (state, path) = fake_host_state(&base);
     let generation = FilamentDatabase::open(&path)
@@ -429,7 +435,7 @@ fn reviewed_save_waits_for_fixture_setup_before_starting_health() {
         .get_library_sync_settings()
         .unwrap()
         .target_generation;
-    let (setup_started_tx, setup_started_rx) = mpsc::channel();
+    let (queue_probe_tx, queue_probe_rx) = mpsc::channel();
     let (release_setup_tx, release_setup_rx) = mpsc::channel();
     let (save_started_tx, save_started_rx) = mpsc::channel();
     let worker = std::thread::spawn(move || {
@@ -439,35 +445,66 @@ fn reviewed_save_waits_for_fixture_setup_before_starting_health() {
             "held fixture setup".into(),
             true,
             TransitionAt::Never,
-            move || {
-                setup_started_tx.send(()).unwrap();
+            move |listener| {
+                // Inspect only the server's original handle, immediately after
+                // configuring it. A cloned Winsock handle must not introduce an
+                // unbounded accept while the setup release is still withheld.
+                listener
+                    .set_nonblocking(true)
+                    .map_err(|error| format!("configure setup queue probe: {error}"))?;
+                let queue_empty = match listener.accept() {
+                    Err(error) if error.kind() == std::io::ErrorKind::WouldBlock => Ok(()),
+                    Err(error) => Err(format!("inspect setup queue: {error}")),
+                    Ok(_) => Err("health connection arrived before fixture setup was ready".into()),
+                };
+                queue_probe_tx
+                    .send(queue_empty.clone())
+                    .map_err(|error| format!("report setup queue probe: {error}"))?;
+                queue_empty?;
                 release_setup_rx
                     .recv_timeout(Duration::from_secs(10))
-                    .unwrap();
+                    .map_err(|error| format!("wait for setup release: {error}"))?;
+                Ok(())
             },
         );
-        save_started_tx.send(()).unwrap();
+        save_started_tx
+            .send(())
+            .expect("report save start after fixture readiness");
         let result = save(&state, &base, generation, true);
         let requests = host.finish(&result);
-        result.unwrap();
-        assert_eq!(requests.len(), 2);
-        assert!(requests[0].starts_with("GET /api/v1/health "));
-        assert!(requests[1].starts_with("POST /api/v1/catalog/masters/master-1/details "));
+        result.expect("save after fixture setup release");
+        assert_eq!(
+            requests.len(),
+            2,
+            "released fixture health/POST sequence: {requests:?}"
+        );
+        assert!(
+            requests[0].starts_with("GET /api/v1/health "),
+            "released fixture health: {requests:?}"
+        );
+        assert!(
+            requests[1].starts_with("POST /api/v1/catalog/masters/master-1/details "),
+            "released fixture POST: {requests:?}"
+        );
     });
-    setup_started_rx
+    queue_probe_rx
         .recv_timeout(Duration::from_secs(10))
-        .unwrap();
-    assert_eq!(save_started_rx.try_recv(), Err(mpsc::TryRecvError::Empty));
+        .expect("receive original-listener setup queue inspection")
+        .expect("health must not start while fixture setup is held");
     assert_eq!(
-        probe.accept().unwrap_err().kind(),
-        std::io::ErrorKind::WouldBlock
+        save_started_rx.try_recv(),
+        Err(mpsc::TryRecvError::Empty),
+        "save must remain behind fixture readiness while setup is held"
     );
-    drop(probe);
-    release_setup_tx.send(()).unwrap();
+    release_setup_tx
+        .send(())
+        .expect("release held fixture setup");
     save_started_rx
         .recv_timeout(Duration::from_secs(10))
-        .unwrap();
-    worker.join().unwrap();
+        .expect("save must start after fixture setup becomes ready");
+    worker
+        .join()
+        .expect("complete released fixture save and health/POST assertions");
     std::fs::remove_file(path).unwrap();
 }
 

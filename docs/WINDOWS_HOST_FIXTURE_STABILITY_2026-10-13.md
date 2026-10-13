@@ -67,3 +67,39 @@ necessarily remain inside the health response interval: this correction removes
 avoidable setup and fragmented writes, but does not promise that every future
 overloaded runner will be error-free. Windows PR and main CI must validate the
 new fixture; test failures should be diagnosed rather than automatically retried.
+
+## First PR Windows attempt: readiness probe correction
+
+The first [PR #162 CI attempt](https://github.com/bliatun-code/Filament-Manager/actions/runs/38335625009)
+reached the 60-minute job limit. All six other detail/RFID tests passed, including
+the concurrent Host scenarios. The new readiness regression was the only test
+still running. Cache maintenance and MSI checks were never reached.
+
+That regression used a cloned listener to check for a premature connection before
+releasing setup. The clone's `accept()` was the only unbounded socket call in that
+held-setup phase; the surrounding channel waits had ten-second limits. This
+narrows the likely blocking point, although the captured log lacks phase
+diagnostics that would prove the exact socket mode on the runner.
+
+Rust's Windows socket duplication uses `WSADuplicateSocketW` and `WSASocketW`,
+while nonblocking mode is configured separately through `FIONBIO`. Microsoft's
+shared-state documentation does not conclusively establish why this particular
+probe blocked, so this follow-up does not claim a proved OS duplication bug.
+[Rust socket implementation](https://raw.githubusercontent.com/rust-lang/rust/1.99.0/library/std/src/os/windows/io/socket.rs),
+[Winsock duplication contract](https://learn.microsoft.com/en-us/windows/win32/api/winsock2/nf-winsock2-wsaduplicatesocketw).
+
+The corrected regression probes the fixture's original listener inside its setup
+hook, explicitly sets that handle nonblocking immediately before checking the
+queue, and reports the result to the test through a bounded channel. No duplicated
+listener is involved. The setup gate still proves that the save has not started;
+after release, the real health request and original-target POST must succeed.
+Stage-specific channel diagnostics identify a future readiness failure. The
+response timing correction, target/cache assertions and ordinary suite concurrency
+are unchanged. The cancelled attempt is not rerun: a new commit must pass normal
+PR checks and then the first ordinary main Windows attempt.
+
+After this probe correction, all seven focused tests and the full Rust suite
+pass again: 1,080 tests, the same three existing ignored tests, formatting, and
+debug/release Clippy with warnings denied. Rust 1.90 all-targets/all-features
+locked compilation and public-readiness also pass. An independent review finds
+no blocking issue. Hosted Windows results remain a required validation step.
