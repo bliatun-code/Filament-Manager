@@ -7,8 +7,8 @@ license = "AGPL-3.0-or-later"
 
 [dependencies]
 filament-manager-core = { path = ".." }
-tauri = { version = "2.12.1", features = ["tray-icon"] }
-tauri-plugin-single-instance = "2.5.2"
+tauri = { version = "2.12.3", features = ["tray-icon"] }
+tauri-plugin-single-instance = "2.5.3"
 serde = { workspace = true }
 serde_json = { workspace = true }
 rusqlite = { workspace = true }
@@ -18,7 +18,7 @@ open = { version = "5.4.2", features = ["shellexecute-on-windows"] }
 reqwest = { workspace = true }
 rand = { workspace = true }
 if-addrs = "0.15.0"
-sha2 = "0.11.0"
+sha2 = "0.11.1"
 qrcode = "0.14.1"
 base64 = { version = "0.23.0", default-features = false, features = ["std"] }
 rustls = "0.23.45"
@@ -28,7 +28,7 @@ time = { workspace = true }
 url = "2.5.8"
 flate2 = "1.1.9"
 semver = "1.0.28"
-zeroize = "1.9.0"
+zeroize = "1.9.1"
 socket2 = "0.6.5"
 mdns-sd = "0.21.5"
 
@@ -47,7 +47,7 @@ windows-sys = { version = "0.61.2", features = ["Win32_Foundation", "Win32_Secur
 winreg = "0.56.0"
 
 [build-dependencies]
-tauri-build = { version = "2.7.1", features = [] }
+tauri-build = { version = "2.7.2", features = [] }
 
 [dev-dependencies]
 filament-manager-core = { path = "..", features = ["test-support"] }

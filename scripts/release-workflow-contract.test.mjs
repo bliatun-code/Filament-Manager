@@ -72,6 +72,21 @@ function countOccurrences(source, value) {
   return source.split(value).length - 1;
 }
 
+test("artifact actions use consistent immutable revisions within reviewed major versions", () => {
+  for (const [action, major] of [["download-artifact", 8], ["upload-artifact", 7]]) {
+    const uses = [...`${releaseWorkflow}\n${ciWorkflow}`.matchAll(
+      new RegExp(`uses: actions/${action}@([^\\s]+)([^\\n]*)`, "g"),
+    )];
+    assert.ok(uses.length > 0, `${action} must remain in the workflows`);
+    const revisions = uses.map((match) => {
+      assert.match(match[1], /^[a-f0-9]{40}$/, `${action} must use an immutable SHA`);
+      assert.match(match[2], new RegExp(`^ # v${major}\\.\\d+\\.\\d+$`));
+      return `${match[1]}${match[2]}`;
+    });
+    assert.equal(new Set(revisions).size, 1, `${action} revisions must stay in sync`);
+  }
+});
+
 test("release workflow gates tag and manual installer builds", () => {
   const validationJob = readSection(
     releaseWorkflow,
@@ -273,7 +288,7 @@ test("release workflow gates tag and manual installer builds", () => {
   );
   assert.match(
     windowsJob,
-    /- name: Download release MSI candidate[\s\S]*?actions\/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8\.0\.1[\s\S]*?name: filament-manager-windows-msi-\$\{\{ github\.run_id \}\}[\s\S]*?filament-manager-windows-release-candidate/,
+    /- name: Download release MSI candidate[\s\S]*?actions\/download-artifact@[a-f0-9]{40} # v8\.\d+\.\d+[\s\S]*?name: filament-manager-windows-msi-\$\{\{ github\.run_id \}\}[\s\S]*?filament-manager-windows-release-candidate/,
   );
   assert.match(windowsJob, /- name: Verify downloaded MSI candidate/);
   assert.match(windowsJob, /SHA256SUMS-windows\.txt/);
@@ -400,7 +415,7 @@ test("release workflow gates tag and manual installer builds", () => {
   assert.match(publishJob, /Required CI check '\$check_name'/);
   assert.match(
     publishJob,
-    /actions\/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8\.0\.1/,
+    /actions\/download-artifact@[a-f0-9]{40} # v8\.\d+\.\d+/,
   );
   assert.match(
     publishJob,
@@ -548,7 +563,7 @@ test("release SBOM generation is pinned, read-only and fail-closed", () => {
     /anchore\/sbom-action@[a-f0-9]{40} # v\d+\.\d+\.\d+/,
   );
   assert.match(sbomJob, /format: spdx-json/);
-  assert.match(sbomJob, /syft-version: v1\.54\.0/);
+  assert.match(sbomJob, /syft-version: v1\.54\.1/);
   assert.match(sbomJob, /dependency-snapshot: false/);
   assert.match(sbomJob, /upload-artifact: false/);
   assert.match(sbomJob, /upload-release-assets: false/);
@@ -1699,7 +1714,7 @@ test("release workflow keeps the protected macOS signing sequence fail-closed", 
   );
   assert.match(
     macosJob,
-    /- name: Download release DMG candidate[\s\S]*?actions\/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8\.0\.1[\s\S]*?name: filament-manager-macos-dmg-\$\{\{ github\.run_id \}\}/,
+    /- name: Download release DMG candidate[\s\S]*?actions\/download-artifact@[a-f0-9]{40} # v8\.\d+\.\d+[\s\S]*?name: filament-manager-macos-dmg-\$\{\{ github\.run_id \}\}/,
   );
   assert.match(macosJob, /- name: Verify downloaded DMG candidate/);
   assert.match(macosJob, /shasum -a 256 --check SHA256SUMS\.txt/);
@@ -1763,7 +1778,7 @@ test("release workflow keeps the protected macOS signing sequence fail-closed", 
   );
   assert.match(
     intelMacosSmokeJob,
-    /- name: Download Universal 2 DMG candidate[\s\S]*?actions\/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8\.0\.1[\s\S]*?name: filament-manager-macos-dmg-\$\{\{ github\.run_id \}\}/,
+    /- name: Download Universal 2 DMG candidate[\s\S]*?actions\/download-artifact@[a-f0-9]{40} # v8\.\d+\.\d+[\s\S]*?name: filament-manager-macos-dmg-\$\{\{ github\.run_id \}\}/,
   );
   assert.match(
     intelMacosSmokeJob,

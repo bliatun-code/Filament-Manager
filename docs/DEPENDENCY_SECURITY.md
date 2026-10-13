@@ -66,6 +66,9 @@ and both native CI jobs now require Rust 1.90 or newer. The dated
 [upgrade report](DEPENDENCY_UPGRADE_2026-09-30.md) records the migration and
 verification. The [October 5 review](DEPENDENCY_REVIEW_2026-10-05.md) records the
 next stable patch/toolchain update and the remaining compatibility constraints.
+The [October 13 review](DEPENDENCY_REVIEW_2026-10-13.md) records subsequent
+Tauri, npm, Cargo and action patches, unchanged major compatibility holds and
+the planned Node 26 LTS decision point.
 All remaining warnings stay visible in the scheduled report;
 only vulnerability advisories fail `cargo audit`. License violations always fail.
 
