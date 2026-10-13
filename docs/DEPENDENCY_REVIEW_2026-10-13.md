@@ -94,3 +94,12 @@ are excluded from comparison.
 The [dependency policy](DEPENDENCY_SECURITY.md) remains the source for ongoing
 holds. These version findings are a dated snapshot. This maintenance batch does
 not publish a release or replace the installed application or production data.
+
+## Subsequent Windows test stability follow-up
+
+PR #161 merged as `81a1900a`. Ordinary main CI passed on its second attempt after
+one synthetic Host socket abort on Windows; CodeQL passed. The
+[test-fixture follow-up](WINDOWS_HOST_FIXTURE_STABILITY_2026-10-13.md) addresses
+the avoidable setup work inside the health deadline and records the limits of
+the old failure log. It does not change dependency versions or production
+transport behavior.
