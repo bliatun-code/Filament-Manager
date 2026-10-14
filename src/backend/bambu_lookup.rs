@@ -24,12 +24,13 @@ const REQUEST_TIMEOUT_SECS: u64 = 20;
 const MAX_RESPONSE_BYTES: u64 = 4 * 1024 * 1024;
 const CATALOG_MIN_REQUEST_INTERVAL: Duration = Duration::from_secs(2);
 const CATALOG_BLOCK_COOLDOWN: Duration = Duration::from_secs(5 * 60);
-const DISCOVERY_MAX_PAGES_PER_STORE: usize = 4;
-const DISCOVERY_MAX_REQUESTS: usize = 6;
+// The storefront has grown past four pages. Share a finite collection limit
+// between discovery and refresh, reserving one failed probe per fallback store.
+const COLLECTION_MAX_PAGES: usize = 8;
+const DISCOVERY_MAX_REQUESTS: usize = COLLECTION_MAX_PAGES + DEFAULT_BASE_URLS.len() - 1;
 const DISCOVERY_PAGE_DELAY_MS: u64 = 350;
 const DISCOVERY_PAGE_DELAY_JITTER_MS: u64 = 250;
-const TARGETED_REFRESH_MAX_PAGES: usize = 4;
-const TARGETED_REFRESH_MAX_REQUESTS: usize = 4;
+const TARGETED_REFRESH_MAX_REQUESTS: usize = COLLECTION_MAX_PAGES;
 const TARGETED_DETAIL_MAX_REQUESTS: usize = 24;
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -355,7 +356,7 @@ where
         pause_between_pages,
         &mut request_count,
         TARGETED_REFRESH_MAX_REQUESTS,
-        TARGETED_REFRESH_MAX_PAGES,
+        COLLECTION_MAX_PAGES,
         fetch,
     )
     .map_err(|error| format!("{} Catalog mutation was skipped.", error.message))
@@ -983,7 +984,7 @@ where
         pause_between_pages,
         request_count,
         DISCOVERY_MAX_REQUESTS,
-        DISCOVERY_MAX_PAGES_PER_STORE,
+        COLLECTION_MAX_PAGES,
         fetch,
     )
     .map_err(|error| {

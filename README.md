@@ -636,6 +636,9 @@ The project is configured to keep working when upstream dependencies change:
 
 - Vendor discovery and one-material refreshes use bounded request budgets and
   keep existing catalog data unchanged when a source is blocked or inconclusive.
+  Bambu discovery and refresh share an eight-page collection limit. Discovery
+  allows ten requests including fallback-store probes; refresh reads at most
+  24 selected product pages only after the complete collection is validated.
 - Visual-QA database tooling can fall back to the `sqlite3` CLI when
   `better-sqlite3` is unavailable.
 - Tauri configuration uses the v2 schema with explicit capabilities.

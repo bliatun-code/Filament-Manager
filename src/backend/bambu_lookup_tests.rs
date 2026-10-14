@@ -373,6 +373,238 @@ fn discovery_completes_exactly_on_page_four_and_uses_canonical_redirect_origin()
     assert!(discovery.output.contains("Discovery quality: complete"));
 }
 
+// Model the expanded storefront: twelve summaries per page, with PLA appearing
+// only on the final page. Both discovery and import must read that page. The
+// larger PETG family remains unavailable under the unchanged detail budget.
+fn expanded_collection_products(page: usize, total: usize) -> Vec<(String, String, String)> {
+    let mut products = collection_products(page, 12, total, &["PETG HF"; 12]);
+    if page == total.div_ceil(12) {
+        products[0].2 = "PLA Basic".to_string();
+    }
+    products
+}
+
+#[test]
+fn discovery_reads_expanded_collections_through_the_final_page() {
+    for total in [51usize, 96] {
+        let pages = total.div_ceil(12);
+        let mut requests = Vec::new();
+        let discovery = discover_bambu_material_channels_with_fetch(
+            &["https://store.example".to_string()],
+            "filament",
+            false,
+            |url| {
+                requests.push(url.to_string());
+                let page = requests.len();
+                Ok(html_response(
+                    url,
+                    next_collection_html(
+                        page,
+                        12,
+                        total,
+                        &expanded_collection_products(page, total),
+                        page == 1,
+                    ),
+                ))
+            },
+        )
+        .expect("five-page storefront and eight-page boundary must be supported");
+
+        assert_eq!(requests.len(), pages);
+        assert_eq!(
+            requests.last().unwrap(),
+            &format!("https://store.example/collections/filament?page={pages}")
+        );
+        assert_eq!(discovery.products_discovered, total as i64);
+        assert_eq!(discovery.discovered_materials, ["PLA"]);
+        assert_eq!(discovery.detail_fetches, 0);
+    }
+}
+
+#[test]
+fn targeted_refresh_reads_expanded_collections_before_selected_family_details() {
+    let source = DetectStoreResult {
+        base_url: "https://store.example".to_string(),
+        handle: "filament".to_string(),
+    };
+    for total in [51usize, 96] {
+        let pages = total.div_ceil(12);
+        let selected_url = format!(
+            "https://store.example/products/product-{}",
+            (pages - 1) * 12 + 1
+        );
+        let mut requests = Vec::new();
+        let snapshot =
+            refresh_bambu_catalog_snapshot_from_source_with_fetch(&source, "PLA", false, |url| {
+                requests.push(url.to_string());
+                if url.contains("/collections/") {
+                    let page = requests.len();
+                    return Ok(html_response(
+                        url,
+                        next_collection_html(
+                            page,
+                            12,
+                            total,
+                            &expanded_collection_products(page, total),
+                            page == 1,
+                        ),
+                    ));
+                }
+                assert_eq!(requests.len(), pages + 1, "listing must complete first");
+                assert_eq!(url, selected_url, "only PLA details may be fetched");
+                Ok(html_response(
+                    url,
+                    product_group_html(
+                        "PLA Basic",
+                        url,
+                        &[(
+                            "PLA-JADE",
+                            "PLA Basic - Jade White (10100) / Refill / 1kg",
+                            serde_json::json!("https://cdn.example/jade.webp"),
+                        )],
+                    ),
+                ))
+            })
+            .expect("selected family on the last page must refresh");
+
+        assert_eq!(requests.len(), pages + 1);
+        assert_eq!(snapshot.products_discovered, total as i64);
+        assert_eq!(snapshot.products_detailed, 1);
+        assert_eq!(snapshot.detail_fetches, 1);
+        assert_eq!(snapshot.entries.len(), 1);
+        assert_eq!(snapshot.entries[0].material, "PLA");
+        assert!(validate_bambu_refresh_snapshot_for_mutation(&snapshot).is_ok());
+    }
+}
+
+#[test]
+fn discovery_reserves_collection_requests_after_two_unavailable_stores() {
+    let base_urls = [
+        "https://missing-one.example",
+        "https://missing-two.example",
+        "https://store.example",
+    ]
+    .map(str::to_string);
+    let mut requests = Vec::new();
+    let discovery =
+        discover_bambu_material_channels_with_fetch(&base_urls, "filament", false, |url| {
+            requests.push(url.to_string());
+            if !url.starts_with("https://store.example/") {
+                return Ok(DiscoveryHttpResponse {
+                    status: 404,
+                    content_type: Some("text/html".to_string()),
+                    final_url: url.to_string(),
+                    body: "not found".to_string(),
+                });
+            }
+            let page = requests.len() - 2;
+            Ok(html_response(
+                url,
+                next_collection_html(page, 12, 96, &expanded_collection_products(page, 96), false),
+            ))
+        })
+        .expect("two fallback probes must leave enough budget for all eight pages");
+
+    assert_eq!(requests.len(), 10);
+    assert_eq!(discovery.products_discovered, 96);
+    assert_eq!(discovery.discovered_materials, ["PLA"]);
+}
+
+#[test]
+fn discovery_rejects_insufficient_remaining_requests_before_pagination() {
+    let base_urls = [
+        "https://one.example",
+        "https://two.example",
+        "https://three.example",
+        "https://store.example",
+    ]
+    .map(str::to_string);
+    let mut requests = 0;
+    let error = discover_bambu_material_channels_with_fetch(&base_urls, "filament", false, |url| {
+        requests += 1;
+        if !url.starts_with("https://store.example/") {
+            return Err("store unavailable".to_string());
+        }
+        Ok(html_response(
+            url,
+            next_collection_html(1, 12, 96, &expanded_collection_products(1, 96), false),
+        ))
+    })
+    .expect_err("configured extra stores must not make the aggregate budget unbounded");
+
+    assert_eq!(requests, 4, "reject before fetching any more pages");
+    assert!(error.contains("cannot complete within its 10-request safety budget"));
+    assert!(error.contains("Previous channels were left unchanged"));
+}
+
+#[test]
+fn expanded_collection_late_page_failures_prevent_discovery_and_detail_fetches() {
+    for (fault, expected_error) in [
+        ("metadata", "inconsistent size or total"),
+        ("truncated", "expected 3 products"),
+        ("duplicate", "repeated product id"),
+        ("transport", "lost pagination at page 5"),
+        ("challenge", "challenge page at page 5"),
+    ] {
+        for targeted in [false, true] {
+            let source = DetectStoreResult {
+                base_url: "https://store.example".to_string(),
+                handle: "filament".to_string(),
+            };
+            let mut requests = 0;
+            let mut fetch = |url: &str| {
+                assert!(url.contains("/collections/"), "no details after {fault}");
+                requests += 1;
+                let page = requests;
+                let mut total = 51;
+                let mut products = expanded_collection_products(page, total);
+                if page == 5 {
+                    match fault {
+                        "metadata" => total = 52,
+                        "truncated" => {
+                            products.pop();
+                        }
+                        "duplicate" => products[0].0 = "id-1".to_string(),
+                        "transport" => return Err("connection lost".to_string()),
+                        "challenge" => {
+                            return Ok(html_response(
+                                url,
+                                "<title>Just a moment...</title>".to_string(),
+                            ))
+                        }
+                        _ => unreachable!(),
+                    }
+                }
+                Ok(html_response(
+                    url,
+                    next_collection_html(page, 12, total, &products, false),
+                ))
+            };
+            let error = if targeted {
+                refresh_bambu_catalog_snapshot_from_source_with_fetch(
+                    &source, "PLA", false, &mut fetch,
+                )
+                .expect_err("incomplete collection must never yield a mutable snapshot")
+            } else {
+                discover_bambu_material_channels_with_fetch(
+                    &[source.base_url],
+                    "filament",
+                    false,
+                    &mut fetch,
+                )
+                .expect_err("incomplete collection must never yield new channels")
+            };
+            assert_eq!(requests, 5, "no fallback or detail fetch after {fault}");
+            assert!(error.contains(expected_error), "{error}");
+            assert!(error.contains(if targeted {
+                "Catalog mutation was skipped"
+            } else {
+                "Previous channels were left unchanged"
+            }));
+        }
+    }
+}
+
 #[test]
 fn canonical_origin_accepts_only_same_origin_or_official_bambu_store_redirects() {
     assert_eq!(
@@ -465,16 +697,47 @@ fn discovery_rejects_inconsistent_metadata_and_request_budget_overflow() {
         .expect_err("changed total must fail closed");
     assert!(inconsistent.contains("inconsistent size or total"));
 
+    let mut requests = 0;
     let over_page_cap =
         discover_bambu_material_channels_with_fetch(&base_urls, "filament", false, |_| {
-            let products = collection_products(1, 12, 49, &["PLA Basic"; 12]);
+            requests += 1;
+            let products = collection_products(1, 12, 97, &["PLA Basic"; 12]);
             Ok(html_response(
                 "https://store.example/collections/filament",
-                next_collection_html(1, 12, 49, &products, false),
+                next_collection_html(1, 12, 97, &products, false),
             ))
         })
-        .expect_err("five-page listing must exceed the page cap");
-    assert!(over_page_cap.contains("exceeding its 4-page safety budget"));
+        .expect_err("nine-page listing must exceed the page cap");
+    assert!(over_page_cap.contains("exceeding its 8-page safety budget"));
+    assert_eq!(requests, 1);
+
+    requests = 0;
+    let source = DetectStoreResult {
+        base_url: base_urls[0].clone(),
+        handle: "filament".to_string(),
+    };
+    let targeted_error =
+        refresh_bambu_catalog_snapshot_from_source_with_fetch(&source, "PLA", false, |url| {
+            requests += 1;
+            assert!(
+                url.contains("/collections/"),
+                "no product details beyond page cap"
+            );
+            Ok(html_response(
+                url,
+                next_collection_html(
+                    1,
+                    12,
+                    97,
+                    &collection_products(1, 12, 97, &["PLA Basic"; 12]),
+                    false,
+                ),
+            ))
+        })
+        .expect_err("targeted refresh must retain the same finite page limit");
+    assert!(targeted_error.contains("exceeding its 8-page safety budget"));
+    assert!(targeted_error.contains("Catalog mutation was skipped"));
+    assert_eq!(requests, 1);
 }
 
 #[test]
