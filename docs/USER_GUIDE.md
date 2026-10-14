@@ -1171,12 +1171,18 @@ opens no product pages. When you subsequently refresh one selected material
 family, the app reads public product metadata only for products in that family.
 Requests are sequential, have a fixed safety budget, and are not retried
 automatically after an error or blocking response.
+Both Bambu operations support up to eight collection pages. An incomplete
+listing still preserves the previous material list and catalog.
 
 After a successful discovery, select exactly one material type and refresh it.
 Larger maintenance is therefore split into small, cautious requests. Neither
 discovery nor the material refresh automatically marks products as historical
 or discontinued; older products remain searchable for rolls that users already
 own or can still obtain through resellers.
+
+In Client mode, vendor discovery and refresh run on the connected Host. The
+Host must also receive catalog-fetching fixes; updating only the client does
+not change how the Host reads the vendor's storefront.
 
 In Client mode, the desktop app requests up to 5,000 catalog rows from the Host
 instead of truncating the list at 1,000. Optional server-side search is forwarded
