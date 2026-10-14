@@ -28,6 +28,10 @@ type FilamentLabelCanvasDependencies = {
 const QR_QUIET_ZONE_MODULES = 4;
 const QR_SOURCE_MODULE_SCALE = 12;
 
+export function filamentQrModuleLayout(payload: string) {
+  return QRCode.create(payload.trim(), { errorCorrectionLevel: "H" }).modules;
+}
+
 function defaultCanvas(): HTMLCanvasElement {
   return document.createElement("canvas");
 }

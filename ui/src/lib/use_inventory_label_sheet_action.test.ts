@@ -38,7 +38,8 @@ async function harness() {
   `;
   const mocks: Record<string, string> = {
     spool_qr_artifacts: `export const resolveSpoolQrCompanionShellUrl=options=>window.labelStage('shell',options);`,
-    filament_label_print: `export const buildFilamentLabelQrDataUrl=payload=>window.labelStage('qr',payload);export const buildFilamentLabelPngDataUrl=row=>window.labelStage('png',row);`,
+    filament_label_print: `export const buildFilamentLabelPngDataUrl=row=>window.labelStage('png',row);`,
+    filament_qr_branding: `export const buildBrandedFilamentQrDataUrl=(payload,appearance)=>window.labelStage('qr',{payload,appearance});`,
     inventory_overview_print: `export const buildInventoryLabelSheetPdfBase64=(items,paper)=>window.labelStage('pdf',{items,paper});`,
   };
   const result = await build({ root: fileURLToPath(new URL("../../", import.meta.url)), configFile: false, logLevel: "error",
@@ -60,6 +61,7 @@ test('rendered label sheet lifecycle', async context => {
   try {
     await scenario('duplicate open renders the on-hand roll once',async page=>{
       await page.evaluate('labels.doubleOpen()');await ready(page);const s=await page.evaluate('labels.snapshot()');assert.deepEqual(s.items.map((item:{reference:string})=>item.reference),['a']);assert.equal(s.calls.filter((c:{stage:string})=>c.stage==='shell').length,1);
+      assert.equal(s.calls.find((c:{stage:string})=>c.stage==='qr').data.appearance,'color');
     });
     await scenario('explicit selection includes the selected empty roll only',async page=>{
       await page.evaluate('labels.selected()');await ready(page);assert.deepEqual((await page.evaluate('labels.snapshot()')).items.map((item:{reference:string})=>item.reference),['b']);

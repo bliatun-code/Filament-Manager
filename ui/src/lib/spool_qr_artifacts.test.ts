@@ -75,6 +75,7 @@ test("resolveSpoolQrCompanionShellUrl falls back to trusted LAN shell outside cl
 });
 
 test("buildSpoolQrArtifacts builds a companion QR artifact when a shell URL is available", async () => {
+  const renderCalls: Array<{ payload: string; appearance: string }> = [];
   const artifact = await buildSpoolQrArtifacts(
     {
       spoolId: " spool_1 ",
@@ -82,7 +83,10 @@ test("buildSpoolQrArtifacts builds a companion QR artifact when a shell URL is a
     },
     {
       loadTrustedLanStatus: async () => trustedLanStatus(),
-      buildQrDataUrl: async (payload) => `qr:${payload}`,
+      buildQrDataUrl: async (payload, appearance) => {
+        renderCalls.push({ payload, appearance });
+        return `qr:${payload}`;
+      },
     },
   );
 
@@ -92,6 +96,7 @@ test("buildSpoolQrArtifacts builds a companion QR artifact when a shell URL is a
     "http://filament-manager-a1b2.local:4278/companion?spool_qr=v1%3Aspool_1",
   );
   assert.equal(artifact.qrDataUrl, `qr:${artifact.qrPayload}`);
+  assert.deepEqual(renderCalls, [{ payload: artifact.qrPayload, appearance: "color" }]);
   assert.equal(artifact.qrTarget, artifact.qrPayload);
   assert.equal(
     artifact.companionShellUrl,

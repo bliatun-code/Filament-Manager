@@ -149,3 +149,101 @@ test(
     }
   },
 );
+
+test(
+  "branded screen and monochrome tape QRs remain ZXing-decodable under modest camera sampling",
+  { timeout: 60_000 },
+  async () => {
+    const payloads = [
+      "http://192.168.1.50:4278/companion?spool_qr=v1%3AQR-22",
+      QR_PAYLOAD,
+      "https://filament-manager-0123456789abcdef01234567.local:4278/companion?spool_qr=v1%3Aspool_01234567-89ab-cdef-0123-456789abcdef",
+    ];
+    const browser = await chromium.launch({ headless: true });
+    try {
+      const page = await browser.newPage();
+      await page.setContent(await buildBrowserHarnessDocument(), { waitUntil: "load" });
+      const evidence = await page.evaluate(async (values) => {
+        const fixture = (
+          window as typeof window & {
+            FilamentLabelBrowserFixture: {
+              decodeBrandedQrMatrix: (payloads: string[]) => Promise<Array<{
+                payload: string;
+                scenarios: Array<{
+                  id: string;
+                  decodedPayload: string | null;
+                  error?: string;
+                  plainDecodedPayload: string | null;
+                  recoveredPayload?: string | null;
+                  plainRecoveredPayload?: string | null;
+                  recoveryView?: string;
+                }>;
+                coloredPixels: number;
+                monochromePixels: number;
+              }>>;
+            };
+          }
+        ).FilamentLabelBrowserFixture;
+        return fixture.decodeBrandedQrMatrix(values);
+      }, payloads);
+      assert.equal(evidence.length, payloads.length);
+      for (const entry of evidence) {
+        assert.ok(entry.coloredPixels > 100, "screen output retains the colored spool logo");
+        assert.equal(entry.monochromePixels, 0, "tape output uses no color");
+        assert.equal(entry.scenarios.length, 28);
+        for (const scenario of entry.scenarios) {
+          const message = `${scenario.id} for ${entry.payload}: ${scenario.error ?? ""}`;
+          if (scenario.id.endsWith("138px-screen")) {
+            assert.equal(scenario.decodedPayload, entry.payload, `actual screen size: ${message}`);
+          }
+          if (scenario.plainDecodedPayload !== null) {
+            assert.equal(scenario.plainDecodedPayload, entry.payload, `plain control: ${message}`);
+          }
+          if (scenario.decodedPayload !== null) {
+            assert.equal(scenario.decodedPayload, entry.payload, message);
+          } else {
+            assert.equal(scenario.plainDecodedPayload, null, `logo caused a new decoder miss: ${message}`);
+            assert.ok(["scale-0.8", "scale-1.2", "tilt-2"].includes(scenario.recoveryView ?? ""), message);
+            assert.equal(scenario.recoveredPayload, entry.payload, message);
+            assert.equal(scenario.plainRecoveredPayload, entry.payload, message);
+          }
+        }
+      }
+    } finally {
+      await browser.close();
+    }
+  },
+);
+
+test(
+  "A4 and US Letter PDFs preserve the colored branded QR and its decodable payload",
+  { timeout: 30_000 },
+  async () => {
+    const browser = await chromium.launch({ headless: true });
+    try {
+      const page = await browser.newPage();
+      await page.setContent(await buildBrowserHarnessDocument(), { waitUntil: "load" });
+      const evidence = await page.evaluate(async (payload) => {
+        const fixture = (
+          window as typeof window & {
+            FilamentLabelBrowserFixture: {
+              decodeColorLabelSheetImages: (value: string) => Promise<Array<{
+                paper: "a4" | "letter";
+                decodedPayload: string;
+                coloredPixels: number;
+              }>>;
+            };
+          }
+        ).FilamentLabelBrowserFixture;
+        return fixture.decodeColorLabelSheetImages(payload);
+      }, QR_PAYLOAD);
+      assert.deepEqual(evidence.map(({ paper }) => paper), ["a4", "letter"]);
+      for (const entry of evidence) {
+        assert.equal(entry.decodedPayload, QR_PAYLOAD);
+        assert.ok(entry.coloredPixels > 100, `${entry.paper} retains the color logo in its actual image stream`);
+      }
+    } finally {
+      await browser.close();
+    }
+  },
+);

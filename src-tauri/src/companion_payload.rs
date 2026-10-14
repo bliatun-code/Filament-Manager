@@ -100,16 +100,87 @@ pub(crate) fn build_companion_spool_qr_payload(
 
 pub(crate) fn build_qr_svg(payload: &str) -> Result<String, CompanionApiError> {
     use qrcode::render::svg;
-    use qrcode::QrCode;
+    use qrcode::{EcLevel, QrCode};
 
-    let code = QrCode::new(payload.as_bytes())
+    const MODULE_SCALE: u32 = 12;
+    const QUIET_ZONE_MODULES: u32 = 4;
+    const LOGO_SVG: &str = include_str!("../../ui/src/assets/filament-qr-logo.svg");
+    const LOGO_WIDTH: f64 = 780.0;
+    const LOGO_HEIGHT: f64 = 674.0;
+
+    let code = QrCode::with_error_correction_level(payload.as_bytes(), EcLevel::H)
         .map_err(|error| CompanionApiError::Internal(error.to_string()))?;
-    Ok(code
+    let image = code
         .render::<svg::Color>()
-        .min_dimensions(224, 224)
-        .dark_color(svg::Color("#0f172a"))
+        .quiet_zone(true)
+        .module_dimensions(MODULE_SCALE, MODULE_SCALE)
+        .dark_color(svg::Color("#000000"))
         .light_color(svg::Color("#ffffff"))
-        .build())
+        .build();
+    // Match the desktop plate's size and protect the complete structural map,
+    // including alignment patterns that can occupy the center of longer QRs.
+    let Some((plate_x, plate_y, plate_modules)) = qr_logo_plate(&code) else {
+        return Ok(image);
+    };
+    let plate_size = plate_modules as u32 * MODULE_SCALE;
+    let plate_x = (plate_x as u32 + QUIET_ZONE_MODULES) * MODULE_SCALE;
+    let plate_y = (plate_y as u32 + QUIET_ZONE_MODULES) * MODULE_SCALE;
+    let logo_width = plate_size - MODULE_SCALE * 2;
+    let logo_scale = f64::from(logo_width) / LOGO_WIDTH;
+    let logo_y = f64::from(plate_y) + (f64::from(plate_size) - LOGO_HEIGHT * logo_scale) / 2.0;
+    let Some(qr_svg) = image.strip_suffix("</svg>") else {
+        return Err(CompanionApiError::Internal(
+            "Filament QR SVG geometry is invalid.".to_string(),
+        ));
+    };
+    // Only the checked-in logo markup enters the SVG. The payload is encoded
+    // as QR cells and never interpolated into XML.
+    Ok(format!(
+        "{qr_svg}<rect x=\"{plate_x}\" y=\"{plate_y}\" width=\"{plate_size}\" height=\"{plate_size}\" fill=\"#ffffff\"/><g shape-rendering=\"geometricPrecision\" transform=\"translate({logo_x} {logo_y:.6}) scale({logo_scale:.9})\">{LOGO_SVG}</g></svg>",
+        logo_x = plate_x + MODULE_SCALE,
+    ))
+}
+
+fn qr_logo_plate(code: &qrcode::QrCode) -> Option<(usize, usize, usize)> {
+    use qrcode::canvas::{Canvas, Module};
+    use qrcode::EcLevel;
+
+    let width = code.width();
+    let bounded_plate = (width * 21 / 100).min(11);
+    let max_plate = if bounded_plate.is_multiple_of(2) {
+        bounded_plate.saturating_sub(1)
+    } else {
+        bounded_plate
+    };
+    let mut reserved = Canvas::new(code.version(), EcLevel::H);
+    reserved.draw_all_functional_patterns();
+    for plate in (5..=max_plate).rev().filter(|size| size % 2 == 1) {
+        let mut best = None;
+        for y in 1..width - plate {
+            for x in 1..width - plate {
+                let clear = (y - 1..=y + plate).all(|row| {
+                    (x - 1..=x + plate)
+                        .all(|column| reserved.get(column as i16, row as i16) == Module::Empty)
+                });
+                if !clear {
+                    continue;
+                }
+                let dx = (x * 2 + plate) as i32 - width as i32;
+                let dy = (y * 2 + plate) as i32 - width as i32;
+                let rank = (dx * dx + dy * dy, std::cmp::Reverse(y), dx.abs(), x);
+                if best
+                    .as_ref()
+                    .is_none_or(|(current_rank, _, _)| rank < *current_rank)
+                {
+                    best = Some((rank, x, y));
+                }
+            }
+        }
+        if let Some((_, x, y)) = best {
+            return Some((x, y, plate));
+        }
+    }
+    None
 }
 
 pub(crate) struct NormalizedManualSpoolFields {
@@ -294,6 +365,87 @@ fn weak_etag_matches(if_none_match: &str, current_etag: &str) -> bool {
 mod tests {
     use super::*;
     use crate::state::TrustedLanCompanionRuntime;
+
+    #[test]
+    fn spool_qr_svg_keeps_high_correction_black_cells_and_the_full_quiet_zone() {
+        use qrcode::render::svg;
+        use qrcode::{EcLevel, QrCode};
+
+        let payload = "http://filament-manager-0123456789abcdef01234567.local:4278/companion?spool_qr=v1%3Aspool_1775592053186";
+        let code = QrCode::with_error_correction_level(payload, EcLevel::H).unwrap();
+        let plain = code
+            .render::<svg::Color>()
+            .quiet_zone(true)
+            .module_dimensions(12, 12)
+            .dark_color(svg::Color("#000000"))
+            .light_color(svg::Color("#ffffff"))
+            .build();
+        let branded = build_qr_svg(payload).expect("branded spool QR");
+
+        // The base encoder's complete matrix and quiet zone survive unchanged;
+        // only a small structurally safe white plate and transparent logo follow.
+        assert!(branded.starts_with(plain.strip_suffix("</svg>").unwrap()));
+        assert!(branded.contains("M48 48h12v12"));
+        assert!(branded.contains("width=\"132\" height=\"132\" fill=\"#ffffff\""));
+        assert!(branded.contains(include_str!("../../ui/src/assets/filament-qr-logo.svg")));
+        assert!(branded.ends_with("</g></svg>"));
+        assert!(!branded.contains(payload));
+    }
+
+    #[test]
+    fn spool_qr_svg_leaves_tiny_matrices_uncovered_and_rejects_unencodable_data() {
+        let short = build_qr_svg("1").expect("short QR");
+        assert!(short.contains("width=\"348\" height=\"348\""));
+        assert!(!short.contains("<circle"));
+        assert!(!short.contains("<g "));
+
+        assert!(matches!(
+            build_qr_svg(&"x".repeat(10_000)),
+            Err(CompanionApiError::Internal(_))
+        ));
+    }
+
+    #[test]
+    fn spool_qr_svg_never_interpolates_untrusted_payload_into_logo_markup() {
+        let payload = "v1:<script>alert('qr-injection')</script>";
+        let image = build_qr_svg(payload).expect("QR with arbitrary encoded text");
+        assert!(!image.contains("<script"));
+        assert!(!image.contains("qr-injection"));
+        assert!(!image.contains(payload));
+    }
+
+    #[test]
+    fn spool_qr_logo_plate_preserves_functional_modules_with_a_one_module_buffer() {
+        use qrcode::canvas::{Canvas, Module};
+        use qrcode::{EcLevel, QrCode, Version};
+
+        for version in 1..=40 {
+            let code = QrCode::with_version("x", Version::Normal(version), EcLevel::H)
+                .expect("normal QR version");
+            let Some((x, y, size)) = qr_logo_plate(&code) else {
+                continue;
+            };
+            assert!((5..=11).contains(&size));
+            assert_eq!(size % 2, 1);
+            assert!(size * 100 <= code.width() * 21);
+            let mut functional = Canvas::new(code.version(), EcLevel::H);
+            functional.draw_all_functional_patterns();
+            for row in y - 1..=y + size {
+                for column in x - 1..=x + size {
+                    assert_eq!(
+                        functional.get(column as i16, row as i16),
+                        Module::Empty,
+                        "logo would cover a functional module in QR version {version}"
+                    );
+                }
+            }
+        }
+
+        let version7 = QrCode::with_version("x", Version::Normal(7), EcLevel::H).unwrap();
+        let (x, y, size) = qr_logo_plate(&version7).expect("version 7 safe logo plate");
+        assert_eq!(x * 2 + size, version7.width());
+        assert!(y * 2 + size > version7.width());
+    }
 
     #[test]
     fn normalizes_optional_swatch_colors() {
