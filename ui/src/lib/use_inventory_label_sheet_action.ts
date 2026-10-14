@@ -104,12 +104,13 @@ export function useInventoryLabelSheetAction({
       if (selectedRows && !selectedRows.ok) {
         throw new Error(`Inventory selection is stale: ${selectedRows.error}`);
       }
-      const [companionShellUrl, qrModule, labelModule] = await Promise.all([
+      const [companionShellUrl, qrModule, labelModule, brandingModule] = await Promise.all([
         import("./spool_qr_artifacts").then(({ resolveSpoolQrCompanionShellUrl }) =>
           resolveSpoolQrCompanionShellUrl({ clientReadOnly, clientHostBaseUrl }),
         ),
         import("./filament_qr_payload"),
         import("./filament_label_print"),
+        import("./filament_qr_branding"),
       ]);
       if (!isCurrent()) return;
       const rows = await buildInventoryLabelSheetRows({
@@ -122,7 +123,8 @@ export function useInventoryLabelSheetAction({
           unknown: t("common.unknown", "Unknown"),
         },
         buildFilamentQrPayload: qrModule.buildFilamentQrPayload,
-        buildFilamentLabelQrDataUrl: labelModule.buildFilamentLabelQrDataUrl,
+        buildFilamentLabelQrDataUrl: (payload) =>
+          brandingModule.buildBrandedFilamentQrDataUrl(payload, "color"),
       });
       if (!isCurrent()) return;
       const renderedItems = await Promise.all(

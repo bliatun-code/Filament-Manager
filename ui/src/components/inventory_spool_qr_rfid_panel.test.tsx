@@ -27,7 +27,10 @@ const spool: InventorySpool = {
   ownershipType: "OWNED",
 };
 
-function renderPanel(deterministicLabelPreferences: boolean): string {
+function renderPanel(
+  deterministicLabelPreferences: boolean,
+  target: string | null = "https://filament-manager.local/spools/custom",
+): string {
   return renderToStaticMarkup(
     React.createElement(
       I18nContext.Provider,
@@ -44,7 +47,7 @@ function renderPanel(deterministicLabelPreferences: boolean): string {
         runtimeAvailable: true,
         spool,
         supportsRfidCapture: false,
-        target: "https://filament-manager.local/spools/custom",
+        target,
       }),
     ),
   );
@@ -69,4 +72,11 @@ test("normal label builder starts from the existing P-Touch preset", () => {
 
   assert.match(html, /aria-pressed="true"[^>]*><span[^>]*>P-Touch 24 mm/);
   assert.doesNotMatch(html, /role="group" aria-label="Custom"/);
+});
+
+test("an image without its original QR target cannot start a thermal label", () => {
+  const html = renderPanel(false, null);
+
+  assert.match(html, /<button[^>]*disabled=""[^>]*>Create QR label<\/button>/);
+  assert.match(html, /alt="QR code"/);
 });

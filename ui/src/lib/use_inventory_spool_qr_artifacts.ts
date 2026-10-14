@@ -24,10 +24,14 @@ export function useInventorySpoolQrArtifacts({
   selectedSpool,
   showRollModal,
 }: InventorySpoolQrArtifactsInput) {
-  const [dataUrl, setDataUrl] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [target, setTarget] = useState<string | null>(null);
-  const [companionShellUrl, setCompanionShellUrl] = useState<string | null>(null);
+  const sourceKey = selectedSpool && showRollModal
+    ? JSON.stringify([selectedSpool.id, clientReadOnly, clientHostBaseUrl])
+    : null;
+  const [rendered, setRendered] = useState<{
+    sourceKey: string | null;
+    loading: boolean;
+    artifacts: SpoolQrArtifacts | null;
+  }>({ sourceKey: null, loading: false, artifacts: null });
 
   const buildArtifacts = useCallback(async (spool: InventorySpool): Promise<SpoolQrArtifacts> => {
     const { buildSpoolQrArtifacts } = await loadSpoolQrArtifactsModule();
@@ -39,48 +43,45 @@ export function useInventorySpoolQrArtifacts({
   }, [clientHostBaseUrl, clientReadOnly]);
 
   useEffect(() => {
-    if (!selectedSpool || !showRollModal) {
-      setDataUrl(null);
-      setLoading(false);
-      setTarget(null);
-      setCompanionShellUrl(null);
+    if (!selectedSpool || !showRollModal || sourceKey === null) {
+      setRendered({ sourceKey: null, loading: false, artifacts: null });
       return;
     }
 
     let cancelled = false;
-    setLoading(true);
+    setRendered({ sourceKey, loading: true, artifacts: null });
 
     void buildArtifacts(selectedSpool)
-      .then(({ qrDataUrl, qrTarget, companionShellUrl: nextCompanionShellUrl }) => {
+      .then((artifacts) => {
         if (cancelled) {
           return;
         }
-        setDataUrl(qrDataUrl);
-        setTarget(qrTarget);
-        setCompanionShellUrl(nextCompanionShellUrl);
-        setLoading(false);
+        setRendered({ sourceKey, loading: false, artifacts });
       })
       .catch((qrError) => {
         console.error(qrError);
         if (cancelled) {
           return;
         }
-        setDataUrl(null);
-        setTarget(null);
-        setCompanionShellUrl(null);
-        setLoading(false);
+        setRendered({ sourceKey, loading: false, artifacts: null });
       });
 
     return () => {
       cancelled = true;
     };
-  }, [buildArtifacts, selectedSpool, showRollModal]);
+  }, [buildArtifacts, selectedSpool, showRollModal, sourceKey]);
+
+  // Hide the previous spool or Host's image during the render that changes
+  // authority, before the effect starts generating its replacement.
+  const current = sourceKey !== null && rendered.sourceKey === sourceKey
+    ? rendered
+    : null;
 
   return {
     buildArtifacts,
-    companionShellUrl,
-    dataUrl,
-    loading,
-    target,
+    companionShellUrl: current?.artifacts?.companionShellUrl ?? null,
+    dataUrl: current?.artifacts?.qrDataUrl ?? null,
+    loading: sourceKey !== null && (current?.loading ?? true),
+    target: current?.artifacts?.qrTarget ?? null,
   };
 }

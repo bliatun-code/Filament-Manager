@@ -110,7 +110,7 @@ export function InventorySpoolQrRfidPanel({
     return filamentLabelSize("custom", customValidation.dimensions);
   }, [customValidation, labelPreferences.selectedSize]);
   const labelRenderKey = useMemo(() => {
-    if (!dataUrl || !labelSize) {
+    if (!dataUrl || !target || !labelSize) {
       return null;
     }
     return JSON.stringify([
@@ -118,6 +118,7 @@ export function InventorySpoolQrRfidPanel({
       labelSize.widthMm,
       labelSize.heightMm,
       dataUrl,
+      target,
       spool.vendor,
       spool.material,
       spool.filamentName,
@@ -132,6 +133,7 @@ export function InventorySpoolQrRfidPanel({
     spool.id,
     spool.material,
     spool.vendor,
+    target,
   ]);
   const currentLabelPreview =
     labelPreview?.renderKey === labelRenderKey ? labelPreview.pngDataUrl : null;
@@ -186,7 +188,7 @@ export function InventorySpoolQrRfidPanel({
   ]);
 
   useEffect(() => {
-    if (!labelPanelOpen || !dataUrl || !labelSize || !labelRenderKey) {
+    if (!labelPanelOpen || !dataUrl || !target || !labelSize || !labelRenderKey) {
       setLabelPreview(null);
       setLabelPreviewBusy(false);
       return;
@@ -195,20 +197,24 @@ export function InventorySpoolQrRfidPanel({
     setLabelPreviewBusy(true);
     setLabelPreview(null);
     const timer = window.setTimeout(() => {
-      void import("../lib/filament_label_print")
-        .then(({ buildFilamentLabelPngDataUrl }) =>
-          buildFilamentLabelPngDataUrl(
+      void Promise.all([
+        import("../lib/filament_label_print"),
+        import("../lib/filament_qr_branding"),
+      ])
+        .then(async ([{ buildFilamentLabelPngDataUrl }, { buildBrandedFilamentQrDataUrl }]) => {
+          const qrDataUrl = await buildBrandedFilamentQrDataUrl(target, "monochrome");
+          return buildFilamentLabelPngDataUrl(
             {
               vendor: spool.vendor,
               material: spool.material,
               filamentName: spool.filamentName,
               colorName: spool.colorName,
               reference: spool.id,
-              qrDataUrl: dataUrl,
+              qrDataUrl,
             },
             labelSize,
-          ),
-        )
+          );
+        })
         .then((preview) => {
           if (active) {
             setLabelPreview({ pngDataUrl: preview, renderKey: labelRenderKey });
@@ -235,6 +241,7 @@ export function InventorySpoolQrRfidPanel({
     spool.id,
     spool.material,
     spool.vendor,
+    target,
   ]);
 
   const selectLabelSize = (selectedSize: FilamentLabelSizeSelectionId) => {
@@ -317,7 +324,7 @@ export function InventorySpoolQrRfidPanel({
           type="button"
           className={inventoryDetailActionButtonClassName}
           onClick={() => setLabelPanelOpen((open) => !open)}
-          disabled={!runtimeAvailable || !companionAvailable || !dataUrl}
+          disabled={!runtimeAvailable || !companionAvailable || !dataUrl || !target}
         >
           {t("inventory.printQr", "Create QR label")}
         </button>

@@ -123,7 +123,9 @@ and published release tags are retained.
 - Print-ready QR labels for individual rolls as 300-DPI PNG files, including
   validated custom landscape dimensions remembered on the device. Matching A4
   or US Letter inventory label sheets remain fixed at 60 × 24 mm and are saved
-  as PDF files, all through the Downloads workflow.
+  as PDF files, all through the Downloads workflow. Filament QR codes use the
+  reel logo in color on screen and on PDF sheets; individual label PNGs use
+  its black-and-white version for label printers.
 - Local companion/webapp for paired phones, tablets, and workshop browsers;
   long inventory and loan lists use incremental result controls, and library
   reads and writes require an authenticated paired session.

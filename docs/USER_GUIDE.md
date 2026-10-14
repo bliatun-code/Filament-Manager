@@ -334,6 +334,11 @@ To create a label for one spool:
 4. For a custom label, enter its width and height, then check the preview.
 5. Choose **Save PNG to Downloads** to save the print-ready 300-DPI image.
 
+The screen QR uses the colored reel logo. Individual label PNGs use a
+black-and-white logo for printers with one ink color. Both contain the same
+spool link. Keep the white border around the QR when printing or cutting the
+label, and check a printed sample with your phone before printing a batch.
+
 The P-Touch profile uses a 60 × 24 mm landscape canvas with a nearly full-height
 QR and large identifying text. Custom labels support widths from 45 to 150 mm and
 heights from 24 to 80 mm in 0.5 mm steps. They must remain landscape: the width
@@ -344,8 +349,8 @@ on this device, so they are reused for other spools and in later app sessions.
 For several spools at once, choose **Select multiple** under **Inventory**, mark
 the rolls, and use **Create label sheet for selected rolls**. Use **Create label
 sheet for all stock** in the inventory controls when every available roll should
-be included. Inventory label sheets remain fixed at 60 × 24 mm and do not use
-the saved custom dimensions.
+be included. A4 and US Letter PDF sheets keep the colored reel logo. Inventory
+label sheets remain fixed at 60 × 24 mm and do not use the saved custom dimensions.
 
 The **Inventory → Wishlist & orders** workspace has its own status filters and
 search field. It shows the number of matching rows, lets you move purchases
