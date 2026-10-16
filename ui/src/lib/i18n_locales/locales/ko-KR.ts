@@ -1543,6 +1543,7 @@ export const koKRDictionary: DictionaryNode = {
     "help": "돕다",
     "helpHint": "주요 desktop 및 Companion 워크플로우의 스크린샷을 보려면 시각적 제품 둘러보기를 열거나 단계별 동작에 대한 텍스트 매뉴얼을 사용하십시오.",
     "productTour": "제품 둘러보기",
+    "versionedHelpUnavailable": "출시된 앱 버전이 확인될 때까지 버전별 도움말을 사용할 수 없습니다.",
     "userManual": "사용 설명서",
     "libraryTabTitle": "라이브러리 및 웹 앱",
     "libraryTabHint": "",

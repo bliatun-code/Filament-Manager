@@ -2,6 +2,12 @@
   "schemaVersion": 1,
   "messages": [
     {
+      "surface": "desktop",
+      "key": "settings.versionedHelpUnavailable",
+      "meaning": "The installed application has not reported a stable release version, or reports a development or prerelease identifier. Source, product tour and manual actions stay disabled to avoid silently showing main-branch instructions for a different version. License and notices remain available.",
+      "screenshot": "docs/screenshots/settings-general.jpg"
+    },
+    {
       "surface": "companion",
       "key": "errors.inventoryBulkReactivationRequiresWeight",
       "meaning": "The entire bulk status change was rejected because an empty roll has no positive measured filament weight. Weigh that roll before retrying the selection.",

@@ -1838,6 +1838,7 @@ export const nbDictionary: DictionaryNode = {
       helpHint:
         "Åpne den visuelle product touren for skjermbilder av hovedflytene i desktop og Companion, eller bruk tekstmanualen for stegvis forklaring.",
       productTour: "Produktomvisning",
+      versionedHelpUnavailable: "Hjelp for denne versjonen er utilgjengelig til en utgitt appversjon er identifisert.",
       userManual: "Brukermanual",
       libraryTabTitle: "Bibliotek og webapp",
       libraryTabHint: "",

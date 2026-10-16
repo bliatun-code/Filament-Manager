@@ -2478,6 +2478,7 @@ export const itITDictionary: DictionaryNode = {
     updated: "aggiornato",
     updatedPrinter: "Stampante aggiornata",
     updatingSwatches: "Aggiornamento dei campioni...",
+    versionedHelpUnavailable: "La guida per questa versione non è disponibile finché non viene identificata una versione pubblicata dell’app.",
     userManual: "Manuale utente",
     validateBackup: "Convalida il file di backup",
     validationExtraTables: "Tavoli aggiuntivi",

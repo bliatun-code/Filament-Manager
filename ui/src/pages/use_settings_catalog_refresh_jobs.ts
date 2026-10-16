@@ -5,7 +5,10 @@ import {
   catalogRefreshJobSessionIdentity,
   observeCatalogRefreshJobSession,
 } from "../lib/catalog_refresh_job_session";
-import { isCatalogRefreshOperationActive } from "../lib/catalog_refresh_operation";
+import {
+  getActiveCatalogRefreshOperation,
+  isCatalogRefreshOperationActive,
+} from "../lib/catalog_refresh_operation";
 import type { useSettingsCatalogRefreshActions } from "./use_settings_catalog_refresh_actions";
 import {
   buildSettingsCatalogRefreshFallbackErrorMessage,
@@ -19,14 +22,13 @@ type JobInput = Pick<ActionsInput,
   "beginCatalogRefreshResult" | "completeCatalogRefreshResult" |
   "failCatalogRefreshResult" | "locale" | "reloadSettings" |
   "setCatalogRefreshBusy" | "setCatalogRefreshPhase" |
-  "setCatalogRefreshProgressMessage" | "setCatalogRefreshStartedAt" |
+  "setCatalogRefreshKind" | "setCatalogRefreshUnavailable" |
+  "setCatalogRefreshMaterial" | "setCatalogRefreshStartedAt" |
   "setCatalogRefreshVendor" | "setError" | "setInfo" |
   "settingsCatalogRefreshMessageLabels" | "settingsCatalogRefreshSummaryLabels" |
   "tauri"
 > & {
   target: CatalogWriteTarget;
-  refreshingMessage: string;
-  unavailableMessage: string;
 };
 
 export function useSettingsCatalogRefreshJobs(input: JobInput) {
@@ -37,6 +39,7 @@ export function useSettingsCatalogRefreshJobs(input: JobInput) {
     requestId: string | null | undefined;
     resultId: string | null;
     error: string | null;
+    auditReceiptId: string | null;
   } | null>(null);
   const identity = catalogRefreshJobSessionIdentity(input.target);
   const targetResolved = input.target.clientTargetGeneration != null;
@@ -54,13 +57,26 @@ export function useSettingsCatalogRefreshJobs(input: JobInput) {
     // React may replay effects for the same mount. Preserve its feedback then,
     // while a new mount still restores the receipt and a new target resets it.
     if (seenRef.current?.identity !== identity) {
-      seenRef.current = { identity, requestId: undefined, resultId: null, error: null };
+      seenRef.current = { identity, requestId: undefined, resultId: null, error: null, auditReceiptId: null };
     }
     const seen = seenRef.current;
     const unlisten = controller?.subscribe((state) => {
       const current = callbacks.current;
       if (catalogRefreshJobSessionIdentity(current.target) !== identity) return;
+      // Polling keeps its receipt and App-owned lock alive, but an active
+      // source audit owns all Settings progress and feedback until it finishes.
+      if (getActiveCatalogRefreshOperation()?.kind === "AUDIT") {
+        if (state.job && state.job.status !== "RUNNING") {
+          seen.auditReceiptId = state.job.job_id;
+        }
+        return;
+      }
       const request = state.job ?? state.request;
+      // Do not replay an older receipt over the audit's fresh result after it
+      // releases the lease. This suppression belongs only to this mount;
+      // another job or a later Settings visit recovers normal receipt behavior.
+      if (seen.auditReceiptId === request?.job_id && state.job?.status !== "RUNNING") return;
+      seen.auditReceiptId = null;
       if (seen.requestId !== (request?.job_id ?? null)) {
         seen.requestId = request?.job_id ?? null;
         current.beginCatalogRefreshResult();
@@ -68,18 +84,18 @@ export function useSettingsCatalogRefreshJobs(input: JobInput) {
         current.setInfo(null);
         seen.error = null;
       }
-      if (request) {
-        current.setCatalogRefreshVendor(request.vendor);
-        current.setCatalogRefreshProgressMessage(
-          `${request.vendor} ${request.material}: ${state.uncertain ? current.unavailableMessage : current.refreshingMessage}`,
-        );
-      }
-      current.setCatalogRefreshPhase(state.job?.status === "RUNNING" ? "FETCH" : "PREPARE");
+      if (!request) return;
+      current.setCatalogRefreshVendor(request.vendor);
+      current.setCatalogRefreshKind("REFRESH");
+      current.setCatalogRefreshMaterial(request.material);
+      current.setCatalogRefreshUnavailable(state.uncertain);
+      // Job receipts do not expose the Host's fetch/import subphase.
+      current.setCatalogRefreshPhase(state.job?.status ?? "PREPARE");
       const startedAt = state.job ? Date.parse(state.job.started_at) : null;
       current.setCatalogRefreshStartedAt(
         state.busy && startedAt !== null && Number.isFinite(startedAt) ? startedAt : null,
       );
-      if (state.busy || !request) return;
+      if (state.busy) return;
       const job = state.job;
       if (job && job.status !== "RUNNING" && seen.resultId !== job.job_id) {
         seen.resultId = job.job_id;

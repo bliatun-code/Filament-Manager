@@ -253,7 +253,7 @@ export function filterInventorySpools(
     lowStockOnly,
     locationFilterId,
   } = options;
-  const term = search.trim().toLowerCase();
+  const searchTerms = search.trim().toLowerCase().split(/\s+/).filter(Boolean);
   const exactLocationId = locationFilterId?.trim() ?? "";
   return spools.filter((spool) => {
     const statusMatch = isInventorySpoolVisibleForStatusFilter(spool, statusFilter);
@@ -266,20 +266,8 @@ export function filterInventorySpools(
       [spool.locationId, spool.homeLocationId].some(
         (locationId) => locationId?.trim() === exactLocationId,
       );
-    const searchMatch =
-      term.length === 0
-        ? true
-        : `${spool.id} ${formatRollReference(spool)} ${spool.material} ${spool.filamentName} ${
-            spool.colorName
-          } ${spool.location ?? ""} ${spool.homeLocation ?? ""} ${spool.locationId ?? ""} ${
-            spool.homeLocationId ?? ""
-          } ${spool.qrCode ?? ""} ${spool.rfidTag ?? ""} ${spool.ownerName ?? ""} ${
-            spool.ownerContact ?? ""
-          } ${
-            isBorrowedInOwnership(spool.ownershipType) ? "borrowed in" : "owned"
-          }`
-            .toLowerCase()
-            .includes(term);
+    const searchText = searchTerms.length === 0 ? "" : searchableInventoryText(spool);
+    const searchMatch = searchTerms.every((term) => searchText.includes(term));
     return (
       statusMatch &&
       ownershipMatch &&
@@ -290,6 +278,26 @@ export function filterInventorySpools(
       searchMatch
     );
   });
+}
+
+function searchableInventoryText(spool: InventorySpool): string {
+  return [
+    spool.id,
+    formatRollReference(spool),
+    spool.vendor,
+    spool.material,
+    spool.filamentName,
+    spool.colorName,
+    spool.location,
+    spool.homeLocation,
+    spool.locationId,
+    spool.homeLocationId,
+    spool.qrCode,
+    spool.rfidTag,
+    spool.ownerName,
+    spool.ownerContact,
+    isBorrowedInOwnership(spool.ownershipType) ? "borrowed in" : "owned",
+  ].join(" ").toLowerCase();
 }
 
 export function isInventorySpoolVisibleForStatusFilter(

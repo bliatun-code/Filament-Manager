@@ -3,7 +3,11 @@ import {
   subscribeCatalogRefreshProgress,
   type CatalogRefreshProgressPayload,
 } from "../lib/tauri_client";
-import { getActiveCatalogRefreshOperation } from "../lib/catalog_refresh_operation";
+import {
+  getActiveCatalogRefreshOperation,
+  updateCatalogRefreshOperation,
+  type CatalogRefreshOperationKind,
+} from "../lib/catalog_refresh_operation";
 import type { SettingsCatalogVendor } from "./settings_catalog_model";
 
 function disposeCatalogRefreshProgressListener(unlisten: (() => void) | null) {
@@ -15,17 +19,17 @@ function disposeCatalogRefreshProgressListener(unlisten: (() => void) | null) {
 }
 
 export function useSettingsCatalogRefreshProgress({
-  initialMessage,
   tauri,
 }: {
-  initialMessage: string;
   tauri: boolean;
 }) {
   const operationOnMount = getActiveCatalogRefreshOperation();
   const [catalogRefreshVendor, setCatalogRefreshVendor] =
     useState<SettingsCatalogVendor>(operationOnMount?.vendor ?? "Bambu");
-  const [catalogRefreshProgressMessage, setCatalogRefreshProgressMessage] =
-    useState(operationOnMount?.message ?? initialMessage);
+  const [catalogRefreshKind, setCatalogRefreshKind] =
+    useState<CatalogRefreshOperationKind>(operationOnMount?.kind ?? "REFRESH");
+  const [catalogRefreshUnavailable, setCatalogRefreshUnavailable] = useState(false);
+  const [catalogRefreshMaterial, setCatalogRefreshMaterial] = useState<string | null>(null);
   const [catalogRefreshPhase, setCatalogRefreshPhase] = useState(
     operationOnMount?.phase ?? "PREPARE",
   );
@@ -43,12 +47,13 @@ export function useSettingsCatalogRefreshProgress({
     }
 
     void subscribeCatalogRefreshProgress((payload: CatalogRefreshProgressPayload) => {
-      if (disposed || getActiveCatalogRefreshOperation()?.kind !== "AUDIT") {
+      const operation = getActiveCatalogRefreshOperation();
+      if (disposed || operation?.kind !== "AUDIT" || payload.vendor !== operation.vendor) {
         return;
       }
       setCatalogRefreshVendor(payload.vendor === "eSUN" ? "eSUN" : "Bambu");
       setCatalogRefreshPhase(payload.phase);
-      setCatalogRefreshProgressMessage(payload.message);
+      updateCatalogRefreshOperation(operation.id, { phase: payload.phase });
     }).then((fn) => {
       if (disposed) {
         disposeCatalogRefreshProgressListener(fn);
@@ -81,11 +86,15 @@ export function useSettingsCatalogRefreshProgress({
   return {
     catalogRefreshElapsedSeconds,
     catalogRefreshPhase,
-    catalogRefreshProgressMessage,
+    catalogRefreshKind,
+    catalogRefreshUnavailable,
+    catalogRefreshMaterial,
     catalogRefreshStartedAt,
     catalogRefreshVendor,
     setCatalogRefreshPhase,
-    setCatalogRefreshProgressMessage,
+    setCatalogRefreshKind,
+    setCatalogRefreshUnavailable,
+    setCatalogRefreshMaterial,
     setCatalogRefreshStartedAt,
     setCatalogRefreshVendor,
   };

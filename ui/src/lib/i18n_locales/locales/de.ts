@@ -1824,6 +1824,7 @@ export const deDictionary: DictionaryNode = {
     helpHint:
       "Öffne die visuelle Produkttour mit Bildern der wichtigsten Desktop- und Companion-Abläufe oder nutze das Handbuch für schrittweise Anleitungen.",
     productTour: "Produkttour",
+    versionedHelpUnavailable: "Versionsspezifische Hilfe ist erst verfügbar, wenn eine veröffentlichte App-Version erkannt wurde.",
     userManual: "Benutzerhandbuch",
     libraryTabTitle: "Bibliothek und Web-App",
     libraryTabHint: "",

@@ -2520,6 +2520,7 @@ export const ptBRDictionary: DictionaryNode = {
     updated: "atualizado",
     updatedPrinter: "Impressora atualizada",
     updatingSwatches: "Atualizando amostras...",
+    versionedHelpUnavailable: "A ajuda desta versão só estará disponível quando uma versão publicada do aplicativo for identificada.",
     userManual: "Manual do usuário",
     validateBackup: "Validar arquivo de backup",
     validationExtraTables: "Tabelas extras",

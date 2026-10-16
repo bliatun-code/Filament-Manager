@@ -1829,6 +1829,7 @@ export const enDictionary: DictionaryNode = {
       helpHint:
         "Open the visual product tour for screenshots of the main desktop and Companion workflows, or use the text manual for step-by-step behavior.",
       productTour: "Product tour",
+      versionedHelpUnavailable: "Version-specific help is unavailable until a released app version is identified.",
       userManual: "User manual",
       libraryTabTitle: "Library and web app",
       libraryTabHint: "",

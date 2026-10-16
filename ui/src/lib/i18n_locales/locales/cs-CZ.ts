@@ -1857,6 +1857,7 @@ export const csCZDictionary: DictionaryNode = {
     "updated": "aktualizováno",
     "updatedPrinter": "Aktualizovaná tiskárna",
     "updatingSwatches": "Aktualizace vzorníků...",
+    "versionedHelpUnavailable": "Nápověda pro tuto verzi bude dostupná po rozpoznání vydané verze aplikace.",
     "userManual": "Uživatelská příručka",
     "validateBackup": "Ověřte záložní soubor",
     "validationExtraTables": "Extra stoly",

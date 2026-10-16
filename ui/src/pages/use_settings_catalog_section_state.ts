@@ -8,15 +8,12 @@ import { useSettingsCatalogRefreshState } from "./use_settings_catalog_refresh_s
 import { useSettingsSwatchDrafts } from "./use_settings_swatch_drafts";
 import { useSettingsSwatchState } from "./use_settings_swatch_state";
 
-type TranslateFn = (key: string, fallback?: string) => string;
-
 type UseSettingsCatalogSectionStateInput = {
   catalogMasters: MasterCatalogRow[];
   catalogRefreshBusy: boolean;
   catalogSourceCacheScope: string | null;
   setCatalogRefreshBusy: Dispatch<SetStateAction<boolean>>;
   tauri: boolean;
-  t: TranslateFn;
 };
 
 export function useSettingsCatalogSectionState({
@@ -25,7 +22,6 @@ export function useSettingsCatalogSectionState({
   catalogSourceCacheScope,
   setCatalogRefreshBusy,
   tauri,
-  t,
 }: UseSettingsCatalogSectionStateInput) {
   const swatchDrafts = useSettingsSwatchDrafts();
   const swatchState = useSettingsSwatchState();
@@ -38,7 +34,6 @@ export function useSettingsCatalogSectionState({
   });
   const refreshResult = useSettingsCatalogRefreshResult();
   const refreshProgress = useSettingsCatalogRefreshProgress({
-    initialMessage: t("wishlist.refreshPreparing", "Preparing catalog refresh..."),
     tauri,
   });
   const derivedState = useSettingsCatalogDerivedState({

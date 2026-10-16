@@ -1955,6 +1955,7 @@ export const trTRDictionary: DictionaryNode = {
     "updated": "güncellendi",
     "updatedPrinter": "Güncellenen yazıcı",
     "updatingSwatches": "Renk örnekleri güncelleniyor...",
+    "versionedHelpUnavailable": "Yayımlanmış bir uygulama sürümü belirlenene kadar sürüme özel yardım kullanılamaz.",
     "userManual": "Kullanım kılavuzu",
     "validateBackup": "Yedekleme dosyasını doğrula",
     "validationExtraTables": "Ekstra masalar",

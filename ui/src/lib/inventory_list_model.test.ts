@@ -297,6 +297,87 @@ test("search, status and low-stock filters compose without widening results", ()
   );
 });
 
+test("inventory search includes vendors and matches all words in any order across fields", () => {
+  const rows = [
+    spool({ id: "spool_a", vendor: "Bambu Lab", filamentName: "PLA Basic", colorName: "Red", location: "Workshop shelf" }),
+    spool({ id: "spool_b", vendor: "Bambu Lab", filamentName: "PLA Basic", colorName: "Blue" }),
+    spool({ id: "spool_c", vendor: "Generic", filamentName: "PLA Basic", colorName: "Red" }),
+    spool({ id: "spool_d", vendor: "Bambu Lab", material: "PETG", filamentName: "PETG Basic", colorName: "Red" }),
+  ];
+  const searchIds = (search: string) => filterInventorySpools(rows, {
+    ...defaultFilterOptions,
+    search,
+  }).map((row) => row.id);
+
+  assert.deepEqual(searchIds("Bambu"), ["spool_a", "spool_b", "spool_d"]);
+  assert.deepEqual(searchIds("PLA Red"), ["spool_a", "spool_c"]);
+  assert.deepEqual(searchIds("red PLA Bambu"), ["spool_a"]);
+  assert.deepEqual(searchIds("  BAMBU\tred\npla   workshop\u00a0shelf  "), ["spool_a"]);
+  assert.deepEqual(searchIds("Bambu PLA purple"), []);
+  assert.deepEqual(searchIds("Bambu PLA rød"), []);
+  assert.deepEqual(searchIds(" \t\n "), rows.map((row) => row.id));
+});
+
+test("inventory search retains complete spool references, QR targets and RFID identifiers", () => {
+  const rows = [
+    spool({
+      id: "spool_1234567890",
+      qrCode: "https://host.example:4173/companion/spool/spool_1234567890?source=qr",
+      rfidTag: "A1B2-C3D4-E5F6",
+    }),
+    spool({
+      id: "spool_1234567891",
+      qrCode: "https://host.example:4173/companion/spool/spool_1234567891?source=qr",
+      rfidTag: "A1B2-C3D4-E5F7",
+    }),
+  ];
+  for (const search of [
+    "spool_1234567890",
+    "#567890",
+    " https://host.example:4173/companion/spool/spool_1234567890?source=qr ",
+    "a1b2-c3d4-e5f6",
+  ]) {
+    assert.deepEqual(filterInventorySpools(rows, {
+      ...defaultFilterOptions,
+      search,
+    }).map((row) => row.id), ["spool_1234567890"], search);
+  }
+  assert.deepEqual(filterInventorySpools(rows, {
+    ...defaultFilterOptions,
+    search: "A1B2-C3D4-E5F8",
+  }), []);
+});
+
+test("multi-word inventory search composes with every explicit filter", () => {
+  const matching = spool({
+    id: "match",
+    vendor: "Bambu Lab",
+    colorName: "Red",
+    status: "ASSIGNED",
+    ownershipType: "BORROWED_IN",
+    remainingGrams: 100,
+    locationId: "shelf-1",
+  });
+  const rows = [
+    matching,
+    { ...matching, id: "other-status", status: "IN_STOCK" as const },
+    { ...matching, id: "other-owner", ownershipType: "OWNED" as const },
+    { ...matching, id: "other-material", material: "PETG", filamentName: "PLA-like" },
+    { ...matching, id: "other-vendor", vendor: "Bambu Other" },
+    { ...matching, id: "high-stock", remainingGrams: 900 },
+    { ...matching, id: "other-location", locationId: "shelf-10" },
+  ];
+  assert.deepEqual(filterInventorySpools(rows, {
+    search: "red Bambu PLA",
+    statusFilter: "ASSIGNED",
+    ownershipFilter: "BORROWED_IN",
+    materialFilter: "PLA",
+    vendorFilter: "Bambu Lab",
+    lowStockOnly: true,
+    locationFilterId: "shelf-1",
+  }).map((row) => row.id), ["match"]);
+});
+
 test("location search and drilldown include home placement while filtering by exact ID", () => {
   const rows = [
     spool({

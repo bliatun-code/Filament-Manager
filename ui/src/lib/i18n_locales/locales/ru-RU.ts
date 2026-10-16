@@ -1462,6 +1462,7 @@ export const ruRUDictionary: DictionaryNode = {
     "libraryTabHint": "",
     "tabLibrary": "Библиотека и веб-приложение",
     "tabCompanion": "Доступ через браузер",
+    "versionedHelpUnavailable": "Справка для этой версии станет доступна после определения опубликованной версии приложения.",
     "userManual": "Руководство пользователя",
     "libraryWebappLabel": "Веб-приложение",
     "productTour": "Обзор продукта",

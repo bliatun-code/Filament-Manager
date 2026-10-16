@@ -5,6 +5,7 @@ import {
 import { isObservedCatalogRefreshJobBusy } from "../lib/catalog_refresh_job_session";
 import {
   completeCatalogRefreshOperation,
+  type CatalogRefreshOperationKind,
   tryBeginCatalogRefreshOperation,
 } from "../lib/catalog_refresh_operation";
 import { diagnosticErrorText } from "../lib/error_text";
@@ -32,7 +33,9 @@ type UseSettingsCatalogRefreshActionsInput = {
   reloadSettings: () => Promise<void>;
   setCatalogRefreshBusy: Dispatch<SetStateAction<boolean>>;
   setCatalogRefreshPhase: Dispatch<SetStateAction<string>>;
-  setCatalogRefreshProgressMessage: Dispatch<SetStateAction<string>>;
+  setCatalogRefreshKind: Dispatch<SetStateAction<CatalogRefreshOperationKind>>;
+  setCatalogRefreshUnavailable: Dispatch<SetStateAction<boolean>>;
+  setCatalogRefreshMaterial: Dispatch<SetStateAction<string | null>>;
   setCatalogRefreshStartedAt: Dispatch<SetStateAction<number | null>>;
   setCatalogRefreshVendor: Dispatch<SetStateAction<SettingsCatalogVendor>>;
   setError: Dispatch<SetStateAction<string | null>>;
@@ -62,7 +65,9 @@ export function useSettingsCatalogRefreshActions({
   getCatalogRefreshMaterial,
   setCatalogRefreshBusy,
   setCatalogRefreshPhase,
-  setCatalogRefreshProgressMessage,
+  setCatalogRefreshKind,
+  setCatalogRefreshUnavailable,
+  setCatalogRefreshMaterial,
   setCatalogRefreshStartedAt,
   setCatalogRefreshVendor,
   setError,
@@ -79,12 +84,13 @@ export function useSettingsCatalogRefreshActions({
   function beginCatalogOperation(
     vendor: SettingsCatalogVendor,
     phase: string,
-    message: string,
     startedAt: number,
   ) {
     setCatalogRefreshVendor(vendor);
     setCatalogRefreshPhase(phase);
-    setCatalogRefreshProgressMessage(message);
+    setCatalogRefreshKind("AUDIT");
+    setCatalogRefreshUnavailable(false);
+    setCatalogRefreshMaterial(null);
     setCatalogRefreshStartedAt(startedAt);
     setCatalogRefreshBusy(true);
     beginCatalogRefreshResult();
@@ -109,7 +115,6 @@ export function useSettingsCatalogRefreshActions({
     beginCatalogOperation(
       vendor,
       operation.phase,
-      operation.message,
       operation.startedAt,
     );
     try {

@@ -6,6 +6,7 @@ import {
   SettingsSectionHeader,
   SettingsSectionPanel,
 } from "../components/settings_ui";
+import type { CatalogRefreshOperationKind } from "../lib/catalog_refresh_operation";
 import { inlineStatusSignalClass } from "../lib/chip_styles";
 import { useI18n } from "../lib/i18n";
 import { formatDisplayInteger } from "../lib/number_display";
@@ -17,6 +18,7 @@ import type {
   CatalogRefreshResult,
   CatalogSourceAuditResult,
 } from "../lib/tauri_client";
+import { settingsCatalogProgressCopy } from "./settings_catalog_progress_copy";
 import {
   settingsCatalogRefreshSummaryGridClass,
   type SettingsCatalogVendor,
@@ -36,7 +38,9 @@ type SettingsCatalogRefreshPanelProps = {
   catalogRefreshElapsedSeconds: number;
   catalogRefreshLog: string;
   catalogRefreshPhase: string;
-  catalogRefreshProgressMessage: string;
+  catalogRefreshKind: CatalogRefreshOperationKind;
+  catalogRefreshUnavailable: boolean;
+  catalogRefreshMaterial: string | null;
   catalogRefreshSummary: CatalogRefreshResult | null;
   catalogSourceAuditSummary: CatalogSourceAuditResult | null;
   catalogRefreshVendor: SettingsCatalogVendor;
@@ -65,7 +69,9 @@ export function SettingsCatalogRefreshPanel({
   catalogRefreshElapsedSeconds,
   catalogRefreshLog,
   catalogRefreshPhase,
-  catalogRefreshProgressMessage,
+  catalogRefreshKind,
+  catalogRefreshUnavailable,
+  catalogRefreshMaterial,
   catalogRefreshSummary,
   catalogSourceAuditSummary,
   catalogRefreshVendor,
@@ -89,7 +95,14 @@ export function SettingsCatalogRefreshPanel({
         { material: activeCatalogRefreshMaterial },
       )
     : t("settings.selectOneMaterial", "Select one material type");
-  const discovering = catalogRefreshBusy && catalogRefreshPhase === "DISCOVER";
+  const discovering = catalogRefreshBusy && catalogRefreshKind === "AUDIT";
+  const { phase: phaseLabel, message: catalogRefreshProgressMessage } = settingsCatalogProgressCopy({
+    phase: catalogRefreshPhase,
+    kind: catalogRefreshKind,
+    unavailable: catalogRefreshUnavailable,
+    vendor: catalogRefreshVendor,
+    t,
+  });
 
   return (
     <SettingsSectionPanel className="mt-4">
@@ -242,6 +255,7 @@ export function SettingsCatalogRefreshPanel({
               <div>
                 <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">
                   {catalogRefreshVendor} {t("wishlist.catalog", "catalog")}
+                  {catalogRefreshMaterial ? ` · ${catalogRefreshMaterial}` : ""}
                 </div>
                 <div className="mt-2 text-sm font-semibold text-slate-900 dark:text-slate-100">
                   {catalogRefreshProgressMessage}
@@ -252,7 +266,7 @@ export function SettingsCatalogRefreshPanel({
               </div>
             </div>
             <div className="mt-4 grid gap-3 sm:grid-cols-2">
-              <SettingsMetricTile label={t("wishlist.phase", "Phase")} value={catalogRefreshPhase} />
+              <SettingsMetricTile label={t("wishlist.phase", "Phase")} value={phaseLabel} />
               <SettingsMetricTile
                 label={t("wishlist.elapsed", "Elapsed")}
                 value={`${catalogRefreshElapsedSeconds}s`}

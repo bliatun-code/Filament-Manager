@@ -30,6 +30,24 @@ import { SettingsSurfaceCard } from "./settings_ui";
 
 type TranslateFn = (key: string, fallback: string, params?: MessageParams) => string;
 
+function VersionedAppLink({ url, children }: { url: string | null; children: string }) {
+  if (!url) {
+    return <button type="button" className={settingsActionButtonClass()} disabled>{children}</button>;
+  }
+  return (
+    <a
+      href={url}
+      onClick={(event) => {
+        event.preventDefault();
+        void openExternalUrl(url);
+      }}
+      className={settingsActionButtonClass()}
+    >
+      {children}
+    </a>
+  );
+}
+
 export type SettingsGeneralTabProps = {
   appVersion: string | null;
   busy: boolean;
@@ -72,8 +90,8 @@ export function SettingsGeneralTab({
   const sourceUrl = sourceUrlForAppVersion(appVersion);
   const licenseUrl = licenseUrlForAppVersion(appVersion);
   const noticeUrl = noticeUrlForAppVersion(appVersion);
-  const tourUrl = screenshotTourUrl();
-  const userGuideUrl = userGuideUrlForLocale(locale);
+  const tourUrl = screenshotTourUrl(appVersion);
+  const userGuideUrl = userGuideUrlForLocale(locale, appVersion);
   const checkingForUpdates = updateCheck.state.status === "CHECKING";
   const updateMessage = appUpdateCheckMessage(updateCheck.state, t);
   const macosApprovalRequired = desktopLifecycleUpdateError?.startsWith(
@@ -359,15 +377,9 @@ export function SettingsGeneralTab({
           )}
         </div>
         <div className="flex flex-wrap gap-2">
-          <button
-            type="button"
-            onClick={() => {
-              void openExternalUrl(sourceUrl);
-            }}
-            className={settingsActionButtonClass()}
-          >
+          <VersionedAppLink url={sourceUrl}>
             {t("settings.sourceCode", "Source code")}
-          </button>
+          </VersionedAppLink>
           <button
             type="button"
             onClick={() => {
@@ -459,25 +471,21 @@ export function SettingsGeneralTab({
           "Open the visual product tour for screenshots of the main desktop and Companion workflows, or use the text manual for step-by-step behavior.",
         )}
       >
+        {!tourUrl || !userGuideUrl ? (
+          <p className="text-xs leading-5 text-slate-600 dark:text-slate-300" role="status">
+            {t(
+              "settings.versionedHelpUnavailable",
+              "Version-specific help is unavailable until a released app version is identified.",
+            )}
+          </p>
+        ) : null}
         <div className="flex flex-wrap gap-2">
-          <button
-            type="button"
-            onClick={() => {
-              void openExternalUrl(tourUrl);
-            }}
-            className={settingsActionButtonClass()}
-          >
+          <VersionedAppLink url={tourUrl}>
             {t("settings.productTour", "Product tour")}
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              void openExternalUrl(userGuideUrl);
-            }}
-            className={settingsActionButtonClass()}
-          >
+          </VersionedAppLink>
+          <VersionedAppLink url={userGuideUrl}>
             {t("settings.userManual", "User manual")}
-          </button>
+          </VersionedAppLink>
         </div>
       </SettingsSurfaceCard>
 

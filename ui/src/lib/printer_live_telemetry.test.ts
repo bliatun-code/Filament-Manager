@@ -108,6 +108,64 @@ test("printer live telemetry ignores carried timing after a failed print", () =>
   assert.equal(telemetry?.bedTempLabel, "42°C");
 });
 
+test("explicit pause and preparation states take priority over a hot nozzle and progress", () => {
+  for (const [gcodeState, expectedState, expectedLabel] of [
+    ["PAUSE", "paused", "Paused"],
+    [" paused ", "paused", "Paused"],
+    ["PREPARE", "preparing", "Preparing"],
+    [" slicing ", "preparing", "Preparing"],
+  ] as const) {
+    const telemetry = buildPrinterLiveTelemetry(
+      liveConfig({
+        gcode_state: gcodeState,
+        progress_percent: 43,
+        remaining_minutes: 21,
+        nozzle_temp_c: 220,
+      }),
+      t,
+    );
+
+    assert.equal(telemetry?.state, expectedState, gcodeState);
+    assert.equal(telemetry?.stateLabel, expectedLabel, gcodeState);
+    assert.equal(telemetry?.progressLabel, "43%", gcodeState);
+    assert.equal(telemetry?.remainingLabel, "21 min", gcodeState);
+    assert.equal(telemetry?.nozzleTempLabel, "220°C", gcodeState);
+  }
+});
+
+test("terminal printer states keep carried hot-nozzle progress hidden", () => {
+  for (const gcodeState of ["FINISH", "FINISHED", "IDLE", "FAILED", "STOP", "STOPPED", "CANCELLED"]) {
+    const telemetry = buildPrinterLiveTelemetry(
+      liveConfig({
+        gcode_state: gcodeState,
+        progress_percent: 100,
+        remaining_minutes: 0,
+        nozzle_temp_c: 220,
+      }),
+      t,
+    );
+
+    assert.equal(telemetry?.state, "idle", gcodeState);
+    assert.equal(telemetry?.progressLabel, null, gcodeState);
+    assert.equal(telemetry?.remainingLabel, null, gcodeState);
+  }
+});
+
+test("running and unknown printer states retain existing telemetry fallbacks", () => {
+  const cases = [
+    { observed: { gcode_state: "RUNNING", nozzle_temp_c: 40 }, state: "printing" },
+    { observed: { gcode_state: "UNKNOWN", nozzle_temp_c: 220, progress_percent: 43 }, state: "printing" },
+    { observed: { gcode_state: null, nozzle_temp_c: 200, remaining_minutes: 0 }, state: "printing" },
+    { observed: { gcode_state: "UNKNOWN", nozzle_temp_c: 199, progress_percent: 43 }, state: "active" },
+    { observed: { gcode_state: "UNKNOWN", nozzle_temp_c: 220 }, state: "idle" },
+    { observed: { gcode_state: "UNKNOWN", print_type: "idle", nozzle_temp_c: 40, progress_percent: 43 }, state: "idle" },
+  ] as const;
+
+  for (const { observed, state } of cases) {
+    assert.equal(buildPrinterLiveTelemetry(liveConfig(observed), t)?.state, state);
+  }
+});
+
 test("printer live telemetry hides stale MQTT snapshots", () => {
   assert.equal(
     buildPrinterLiveTelemetry(

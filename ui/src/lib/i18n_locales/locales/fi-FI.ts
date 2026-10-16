@@ -1543,6 +1543,7 @@ export const fiFIDictionary: DictionaryNode = {
     "help": "Apua",
     "helpHint": "Avaa visuaalinen tuoteesittely nähdäksesi kuvakaappaukset päätyöpöydän ja Companion-työnkuluista tai käytä tekstioppaasta vaiheittaista toimintaa.",
     "productTour": "Tuotekierros",
+    "versionedHelpUnavailable": "Versiokohtainen ohje on käytettävissä, kun julkaistu sovellusversio on tunnistettu.",
     "userManual": "Käyttöohje",
     "libraryTabTitle": "Kirjasto ja verkkosovellus",
     "libraryTabHint": "",

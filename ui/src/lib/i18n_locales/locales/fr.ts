@@ -1862,6 +1862,7 @@ export const frDictionary: DictionaryNode = {
     viewNotices: "Mentions",
     help: "Aide",
     productTour: "Visite guidée",
+    versionedHelpUnavailable: "L’aide propre à cette version n’est pas disponible tant qu’une version publiée de l’application n’a pas été identifiée.",
     userManual: "Manuel utilisateur",
     subtitle: "Gérez l’accès navigateur, les imprimantes, les mises à jour du catalogue et la maintenance.",
     addPrinter: "Ajouter une imprimante",
