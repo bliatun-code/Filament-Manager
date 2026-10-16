@@ -1,5 +1,7 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useI18n } from "../lib/i18n";
+import { toErrorMessage } from "../lib/error_text";
+import { openExportedLabelFile, type FilamentLabelExportResult } from "../lib/tauri_label_file_client";
 import {
   FILAMENT_LABEL_DIMENSION_STEP_MM,
   FILAMENT_LABEL_MAX_HEIGHT_MM,
@@ -30,13 +32,15 @@ import { AppModal } from "./app_modal";
 import { ModalHeader, ModalNotice } from "./modal_chrome";
 
 type InventorySpoolQrRfidPanelProps = {
+  authorityKey?: string | null;
   companionAvailable: boolean;
   dataUrl: string | null;
   deterministicLabelPreferences?: boolean;
   loading: boolean;
   initialLabelPanelOpen?: boolean;
   labelPanelRequestId?: number;
-  onPrintLabel: (labelSize: FilamentLabelSize, pngDataUrl: string) => Promise<{ message: string; success: boolean } | void>;
+  onRetryQr?: () => void;
+  onPrintLabel: (labelSize: FilamentLabelSize, pngDataUrl: string) => Promise<FilamentLabelExportResult | void>;
   onStartRfidCapture: () => void;
   resolvedTheme: ResolvedTheme;
   runtimeAvailable: boolean;
@@ -54,12 +58,14 @@ function parseCustomDimensionDraft(value: string): number {
 }
 
 export function InventorySpoolQrRfidPanel({
+  authorityKey = null,
   companionAvailable,
   dataUrl,
   deterministicLabelPreferences = false,
   loading,
   initialLabelPanelOpen = false,
   labelPanelRequestId = 0,
+  onRetryQr,
   onPrintLabel,
   onStartRfidCapture,
   resolvedTheme,
@@ -85,8 +91,12 @@ export function InventorySpoolQrRfidPanel({
     renderKey: string;
   } | null>(null);
   const [labelPreviewBusy, setLabelPreviewBusy] = useState(false);
+  const [labelPreviewFailed, setLabelPreviewFailed] = useState<string | null>(null);
+  const [previewAttempt, setPreviewAttempt] = useState(0);
+  const [openingSavedFile, setOpeningSavedFile] = useState(false);
+  const [openSavedFileError, setOpenSavedFileError] = useState<{ scope: object; message: string } | null>(null);
   const [labelExportBusy, setLabelExportBusy] = useState(false);
-  const [labelExportFeedback, setLabelExportFeedback] = useState<{ message: string; success: boolean; renderKey: string } | null>(null);
+  const [labelExportFeedback, setLabelExportFeedback] = useState<(FilamentLabelExportResult & { scope: object }) | null>(null);
   const handledLabelPanelRequestRef = useRef(labelPanelRequestId);
 
   const customDimensions = useMemo(
@@ -114,6 +124,7 @@ export function InventorySpoolQrRfidPanel({
       return null;
     }
     return JSON.stringify([
+      authorityKey,
       labelSize.selectionId,
       labelSize.widthMm,
       labelSize.heightMm,
@@ -126,6 +137,7 @@ export function InventorySpoolQrRfidPanel({
       spool.id,
     ]);
   }, [
+    authorityKey,
     dataUrl,
     labelSize,
     spool.colorName,
@@ -137,6 +149,24 @@ export function InventorySpoolQrRfidPanel({
   ]);
   const currentLabelPreview =
     labelPreview?.renderKey === labelRenderKey ? labelPreview.pngDataUrl : null;
+  const scope = useMemo(() => ({ renderKey: labelRenderKey, open: labelPanelOpen }), [labelRenderKey, labelPanelOpen]);
+  const currentScope = useRef<object | null>(null);
+  const activeExport = useRef<object | null>(null);
+  const activeOpen = useRef<object | null>(null);
+  const savedExport = useRef<typeof labelExportFeedback>(null);
+  useLayoutEffect(() => {
+    currentScope.current = scope;
+    savedExport.current = null;
+    setLabelExportBusy(false);
+    setOpeningSavedFile(false);
+    return () => { currentScope.current = null; };
+  }, [scope]);
+  const closeLabelPanel = () => {
+    savedExport.current = null;
+    setLabelPanelOpen(false);
+    setLabelExportFeedback(null);
+    setOpenSavedFileError(null);
+  };
   const customValidationMessage = !customValidation.valid
     ? customValidation.code === "width-too-small-for-height"
       ? t(
@@ -191,10 +221,12 @@ export function InventorySpoolQrRfidPanel({
     if (!labelPanelOpen || !dataUrl || !target || !labelSize || !labelRenderKey) {
       setLabelPreview(null);
       setLabelPreviewBusy(false);
+      setLabelPreviewFailed(null);
       return;
     }
     let active = true;
     setLabelPreviewBusy(true);
+    setLabelPreviewFailed(null);
     setLabelPreview(null);
     const timer = window.setTimeout(() => {
       void Promise.all([
@@ -220,7 +252,10 @@ export function InventorySpoolQrRfidPanel({
             setLabelPreview({ pngDataUrl: preview, renderKey: labelRenderKey });
           }
         })
-        .catch((error) => console.error(error))
+        .catch((error) => {
+          console.error(error);
+          if (active) setLabelPreviewFailed(labelRenderKey);
+        })
         .finally(() => {
           if (active) {
             setLabelPreviewBusy(false);
@@ -235,6 +270,7 @@ export function InventorySpoolQrRfidPanel({
     dataUrl,
     labelPanelOpen,
     labelRenderKey,
+    previewAttempt,
     labelSize,
     spool.colorName,
     spool.filamentName,
@@ -258,16 +294,41 @@ export function InventorySpoolQrRfidPanel({
   };
 
   const exportLabel = async () => {
-    if (!currentLabelPreview || !labelSize || !labelRenderKey || labelExportBusy) {
+    if (!currentLabelPreview || !labelSize || !labelRenderKey || labelExportBusy || currentScope.current !== scope || activeExport.current === scope) {
       return;
     }
+    activeExport.current = scope;
+    savedExport.current = null;
     setLabelExportBusy(true);
     setLabelExportFeedback(null);
+    setOpenSavedFileError(null);
     try {
       const result = await onPrintLabel(labelSize, currentLabelPreview);
-      if (result) setLabelExportFeedback({ ...result, renderKey: labelRenderKey });
+      if (result && currentScope.current === scope) {
+        const feedback = { ...result, scope };
+        savedExport.current = feedback;
+        setLabelExportFeedback(feedback);
+      }
+    } catch (error) {
+      if (currentScope.current === scope) setLabelExportFeedback({ scope, success: false, message: toErrorMessage(error, t("inventory.error.printLabel", "Failed to generate label."), t) });
     } finally {
-      setLabelExportBusy(false);
+      if (activeExport.current === scope) activeExport.current = null;
+      if (currentScope.current === scope) setLabelExportBusy(false);
+    }
+  };
+
+  const openSavedLabel = async () => {
+    if (!runtimeAvailable || !labelExportFeedback?.success || !labelExportFeedback.exportedPath || labelExportFeedback.scope !== scope || currentScope.current !== scope || savedExport.current !== labelExportFeedback || activeOpen.current === scope || activeExport.current === scope) return;
+    activeOpen.current = scope;
+    setOpeningSavedFile(true);
+    setOpenSavedFileError(null);
+    try {
+      await openExportedLabelFile(labelExportFeedback.exportedPath);
+    } catch (error) {
+      if (currentScope.current === scope) setOpenSavedFileError({ scope, message: toErrorMessage(error, t("errors.savedLabelFileOpenFailed", "The saved label file could not be opened. Open it from Downloads, or save it again."), t) });
+    } finally {
+      if (activeOpen.current === scope) activeOpen.current = null;
+      if (currentScope.current === scope) setOpeningSavedFile(false);
     }
   };
 
@@ -301,6 +362,11 @@ export function InventorySpoolQrRfidPanel({
                 "inventory.qrCompanionUnavailable",
                 "Companion link is unavailable right now. Start the Trusted-LAN companion on the active host to build a direct browser link.",
               )}
+          {!loading && runtimeAvailable && onRetryQr ? (
+            <button type="button" className={`${inventoryDetailActionButtonClassName} mt-2`} onClick={onRetryQr}>
+              {t("inventory.labelRetryPreview", "Try preview again")}
+            </button>
+          ) : null}
         </div>
       )}
       {target ? (
@@ -323,7 +389,7 @@ export function InventorySpoolQrRfidPanel({
         <button
           type="button"
           className={inventoryDetailActionButtonClassName}
-          onClick={() => setLabelPanelOpen((open) => !open)}
+          onClick={() => labelPanelOpen ? closeLabelPanel() : setLabelPanelOpen(true)}
           disabled={!runtimeAvailable || !companionAvailable || !dataUrl || !target}
         >
           {t("inventory.printQr", "Create QR label")}
@@ -338,7 +404,7 @@ export function InventorySpoolQrRfidPanel({
       {labelPanelOpen ? (
         <AppModal
           zIndex={80}
-          onBackdropClose={() => { setLabelPanelOpen(false); setLabelExportFeedback(null); }}
+          onBackdropClose={closeLabelPanel}
           panelClassName="app-modal-panel flex max-h-[calc(100dvh-3rem)] w-[min(92vw,58rem)] flex-col overflow-hidden rounded-2xl border"
         >
           <ModalHeader
@@ -349,7 +415,7 @@ export function InventorySpoolQrRfidPanel({
               "Choose a physical size, check the preview, and save a print-ready PNG.",
             )}
             closeLabel={t("common.close", "Close")}
-            onClose={() => { setLabelPanelOpen(false); setLabelExportFeedback(null); }}
+            onClose={closeLabelPanel}
           />
           <div id="inventory-label-builder" className="grid min-h-0 gap-5 overflow-y-auto p-5 md:grid-cols-[minmax(0,1.35fr)_minmax(16rem,0.65fr)]">
             <div className="app-modal-inset flex min-h-64 items-center rounded-xl border p-5">
@@ -360,12 +426,20 @@ export function InventorySpoolQrRfidPanel({
                   className="mx-auto max-h-[22rem] max-w-full bg-white object-contain shadow-lg"
                 />
               ) : (
-                <div className="flex w-full items-center justify-center text-sm text-slate-500">
+                <div className="flex w-full flex-col items-center justify-center gap-3 text-center text-sm text-slate-500">
                   {customValidationMessage && labelPreferences.selectedSize === "custom"
                     ? customValidationMessage
                     : labelPreviewBusy
                     ? t("inventory.labelRendering", "Rendering label...")
+                    : labelPreviewFailed === labelRenderKey
+                    ? t("inventory.labelPreviewFailed", "Could not prepare the label preview. Try again.")
                     : t("inventory.labelPreviewUnavailable", "Label preview unavailable")}
+                  {labelPreviewFailed === labelRenderKey && labelRenderKey && labelSize ? (
+                    <button type="button" className={inventoryDetailActionButtonClassName}
+                      onClick={() => { setLabelPreviewBusy(true); setLabelPreviewFailed(null); setPreviewAttempt((attempt) => attempt + 1); }}>
+                      {t("inventory.labelRetryPreview", "Try preview again")}
+                    </button>
+                  ) : null}
                 </div>
               )}
             </div>
@@ -490,6 +564,9 @@ export function InventorySpoolQrRfidPanel({
                   "Need labels for several rolls? Choose “Select multiple” in Inventory, or create a label sheet for all stock from the header.",
                 )}
               </div>
+              <p className="mt-3 text-xs leading-5 text-slate-600 dark:text-slate-300">
+                {t("inventory.labelPrintActualSize", "Print at 100% or Actual size, with page fitting turned off. Match the selected label or paper size in your print settings.")}
+              </p>
               <button
                 type="button"
                 className={`mt-4 w-full ${inventoryDetailActionButtonClassName}`}
@@ -502,11 +579,17 @@ export function InventorySpoolQrRfidPanel({
                   ? t("inventory.labelSaving", "Saving PNG...")
                   : t("inventory.labelSaveDownloads", "Save PNG to Downloads")}
               </button>
-              {labelExportFeedback && labelExportFeedback.renderKey === labelRenderKey ? (
+              {labelExportFeedback && labelExportFeedback.scope === scope ? (
                 <ModalNotice className="mt-3" tone={labelExportFeedback.success ? "success" : "danger"} role={labelExportFeedback.success ? "status" : "alert"}>
                   {labelExportFeedback.message}
                 </ModalNotice>
               ) : null}
+              {labelExportFeedback?.success && labelExportFeedback.scope === scope && labelExportFeedback.exportedPath ? (
+                <button type="button" className={`mt-3 w-full ${inventoryDetailActionButtonClassName}`} disabled={openingSavedFile || labelExportBusy} onClick={() => void openSavedLabel()}>
+                  {openingSavedFile ? t("inventory.labelOpeningSavedFile", "Opening file...") : t("inventory.labelOpenSavedFile", "Open saved file")}
+                </button>
+              ) : null}
+              {openSavedFileError?.scope === scope ? <ModalNotice className="mt-3" tone="danger" role="alert">{openSavedFileError.message}</ModalNotice> : null}
             </div>
           </div>
         </AppModal>

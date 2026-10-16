@@ -346,6 +346,8 @@ pub(crate) struct LibrarySyncHostValidationResult {
     pub(crate) matches_library_id: bool,
     pub(crate) pairing_checked: bool,
     pub(crate) pairing_valid: bool,
+    pub(crate) target_generation: Option<u64>,
+    pub(crate) app_version: Option<String>,
     pub(crate) api_version: Option<String>,
     pub(crate) auth_mode: Option<String>,
     pub(crate) access_mode: Option<String>,
@@ -358,6 +360,8 @@ pub(crate) struct LibrarySyncHostValidationResult {
 #[derive(Deserialize)]
 pub(crate) struct LibrarySyncSnapshotResponse {
     pub(crate) ok: bool,
+    #[serde(default)]
+    pub(crate) app_version: Option<String>,
     pub(crate) captured_at: String,
     pub(crate) library_id: String,
     pub(crate) device_name: String,
@@ -377,6 +381,8 @@ pub(crate) struct LibrarySyncCreateSpoolResponse {
 #[derive(Serialize, Deserialize, Clone)]
 pub(crate) struct LibrarySyncRemoteSnapshot {
     pub(crate) captured_at: String,
+    #[serde(default)]
+    pub(crate) app_version: Option<String>,
     pub(crate) library_id: String,
     pub(crate) device_name: String,
     pub(crate) sync_mode: String,

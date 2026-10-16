@@ -43,6 +43,7 @@ fn fetch_library_sync_snapshot_blocking(
 
     let snapshot = LibrarySyncRemoteSnapshot {
         captured_at: parsed.captured_at,
+        app_version: parsed.app_version,
         library_id: parsed.library_id,
         device_name: parsed.device_name,
         sync_mode: parsed.sync_mode,
@@ -57,6 +58,7 @@ fn fetch_library_sync_snapshot_blocking(
     with_current_library_sync_target(state, &target, |engine| {
         engine.save_library_sync_cached_snapshot(&LibrarySyncCachedSnapshotRow {
             captured_at: snapshot.captured_at.clone(),
+            app_version: snapshot.app_version.clone(),
             library_id: snapshot.library_id.clone(),
             device_name: snapshot.device_name.clone(),
             sync_mode: snapshot.sync_mode.clone(),

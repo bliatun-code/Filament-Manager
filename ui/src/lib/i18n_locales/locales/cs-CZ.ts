@@ -212,6 +212,8 @@ export const csCZDictionary: DictionaryNode = {
     "legacyLowStockFallback": "Záložní limit 200 g pro starší verzi hostitele"
   },
   "errors": {
+    "savedLabelFileUnavailable": "Uložený soubor štítku již není dostupný nebo byl změněn. Před otevřením jej znovu uložte.",
+    "savedLabelFileOpenFailed": "Uložený soubor štítku se nepodařilo otevřít. Otevřete jej ze složky Stažené soubory nebo jej znovu uložte.",
     "inventoryBulkReactivationRequiresWeight": "Před opětovnou aktivací nastavte naměřenou celkovou hmotnost nad hmotnost prázdné cívky.",
       hostUnavailable: "Host není dostupný. Změny nelze uložit, dokud se spojení neobnoví. Zkontrolujte host a síť a poté obnovte data.",
       "inventoryWeightHostUnsupported": "Před uložením naměřené hmotnosti cívky aktualizujte hostitele. Žádné změny nebyly odeslány.",
@@ -292,6 +294,11 @@ export const csCZDictionary: DictionaryNode = {
     "filamentStandardsInvalid": "Uložené standardy filamentu již nejsou platné. Načtěte je znovu a zkontrolujte."
   },
   "inventory": {
+    "labelPreviewFailed": "Náhled štítku se nepodařilo připravit. Zkuste to znovu.",
+    "labelRetryPreview": "Zkusit náhled znovu",
+    "labelOpenSavedFile": "Otevřít uložený soubor",
+    "labelOpeningSavedFile": "Otevírání souboru...",
+    "labelPrintActualSize": "Tiskněte na 100 % nebo ve skutečné velikosti, bez přizpůsobení stránce. V nastavení tisku zvolte stejnou velikost štítku nebo papíru.",
     "bambuBatchSaving": "Ukládání {count, plural, one {# cívky} few {# cívek} other {# cívek}}...",
     "bambuBatchUncertain": "Nepodařilo se potvrdit, zda byla dávka uložena. Pokračujte se stejnou dávkou a zkontrolujte nebo dokončete ji bez vytváření duplicit.",
     "bambuBatchRejected": "Dávka nebyla uložena. Zkontrolujte chybu a poté dávku upravte.",
@@ -1162,6 +1169,27 @@ export const csCZDictionary: DictionaryNode = {
     "withToolheads": "Vícenástrojová hlava"
   },
   "settings": {
+    "catalogRefreshStatusUncertain": "Stav se nepodařilo potvrdit. Zkontrolujte protokol obnovení; aktualizace může stále probíhat.",
+    "catalogRefreshFailedNextStep": "Aktualizace nebyla dokončena. Před zahájením další aktualizace zkontrolujte protokol obnovení.",
+    "catalogRefreshInterruptedNextStep": "Aktualizace byla přerušena. Před novým spuštěním zkontrolujte katalog a protokol obnovení.",
+    "catalogAuditFailedNextStep": "Kontrola nebyla dokončena. Zkontrolujte protokol obnovení a potom použijte Zjistit dostupné materiály pro nový pokus.",
+    "catalogHostUnavailableNextStep": "Katalog hostitele není dostupný. Před dalším pokusem zkontrolujte připojení v části Knihovna a webová aplikace.",
+    "inventoryOverviewRetryPreview": "Zkusit náhled znovu",
+    "deviceVersionsTitle": "Verze aplikace",
+    "thisDevice": "Toto zařízení",
+    "hostVersionChecked": "Z poslední kontroly hostitele",
+    "hostVersionCached": "Z posledního snímku hostitele",
+    "hostVersionUnknown": "Verze nebyla oznámena",
+    "deviceUpdateAvailable": "Je dostupná aktualizace",
+    "deviceVersionCurrent": "Nejnovější vydaná verze",
+    "deviceVersionNewer": "Novější než vydaná verze",
+    "deviceUpdatesUnchecked": "Aktualizace nebyly zkontrolovány",
+    "hostCatalogRunsHere": "Katalog se obnovuje na hostiteli. Aktualizujte také hostitele, abyste získali opravy katalogu.",
+    "deviceVersionsIndependent": "Aktualizace tohoto zařízení neaktualizuje hostitele.",
+    "hostVersionRefresh": "Obnovit stav hostitele",
+    "deviceLatestRelease": "Nejnovější vydaná: {version}",
+    "hostVersionUnverified": "Verze aplikace hostitele není dostupná, dokud nebude nakonfigurovaný hostitel ověřen.",
+    "hostVersionCachedHint": "Tato uložená verze se mohla změnit. Obnovte stav hostitele a ověřte ji.",
     "importFileEmpty": "Soubor je prázdný. Vyberte export obsahující data.",
     "importJsonInvalid": "Soubor JSON je poškozený nebo neúplný. Znovu jej exportujte nebo stáhněte a opakujte akci.",
     "importBackupUnsupported": "Tato verze zálohy není podporována. Aktualizujte Filament Manager nebo vyberte zálohu exportovanou touto verzí.",

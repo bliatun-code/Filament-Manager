@@ -49,6 +49,8 @@ export const zhCNDictionary: DictionaryNode = {
     "optional": "可选"
   },
   "errors": {
+    "savedLabelFileUnavailable": "已保存的标签文件已不可用或已被更改。请重新保存后再打开。",
+    "savedLabelFileOpenFailed": "无法打开已保存的标签文件。请从“下载”中打开，或重新保存。",
     "inventoryBulkReactivationRequiresWeight": "在重新激活之前，将测得的总重量设置为高于空线轴重量。",
       hostUnavailable: "主机不可用。恢复连接之前无法保存更改。请检查主机和网络，然后刷新。",
       "inventoryWeightHostUnsupported": "保存测得的料卷重量前，请先更新主机。未发送任何更改。",
@@ -296,6 +298,11 @@ export const zhCNDictionary: DictionaryNode = {
     "badgeNoPrinterSlots": "尚未配置打印机 slots。"
   },
   "inventory": {
+    "labelPreviewFailed": "无法准备标签预览。请重试。",
+    "labelRetryPreview": "重试预览",
+    "labelOpenSavedFile": "打开已保存的文件",
+    "labelOpeningSavedFile": "正在打开文件...",
+    "labelPrintActualSize": "请以 100% 或实际大小打印，并关闭适应页面。在打印设置中选择相同的标签或纸张尺寸。",
     "bambuBatchSaving": "正在保存{count, plural, other { # 卷耗材}}...",
     "bambuBatchUncertain": "无法确认此批次是否已保存。继续同一批次即可检查或完成操作，而不会创建重复记录。",
     "bambuBatchRejected": "此批次未保存。请查看错误，然后编辑批次。",
@@ -1406,6 +1413,27 @@ export const zhCNDictionary: DictionaryNode = {
     }
   },
   "settings": {
+    "catalogRefreshStatusUncertain": "无法确认状态。请检查刷新日志；更新可能仍在进行。",
+    "catalogRefreshFailedNextStep": "更新未完成。请先检查刷新日志，再开始另一次更新。",
+    "catalogRefreshInterruptedNextStep": "更新已中断。请先检查目录和刷新日志，再重新开始。",
+    "catalogAuditFailedNextStep": "检查未完成。请检查刷新日志，然后使用“查找可用材料”重试。",
+    "catalogHostUnavailableNextStep": "主机目录不可用。请先在“资料库和 Web 应用”中检查主机连接，再重试。",
+    "inventoryOverviewRetryPreview": "重试预览",
+    "deviceVersionsTitle": "应用版本",
+    "thisDevice": "此设备",
+    "hostVersionChecked": "来自上次主机检查",
+    "hostVersionCached": "来自上次主机快照",
+    "hostVersionUnknown": "未报告版本",
+    "deviceUpdateAvailable": "有可用更新",
+    "deviceVersionCurrent": "最新发布版本",
+    "deviceVersionNewer": "比已发布版本更新",
+    "deviceUpdatesUnchecked": "尚未检查更新",
+    "hostCatalogRunsHere": "目录刷新在主机上运行。请同时更新主机以获得目录修复。",
+    "deviceVersionsIndependent": "更新此设备不会更新主机。",
+    "hostVersionRefresh": "刷新主机状态",
+    "deviceLatestRelease": "最新发布：{version}",
+    "hostVersionUnverified": "在验证已配置的主机之前，无法获取主机应用版本。",
+    "hostVersionCachedHint": "此已保存的版本可能已经变化。请刷新主机状态以确认。",
     "importFileEmpty": "此文件为空。请选择包含数据的导出文件。",
     "importJsonInvalid": "JSON 文件已损坏或不完整。请重新导出或下载后重试。",
     "importBackupUnsupported": "不支持此备份版本。请更新 Filament Manager，或选择由当前版本导出的备份。",

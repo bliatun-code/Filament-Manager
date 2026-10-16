@@ -96,6 +96,8 @@ export function SettingsCatalogRefreshPanel({
       )
     : t("settings.selectOneMaterial", "Select one material type");
   const discovering = catalogRefreshBusy && catalogRefreshKind === "AUDIT";
+  const hasTerminalFailure =
+    catalogRefreshPhase === "FAILED" || catalogRefreshPhase === "INTERRUPTED";
   const { phase: phaseLabel, message: catalogRefreshProgressMessage } = settingsCatalogProgressCopy({
     phase: catalogRefreshPhase,
     kind: catalogRefreshKind,
@@ -149,7 +151,10 @@ export function SettingsCatalogRefreshPanel({
         ) : null}
         {settingsClientReadOnly && catalogRowsUnavailable ? (
           <SettingsNotice className="mt-3" tone="warning">
-            {t("errors.unavailable", "The service is temporarily unavailable.")}
+            {t(
+              "settings.catalogHostUnavailableNextStep",
+              "The host catalog is unavailable. Check the host connection in Library & web app before trying again.",
+            )}
           </SettingsNotice>
         ) : null}
       </SettingsSectionHeader>
@@ -248,6 +253,12 @@ export function SettingsCatalogRefreshPanel({
             </button>
           </div>
         </SettingsSectionControls>
+
+        {!catalogRefreshBusy && (hasTerminalFailure || (catalogRefreshUnavailable && catalogRefreshPhase !== "SUCCEEDED")) ? (
+          <SettingsNotice className="mt-4" tone="warning">
+            {catalogRefreshProgressMessage}
+          </SettingsNotice>
+        ) : null}
 
         {catalogRefreshBusy ? (
           <div className="mt-4 rounded-lg border border-slate-200 bg-white/80 p-4 shadow-sm shadow-slate-200/35 dark:border-slate-700 dark:bg-slate-900/60 dark:shadow-none">

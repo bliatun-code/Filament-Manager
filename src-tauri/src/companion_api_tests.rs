@@ -2295,6 +2295,7 @@ async fn companion_api_library_snapshot_exposes_host_summary() {
             String::from_utf8(snapshot_body.to_vec()).map_err(|error| error.to_string())?;
         let snapshot_json: serde_json::Value =
             serde_json::from_str(&snapshot_text).map_err(|error| error.to_string())?;
+        assert_eq!(snapshot_json["app_version"], env!("CARGO_PKG_VERSION"));
 
         assert_eq!(
             snapshot_json.get("ok").and_then(|value| value.as_bool()),

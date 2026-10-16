@@ -65,7 +65,7 @@ test("a pending host catalog renders unknown counts without a premature error", 
   assert.match(text, /Catalog: —/);
   assert.doesNotMatch(text, /Catalog: 0/);
   assert.ok((text.match(/—/g) ?? []).length >= 3);
-  assert.doesNotMatch(text, /The service is temporarily unavailable./);
+  assert.doesNotMatch(text, /The host catalog is unavailable/);
 });
 
 test("an unavailable host catalog renders unknown counts and the connection error", () => {
@@ -73,14 +73,14 @@ test("an unavailable host catalog renders unknown counts and the connection erro
 
   assert.match(text, /Catalog: —/);
   assert.doesNotMatch(text, /Catalog: 0/);
-  assert.match(text, /The service is temporarily unavailable\./);
+  assert.match(text, /The host catalog is unavailable\. Check the host connection in Library &amp; web app before trying again\./);
 });
 
 test("an authoritative empty host catalog renders a real zero", () => {
   const text = renderedText(renderPanel("available"));
 
   assert.match(text, /Catalog: 0/);
-  assert.doesNotMatch(text, /The service is temporarily unavailable\./);
+  assert.doesNotMatch(text, /The host catalog is unavailable/);
 });
 
 
@@ -92,7 +92,7 @@ test("catalog phase and primary progress are localized without raw backend copy"
     ["IMPORT", "Lagrer...", "Lagrer..."],
     ["RUNNING", "Oppdaterer", "Oppdaterer"],
     ["SUCCEEDED", "Fullført", "Fullført"],
-    ["FAILED", "Feilet", "Forespørselen kunne ikke fullføres."],
+    ["FAILED", "Feilet", "Oppdateringen ble ikke fullført. Se oppdateringsloggen før du starter en ny oppdatering."],
     ["FUTURE_INTERNAL_PHASE", "Laster...", "Laster..."],
   ];
   for (const [phase, phaseLabel, message] of cases) {
@@ -131,7 +131,7 @@ test("uncertain job progress is localized while raw receipt diagnostics stay in 
     catalogRefreshLog: diagnostic,
     showCatalogRefreshLog: true,
   }, "nb");
-  assert.match(html, /aria-label="Tjenesten er midlertidig utilgjengelig\."/);
+  assert.match(html, /aria-label="Status kunne ikke bekreftes\. Se oppdateringsloggen; oppdateringen kan fortsatt pågå\."/);
   const diagnosticBlock = html.match(/<pre[^>]*>([\s\S]*?)<\/pre>/)?.[1];
   assert.equal(diagnosticBlock, diagnostic);
   assert.ok(!html.replace(/<pre[^>]*>[\s\S]*?<\/pre>/, "").includes(diagnostic));
@@ -148,4 +148,44 @@ test("a successful receipt shows its summary without an unfinished progress indi
   }, "nb");
   assert.doesNotMatch(html, /role="progressbar"/);
   assert.match(html, />17</);
+});
+
+test("terminal failures keep a next step visible without exposing technical diagnostics", () => {
+  for (const [kind, phase, expected] of [
+    ["REFRESH", "FAILED", /The update was not completed\. Check the refresh log before starting another update\./],
+    ["REFRESH", "INTERRUPTED", /The update was interrupted\. Check the catalog and refresh log before starting again\./],
+    ["AUDIT", "FAILED", /The check was not completed\. Check the refresh log/],
+  ] as const) {
+    const html = renderPanel("available", {
+      catalogRefreshPhase: phase,
+      catalogRefreshKind: kind,
+      catalogRefreshLog: "Internal transport and diagnostic detail",
+    });
+    assert.match(html, expected);
+    assert.doesNotMatch(html, /Internal transport|<pre|role="progressbar"/);
+    assert.match(html, /View refresh log/);
+  }
+});
+
+test("uncertain status never claims a terminal failure or an unchanged catalog", () => {
+  const html = renderPanel("available", {
+    catalogRefreshPhase: "RUNNING", catalogRefreshUnavailable: true,
+    catalogRefreshLog: "unknown receipt diagnostic",
+  });
+  assert.match(html, /the update may still be running/);
+  assert.doesNotMatch(html, /The update was not completed|catalog was left unchanged|unknown receipt diagnostic/);
+});
+
+test("a later status-read failure never replaces an authoritative terminal outcome", () => {
+  for (const phase of ["SUCCEEDED", "FAILED", "INTERRUPTED"]) {
+    const html = renderPanel("available", {
+      catalogRefreshPhase: phase, catalogRefreshUnavailable: true,
+      catalogRefreshSummary: phase === "SUCCEEDED"
+        ? { imported: 17, reactivated_count: 0, discontinued_count: 0, output: "done" }
+        : null,
+    });
+    assert.doesNotMatch(html, /may still be running|Status could not be confirmed/);
+    if (phase === "SUCCEEDED") assert.doesNotMatch(html, /The update was not completed|The update was interrupted/);
+    else assert.match(html, phase === "FAILED" ? /The update was not completed/ : /The update was interrupted/);
+  }
 });

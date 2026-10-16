@@ -755,6 +755,7 @@ export default function SettingsPage({
     settingsLibraryRoleModalRouteProps,
     settingsLibraryRouteProps,
   } = buildSettingsLibraryRouteBundle({
+    appVersion,
     actionBusy: trustedLanActionBusy,
     activeBrowsers: activeTrustedLanPairedBrowsers,
     browserLabelDraft: trustedLanPairingBrowserLabelDraft,

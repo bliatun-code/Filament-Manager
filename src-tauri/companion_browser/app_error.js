@@ -314,6 +314,8 @@ export const ERROR_MESSAGE_DESCRIPTORS = Object.freeze({
     "The Downloads folder is unavailable.",
   ],
   "export.write_failed": ["errors.exportWriteFailed", "The export could not be saved."],
+  "export.saved_file_unavailable": ["errors.savedLabelFileUnavailable", "The saved label file is no longer available or has changed. Save it again before opening it."],
+  "export.open_failed": ["errors.savedLabelFileOpenFailed", "The saved label file could not be opened. Open it from Downloads, or save it again."],
   "bambu_live.weight_estimate_changed": [
     "errors.amsWeightEstimateChanged",
     "The AMS estimate or exact roll match changed. Reopen Update weight and try again.",

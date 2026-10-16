@@ -37,6 +37,8 @@ pub struct LibrarySyncSettingsRow {
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
 pub struct LibrarySyncCachedSnapshotRow {
     pub captured_at: String,
+    #[serde(default)]
+    pub app_version: Option<String>,
     pub library_id: String,
     pub device_name: String,
     pub sync_mode: String,
@@ -82,4 +84,33 @@ pub struct LibrarySyncCachedFilamentConsumptionListRow {
 pub struct LibrarySyncCachedWishlistListRow {
     pub captured_at: String,
     pub rows: Vec<WishlistItemRow>,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::LibrarySyncCachedSnapshotRow;
+
+    #[test]
+    fn cached_host_snapshot_app_version_is_additive_for_existing_json() {
+        let mut saved = serde_json::json!({
+            "captured_at": "2026-10-17T10:00:00Z",
+            "library_id": "library-a",
+            "device_name": "Workshop Host",
+            "sync_mode": "HOST",
+            "inventory": {
+                "total_spools": 0, "total_owned_spools": 0, "total_borrowed_in_spools": 0,
+                "in_use": 0, "owned_in_use": 0, "borrowed_in_in_use": 0,
+                "low_stock": 0, "owned_low_stock": 0, "borrowed_in_low_stock": 0,
+                "total_consumption_30d": 0, "owned_consumption_30d": 0, "borrowed_in_consumption_30d": 0
+            },
+            "total_spools": 0, "in_use": 0, "low_stock": 0, "active_loans": 0, "printers": 0
+        });
+        let legacy: LibrarySyncCachedSnapshotRow = serde_json::from_value(saved.clone()).unwrap();
+        assert_eq!(legacy.app_version, None);
+        assert_eq!(legacy.library_id, "library-a");
+        saved["app_version"] = serde_json::json!("0.32.1");
+        let current: LibrarySyncCachedSnapshotRow = serde_json::from_value(saved).unwrap();
+        assert_eq!(current.app_version.as_deref(), Some("0.32.1"));
+        assert_eq!(current.inventory, legacy.inventory);
+    }
 }

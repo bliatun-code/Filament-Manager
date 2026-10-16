@@ -212,6 +212,8 @@ export const nlNLDictionary: DictionaryNode = {
     "legacyLowStockFallback": "Terugvalwaarde van 200 g voor oudere host"
   },
   "errors": {
+    "savedLabelFileUnavailable": "Het opgeslagen etiketbestand is niet meer beschikbaar of is gewijzigd. Sla het opnieuw op voordat je het opent.",
+    "savedLabelFileOpenFailed": "Het opgeslagen etiketbestand kon niet worden geopend. Open het vanuit Downloads of sla het opnieuw op.",
     "inventoryBulkReactivationRequiresWeight": "Stel het gemeten totale gewicht boven het lege spoelgewicht in voordat u opnieuw activeert.",
       hostUnavailable: "De host is niet bereikbaar. Wijzigingen kunnen pas na herstel van de verbinding worden opgeslagen. Controleer de host en het netwerk en vernieuw daarna.",
       "inventoryWeightHostUnsupported": "Werk de host bij voordat je een gemeten rolgewicht opslaat. Er zijn geen wijzigingen verzonden.",
@@ -292,6 +294,11 @@ export const nlNLDictionary: DictionaryNode = {
     "filamentStandardsInvalid": "De opgeslagen filamentstandaarden zijn niet meer geldig. Laad ze opnieuw en controleer ze."
   },
   "inventory": {
+    "labelPreviewFailed": "De etiketvoorvertoning kon niet worden gemaakt. Probeer het opnieuw.",
+    "labelRetryPreview": "Voorvertoning opnieuw proberen",
+    "labelOpenSavedFile": "Opgeslagen bestand openen",
+    "labelOpeningSavedFile": "Bestand openen...",
+    "labelPrintActualSize": "Druk af op 100% of Ware grootte, zonder aanpassing aan de pagina. Kies hetzelfde etiket- of papierformaat in de afdrukinstellingen.",
     "bambuBatchSaving": "{count, plural, one {# rol} other {# rollen}} opslaan...",
     "bambuBatchUncertain": "We konden niet bevestigen of deze batch is opgeslagen. Ga verder met dezelfde batch om deze te controleren of af te ronden zonder duplicaten te maken.",
     "bambuBatchRejected": "Deze batch is niet opgeslagen. Bekijk de fout en bewerk daarna de batch.",
@@ -1162,6 +1169,27 @@ export const nlNLDictionary: DictionaryNode = {
     "withToolheads": "Multitoolkop"
   },
   "settings": {
+    "catalogRefreshStatusUncertain": "De status kon niet worden bevestigd. Bekijk het vernieuwingslogboek; de update kan nog bezig zijn.",
+    "catalogRefreshFailedNextStep": "De update is niet voltooid. Bekijk het vernieuwingslogboek voordat je een nieuwe update start.",
+    "catalogRefreshInterruptedNextStep": "De update is onderbroken. Controleer de catalogus en het vernieuwingslogboek voordat je opnieuw begint.",
+    "catalogAuditFailedNextStep": "De controle is niet voltooid. Bekijk het vernieuwingslogboek en gebruik daarna Beschikbare materialen zoeken om het opnieuw te proberen.",
+    "catalogHostUnavailableNextStep": "De hostcatalogus is niet beschikbaar. Controleer de hostverbinding bij Bibliotheek en web-app voordat je het opnieuw probeert.",
+    "inventoryOverviewRetryPreview": "Voorvertoning opnieuw proberen",
+    "deviceVersionsTitle": "Appversies",
+    "thisDevice": "Dit apparaat",
+    "hostVersionChecked": "Van de laatste hostcontrole",
+    "hostVersionCached": "Van de laatste hostmomentopname",
+    "hostVersionUnknown": "Versie niet gemeld",
+    "deviceUpdateAvailable": "Update beschikbaar",
+    "deviceVersionCurrent": "Laatste gepubliceerde versie",
+    "deviceVersionNewer": "Nieuwer dan de gepubliceerde versie",
+    "deviceUpdatesUnchecked": "Updates niet gecontroleerd",
+    "hostCatalogRunsHere": "De catalogus wordt op de host vernieuwd. Werk ook de host bij om cataloguscorrecties te ontvangen.",
+    "deviceVersionsIndependent": "Dit apparaat bijwerken werkt de host niet bij.",
+    "hostVersionRefresh": "Hoststatus vernieuwen",
+    "deviceLatestRelease": "Laatst gepubliceerd: {version}",
+    "hostVersionUnverified": "De appversie van de host is pas beschikbaar nadat de ingestelde host is geverifieerd.",
+    "hostVersionCachedHint": "Deze opgeslagen versie kan veranderd zijn. Vernieuw de hoststatus om deze te controleren.",
     "importFileEmpty": "Dit bestand is leeg. Kies een export met gegevens.",
     "importJsonInvalid": "Het JSON-bestand is beschadigd of onvolledig. Exporteer of download het opnieuw en probeer het nogmaals.",
     "importBackupUnsupported": "Deze back-upversie wordt niet ondersteund. Werk Filament Manager bij of kies een back-up die met deze versie is geëxporteerd.",

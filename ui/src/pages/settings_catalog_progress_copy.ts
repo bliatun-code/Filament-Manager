@@ -51,9 +51,23 @@ export function settingsCatalogProgressCopy({
       message = phaseLabel;
       break;
     case "FAILED":
+      phaseLabel = t("printers.failed", "Failed");
+      message = kind === "AUDIT"
+        ? t(
+            "settings.catalogAuditFailedNextStep",
+            "The check was not completed. Check the refresh log, then use Discover available materials to try again.",
+          )
+        : t(
+            "settings.catalogRefreshFailedNextStep",
+            "The update was not completed. Check the refresh log before starting another update.",
+          );
+      break;
     case "INTERRUPTED":
       phaseLabel = t("printers.failed", "Failed");
-      message = t("errors.requestFailed", "The request could not be completed.");
+      message = t(
+        "settings.catalogRefreshInterruptedNextStep",
+        "The update was interrupted. Check the catalog and refresh log before starting again.",
+      );
       break;
     default:
       // An older/newer Host may send a phase this client does not understand.
@@ -62,8 +76,12 @@ export function settingsCatalogProgressCopy({
   }
   return {
     phase: phaseLabel,
-    message: unavailable
-      ? t("errors.unavailable", "The service is temporarily unavailable.")
+    // A later status-read failure cannot undo an authoritative terminal receipt.
+    message: unavailable && !["SUCCEEDED", "FAILED", "INTERRUPTED"].includes(phase)
+      ? t(
+          "settings.catalogRefreshStatusUncertain",
+          "Status could not be confirmed. Check the refresh log; the update may still be running.",
+        )
       : message,
   };
 }

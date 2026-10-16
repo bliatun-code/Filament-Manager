@@ -49,6 +49,8 @@ export const jaJPDictionary: DictionaryNode = {
     "optional": "任意"
   },
   "errors": {
+    "savedLabelFileUnavailable": "保存したラベルファイルが利用できなくなったか、変更されています。開く前にもう一度保存してください。",
+    "savedLabelFileOpenFailed": "保存したラベルファイルを開けませんでした。「ダウンロード」から開くか、もう一度保存してください。",
     "inventoryBulkReactivationRequiresWeight": "再起動する前に、測定された総重量を空のスプール重量よりも高く設定してください。",
       hostUnavailable: "ホストに接続できません。再接続するまで変更は保存できません。ホストとネットワークを確認してから更新してください。",
       "inventoryWeightHostUnsupported": "ロールの実測重量を保存する前にホストを更新してください。変更は送信されていません。",
@@ -296,6 +298,11 @@ export const jaJPDictionary: DictionaryNode = {
     "badgeNoPrinterSlots": "プリンター slots がまだ構成されていません。"
   },
   "inventory": {
+    "labelPreviewFailed": "ラベルのプレビューを準備できませんでした。もう一度お試しください。",
+    "labelRetryPreview": "プレビューを再試行",
+    "labelOpenSavedFile": "保存したファイルを開く",
+    "labelOpeningSavedFile": "ファイルを開いています...",
+    "labelPrintActualSize": "ページへの自動調整をオフにし、100% または実際のサイズで印刷してください。印刷設定で、選択したラベルまたは用紙と同じサイズを指定してください。",
     "bambuBatchSaving": "{count, plural, other {# 個のロールを保存中}}...",
     "bambuBatchUncertain": "この一括登録が保存されたか確認できませんでした。同じ一括登録を続行すると、重複を作成せずに確認または完了できます。",
     "bambuBatchRejected": "この一括登録は保存されませんでした。エラーを確認してから、一括登録を編集してください。",
@@ -1406,6 +1413,27 @@ export const jaJPDictionary: DictionaryNode = {
     }
   },
   "settings": {
+    "catalogRefreshStatusUncertain": "状態を確認できませんでした。更新ログを確認してください。更新はまだ実行中の可能性があります。",
+    "catalogRefreshFailedNextStep": "更新は完了しませんでした。別の更新を始める前に更新ログを確認してください。",
+    "catalogRefreshInterruptedNextStep": "更新が中断されました。再開する前にカタログと更新ログを確認してください。",
+    "catalogAuditFailedNextStep": "確認は完了しませんでした。更新ログを確認してから、「利用可能な材料を検出」で再試行してください。",
+    "catalogHostUnavailableNextStep": "ホストのカタログを利用できません。再試行する前に「ライブラリとウェブアプリ」でホストへの接続を確認してください。",
+    "inventoryOverviewRetryPreview": "プレビューを再試行",
+    "deviceVersionsTitle": "アプリのバージョン",
+    "thisDevice": "このデバイス",
+    "hostVersionChecked": "前回のホスト確認時の情報",
+    "hostVersionCached": "前回のホストのスナップショット",
+    "hostVersionUnknown": "バージョン未報告",
+    "deviceUpdateAvailable": "更新があります",
+    "deviceVersionCurrent": "最新の公開バージョン",
+    "deviceVersionNewer": "公開版より新しいバージョン",
+    "deviceUpdatesUnchecked": "更新を未確認",
+    "hostCatalogRunsHere": "カタログの更新はホストで実行されます。カタログの修正を反映するには、ホストも更新してください。",
+    "deviceVersionsIndependent": "このデバイスを更新してもホストは更新されません。",
+    "hostVersionRefresh": "ホストの状態を更新",
+    "deviceLatestRelease": "最新の公開版：{version}",
+    "hostVersionUnverified": "設定済みのホストを確認するまで、ホストのアプリバージョンは利用できません。",
+    "hostVersionCachedHint": "保存されたこのバージョンは変わっている可能性があります。ホストの状態を更新して確認してください。",
     "importFileEmpty": "このファイルは空です。データを含むエクスポートを選択してください。",
     "importJsonInvalid": "JSON ファイルが破損しているか不完全です。再度エクスポートまたはダウンロードしてからやり直してください。",
     "importBackupUnsupported": "このバックアップのバージョンはサポートされていません。Filament Manager を更新するか、現在のバージョンでエクスポートしたバックアップを選択してください。",

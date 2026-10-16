@@ -42,7 +42,6 @@ export function useSettingsCatalogRefreshResult() {
 
   const failCatalogRefreshResult = useCallback((message: string) => {
     setCatalogRefreshLog(message);
-    setShowCatalogRefreshLog(true);
   }, []);
 
   const toggleCatalogRefreshLog = useCallback(() => {

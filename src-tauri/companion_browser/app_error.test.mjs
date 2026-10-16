@@ -163,3 +163,15 @@ test("purchase metadata capability failures explicitly require a Host upgrade", 
   assert.equal(translated, "Oppdater verten før du lagrer innkjøpsdetaljer.");
   assert.doesNotMatch(translated, /purchase_metadata\.host_unsupported/);
 });
+
+
+test("saved label opening errors use actionable localizable messages without paths", () => {
+  for (const [code,key,expected] of [
+    ["export.saved_file_unavailable", "errors.savedLabelFileUnavailable", /Save it again before opening it/],
+    ["export.open_failed", "errors.savedLabelFileOpenFailed", /Open it from Downloads, or save it again/],
+  ]) {
+    assert.equal(ERROR_MESSAGE_DESCRIPTORS[code]?.[0],key);
+    const message=localizedAppError(new Error(JSON.stringify({code,safe_detail:null,diagnostic_id:"fm-label-1",message:"/private/secret/label.pdf"})),(_key,fallback)=>fallback,"Fallback");
+    assert.match(message,expected);assert.doesNotMatch(message,/private|secret|fm-label-1/);
+  }
+});

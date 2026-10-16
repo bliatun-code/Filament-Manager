@@ -13,6 +13,7 @@ import {
 } from "./inventory_bulk_actions_model";
 import type { InventorySpool } from "./inventory_list_model";
 import { exportInventoryLabelSheetPdf } from "./tauri_client";
+import { openExportedLabelFile } from "./tauri_label_file_client";
 
 type UseInventoryLabelSheetActionInput = {
   workspaceView: string;
@@ -49,12 +50,14 @@ export function useInventoryLabelSheetAction({
   const [saving, setSaving] = useState(false);
   const [exportError, setExportError] = useState<string | null>(null);
   const [items, setItems] = useState<InventoryLabelSheetItem[]>([]);
+  const [savedFile, setSavedFile] = useState<{ scope: object; session: object; path: string; message: string } | null>(null);
+  const [openingSavedFile, setOpeningSavedFile] = useState(false);
   const authorityKey = JSON.stringify([workspaceView, ready, clientReadOnly, clientHostBaseUrl,
     clientLibraryId, clientTargetGeneration, locale]);
   const scope = useMemo(() => ({ key: authorityKey }), [authorityKey]);
   const eligibility = useMemo(() => ({ busy, loadingInventory, tauriAvailable, spools }),
     [busy, loadingInventory, tauriAvailable, spools]);
-  const current = useRef<{ scope: object; session: object | null; phase: "idle" | "loading" | "ready" | "saving" } | null>(null);
+  const current = useRef<{ scope: object; session: object | null; phase: "idle" | "loading" | "ready" | "saving" | "opening"; selectionPlan?: InventoryBulkDataPlan; savedExport?: object | null } | null>(null);
   const latestEligibility = useRef(eligibility);
   useLayoutEffect(() => { latestEligibility.current = eligibility; }, [eligibility]);
   useLayoutEffect(() => {
@@ -65,6 +68,8 @@ export function useInventoryLabelSheetAction({
     setSaving(false);
     setExportError(null);
     setItems([]);
+    setSavedFile(null);
+    setOpeningSavedFile(false);
     return () => { current.current = null; };
   }, [scope]);
   const available = useCallback(() => ready && tauriAvailable && !busy && !loadingInventory &&
@@ -73,6 +78,7 @@ export function useInventoryLabelSheetAction({
   const closeLabelSheet = useCallback((session: object | null) => {
     if (current.current?.scope !== scope || current.current.session !== session) return;
     current.current.session = null;
+    current.current.savedExport = null;
     current.current.phase = "idle";
     setRenderedSession(null);
     setOpen(false);
@@ -80,6 +86,8 @@ export function useInventoryLabelSheetAction({
     setSaving(false);
     setExportError(null);
     setItems([]);
+    setSavedFile(null);
+    setOpeningSavedFile(false);
   }, [scope]);
 
   const openLabelSheet = useCallback(async (selectionPlan?: InventoryBulkDataPlan) => {
@@ -89,12 +97,16 @@ export function useInventoryLabelSheetAction({
     const session = {};
     const operation = current.current!;
     operation.session = session;
+    operation.savedExport = null;
+    operation.selectionPlan = selectionPlan ? { ...selectionPlan, spoolIds: [...selectionPlan.spoolIds] } : undefined;
     setRenderedSession(session);
     operation.phase = "loading";
     const isCurrent = () => current.current === operation && operation.session === session;
     setOpen(true);
     setLoading(true);
     setItems([]);
+    setSavedFile(null);
+    setOpeningSavedFile(false);
     setError(null);
     setInfoMessage(null);
     try {
@@ -178,8 +190,10 @@ export function useInventoryLabelSheetAction({
     const session = operation.session;
     const isCurrent = () => current.current === operation && operation.session === session;
     operation.phase = "saving";
+    operation.savedExport = null;
     setSaving(true);
     setExportError(null);
+    setSavedFile(null);
     setError(null);
     setInfoMessage(null);
     try {
@@ -192,14 +206,11 @@ export function useInventoryLabelSheetAction({
         `filament-inventory-labels-${paperId}`,
       );
       if (!isCurrent()) return;
-      setInfoMessage(
-        t(
-          "settings.inventoryOverviewPrintDone",
-          "Inventory label sheet saved to {path}.",
-          { path: exportedPath },
-        ),
-      );
-      closeLabelSheet(session);
+      const message = t("settings.inventoryOverviewPrintDone", "Inventory label sheet saved to {path}.", { path: exportedPath });
+      setInfoMessage(message);
+      const file = { scope, session: session!, path: exportedPath, message };
+      operation.savedExport = file;
+      setSavedFile(file);
     } catch (printError) {
       if (!isCurrent()) return;
       const message = toErrorMessage(printError, t("settings.error.inventoryOverviewPrint", "Failed to create inventory label sheets."), t);
@@ -208,7 +219,37 @@ export function useInventoryLabelSheetAction({
     } finally {
       if (isCurrent()) { operation.phase = "ready"; setSaving(false); }
     }
-  }, [available, open, renderedSession, items, closeLabelSheet, setError, setInfoMessage, t]);
+  }, [available, open, renderedSession, items, scope, setError, setInfoMessage, t]);
+
+  const retryLabelSheet = useCallback(() => {
+    if (!available() || !open || loading || saving || items.length > 0 || !exportError || current.current?.session !== renderedSession || current.current.phase !== "ready") return;
+    const plan = current.current.selectionPlan;
+    closeLabelSheet(renderedSession);
+    void openLabelSheet(plan);
+  }, [available, open, loading, saving, items.length, exportError, renderedSession, closeLabelSheet, openLabelSheet]);
+
+  const openSavedFile = useCallback(async () => {
+    if (!available() || !open || !savedFile || savedFile.scope !== scope || savedFile.session !== renderedSession || current.current?.session !== renderedSession || current.current.phase !== "ready" || current.current.savedExport !== savedFile) return;
+    const operation = current.current;
+    const session = operation.session;
+    const isCurrent = () => current.current === operation && operation.session === session;
+    operation.phase = "opening";
+    setOpeningSavedFile(true);
+    setExportError(null);
+    try { await openExportedLabelFile(savedFile.path); }
+    catch (error) {
+      if (isCurrent()) setExportError(toErrorMessage(error, t("errors.savedLabelFileOpenFailed", "The saved label file could not be opened. Open it from Downloads, or save it again."), t));
+    } finally {
+      if (isCurrent()) { operation.phase = "ready"; setOpeningSavedFile(false); }
+    }
+  }, [available, open, savedFile, scope, renderedSession, t]);
+
+  const changePaper = useCallback(() => {
+    if (current.current?.scope !== scope || current.current.session !== renderedSession || current.current.phase !== "ready") return;
+    current.current.savedExport = null;
+    setSavedFile(null);
+    setExportError(null);
+  }, [scope, renderedSession]);
 
   const modalProps: InventoryLabelSheetModalProps = {
     error: exportError,
@@ -216,6 +257,11 @@ export function useInventoryLabelSheetAction({
     loading,
     onClose: () => closeLabelSheet(renderedSession),
     onSave: saveLabelSheet,
+    onPaperChange: changePaper,
+    onRetryPreview: retryLabelSheet,
+    onOpenSavedFile: savedFile?.scope === scope && savedFile.session === renderedSession ? openSavedFile : undefined,
+    openingSavedFile,
+    savedMessage: savedFile?.scope === scope && savedFile.session === renderedSession ? savedFile.message : null,
     open,
     saving,
   };

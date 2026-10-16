@@ -90,12 +90,19 @@ export function useSettingsCatalogRefreshJobs(input: JobInput) {
       current.setCatalogRefreshMaterial(request.material);
       current.setCatalogRefreshUnavailable(state.uncertain);
       // Job receipts do not expose the Host's fetch/import subphase.
-      current.setCatalogRefreshPhase(state.job?.status ?? "PREPARE");
+      current.setCatalogRefreshPhase(state.job?.status ?? (
+        !state.busy && !state.uncertain && state.error ? "FAILED" : "PREPARE"
+      ));
       const startedAt = state.job ? Date.parse(state.job.started_at) : null;
       current.setCatalogRefreshStartedAt(
         state.busy && startedAt !== null && Number.isFinite(startedAt) ? startedAt : null,
       );
-      if (state.busy) return;
+      if (state.busy) {
+        // Keep the diagnostic disclosure usable while an accepted start or a
+        // running job is being recovered. This does not claim the job failed.
+        if (state.uncertain && state.error) current.failCatalogRefreshResult(state.error);
+        return;
+      }
       const job = state.job;
       if (job && job.status !== "RUNNING" && seen.resultId !== job.job_id) {
         seen.resultId = job.job_id;

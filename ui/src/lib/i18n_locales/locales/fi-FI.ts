@@ -49,6 +49,8 @@ export const fiFIDictionary: DictionaryNode = {
     "optional": "valinnainen"
   },
   "errors": {
+    "savedLabelFileUnavailable": "Tallennettu tarratiedosto ei ole enää saatavilla tai se on muuttunut. Tallenna se uudelleen ennen avaamista.",
+    "savedLabelFileOpenFailed": "Tallennettua tarratiedostoa ei voitu avata. Avaa se Lataukset-kansiosta tai tallenna uudelleen.",
     "inventoryBulkReactivationRequiresWeight": "Aseta mitattu kokonaispaino tyhjän kelan painon yläpuolelle ennen uudelleenaktivointia.",
       hostUnavailable: "Isäntä ei ole käytettävissä. Muutoksia ei voi tallentaa ennen yhteyden palautumista. Tarkista isäntä ja verkko ja päivitä sitten.",
       "inventoryWeightHostUnsupported": "Päivitä isäntäkone ennen rullan mitatun painon tallentamista. Muutoksia ei lähetetty.",
@@ -296,6 +298,11 @@ export const fiFIDictionary: DictionaryNode = {
     "badgeNoPrinterSlots": "Tulostinpaikkoja ei ole vielä määritetty."
   },
   "inventory": {
+    "labelPreviewFailed": "Tarran esikatselua ei voitu valmistella. Yritä uudelleen.",
+    "labelRetryPreview": "Yritä esikatselua uudelleen",
+    "labelOpenSavedFile": "Avaa tallennettu tiedosto",
+    "labelOpeningSavedFile": "Avataan tiedostoa...",
+    "labelPrintActualSize": "Tulosta 100 %:n koossa tai todellisessa koossa ilman sivulle sovittamista. Valitse tulostusasetuksissa sama tarra- tai paperikoko.",
     "bambuBatchSaving": "Tallennetaan {count, plural, one {# kela} other {# kelaa}}...",
     "bambuBatchUncertain": "Emme voineet vahvistaa, tallennettiinko tämä erä. Jatka samaa erää tarkistaaksesi tai viimeistelläksesi sen ilman kaksoiskappaleita.",
     "bambuBatchRejected": "Tätä erää ei tallennettu. Tarkista virhe ja muokkaa sitten erää.",
@@ -1406,6 +1413,27 @@ export const fiFIDictionary: DictionaryNode = {
     }
   },
   "settings": {
+    "catalogRefreshStatusUncertain": "Tilaa ei voitu vahvistaa. Tarkista päivitysloki; päivitys saattaa olla yhä käynnissä.",
+    "catalogRefreshFailedNextStep": "Päivitys ei valmistunut. Tarkista päivitysloki ennen uuden päivityksen aloittamista.",
+    "catalogRefreshInterruptedNextStep": "Päivitys keskeytyi. Tarkista katalogi ja päivitysloki ennen uudelleen aloittamista.",
+    "catalogAuditFailedNextStep": "Tarkistus ei valmistunut. Tarkista päivitysloki ja yritä uudelleen valinnalla Etsi saatavilla olevat materiaalit.",
+    "catalogHostUnavailableNextStep": "Isäntäkoneen katalogi ei ole saatavilla. Tarkista isäntäkoneen yhteys kohdassa Kirjasto ja verkkosovellus ennen uutta yritystä.",
+    "inventoryOverviewRetryPreview": "Yritä esikatselua uudelleen",
+    "deviceVersionsTitle": "Sovellusversiot",
+    "thisDevice": "Tämä laite",
+    "hostVersionChecked": "Isäntäkoneen viime tarkistuksesta",
+    "hostVersionCached": "Isäntäkoneen viime tilannevedoksesta",
+    "hostVersionUnknown": "Versiota ei ilmoitettu",
+    "deviceUpdateAvailable": "Päivitys saatavilla",
+    "deviceVersionCurrent": "Viimeisin julkaistu versio",
+    "deviceVersionNewer": "Julkaistua versiota uudempi",
+    "deviceUpdatesUnchecked": "Päivityksiä ei tarkistettu",
+    "hostCatalogRunsHere": "Katalogi päivitetään isäntäkoneessa. Päivitä myös isäntäkone saadaksesi katalogikorjaukset.",
+    "deviceVersionsIndependent": "Tämän laitteen päivitys ei päivitä isäntäkonetta.",
+    "hostVersionRefresh": "Päivitä isäntäkoneen tila",
+    "deviceLatestRelease": "Viimeisin julkaisu: {version}",
+    "hostVersionUnverified": "Isäntäkoneen sovellusversio ei ole saatavilla ennen määritetyn isäntäkoneen vahvistamista.",
+    "hostVersionCachedHint": "Tämä tallennettu versio on voinut muuttua. Varmista se päivittämällä isäntäkoneen tila.",
     "importFileEmpty": "Tiedosto on tyhjä. Valitse tietoja sisältävä vientitiedosto.",
     "importJsonInvalid": "JSON-tiedosto on vioittunut tai puutteellinen. Vie tai lataa se uudelleen ja yritä sitten uudestaan.",
     "importBackupUnsupported": "Tätä varmuuskopion versiota ei tueta. Päivitä Filament Manager tai valitse tällä versiolla viety varmuuskopio.",

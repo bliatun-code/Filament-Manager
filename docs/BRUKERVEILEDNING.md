@@ -339,6 +339,11 @@ Slik lager du en etikett for én rull:
 5. Velg **Lagre PNG i Nedlastinger** for å lagre det utskriftsklare bildet med
    300 DPI.
 
+Hvis forhåndsvisningen feiler, velger du **Prøv forhåndsvisning igjen**. Etter vellykket lagring
+åpner **Åpne lagret fil** eksporten i standardprogrammet. Hvis filen er flyttet,
+slettet eller endret, lagrer du en ny kopi. Skriv ut i **100 % / faktisk
+størrelse**, uten Tilpass til side, slik at etiketten beholder de valgte målene.
+
 P-Touch-profilen bruker et liggende arbeidsområde på 60 × 24 mm med QR-kode i
 nesten full høyde og stor, lesbar identitetstekst. Egendefinerte etiketter støtter
 bredde fra 45 til 150 mm og høyde fra 24 til 80 mm i trinn på 0,5 mm. De må være
@@ -674,6 +679,11 @@ Slik lager du etikettark for rullene som er på lager:
    flere sider.
 4. Velg **Lagre PDF i Nedlastinger**.
 
+Forhåndsvisningen blir stående etter lagring, med **Åpne lagret fil** for den
+ferdige eksporten. Skriv ut PDF-en i **100 % / faktisk størrelse**, uten Tilpass
+til side. A4 og US Letter er separate eksporter; bytter du papirformat, må du
+lagre det nye formatet.
+
 Hver side rommer opptil 30 etiketter med samme lesbare oppsett på 60 × 24 mm som
 P-Touch QR-etiketten. Dette batchoppsettet er fast og bruker ikke den
 egendefinerte størrelsen som er lagret i byggeren for enkeltetiketter. For én
@@ -689,6 +699,14 @@ Bibliotek og webapp:
 - paring av nettlesere
 - tilkoblede nettlesere og tilbakekalling
 - desktop client-paring mot vert
+
+I klientmodus viser **Appversjoner** denne enheten og den navngitte verten hver
+for seg. **Oppdater vertsstatus** kontrollerer verten på nytt. En eldre lagret
+versjon merkes som lagret og bekrefter ikke vertens nåværende oppdateringsbehov.
+Eldre verter kan mangle programversjon i svaret. **Se etter oppdateringer** bruker
+den vanlige offentlige utgivelsessjekken og sammenligner de bekreftede versjonene
+hver for seg. Katalogoppdatering kjøres på verten; oppdatering av klienten alene
+gir derfor ikke verten katalogrettelsene.
 
 3D-printere:
 
@@ -717,6 +735,12 @@ vertsappen avsluttes før jobben er ferdig, markeres jobben som avbrutt ved nest
 statussjekk. Start da en ny oppdatering når du er klar. Jobbsporing fra klient
 krever en oppdatert vert. Jobbkvitteringer er lokale driftsdata og følger ikke
 med i portable sikkerhetskopier.
+
+Etter en feil eller avbrutt jobb viser programmet et kort neste steg. Velg
+**Vis oppdateringslogg** når du trenger de tekniske detaljene; loggen åpnes ikke
+automatisk. Usikker status kan bety at jobben fortsatt kjører, så kontroller
+status før du starter en ny oppdatering. En bekreftet fullføring er fortsatt
+bekreftet selv om en senere statussjekk ikke når verten.
 
 Grønne bekreftelser i Innstillinger forsvinner etter 20 sekunder. En fullført
 katalogjobb beholder resultatet sitt uten å vise den samme suksessmeldingen på

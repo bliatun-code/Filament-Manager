@@ -71,6 +71,8 @@ export const huHUDictionary: DictionaryNode = {
     "optional": "Opcionális"
   },
   "errors": {
+    "savedLabelFileUnavailable": "A mentett címkefájl már nem érhető el, vagy megváltozott. Megnyitás előtt mentse újra.",
+    "savedLabelFileOpenFailed": "Nem sikerült megnyitni a mentett címkefájlt. Nyissa meg a Letöltések mappából, vagy mentse újra.",
     "inventoryBulkReactivationRequiresWeight": "Újraaktiválás előtt állítsa a mért össztömeget az üres orsó súlya fölé.",
       hostUnavailable: "A gazdagép nem érhető el. A módosítások csak a kapcsolat helyreállítása után menthetők. Ellenőrizze a gazdagépet és a hálózatot, majd frissítsen.",
       "inventoryWeightHostUnsupported": "Frissítse a gazdagépet a tekercs mért tömegének mentése előtt. Nem történt módosításküldés.",
@@ -775,6 +777,11 @@ export const huHUDictionary: DictionaryNode = {
     }
   },
   "inventory": {
+    "labelPreviewFailed": "Nem sikerült elkészíteni a címke előnézetét. Próbálja újra.",
+    "labelRetryPreview": "Előnézet újrapróbálása",
+    "labelOpenSavedFile": "Mentett fájl megnyitása",
+    "labelOpeningSavedFile": "Fájl megnyitása...",
+    "labelPrintActualSize": "Nyomtasson 100%-os vagy tényleges méretben, az oldalhoz igazítás nélkül. A nyomtatási beállításokban válassza ki ugyanazt a címke- vagy papírméretet.",
     "bambuBatchSaving": "{count, plural, one {# tekercs} other {# tekercs}} mentése...",
     "bambuBatchUncertain": "Nem sikerült megerősíteni, hogy ez a köteg mentve lett-e. Folytassa ugyanazt a köteget az ellenőrzéshez vagy a befejezéshez, másolatok létrehozása nélkül.",
     "bambuBatchRejected": "Ez a köteg nem lett mentve. Ellenőrizze a hibát, majd szerkessze a köteget.",
@@ -1406,6 +1413,27 @@ export const huHUDictionary: DictionaryNode = {
     }
   },
   "settings": {
+    "catalogRefreshStatusUncertain": "Az állapot nem erősíthető meg. Ellenőrizze a frissítési naplót; a frissítés még folyamatban lehet.",
+    "catalogRefreshFailedNextStep": "A frissítés nem fejeződött be. Új frissítés indítása előtt ellenőrizze a frissítési naplót.",
+    "catalogRefreshInterruptedNextStep": "A frissítés megszakadt. Újrakezdés előtt ellenőrizze a katalógust és a frissítési naplót.",
+    "catalogAuditFailedNextStep": "Az ellenőrzés nem fejeződött be. Ellenőrizze a frissítési naplót, majd próbálja újra az Elérhető anyagok felderítése művelettel.",
+    "catalogHostUnavailableNextStep": "A gazdagép katalógusa nem érhető el. Újrapróbálkozás előtt ellenőrizze a gazdagép kapcsolatát a Könyvtár és webalkalmazás részen.",
+    "inventoryOverviewRetryPreview": "Előnézet újrapróbálása",
+    "deviceVersionsTitle": "Alkalmazásverziók",
+    "thisDevice": "Ez az eszköz",
+    "hostVersionChecked": "A gazdagép legutóbbi ellenőrzéséből",
+    "hostVersionCached": "A gazdagép legutóbbi pillanatképéből",
+    "hostVersionUnknown": "A verzió nincs megadva",
+    "deviceUpdateAvailable": "Frissítés érhető el",
+    "deviceVersionCurrent": "Legutóbbi közzétett verzió",
+    "deviceVersionNewer": "Újabb a közzétett kiadásnál",
+    "deviceUpdatesUnchecked": "A frissítések nincsenek ellenőrizve",
+    "hostCatalogRunsHere": "A katalógus frissítése a gazdagépen fut. A katalógus javításaihoz a gazdagépet is frissítse.",
+    "deviceVersionsIndependent": "Ennek az eszköznek a frissítése nem frissíti a gazdagépet.",
+    "hostVersionRefresh": "Gazdagép állapotának frissítése",
+    "deviceLatestRelease": "Legutóbb közzétéve: {version}",
+    "hostVersionUnverified": "A gazdagép alkalmazásverziója a beállított gazdagép ellenőrzéséig nem érhető el.",
+    "hostVersionCachedHint": "Ez a mentett verzió megváltozhatott. Ellenőrzéséhez frissítse a gazdagép állapotát.",
     "importFileEmpty": "A fájl üres. Válasszon adatokat tartalmazó exportot.",
     "importJsonInvalid": "A JSON-fájl sérült vagy hiányos. Exportálja vagy töltse le újra, majd próbálja ismét.",
     "importBackupUnsupported": "Ez a biztonságimásolat-verzió nem támogatott. Frissítse a Filament Managert, vagy válasszon ezzel a verzióval exportált másolatot.",

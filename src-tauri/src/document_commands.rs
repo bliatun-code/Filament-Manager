@@ -7,6 +7,7 @@ use crate::inventory_maintenance_commands::{
     clear_pending_credential_cleanup, persist_pending_credential_cleanup,
     retry_pending_credential_cleanup_under_gate, StoredCredentialScopes,
 };
+use crate::saved_label_exports::{registry as saved_label_exports, SavedLabelKind};
 use crate::secure_credential_mutation::lock_secure_credential_mutation;
 use crate::sqlite_recovery::{
     sanitize_app_recovery_snapshot_credentials, RecoveryReason, RecoverySnapshot,
@@ -309,6 +310,10 @@ pub(crate) fn export_label_png(
     let path = downloads_dir.join(format!("{safe_stem}-{}.png", chrono_id()));
     let bytes = png_with_dpi(&bytes, 300)?;
     write_generated_file(&path, &bytes)?;
+    saved_label_exports()
+        .lock()
+        .map_err(|_| coded_command_error("export.saved_file_unavailable"))?
+        .register(&downloads_dir, &path, &bytes, SavedLabelKind::Png)?;
     Ok(path.to_string_lossy().into_owned())
 }
 
@@ -333,7 +338,25 @@ pub(crate) fn export_inventory_label_sheet_pdf(
         sanitize_generated_filename_stem(&filename_stem, "filament-inventory-label-sheet");
     let path = downloads_dir.join(format!("{safe_stem}-{}.pdf", chrono_id()));
     write_generated_file(&path, &bytes)?;
+    saved_label_exports()
+        .lock()
+        .map_err(|_| coded_command_error("export.saved_file_unavailable"))?
+        .register(&downloads_dir, &path, &bytes, SavedLabelKind::Pdf)?;
     Ok(path.to_string_lossy().into_owned())
+}
+
+#[tauri::command]
+pub(crate) fn open_exported_label_file(app: tauri::AppHandle, path: String) -> Result<(), String> {
+    let downloads = app
+        .path()
+        .download_dir()
+        .map_err(|_| coded_command_error("export.saved_file_unavailable"))?;
+    saved_label_exports()
+        .lock()
+        .map_err(|_| coded_command_error("export.saved_file_unavailable"))?
+        .open_with(&downloads, Path::new(&path), |validated| {
+            open::that_detached(validated)
+        })
 }
 
 fn decode_pdf_payload(pdf_base64: &str) -> Result<Vec<u8>, String> {

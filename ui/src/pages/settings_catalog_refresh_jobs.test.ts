@@ -589,11 +589,13 @@ test("a new request's pre-POST persistence failure clears the old receipt and re
   let vendor = "";
   const failures: string[] = [];
   const errors: string[] = [];
+  let phase = "";
   const input: Input = {
     ...initial,
     beginCatalogRefreshResult: () => { imported = null; },
     completeCatalogRefreshResult: (result) => { imported = result.imported; },
     failCatalogRefreshResult: (error) => { failures.push(error); },
+    setCatalogRefreshPhase: (value) => { phase = typeof value === "function" ? value(phase) : value; },
     setCatalogRefreshVendor: (value) => { vendor = typeof value === "function" ? value("Bambu") : value; },
     setError: (value) => { if (typeof value === "string") errors.push(value); },
   };
@@ -611,11 +613,62 @@ test("a new request's pre-POST persistence failure clears the old receipt and re
     assert.equal(controller.snapshot().request?.material, "PETG");
     assert.equal(controller.snapshot().busy, false);
     assert.equal(controller.snapshot().uncertain, false);
+    assert.equal(phase, "FAILED", "a rejected pre-POST attempt must expose its next step without a false pending state");
     assert.equal(vendor, "eSUN");
     assert.equal(imported, null, "an old success receipt must not mask the failed new request");
     assert.equal(failures.length, 1);
     assert.match(failures[0], /Storage quota exceeded/);
     assert.deepEqual(errors, ["eSUN refresh failed"]);
+  } finally {
+    mounted?.unmount();
+    observeCatalogRefreshJobSession({ clientReadOnly: true }, () => undefined);
+    globalThis.window = previousWindow;
+  }
+});
+
+test("a lost start response retains opt-in diagnostics while recovering without another import", async () => {
+  const previousWindow = globalThis.window;
+  globalThis.window = fakeWindow();
+  let posts = 0;
+  let response: CatalogRefreshJobSnapshot | null = null;
+  let submitted: StartCatalogRefreshJobInput | null = null;
+  const diagnostic = "Synthetic lost Host response after submission";
+  invokeHandler = async (command, payload) => {
+    if (command === "start_library_sync_host_catalog_refresh_job") {
+      posts += 1;
+      submitted = (payload as { input: StartCatalogRefreshJobInput }).input;
+      throw new Error(diagnostic);
+    }
+    if (posts > 0 && response === null) throw new Error("Synthetic recovery status read is offline");
+    return response;
+  };
+  const logs: string[] = [];
+  const errors: string[] = [];
+  let phase = "";
+  const input: Input = {
+    ...baseInput(),
+    failCatalogRefreshResult: (message) => logs.push(message),
+    setError: (value) => { if (typeof value === "string") errors.push(value); },
+    setCatalogRefreshPhase: (value) => { phase = typeof value === "function" ? value(phase) : value; },
+  };
+  let mounted: ReturnType<typeof MountCatalogJobs> | null = null;
+  try {
+    mounted = MountCatalogJobs(input);
+    const controller = observeCatalogRefreshJobSession(input.target, () => undefined)!;
+    await controller.checkNow();
+    await mounted.startCatalogRefreshJob("Bambu", "PLA");
+    assert.equal(controller.snapshot().busy, true);
+    assert.equal(controller.snapshot().uncertain, true);
+    assert.equal(phase, "PREPARE");
+    assert.ok(logs.some(message => message.includes(diagnostic)), "the log offered by the uncertain-status hint must be available");
+    assert.deepEqual(errors, [], "an unconfirmed job is not a failed import");
+    assert.ok(submitted);
+    response = { ...(submitted as StartCatalogRefreshJobInput), status: "RUNNING",
+      started_at: "2026-10-17T10:00:00Z", finished_at: null, result: null, error: null };
+    await controller.checkNow();
+    assert.equal(phase, "RUNNING");
+    assert.equal(controller.snapshot().uncertain, false);
+    assert.equal(posts, 1, "status recovery never submits a second import");
   } finally {
     mounted?.unmount();
     observeCatalogRefreshJobSession({ clientReadOnly: true }, () => undefined);

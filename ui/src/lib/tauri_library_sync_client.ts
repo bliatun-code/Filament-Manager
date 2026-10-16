@@ -88,6 +88,10 @@ export type LibrarySyncHostValidationResult = {
   matches_library_id: boolean;
   pairing_checked: boolean;
   pairing_valid: boolean;
+  /** Local target generation captured for this validation; absent for stale or legacy checks. */
+  target_generation?: number | null;
+  /** App release version reported by the Host; never inferred from api_version. */
+  app_version?: string | null;
   api_version?: string | null;
   auth_mode?: string | null;
   access_mode?: string | null;
@@ -99,6 +103,8 @@ export type LibrarySyncHostValidationResult = {
 
 export type LibrarySyncRemoteSnapshot = {
   captured_at: string;
+  /** Missing on older Hosts and their cached snapshots. */
+  app_version?: string | null;
   library_id: string;
   device_name: string;
   sync_mode: string;

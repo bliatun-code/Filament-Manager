@@ -212,6 +212,8 @@ export const trTRDictionary: DictionaryNode = {
     "totalSpoolsSubtitle": "Tüm lokasyonlarda"
   },
   "errors": {
+    "savedLabelFileUnavailable": "Kaydedilen etiket dosyası artık kullanılamıyor veya değişmiş. Açmadan önce yeniden kaydedin.",
+    "savedLabelFileOpenFailed": "Kaydedilen etiket dosyası açılamadı. İndirilenler’den açın veya yeniden kaydedin.",
     "inventoryBulkReactivationRequiresWeight": "Yeniden etkinleştirmeden önce ölçülen toplam ağırlığı boş makara ağırlığının üstüne ayarlayın.",
       hostUnavailable: "Ana makineye ulaşılamıyor. Bağlantı yeniden kurulana kadar değişiklikler kaydedilemez. Ana makineyi ve ağı kontrol edip yenileyin.",
       "inventoryWeightHostUnsupported": "Ölçülen makara ağırlığını kaydetmeden önce ana bilgisayarı güncelleyin. Hiçbir değişiklik gönderilmedi.",
@@ -292,6 +294,11 @@ export const trTRDictionary: DictionaryNode = {
     "unauthorized": "Kimlik doğrulama gerekli."
   },
   "inventory": {
+    "labelPreviewFailed": "Etiket önizlemesi hazırlanamadı. Yeniden deneyin.",
+    "labelRetryPreview": "Önizlemeyi yeniden dene",
+    "labelOpenSavedFile": "Kaydedilen dosyayı aç",
+    "labelOpeningSavedFile": "Dosya açılıyor...",
+    "labelPrintActualSize": "Sayfaya sığdırmayı kapatıp %100 veya Gerçek boyut ile yazdırın. Yazdırma ayarlarında seçili etiket ya da kâğıt boyutunu kullanın.",
     "bambuBatchSaving": "{count, plural, one {# makara} other {# makara}} kaydediliyor...",
     "bambuBatchUncertain": "Bu toplu kaydın kaydedilip kaydedilmediğini doğrulayamadık. Yinelenen kayıtlar oluşturmadan kontrol etmek veya tamamlamak için aynı toplu kayda devam edin.",
     "bambuBatchRejected": "Bu toplu kayıt kaydedilmedi. Hatayı inceleyin, ardından toplu kaydı düzenleyin.",
@@ -1162,6 +1169,27 @@ export const trTRDictionary: DictionaryNode = {
     "withToolheads": "Çoklu takım başlığı"
   },
   "settings": {
+    "catalogRefreshStatusUncertain": "Durum doğrulanamadı. Yenileme günlüğünü kontrol edin; güncelleme hâlâ çalışıyor olabilir.",
+    "catalogRefreshFailedNextStep": "Güncelleme tamamlanmadı. Başka bir güncelleme başlatmadan önce yenileme günlüğünü kontrol edin.",
+    "catalogRefreshInterruptedNextStep": "Güncelleme kesintiye uğradı. Yeniden başlamadan önce kataloğu ve yenileme günlüğünü kontrol edin.",
+    "catalogAuditFailedNextStep": "Kontrol tamamlanmadı. Yenileme günlüğünü kontrol edin, ardından yeniden denemek için Kullanılabilir malzemeleri bul seçeneğini kullanın.",
+    "catalogHostUnavailableNextStep": "Ana bilgisayar kataloğu kullanılamıyor. Yeniden denemeden önce Kütüphane ve web uygulaması bölümünden ana bilgisayar bağlantısını kontrol edin.",
+    "inventoryOverviewRetryPreview": "Önizlemeyi yeniden dene",
+    "deviceVersionsTitle": "Uygulama sürümleri",
+    "thisDevice": "Bu cihaz",
+    "hostVersionChecked": "Son ana bilgisayar kontrolünden",
+    "hostVersionCached": "Son ana bilgisayar anlık görüntüsünden",
+    "hostVersionUnknown": "Sürüm bildirilmedi",
+    "deviceUpdateAvailable": "Güncelleme var",
+    "deviceVersionCurrent": "Yayımlanan en son sürüm",
+    "deviceVersionNewer": "Yayımlanan sürümden daha yeni",
+    "deviceUpdatesUnchecked": "Güncellemeler kontrol edilmedi",
+    "hostCatalogRunsHere": "Katalog yenileme ana bilgisayarda çalışır. Katalog düzeltmelerini almak için ana bilgisayarı da güncelleyin.",
+    "deviceVersionsIndependent": "Bu cihazı güncellemek ana bilgisayarı güncellemez.",
+    "hostVersionRefresh": "Ana bilgisayar durumunu yenile",
+    "deviceLatestRelease": "Son yayımlanan: {version}",
+    "hostVersionUnverified": "Yapılandırılmış ana bilgisayar doğrulanana kadar uygulama sürümü kullanılamaz.",
+    "hostVersionCachedHint": "Kaydedilen bu sürüm değişmiş olabilir. Doğrulamak için ana bilgisayar durumunu yenileyin.",
     "importFileEmpty": "Bu dosya boş. Veri içeren bir dışa aktarım seçin.",
     "importJsonInvalid": "JSON dosyası bozuk veya eksik. Yeniden dışa aktarın ya da indirin ve tekrar deneyin.",
     "importBackupUnsupported": "Bu yedek sürümü desteklenmiyor. Filament Manager’ı güncelleyin veya bu sürümle dışa aktarılmış bir yedek seçin.",

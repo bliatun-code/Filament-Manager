@@ -522,12 +522,16 @@ export default function InventoryPage({
   });
 
   const {
+    authorityKey: selectedSpoolQrAuthorityKey,
     companionShellUrl: selectedSpoolQrCompanionShellUrl,
     dataUrl: selectedSpoolQrDataUrl,
     loading: selectedSpoolQrLoading,
     target: selectedSpoolQrTarget,
+    retry: retrySelectedSpoolQr,
   } = useInventorySpoolQrArtifacts({
     clientHostBaseUrl,
+    clientLibraryId,
+    clientTargetGeneration,
     clientReadOnly,
     selectedSpool,
     showRollModal,
@@ -1324,6 +1328,7 @@ export default function InventoryPage({
             onLoadInPrinter={openLoadSpoolModal}
             onLoanOut={() => openLoanTrackingModal(selectedSpool)}
             onMarkEmpty={() => { clearWeightError(); void handleMarkEmpty(); }}
+            onRetryQr={retrySelectedSpoolQr}
             onPrintLabel={handlePrintLabel}
             onPurge={() => { clearWeightError(); clearStatusError(); void handlePurgeSelected(); }}
             onRefill={() => { clearWeightError(); void handleRefillSpool(); }}
@@ -1345,6 +1350,7 @@ export default function InventoryPage({
             purchaseMetadataDraft={selectedSpoolPurchaseMetadataDraft}
             purchaseMetadataErrors={selectedSpoolPurchaseMetadataErrors}
             qrCompanionAvailable={selectedSpoolQrCompanionAvailable}
+            qrAuthorityKey={selectedSpoolQrAuthorityKey}
             qrDataUrl={selectedSpoolQrDataUrl}
             qrLoading={selectedSpoolQrLoading}
             qrTarget={selectedSpoolQrTarget}

@@ -4,6 +4,8 @@ use std::time::Duration;
 #[derive(Deserialize)]
 pub(crate) struct CompanionHealthCheckResponse {
     pub(crate) ok: bool,
+    #[serde(default)]
+    pub(crate) app_version: Option<String>,
     pub(crate) api_version: String,
     #[serde(default)]
     pub(crate) capabilities: Vec<String>,
@@ -78,5 +80,16 @@ mod tests {
         .expect("legacy health payload");
 
         assert!(parsed.capabilities.is_empty());
+        assert_eq!(parsed.app_version, None);
+    }
+
+    #[test]
+    fn host_app_version_is_distinct_from_the_health_api_version() {
+        let parsed: CompanionHealthCheckResponse = serde_json::from_str(
+            r#"{"ok":true,"app_version":"0.32.1","api_version":"v1","auth_mode":"pairing","access_mode":"trusted-lan","library_id":"library-1","device_name":"Host","sync_mode":"HOST"}"#,
+        )
+        .expect("versioned health payload");
+        assert_eq!(parsed.api_version, "v1");
+        assert_eq!(parsed.app_version.as_deref(), Some("0.32.1"));
     }
 }
