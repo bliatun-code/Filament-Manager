@@ -33,7 +33,10 @@ ikke gi et nytt oppdateringsråd. Teknisk kataloglogg beholdes bak eksplisitt
 Punkt 6 fra den siste vurderingen er uttrykkelig utsatt: brukertesting med
 mennesker, fysisk etikett-/kameravalidering og Windows-signering inngår ikke i
 denne leveransen. Automatiserte syntetiske tester erstatter ikke slik validering.
-Ingen ny release eller oppdatering av installerte apper er bestilt.
+Brukeren har deretter bestilt en samlet v0.33.0-utgivelse og oppdatering av
+Mac-appen når kontrollene er grønne. Publisering og installasjon følger de
+eksisterende kontrollportene; Windows-signering og fysisk brukertesting er
+fortsatt utsatt.
 
 ## Mål
 
@@ -201,7 +204,7 @@ Implementeringsfasene, Filamentstandarder, de tekniske sporene og den visuelle s
 | Moderert brukertest med minst fem faktiske deltakere | Klargjort; målinger ikke samlet | Gjennomfør [protokollen](USABILITY_TEST_PROTOCOL.md). Målene om minst 90 % uhjulpet fullføring og minst 30 % kortere median tid er fortsatt umålte. Faste studiebygg og syntetiske oppgavebiblioteker er dokumentert; de er historiske sammenligningsbygg, ikke dagens main. |
 | Authenticode-signering på Windows | Bevisst utsatt | Gjenoppta valg av utgiveridentitet, signeringstjeneste og beskyttet GitHub-miljø før bredere signert Windows-distribusjon. Dagens eksplisitt usignerte policy gjelder. |
 | Avhengigheter med kompatibilitetskrav | Avventer kompatibilitet eller runtime-policy | Følg [avhengighetspolicyen](DEPENDENCY_SECURITY.md) og [gjennomgangen 13. oktober](DEPENDENCY_REVIEW_2026-10-13.md). Tauri 2.12 og Rust-minimum 1.90 er innført; TypeScript over 6.0.x, Node-major og foreldrestyrte transitive versjoner oppgraderes når kontraktene tillater det. Node 26 har planlagt LTS-overgang 28. oktober. Daterte versjonsfunn er ikke en løpende registerkontroll. |
-| Versjon og distribusjon | v0.32.1 | Bambu-katalogrettelsen er beskrevet i [notatene for v0.32.1](releases/RELEASE_NOTES_v0.32.1.md); den foregående større oppdateringen er dokumentert i [v0.32.0](releases/RELEASE_NOTES_v0.32.0.md). Offentlig publiseringsstatus og nedlastinger finnes på [GitHub Releases](https://github.com/bliatun-code/Filament-Manager/releases/latest). Release-flyten krever grønn CI og verifiserte installasjonspakker før publisering. |
+| Versjon og distribusjon | v0.33.0 klargjøres | QR-logoer, enklere Oversikt og Statistikk og de øvrige poleringspunktene er samlet i [notatene for v0.33.0](releases/RELEASE_NOTES_v0.33.0.md). Offentlig publiseringsstatus og nedlastinger finnes på [GitHub Releases](https://github.com/bliatun-code/Filament-Manager/releases/latest). Release-flyten krever grønn CI og verifiserte installasjonspakker før publisering; Mac-oppdateringen følger etter verifisert offentlig utgivelse. |
 
 ## Fremdriftslogg
 

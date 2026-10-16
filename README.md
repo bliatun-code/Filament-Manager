@@ -60,12 +60,12 @@ Start with the user guide for product behavior and workflows:
 
 Release notes:
 
+- [v0.33.0](docs/releases/RELEASE_NOTES_v0.33.0.md)
 - [v0.32.1](docs/releases/RELEASE_NOTES_v0.32.1.md)
 - [v0.32.0](docs/releases/RELEASE_NOTES_v0.32.0.md)
-- [v0.31.0](docs/releases/RELEASE_NOTES_v0.31.0.md)
 
 The repository keeps the three most recent release-note files. Older notes
-remain available in the [v0.30.0 source snapshot](https://github.com/bliatun-code/Filament-Manager/tree/v0.30.0),
+remain available in the [v0.31.0 source snapshot](https://github.com/bliatun-code/Filament-Manager/tree/v0.31.0),
 and published release tags are retained.
 
 ## Feature Overview
@@ -449,7 +449,7 @@ download and checksum flow.
 ## Release Status
 
 - Latest release page: https://github.com/bliatun-code/Filament-Manager/releases/latest
-- Current version: `0.32.1`
+- Current version: `0.33.0`
 - Version source of truth must stay aligned across:
   - `package.json`
   - `package-lock.json`
