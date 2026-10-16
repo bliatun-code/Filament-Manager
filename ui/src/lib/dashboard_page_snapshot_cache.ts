@@ -6,11 +6,19 @@ import type {
   DashboardUsageMonth,
 } from "./dashboard_model";
 import type { LibraryRevisionSource } from "./library_domain_revisions";
-import type { TrustedLanCompanionStatus } from "./tauri_client";
+import type { BambuLiveIntegrationEntry, PrinterOverviewRow, TrustedLanCompanionStatus } from "./tauri_client";
+import type { DashboardSyncSource } from "./dashboard_data_source";
+import { sanitizeDashboardBambuLiveIntegrations, type DashboardStockPreviewRow } from "./dashboard_overview_data";
 import type { DashboardBambuLiveAttention } from "./dashboard_bambu_live_attention";
 import type { DashboardActionItem } from "./dashboard_action_model";
 
 export type DashboardPageSnapshot = {
+  printerOverview?: PrinterOverviewRow[];
+  printerOverviewAvailable?: boolean;
+  bambuLiveIntegrations?: BambuLiveIntegrationEntry[];
+  lowStockPreview?: DashboardStockPreviewRow[];
+  lowStockPreviewAvailable?: boolean;
+  syncSource?: DashboardSyncSource;
   activity: ActivityItem[];
   actionItems?: DashboardActionItem[];
   bambuLiveAttention?: DashboardBambuLiveAttention[];
@@ -81,6 +89,16 @@ function cloneDashboardPageSnapshot(
       : null;
   return {
     ...snapshot,
+    printerOverview: snapshot.printerOverview?.map((row) => ({
+      printer: { ...row.printer },
+      usage: { ...row.usage },
+      slots: row.slots.map((slot) => ({ ...slot })),
+    })) ?? [],
+    printerOverviewAvailable: snapshot.printerOverviewAvailable ?? Array.isArray(snapshot.printerOverview),
+    bambuLiveIntegrations: sanitizeDashboardBambuLiveIntegrations(snapshot.bambuLiveIntegrations ?? []),
+    lowStockPreview: snapshot.lowStockPreview?.map((row) => ({ ...row })) ?? [],
+    lowStockPreviewAvailable: snapshot.lowStockPreviewAvailable ?? Array.isArray(snapshot.lowStockPreview),
+    syncSource: snapshot.syncSource ?? (snapshot.dashboardSyncMode === "CLIENT" ? "client-cached" : "local"),
     activity: snapshot.activity.map((item) => ({ ...item })),
     actionItems: snapshot.actionItems?.map(cloneDashboardActionItem) ?? [],
     bambuLiveAttention: snapshot.bambuLiveAttention?.map((item) => ({ ...item })) ?? [],

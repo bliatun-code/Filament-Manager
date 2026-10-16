@@ -2,6 +2,7 @@ import { useI18n } from "../lib/i18n";
 import type { DashboardUsageMonth } from "../lib/dashboard_model";
 import { formatDisplayInteger, formatDisplayPercent } from "../lib/number_display";
 import { formatGrams } from "../lib/weight_display";
+export { ActivityTimeline, type ActivityItem } from "./dashboard_activity_timeline";
 
 type StatCardProps = {
   title: string;
@@ -320,96 +321,8 @@ export function UsageChart({
   );
 }
 
-export type ActivityItem = {
-  id: string;
-  title: string;
-  detail: string;
-  tone?: "sky" | "amber" | "emerald" | "slate";
-};
-
-const activityToneMap: Record<
-  NonNullable<ActivityItem["tone"]>,
-  { panel: string; dot: string; title: string }
-> = {
-  sky: {
-    panel:
-      "border-sky-200/80 bg-sky-50/62 dark:border-sky-400/22 dark:bg-sky-500/[0.08]",
-    dot: "bg-sky-500 dark:bg-sky-300",
-    title: "text-slate-950 dark:text-slate-50",
-  },
-  amber: {
-    panel:
-      "border-amber-200/80 bg-amber-50/62 dark:border-amber-400/22 dark:bg-amber-500/[0.08]",
-    dot: "bg-amber-500 dark:bg-amber-300",
-    title: "text-slate-950 dark:text-slate-50",
-  },
-  emerald: {
-    panel:
-      "border-emerald-200/80 bg-emerald-50/62 dark:border-emerald-400/22 dark:bg-emerald-500/[0.08]",
-    dot: "bg-emerald-500 dark:bg-emerald-300",
-    title: "text-slate-950 dark:text-slate-50",
-  },
-  slate: {
-    panel:
-      "border-slate-200/80 bg-white/58 dark:border-slate-700 dark:bg-slate-950/34",
-    dot: "bg-slate-400 dark:bg-slate-500",
-    title: "text-slate-900 dark:text-slate-100",
-  },
-};
-
 const panelCountClass =
   "rounded-lg border border-slate-300 bg-slate-50 px-2.5 py-1 text-sm font-semibold text-slate-900 shadow-sm dark:border-slate-500/70 dark:bg-slate-900 dark:text-slate-50 dark:shadow-none";
-
-export function ActivityTimeline({ items }: { items: ActivityItem[] }) {
-  const { locale, t } = useI18n();
-  const itemCount = items.length === 1 && items[0]?.id === "empty" ? 0 : items.length;
-  return (
-    <div className="surface-card">
-      <div className="flex items-start justify-between gap-3">
-        <div>
-          <div className="section-eyebrow">
-            {t("dashboard.recentActivity", "Recent Activity")}
-          </div>
-        </div>
-        <div className={panelCountClass}>
-          {formatDisplayInteger(itemCount, locale)}
-        </div>
-      </div>
-      <div className="mt-4 space-y-3">
-        {items.map((item) => {
-          const isEmpty = item.id === "empty";
-          const tone = activityToneMap[item.tone ?? "slate"];
-          return (
-            <div
-              key={item.id}
-              className={
-                isEmpty
-                  ? "surface-subtle border-dashed px-4 py-5"
-                  : `rounded-lg border px-4 py-3 ${tone.panel}`
-              }
-            >
-              <div className="flex gap-3">
-                <span
-                  className={
-                    isEmpty
-                      ? "mt-1.5 h-2.5 w-2.5 shrink-0 rounded-full border border-slate-300 bg-white shadow-[0_0_0_5px_rgba(148,163,184,0.12)] dark:border-slate-600 dark:bg-slate-800"
-                      : `mt-1.5 h-2.5 w-2.5 shrink-0 rounded-full ${tone.dot}`
-                  }
-                />
-                <div className="min-w-0">
-                  <div className={`text-sm font-semibold ${tone.title}`}>{item.title}</div>
-                  <div className="mt-1 text-xs text-slate-600 dark:text-slate-300">
-                    {item.detail}
-                  </div>
-                </div>
-              </div>
-            </div>
-          );
-        })}
-      </div>
-    </div>
-  );
-}
 
 type Badge = {
   id: string;

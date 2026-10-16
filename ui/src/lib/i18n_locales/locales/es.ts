@@ -187,6 +187,23 @@ export const esDictionary: DictionaryNode = {
     settings: "Ajustes",
   },
   dashboard: {
+    "overviewDetailsUnavailable": "Los detalles no están disponibles en esta instantánea. Actualiza para cargarlos.",
+    "libraryDetails": "Configuración y detalles de la biblioteca",
+    "showOlderActivity": "Mostrar actividad anterior",
+    "followUpTitle": "Pendiente de atención",
+    "lowStockOverviewHint": "Bobinas en tus umbrales de existencias bajas o por debajo de ellos.",
+    "printerManualSetup": "Configuración manual",
+    "printerLiveUnavailable": "Estado en directo no disponible",
+    "printerSavedSetup": "Configuración de impresora guardada",
+    "printerOffline": "Impresora desconectada",
+    "printerStale": "Los datos en directo están desactualizados",
+    "printerTrustRequired": "Revisar conexión en directo",
+    "printerLiveDisabled": "La conexión en directo no está activada",
+    "printerAssignedFilament": "Filamento asignado",
+    "printerNoAssignedFilament": "No hay bobinas asignadas",
+    "printerOpen": "Abrir impresoras",
+    "printerPrintProgress": "Progreso de impresión",
+    "printerRemaining": "Queda {time}",
     bambuLiveAttentionTitle: "Bambu Live requiere atención",
     bambuLiveAttentionBody:
       "{name} dejará de estar en Live hasta que revises y apruebes la identidad de la impresora.",
@@ -1502,6 +1519,20 @@ export const esDictionary: DictionaryNode = {
       "{count, plural, one {Un rollo del inventario coincide con este rollo Bambu en directo. Selecciónalo antes de guardar la RFID.} other {# rollos del inventario coinciden con este rollo Bambu en directo. Selecciona el rollo correcto antes de guardar la RFID.}}",
   },
   statistics: {
+    "analysisViews": "Vistas de estadísticas",
+    "viewConsumption": "Consumo",
+    "viewValue": "Valor del inventario",
+    "recordedMaterialConsumption": "Consumo de material registrado",
+    "materialsUsed": "Materiales utilizados",
+    "materialBreakdownHint": "Consumo registrado por material en el período seleccionado. Los segmentos de las barras conservan los colores de filamento registrados.",
+    "noPeriodConsumption": "No se ha registrado consumo de material en este período.",
+    "consumptionDataDetails": "Datos y limitaciones",
+    "consumptionDataHint": "Incluye trabajos vinculados a impresoras y sesiones de Bambu Live registrados. Se excluyen los ajustes de inventario y las impresiones no registradas. La propiedad se mantiene separada en los detalles.",
+    "ownershipDetails": "Propiedad y detalles del inventario",
+    "loanUsageDetails": "Consumo de préstamos · toda la actividad registrada",
+    "showForecast": "Mostrar previsión de consumo · últimos 30 días",
+    "valueCostCalculationDetails": "Cálculo y cobertura de datos",
+    "materialCostDetails": "Coste de material en el período seleccionado",
     desktopOnly:
       "Las estadísticas están disponibles en la aplicación de escritorio.",
     periodTitle: "Periodo del informe",
@@ -1518,11 +1549,9 @@ export const esDictionary: DictionaryNode = {
     clientReadOnlyOffline:
       "El host no está disponible y aún no hay estadísticas guardadas.",
     clientReadOnlyUpdated: "Actualizado",
-    subtitle:
-      "Consulta la actividad de impresoras, el consumo y los préstamos en una sola vista.",
+    "subtitle": "Comprende el consumo registrado y planifica tu inventario.",
     ownershipSnapshot: "Resumen de propiedad",
-    ownershipSnapshotHint:
-      "Desglose adicional del stock y consumo registrado por propiedad.",
+    "ownershipSnapshotHint": "El inventario propio y el tomado en préstamo se muestran por separado. El inventario refleja el estado actual; el consumo registrado corresponde al período seleccionado.",
     noBorrowedInActivity: "No hay stock de terceros ni consumo registrado",
     ownedOnHand: "Propias disponibles",
     borrowedInOnHand: "De terceros disponibles",
@@ -1624,8 +1653,7 @@ export const esDictionary: DictionaryNode = {
       "Supuesto: el consumo diario se mantiene igual al promedio de los últimos 30 días. Se excluyen las bobinas prestadas por terceros, vacías, perdidas y eliminadas. Esta previsión es informativa y nunca crea pedidos automáticamente.",
     valueCost: "Valor y coste",
     valueCostTitle: "Valor del inventario y coste del material",
-    valueCostHint:
-      "Valores fiables procedentes de los datos de compra registrados. Las monedas y los tipos de propiedad se mantienen separados, y los datos ausentes nunca se muestran como cero.",
+    "valueCostHint": "Basado en los precios de compra registrados. Los precios que faltan siguen visibles y las monedas se mantienen separadas.",
     valueCostLoading: "Cargando datos de valor y coste...",
     valueCostHostUpgrade:
       "Este host es anterior a los informes de valor y coste. Actualízalo para ver totales fiables separados por moneda y datos de seguimiento.",

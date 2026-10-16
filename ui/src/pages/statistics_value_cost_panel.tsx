@@ -29,7 +29,6 @@ import type {
   StatisticsValueCostReport,
 } from "../lib/tauri_client";
 import type { TranslateFn } from "../lib/statistics_model";
-import { SummaryMetricTile } from "./statistics_primitives";
 import { statisticsFilterButtonClass } from "./statistics_view_helpers";
 
 const TRACE_PAGE_SIZE = 40;
@@ -493,11 +492,11 @@ function CurrencyTotals({
   }
 
   return (
-    <div className="mt-4 space-y-3">
+    <div className="mt-5 space-y-4">
       {groups.map((group) => (
         <div
           key={group.currency}
-          className="rounded-lg border border-slate-200 bg-slate-50/85 p-3 dark:border-slate-700 dark:bg-slate-950/45"
+          className="border-b border-slate-200/80 pb-4 last:border-b-0 last:pb-0 dark:border-slate-700"
           data-currency={group.currency}
         >
           <div className="flex items-center justify-between gap-3">
@@ -508,26 +507,24 @@ function CurrencyTotals({
               {t("statistics.valueCostCurrencySeparate", "Kept separate by currency")}
             </span>
           </div>
-          <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
-            <SummaryMetricTile
-              label={t("statistics.valueCostOwned", "Owned")}
-              value={
+          <dl className="mt-3 grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <div>
+              <dt className="text-xs text-slate-500 dark:text-slate-400">{t("statistics.valueCostOwned", "Owned")}</dt>
+              <dd className="mt-1 break-words text-3xl font-semibold tabular-nums tracking-tight text-slate-950 dark:text-slate-50">{
                 group.owned
                   ? formatStatisticsMoney(group.owned.amount, group.currency, locale)
                   : t("statistics.valueCostNoValuedRows", "No valued rows")
-              }
-              tone="sky"
-            />
-            <SummaryMetricTile
-              label={t("statistics.valueCostBorrowedIn", "Borrowed in")}
-              value={
+              }</dd>
+            </div>
+            <div>
+              <dt className="text-xs text-slate-500 dark:text-slate-400">{t("statistics.valueCostBorrowedIn", "Borrowed in")}</dt>
+              <dd className="mt-1 break-words text-xl font-semibold tabular-nums text-slate-800 dark:text-slate-200">{
                 group.borrowedIn
                   ? formatStatisticsMoney(group.borrowedIn.amount, group.currency, locale)
                   : t("statistics.valueCostNoValuedRows", "No valued rows")
-              }
-              tone="amber"
-            />
-          </div>
+              }</dd>
+            </div>
+          </dl>
         </div>
       ))}
     </div>
@@ -603,13 +600,27 @@ function StatisticsValueCostMetric({
       </div>
 
       <CurrencyTotals locale={locale} summary={summary} t={t} />
-      <CoveragePanel
-        filamentDefaultsManagedOnHost={filamentDefaultsManagedOnHost}
-        locale={locale}
-        onOpenFilamentDefaults={onOpenFilamentDefaults}
-        summary={summary}
-        t={t}
-      />
+      <p className="mt-4 text-sm text-slate-600 dark:text-slate-300">
+        {summary.coverage.total_rows > 0
+          ? interpolateCount(t, "statistics.valueCostCoverageRows", "{valued} of {total} rows valued", {
+              valued: formatDisplayInteger(summary.coverage.valued_rows, locale),
+              total: formatDisplayInteger(summary.coverage.total_rows, locale),
+            })
+          : t("statistics.valueCostNoApplicableRows", "No applicable rows")}
+        {summary.coverage.unvalued_rows > 0 ? ` · ${t("statistics.valueCostUnvaluedRows", "Rows without value")}: ${formatDisplayInteger(summary.coverage.unvalued_rows, locale)}` : ""}
+      </p>
+      <details className="mt-4 border-t border-slate-200/80 pt-4 dark:border-slate-700">
+        <summary className="app-control-focus cursor-pointer rounded text-sm font-medium text-slate-700 outline-none dark:text-slate-200">
+          {t("statistics.valueCostCalculationDetails", "Calculation and data coverage")}
+        </summary>
+        <CoveragePanel
+          filamentDefaultsManagedOnHost={filamentDefaultsManagedOnHost}
+          locale={locale}
+          onOpenFilamentDefaults={onOpenFilamentDefaults}
+          summary={summary}
+          t={t}
+        />
+      </details>
 
       <div className="mt-4 border-t border-slate-200 pt-4 dark:border-slate-700">
         <button
@@ -719,7 +730,7 @@ export function StatisticsValueCostPanel({
 
   return (
     <section className="content-section" aria-labelledby={headingId}>
-      <div className="surface-card">
+      <div className="mb-4">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
             <div className="section-eyebrow">{t("statistics.valueCost", "Value & cost")}</div>
@@ -729,7 +740,7 @@ export function StatisticsValueCostPanel({
             <p className="mt-2 max-w-4xl text-sm leading-6 text-slate-600 dark:text-slate-300">
               {t(
                 "statistics.valueCostHint",
-                "Authoritative values from recorded purchase data. Currencies and ownership types remain separate, and missing data is never shown as zero.",
+                "Based on recorded purchase prices. Missing prices remain visible and currencies stay separate.",
               )}
             </p>
           </div>
@@ -756,7 +767,7 @@ export function StatisticsValueCostPanel({
       </div>
 
       {report ? (
-        <div className="mt-3 grid grid-cols-1 gap-3 xl:grid-cols-2">
+        <div className="mt-3 space-y-4">
           <StatisticsValueCostMetric
             filamentDefaultsManagedOnHost={filamentDefaultsManagedOnHost}
             inventoryRows={report.inventory_trace}
@@ -769,18 +780,25 @@ export function StatisticsValueCostPanel({
             summary={report.inventory_value}
             t={t}
           />
-          <StatisticsValueCostMetric
-            filamentDefaultsManagedOnHost={filamentDefaultsManagedOnHost}
-            kind="MATERIAL_COST"
-            locale={locale}
-            materialRows={report.material_cost_trace}
-            onOpenFilamentDefaults={
-              filamentDefaultsManagedOnHost ? undefined : onOpenFilamentDefaults
-            }
-            periodLabel={periodLabel}
-            summary={report.material_cost}
-            t={t}
-          />
+          <details className="border-t border-slate-200/80 pt-4 dark:border-slate-700">
+            <summary className="app-control-focus cursor-pointer rounded text-sm font-semibold text-slate-800 outline-none dark:text-slate-200">
+              {t("statistics.materialCostDetails", "Material cost in the selected period")}
+            </summary>
+            <div className="mt-3">
+              <StatisticsValueCostMetric
+                filamentDefaultsManagedOnHost={filamentDefaultsManagedOnHost}
+                kind="MATERIAL_COST"
+                locale={locale}
+                materialRows={report.material_cost_trace}
+                onOpenFilamentDefaults={
+                  filamentDefaultsManagedOnHost ? undefined : onOpenFilamentDefaults
+                }
+                periodLabel={periodLabel}
+                summary={report.material_cost}
+                t={t}
+              />
+            </div>
+          </details>
         </div>
       ) : null}
     </section>

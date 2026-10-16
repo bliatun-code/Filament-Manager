@@ -165,19 +165,23 @@ use **Show more** again to continue through the results.
 
 ### Dashboard
 
-Dashboard is a quick overview of inventory health and activity.
+Dashboard puts daily follow-up, stock and printer activity first:
 
-It shows, among other things:
+- a compact summary of spool count, configured printers and last-30-days usage
+- important follow-up actions when needed
+- printer summaries with their brand colors and assigned filament swatches
+- a preview of low-stock rolls and recent activity
 
-- total filament count
-- active printers
-- low-stock count
-- a separate last-30-days usage card
-- a rolling twelve-month consumption chart
-- ownership summary
-- recent activity
-- inventory health
-- progress and status panels when relevant
+Printer configuration is not the same as a live connection. Manual printers show
+their saved setup. Fresh, trusted local Bambu Live data can show the current job,
+progress, remaining time and nozzle temperature; unavailable, stale or untrusted
+data does not become a live printing status. Client snapshots show saved printer
+details rather than inferring a live state. If a snapshot lacks the new detailed
+rows, the app offers **Refresh** rather than claiming that no printers exist.
+
+Open **Setup and library details** for ownership, inventory health, progress goals
+and the rolling twelve-month consumption chart. **Show older activity** reveals
+the rest of the recent activity list without replacing the main overview.
 
 Dashboard is meant as a quick status check, not as the main place for detailed editing.
 When the library has no spools yet, inventory health is shown as **Not enough
@@ -185,7 +189,9 @@ data** instead of a misleading percentage. Use **Add spool** in that panel
 to open the normal inventory entry flow.
 
 The dismissible **Finish setup** checklist appears after the app has loaded a
-usable library. It links to adding or importing the first spool, optional
+usable library. Pending required setup stays visible; once only optional steps
+remain, the checklist moves under **Setup and library details**. It links to
+adding or importing the first spool, optional
 printer and browser-access setup, and the first full backup. Required inventory
 and backup work is shown separately from optional printer and Companion work.
 Completed items move into one collapsed summary, and progress counts only the
@@ -193,11 +199,11 @@ required steps. Completion is derived from the current library and this
 device's validated backup history; temporary host or network failures do not
 turn an unavailable library into a list of missing setup steps.
 
-The **Requires action** panel is reserved for overdue loans, incoming purchases
+The **Follow up** panel is reserved for overdue loans, incoming purchases
 that are ready to receive, and printers whose Bambu Live identity needs review.
 Low stock no longer appears there as large action cards. It is shown instead in
-the compact, collapsed **Low-stock suggestions** panel and remains available as
-a dashboard metric and inventory filter.
+the low-stock roll preview and compact, collapsed **Low-stock suggestions**
+panel, with the complete list available through the inventory filter.
 
 Choose **Show suggestions** to open the panel. From there, use **Add to wishlist
 / order**, **Open low-stock inventory**, or **Hide suggestion** for an individual
@@ -206,8 +212,8 @@ not change inventory, the low-stock threshold, or the inventory filter. Choose
 **Undo** immediately after hiding, or open **Hidden suggestions** and choose
 **Show again** later.
 
-The **Monthly Usage** card measures the exact preceding 30 days and shows its
-average grams per day. The larger **Filament Consumption** chart is a different
+The **Monthly Usage** summary measures the exact preceding 30 days. The
+**Filament Consumption** chart under **Setup and library details** is a different
 view: it covers the current local calendar month and the preceding eleven
 calendar months, ordered oldest to newest. Months without recorded consumption
 remain visible as zero bars. The total above the chart is the sum of those same
@@ -401,7 +407,7 @@ When the spool is loaned out:
 An expected return date must be a valid calendar date and cannot be earlier
 than today when the loan is created. Active loans show **Expected return** and
 are marked **Due today** or **Overdue** when applicable. Overdue outgoing loans
-also appear under **Requires action** on Dashboard and open Loans for follow-up.
+also appear under **Follow up** on Dashboard and open Loans for follow-up.
 The return date and contact details remain available in returned-loan history.
 
 When the spool is returned, record how much comes back. If less comes back than went out, the app can treat the difference as loan usage. That lets loans contribute to real material usage without mixing that usage with printer usage.
@@ -456,20 +462,25 @@ nozzle and bed temperature, AMS humidity, and AMS temperature on a compact row.
 
 ### Statistics
 
-Statistics shows aggregated usage.
+Statistics has three focused views that share the reporting-period selection:
 
-It includes:
+- **Consumption** emphasizes recorded material use, logged and failed jobs, and
+  actual material totals. Bar segments retain the recorded filament colors.
+  **Data and limitations** explains the source; ownership, loan usage and the
+  consumption forecast are available in separate expandable sections.
+- **Inventory value** emphasizes the current remaining stock value. Expand
+  **Material cost in the selected period** for usage cost, or **Calculation and
+  data coverage** for missing-data reasons and calculation coverage. Trace
+  controls still link totals to their underlying records.
+- **Printers** shows recorded use by printer with the existing brand colors.
+  Open a printer for its material and filament details.
 
-- total usage
-- recorded jobs
-- active loaded slots
-- failed jobs
-- usage per printer
-- usage per material
-- loan usage per person
-- ownership status for stock and low stock
+Switching views keeps the selected period and detail state. **Active loaded
+slots** remains available from Consumption as a current inventory snapshot.
 
-Usage is built from manual weight updates and automatic live observations when the live-usage rules are satisfied.
+Usage includes recorded printer-linked jobs and Bambu Live sessions when the
+live-usage rules are satisfied. Stock adjustments and unrecorded prints are
+excluded.
 
 **Reporting period** defaults to **Last 30 days**. You can choose 90 days,
 **Last 12 months**, or a custom range that includes both its start and end date.
@@ -481,7 +492,7 @@ change with the period picker. If a Client is connected to an older Host that
 cannot supply the period report, the app shows an update or reconnect message
 instead of constructing figures locally.
 
-The **Value & cost** section shows two related, but deliberately separate,
+The **Inventory value** view shows two related, but deliberately separate,
 figures:
 
 - **Inventory value** is a current snapshot of active spools. For each spool it
@@ -588,8 +599,9 @@ An individual price remains editable in spool details. Enable **Protect
 individual price from group updates** when the defaults page must never
 overwrite that spool. The lock blocks both group actions but does not block
 manual editing. Locked rows are explained and linked in the receipt. Yellow
-missing-price and missing-currency rows under **Statistics → Value & cost** open
-the matching control in Filament defaults. A Client shows the Host's groups and
+missing-price and missing-currency rows under **Statistics → Inventory value →
+Calculation and data coverage** open the matching control in Filament defaults.
+A Client shows the Host's groups and
 defaults read-only; changes are made on the Host.
 
 The desktop app and Companion support English, Norwegian Bokmål, German,

@@ -627,6 +627,204 @@
       "key": "errors.catalogSpoolBatchStorageFailed",
       "meaning": "Local recovery metadata could not be persisted or read. Registration is paused because forgetting the prior batch identity could cause duplicate physical rolls. This message does not establish whether a prior request stored rolls.",
       "screenshot": "docs/screenshots/usability-bambu-batch-success.png"
+    },
+    {
+      "surface": "desktop",
+      "key": "dashboard.libraryDetails",
+      "meaning": "Disclosure for optional setup guidance, current ownership split, inventory health, goals and 12-month usage history. Required setup, pairing repairs, errors and current follow-up actions remain visible outside it.",
+      "screenshot": "docs/screenshots/dashboard.jpg"
+    },
+    {
+      "surface": "desktop",
+      "key": "dashboard.showOlderActivity",
+      "meaning": "Disclosure showing the remainder of the existing recent activity list. It does not fetch an unbounded historical log or change recorded activities.",
+      "screenshot": "docs/screenshots/dashboard.jpg"
+    },
+    {
+      "surface": "desktop",
+      "key": "dashboard.followUpTitle",
+      "meaning": "Heading for actionable dashboard information. Mandatory connection or loan actions remain separate from optional low-stock purchase suggestions; the heading does not imply every action is an error.",
+      "screenshot": "docs/screenshots/dashboard.jpg"
+    },
+    {
+      "surface": "desktop",
+      "key": "dashboard.lowStockOverviewHint",
+      "meaning": "Low-stock rolls are at or below the configured material-specific weight threshold, including equality. This is inventory state rather than a forecast or an automatic order.",
+      "screenshot": "docs/screenshots/dashboard.jpg"
+    },
+    {
+      "surface": "desktop",
+      "key": "dashboard.printerManualSetup",
+      "meaning": "A configured printer without enabled live monitoring. This is not a report of current printing or network availability; only saved assignments are shown.",
+      "screenshot": "docs/screenshots/dashboard.jpg"
+    },
+    {
+      "surface": "desktop",
+      "key": "dashboard.printerLiveUnavailable",
+      "meaning": "The dashboard could not obtain the live-state source needed to identify current printer activity. Saved assignments remain available and must not be presented as real-time telemetry.",
+      "screenshot": "docs/screenshots/dashboard.jpg"
+    },
+    {
+      "surface": "desktop",
+      "key": "dashboard.printerSavedSetup",
+      "meaning": "A client dashboard showing the Host-supplied saved printer configuration. A connected Host does not imply a current direct printer connection.",
+      "screenshot": "docs/screenshots/dashboard.jpg"
+    },
+    {
+      "surface": "desktop",
+      "key": "dashboard.printerOffline",
+      "meaning": "Live monitoring is enabled, but the printer connection is not currently available. Do not equate this with a missing printer configuration or a manual printer.",
+      "screenshot": "docs/screenshots/dashboard.jpg"
+    },
+    {
+      "surface": "desktop",
+      "key": "dashboard.printerStale",
+      "meaning": "A live printer sample is too old to represent current printer activity. Cached temperatures, job progress and remaining time are not presented as fresh.",
+      "screenshot": "docs/screenshots/dashboard.jpg"
+    },
+    {
+      "surface": "desktop",
+      "key": "dashboard.printerTrustRequired",
+      "meaning": "Live printer access needs review or confirmation in Bambu Live settings. This is a connection-trust action, not a report that the printer is printing.",
+      "screenshot": "docs/screenshots/dashboard.jpg"
+    },
+    {
+      "surface": "desktop",
+      "key": "dashboard.printerLiveDisabled",
+      "meaning": "Context explaining why only saved printer assignments are shown: live monitoring has not been enabled for this printer.",
+      "screenshot": "docs/screenshots/dashboard.jpg"
+    },
+    {
+      "surface": "desktop",
+      "key": "dashboard.printerAssignedFilament",
+      "meaning": "Saved roll-to-slot assignments in a printer. Assigned material is distinct from a verified actively extruding filament and does not imply a live connection.",
+      "screenshot": "docs/screenshots/dashboard.jpg"
+    },
+    {
+      "surface": "desktop",
+      "key": "dashboard.printerNoAssignedFilament",
+      "meaning": "No physical inventory rolls are assigned to this printer’s effective slots. This does not assert that its physical hardware is empty.",
+      "screenshot": "docs/screenshots/dashboard.jpg"
+    },
+    {
+      "surface": "desktop",
+      "key": "dashboard.printerOpen",
+      "meaning": "Button navigating from a dashboard printer overview to the existing Printers page. It does not open or modify a physical printer connection.",
+      "screenshot": "docs/screenshots/dashboard.jpg"
+    },
+    {
+      "surface": "desktop",
+      "key": "dashboard.printerPrintProgress",
+      "meaning": "Accessible label for a trusted, fresh live printer job progress bar. The percent is print progress, never inferred from saved remaining filament.",
+      "screenshot": "docs/screenshots/dashboard.jpg"
+    },
+    {
+      "surface": "desktop",
+      "key": "dashboard.printerRemaining",
+      "meaning": "Estimated remaining job time from fresh live printer telemetry. The {time} placeholder is already localized using the app’s established time formatter.",
+      "screenshot": "docs/screenshots/dashboard.jpg"
+    },
+    {
+      "surface": "desktop",
+      "key": "statistics.analysisViews",
+      "meaning": "Accessible group label for the Consumption, Inventory value and Printers view buttons. Switching views changes presentation only; the reporting-period selection is shared.",
+      "screenshot": "docs/screenshots/statistics.jpg"
+    },
+    {
+      "surface": "desktop",
+      "key": "statistics.viewConsumption",
+      "meaning": "Statistics view button for recorded material consumption during the selected reporting period, with ownership and loan details available separately.",
+      "screenshot": "docs/screenshots/statistics.jpg"
+    },
+    {
+      "surface": "desktop",
+      "key": "statistics.viewValue",
+      "meaning": "Statistics view button for current inventory value plus selected-period material cost. Multiple currencies and missing purchase data remain distinct.",
+      "screenshot": "docs/screenshots/statistics.jpg"
+    },
+    {
+      "surface": "desktop",
+      "key": "statistics.recordedMaterialConsumption",
+      "meaning": "Headline material weight used in recorded printer-linked jobs and Bambu Live sessions during the selected reporting period. Missing period capability is unavailable, not zero.",
+      "screenshot": "docs/screenshots/statistics.jpg"
+    },
+    {
+      "surface": "desktop",
+      "key": "statistics.materialsUsed",
+      "meaning": "Heading for material-family totals from recorded printer-linked consumption in the selected period. Summary rows can open the existing complete filament-consumption details.",
+      "screenshot": "docs/screenshots/statistics.jpg"
+    },
+    {
+      "surface": "desktop",
+      "key": "statistics.materialBreakdownHint",
+      "meaning": "The material chart summarizes real selected-period consumption. Its bar segments preserve recorded filament colors; the chart does not invent a weekly time series or trend.",
+      "screenshot": "docs/screenshots/statistics.jpg"
+    },
+    {
+      "surface": "desktop",
+      "key": "statistics.noPeriodConsumption",
+      "meaning": "A complete, available selected-period report contains no positive recorded material use. This message must not be used when Host data is missing or unsupported.",
+      "screenshot": "docs/screenshots/statistics.jpg"
+    },
+    {
+      "surface": "desktop",
+      "key": "statistics.consumptionDataDetails",
+      "meaning": "Disclosure for the source and exclusions of selected-period recorded material consumption. This is not a settings or data-editing control.",
+      "screenshot": "docs/screenshots/statistics.jpg"
+    },
+    {
+      "surface": "desktop",
+      "key": "statistics.consumptionDataHint",
+      "meaning": "Recorded printer-linked jobs and Bambu Live sessions are included. Stock adjustments and unrecorded prints are excluded. Owned and borrowed-in figures remain separate in ownership details.",
+      "screenshot": "docs/screenshots/statistics.jpg"
+    },
+    {
+      "surface": "desktop",
+      "key": "statistics.ownershipDetails",
+      "meaning": "Disclosure for current owned and borrowed-in inventory counts plus selected-period recorded usage. Current stock and period consumption have different time scopes.",
+      "screenshot": "docs/screenshots/statistics.jpg"
+    },
+    {
+      "surface": "desktop",
+      "key": "statistics.loanUsageDetails",
+      "meaning": "Disclosure for existing outgoing-loan and borrowed-in usage by person across recorded history. These loan reports are not filtered by the selected printer reporting period.",
+      "screenshot": "docs/screenshots/statistics.jpg"
+    },
+    {
+      "surface": "desktop",
+      "key": "statistics.showForecast",
+      "meaning": "Disclosure showing an informational forecast based on current owned stock and the last 30 days of recorded owned use. The forecast does not follow the arbitrary selected reporting period or create orders.",
+      "screenshot": "docs/screenshots/statistics.jpg"
+    },
+    {
+      "surface": "desktop",
+      "key": "statistics.valueCostCalculationDetails",
+      "meaning": "Disclosure for inventory-value calculation, missing-data reasons, currency-separated totals, coverage and trace records. Missing prices or weights are never treated as zero.",
+      "screenshot": "docs/screenshots/statistics.jpg"
+    },
+    {
+      "surface": "desktop",
+      "key": "statistics.materialCostDetails",
+      "meaning": "Disclosure for the cost of recorded material use within the selected reporting period. Distinct from current remaining inventory value, with currency and ownership separation preserved.",
+      "screenshot": "docs/screenshots/statistics.jpg"
+    },
+    {
+      "surface": "desktop",
+      "key": "statistics.subtitle",
+      "meaning": "Short purpose statement for Statistics: understand recorded use and plan stock. It does not promise unrecorded usage, automatic purchases or a guaranteed forecast.",
+      "screenshot": "docs/screenshots/statistics.jpg"
+    },
+    {
+      "surface": "desktop",
+      "key": "statistics.ownershipSnapshotHint",
+      "meaning": "Clarifies distinct scopes after the layout is simplified: owned versus borrowed-in stock, inventory counts as a current snapshot, recorded usage as selected-period data.",
+      "screenshot": "docs/screenshots/statistics.jpg"
+    },
+    {
+      "surface": "desktop",
+      "key": "dashboard.overviewDetailsUnavailable",
+      "meaning": "The current cached or Host snapshot does not contain the detailed printer overview or individual low-stock roll rows required by a dashboard section. Missing details are not a confirmed empty printer list or a zero-stock result. Refresh retrieves supported details from the active local or Host source; cached supported details can still be shown with their source warning.",
+      "screenshot": "docs/screenshots/dashboard.jpg"
     }
   ],
   "groups": [
@@ -1090,7 +1288,7 @@
   ],
   "coverage": {
     "strategy": "uncovered-key-delta",
-    "reviewedUncoveredKeyCount": 2118,
-    "reviewedUncoveredKeyFingerprint": "sha256:9bf5ce060f012afa53919e746dd2c5b87acdca8d37e78db42768e379515a7289"
+    "reviewedUncoveredKeyCount": 2116,
+    "reviewedUncoveredKeyFingerprint": "sha256:31251b256abb6b07d01d298160d3f7d048227ad24400a3eaefa2a3d182e95210"
   }
 }

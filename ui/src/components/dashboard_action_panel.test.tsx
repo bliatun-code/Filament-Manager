@@ -81,7 +81,7 @@ test("dashboard action panel keeps mandatory actions compact and direct", () => 
     /<section[^>]*aria-labelledby="dashboard-action-required-title"/,
   );
   assert.doesNotMatch(html, /aria-live=/);
-  assert.match(html, />Requires action</);
+  assert.match(html, />Follow up</);
   assert.match(html, /data-action-kind="OVERDUE_LOAN"/);
   assert.match(html, /data-action-kind="ON_ORDER"/);
   assert.match(html, /data-action-kind="BAMBU_TRUST"/);

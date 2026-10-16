@@ -261,6 +261,17 @@ export async function runDataBackedAccessibilityAnalysis(options) {
           );
         }
         scans.push(await scanPage(page, spec));
+        if (spec.evidenceKey === "statistics") {
+          const views = page.getByRole("tablist", { name: "Statistics views" });
+          for (const name of ["Inventory value", "Printers"]) {
+            activePageLabel = `Statistics · ${name}`;
+            await views.getByRole("tab", { name, exact: true }).click();
+            if (name === "Printers" && fixture.printerRows[0]) {
+              await page.getByText(fixture.printerRows[0].printer.name, { exact: true }).first().waitFor();
+            }
+            scans.push(await scanPage(page, { label: activePageLabel }));
+          }
+        }
       }
 
       if (browserErrors.length > 0) {
