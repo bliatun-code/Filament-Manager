@@ -12,12 +12,12 @@ async function harness() {
     import React,{useState} from 'react';import {createRoot} from 'react-dom/client';import {flushSync} from 'react-dom';
     import {I18nContext} from './i18n';import {useInventoryLabelSheetAction} from './use_inventory_label_sheet_action';
     import {InventoryLabelSheetModal} from '../components/inventory_label_sheet_modal';
-    let api,state,oldSave,oldClose,oldOpen,calls=[],hold=new Set();
+    let api,state,oldSave,oldClose,oldOpen,oldOpenSaved,calls=[],hold=new Set();
     const pixel='data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+a1S8AAAAASUVORK5CYII=';
-    window.labelStage=(stage,data)=>{const value=stage==='shell'?'http://filament.local/companion':stage==='pdf'?'JVBERi0=':stage==='export'?'/Downloads/sheet.pdf':pixel;
+    window.labelStage=(stage,data)=>{const value=stage==='shell'?'http://filament.local/companion':stage==='pdf'?'JVBERi0=':stage==='export'?'/Downloads/sheet-'+(calls.filter(c=>c.stage==='export').length+1)+'.pdf':stage==='open'?undefined:pixel;
       const call={stage,data};calls.push(call);if(!hold.has(stage))return Promise.resolve(value);
       return new Promise((resolve,reject)=>{call.resolve=()=>resolve(value);call.reject=(message='test failure')=>reject(Error(message));});};
-    window.__TAURI__={invoke:(command,payload)=>window.labelStage('export',{command,payload})};
+    window.__TAURI__={invoke:(command,payload)=>window.labelStage(command==='open_exported_label_file'?'open':'export',{command,payload})};
     const t=(_key,fallback='',params={})=>fallback.replace(/\\{(\\w+)\\}/g,(_,key)=>params[key]??key);
     const spools=['a','b'].map((id,i)=>({id,masterId:'master',status:i?'EMPTY':'IN_STOCK',material:'PLA',vendor:'Vendor',filamentName:'Basic',colorName:'Blue',ownershipType:'OWNED'}));
     function Harness({workspace='STOCK',ready=true,loadingInventory=false,busy=false,host='local',generation=1,library='library',tauri=true}) {
@@ -30,10 +30,10 @@ async function harness() {
     const root=createRoot(document.getElementById('root'));const render=(p={})=>flushSync(()=>root.render(React.createElement(Harness,p)));
     window.labels={render,open:()=>{void api.openLabelSheet();},selected:()=>{void api.openLabelSheet({action:'LABELS',selectedCount:1,spoolIds:['b']});},stale:()=>{void api.openLabelSheet({action:'LABELS',selectedCount:1,spoolIds:['missing']});},
       close:()=>api.modalProps.onClose(),save:()=>{void api.modalProps.onSave('a4');},doubleOpen:()=>{api.openLabelSheet();api.openLabelSheet();},
-      doubleSave:()=>{api.modalProps.onSave('a4');api.modalProps.onSave('a4');},capture:()=>{oldSave=api.modalProps.onSave;oldClose=api.modalProps.onClose;oldOpen=api.openLabelSheet;},
-      oldSave:()=>{void oldSave('a4');},oldClose:()=>oldClose(),oldOpen:()=>{void oldOpen();},hold:stage=>hold.add(stage),
+      doubleSave:()=>{api.modalProps.onSave('a4');api.modalProps.onSave('a4');},capture:()=>{oldSave=api.modalProps.onSave;oldClose=api.modalProps.onClose;oldOpen=api.openLabelSheet;oldOpenSaved=api.modalProps.onOpenSavedFile;},
+      oldSave:()=>{void oldSave('a4');},oldClose:()=>oldClose(),oldOpen:()=>{void oldOpen();},oldOpenSaved:()=>{void oldOpenSaved?.();},openSaved:()=>{void api.modalProps.onOpenSavedFile?.();},hold:stage=>hold.add(stage),
       finish:(index,fail=false,message)=>{fail?calls[index].reject(message):calls[index].resolve();},
-      snapshot:()=>({...state,open:api.modalProps.open,loading:api.modalProps.loading,saving:api.modalProps.saving,items:api.modalProps.items,
+      snapshot:()=>({...state,open:api.modalProps.open,loading:api.modalProps.loading,saving:api.modalProps.saving,saved:api.modalProps.savedMessage,opening:api.modalProps.openingSavedFile,items:api.modalProps.items,
         calls:calls.map(({stage,data})=>({stage,data}))})};
   `;
   const mocks: Record<string, string> = {
@@ -48,7 +48,7 @@ async function harness() {
       load(id: string) { return id===entry?source:mocks[id.slice(1)]??null; } }],
     build: { write: false, minify: false, lib: { entry, formats: ["iife"], name: "Labels" } } });
   const script=(Array.isArray(result)?result:[result]).flatMap(value=>value.output).find(value=>value.type==='chunk'&&value.isEntry)?.code;
-  assert.ok(script);return `<html><body><div id="root"></div><script>${script.replaceAll('</script','<\\/script')}</script></body></html>`;
+  assert.ok(script);return `<html><head><meta charset="UTF-8"></head><body><div id="root"></div><script>${script.replaceAll('</script','<\\/script')}</script></body></html>`;
 }
 
 test('rendered label sheet lifecycle', async context => {
@@ -92,7 +92,7 @@ test('rendered label sheet lifecycle', async context => {
     });
     await scenario('duplicate saves export exactly one reviewed PDF',async page=>{
       await page.evaluate('labels.open()');await ready(page);await page.evaluate("labels.hold('export');labels.doubleSave()");await page.waitForFunction("labels.snapshot().calls.some(c=>c.stage==='export')");
-      const s=await page.evaluate('labels.snapshot()');assert.equal(s.calls.filter((c:{stage:string})=>c.stage==='export').length,1);assert.equal(s.calls.filter((c:{stage:string})=>c.stage==='pdf').length,1);await page.evaluate('labels.finish(4)');await page.waitForFunction('!labels.snapshot().open');assert.match((await page.evaluate('labels.snapshot()')).info,/sheet.pdf/);
+      const s=await page.evaluate('labels.snapshot()');assert.equal(s.calls.filter((c:{stage:string})=>c.stage==='export').length,1);assert.equal(s.calls.filter((c:{stage:string})=>c.stage==='pdf').length,1);await page.evaluate('labels.finish(4)');await page.waitForFunction('!labels.snapshot().saving&&labels.snapshot().saved');assert.match((await page.evaluate('labels.snapshot()')).info,/sheet-1.pdf/);assert.equal(await page.getByRole('button',{name:'Open saved file',exact:true}).count(),1);assert.equal((await page.evaluate('labels.snapshot()')).calls.filter((c:{stage:string})=>c.stage==='open').length,0);
     });
     await scenario('close during PDF creation prevents native export',async page=>{
       await page.evaluate('labels.open()');await ready(page);await page.evaluate("labels.hold('pdf');labels.save()");await page.waitForFunction("labels.snapshot().calls.some(c=>c.stage==='pdf')");await page.evaluate('labels.close();labels.finish(3)');await page.waitForTimeout(30);assert.equal((await page.evaluate('labels.snapshot()')).calls.filter((c:{stage:string})=>c.stage==='export').length,0);
@@ -107,7 +107,7 @@ test('rendered label sheet lifecycle', async context => {
       });
     }
     await scenario('failed export retains preview for explicit retry',async page=>{
-      await page.evaluate('labels.open()');await ready(page);await page.evaluate("labels.hold('export');labels.save()");await page.waitForFunction("labels.snapshot().calls.some(c=>c.stage==='export')");await page.evaluate('labels.finish(4,true)');await page.waitForFunction('!labels.snapshot().saving');assert.match(await page.getByRole('dialog').getByRole('alert').innerText(), /Failed to create inventory label sheets/);assert.equal((await page.evaluate('labels.snapshot()')).items.length,1);await page.evaluate('labels.save()');await page.waitForFunction("labels.snapshot().calls.filter(c=>c.stage==='export').length===2");await page.evaluate('labels.finish(6)');await page.waitForFunction('!labels.snapshot().open');
+      await page.evaluate('labels.open()');await ready(page);await page.evaluate("labels.hold('export');labels.save()");await page.waitForFunction("labels.snapshot().calls.some(c=>c.stage==='export')");await page.evaluate('labels.finish(4,true)');await page.waitForFunction('!labels.snapshot().saving');assert.match(await page.getByRole('dialog').getByRole('alert').innerText(), /Failed to create inventory label sheets/);assert.equal((await page.evaluate('labels.snapshot()')).items.length,1);await page.evaluate('labels.save()');await page.waitForFunction("labels.snapshot().calls.filter(c=>c.stage==='export').length===2");await page.evaluate('labels.finish(6)');await page.waitForFunction('!labels.snapshot().saving&&labels.snapshot().saved');
     });
     for(const props of ['{workspace:"LOCATIONS"}','{ready:false}','{loadingInventory:true}','{busy:true}','{tauri:false}','{generation:2}','{library:"other"}']) {
       await scenario(`changed eligibility or authority blocks old callbacks: ${props}`,async page=>{
@@ -117,8 +117,38 @@ test('rendered label sheet lifecycle', async context => {
     await scenario('label sheets remain available from other inventory workspace views',async page=>{
       await page.evaluate("labels.render({workspace:'LOCATIONS'});labels.open()");await ready(page);assert.equal((await page.evaluate('labels.snapshot()')).items.length,1);
     });
+    await scenario('failed preview offers only explicit retry for the original exact selection',async page=>{
+      await page.evaluate("labels.hold('qr');labels.selected()");await page.waitForFunction("labels.snapshot().calls.some(c=>c.stage==='qr')");
+      await page.evaluate("labels.finish(1,true)");await ready(page);await page.waitForTimeout(40);assert.equal((await page.evaluate('labels.snapshot()')).calls.length,2);
+      await page.getByRole('button',{name:'Try preview again',exact:true}).click();await page.waitForFunction("labels.snapshot().calls.filter(c=>c.stage==='qr').length===2");
+      await page.evaluate('labels.finish(3)');await ready(page);const s=await page.evaluate('labels.snapshot()');assert.deepEqual(s.items.map((item:{reference:string})=>item.reference),['b']);assert.equal(await page.getByRole('button',{name:'Try preview again',exact:true}).count(),0);
+    });
+    await scenario('saved PDF opens only on explicit request and changed paper invalidates old callbacks',async page=>{
+      await page.evaluate('labels.open()');await ready(page);assert.match(await page.getByRole('dialog').innerText(),/100% or Actual size/);
+      await page.getByRole('button',{name:'Save PDF to Downloads',exact:true}).click();await page.waitForFunction('labels.snapshot().saved');await page.evaluate('labels.capture()');
+      await page.getByRole('button',{name:/^US Letter/}).click();assert.equal(await page.getByRole('button',{name:'Open saved file',exact:true}).count(),0);
+      await page.evaluate('labels.oldOpenSaved()');assert.equal((await page.evaluate('labels.snapshot()')).calls.filter((c:{stage:string})=>c.stage==='open').length,0);
+      await page.getByRole('button',{name:'Save PDF to Downloads',exact:true}).click();await page.waitForFunction('labels.snapshot().saved');
+      let s=await page.evaluate('labels.snapshot()');assert.equal(s.calls.filter((c:{stage:string})=>c.stage==='pdf').at(-1).data.paper,'letter');
+      await page.getByRole('button',{name:'Open saved file',exact:true}).click();await page.waitForFunction('!labels.snapshot().opening');
+      s=await page.evaluate('labels.snapshot()');assert.deepEqual(s.calls.filter((c:{stage:string})=>c.stage==='open').map((c:{data:{payload:{path:string}}})=>c.data.payload.path),['/Downloads/sheet-2.pdf']);
+    });
+    await scenario('missing saved PDF explains save again, and native opening is single flight',async page=>{
+      await page.evaluate('labels.open()');await ready(page);await page.evaluate('labels.save()');await page.waitForFunction('labels.snapshot().saved');
+      await page.evaluate("labels.hold('open');labels.openSaved();labels.openSaved()");await page.waitForFunction("labels.snapshot().calls.some(c=>c.stage==='open')");
+      const s=await page.evaluate('labels.snapshot()');assert.equal(s.calls.filter((c:{stage:string})=>c.stage==='open').length,1);assert.equal(await page.getByRole('button',{name:/^US Letter/}).isDisabled(),true);
+      await page.evaluate(`labels.finish(5,true,JSON.stringify({code:'export.saved_file_unavailable',safe_detail:null,diagnostic_id:null}))`);await page.waitForFunction('!labels.snapshot().opening');
+      assert.match(await page.getByRole('dialog').getByRole('alert').innerText(),/Save it again/);assert.equal(await page.getByRole('button',{name:'Save PDF to Downloads',exact:true}).isEnabled(),true);
+    });
+    await scenario('old saved-file callback and late opening errors cannot enter a new Host session',async page=>{
+      await page.evaluate('labels.open()');await ready(page);await page.evaluate('labels.save()');await page.waitForFunction('labels.snapshot().saved');
+      await page.evaluate("labels.capture();labels.hold('open');labels.openSaved()");await page.waitForFunction('labels.snapshot().opening');
+      await page.evaluate(`labels.render({host:'other',generation:2});labels.render({generation:3});labels.open();labels.oldOpenSaved();labels.finish(5,true)`);await ready(page);
+      assert.equal(await page.getByRole('dialog').getByRole('alert').count(),0);assert.equal(await page.getByRole('button',{name:'Open saved file',exact:true}).count(),0);
+      assert.equal((await page.evaluate('labels.snapshot()')).calls.filter((c:{stage:string})=>c.stage==='open').length,1);
+    });
     await scenario('rendered close and save controls preserve the lifecycle',async page=>{
-      await page.getByRole('button',{name:'Labels',exact:true}).click();await ready(page);await page.getByRole('button',{name:'Save PDF to Downloads',exact:true}).click();await page.waitForFunction('!labels.snapshot().open');await page.waitForFunction("document.activeElement?.textContent==='Labels'");
+      await page.getByRole('button',{name:'Labels',exact:true}).click();await ready(page);await page.getByRole('button',{name:'Save PDF to Downloads',exact:true}).click();await page.waitForFunction('!labels.snapshot().saving&&labels.snapshot().saved');await page.getByRole('button',{name:'Close',exact:true}).click();await page.waitForFunction('!labels.snapshot().open');await page.waitForFunction("document.activeElement?.textContent==='Labels'");
     });
   } finally {await browser.close();}
 });

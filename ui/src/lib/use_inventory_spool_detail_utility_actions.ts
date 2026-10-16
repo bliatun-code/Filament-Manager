@@ -117,7 +117,7 @@ export function useInventorySpoolDetailUtilityActions({
       if (current.current !== operation) return;
       const message = t("inventory.labelSaved", "Label PNG saved to Downloads.").replace("{path}", exportedPath);
       setInfoMessage(message);
-      return { message, success: true };
+      return { message, success: true, exportedPath };
     } catch (printError) {
       if (current.current !== operation) return;
       const message = commandErrorText(printError, t("inventory.error.printLabel", "Failed to generate label."), t);

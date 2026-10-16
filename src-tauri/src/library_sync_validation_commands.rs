@@ -49,6 +49,8 @@ fn validate_library_sync_host_blocking(
                 matches_library_id: false,
                 pairing_checked: false,
                 pairing_valid: false,
+                target_generation: None,
+                app_version: None,
                 api_version: None,
                 auth_mode: None,
                 access_mode: None,
@@ -57,7 +59,7 @@ fn validate_library_sync_host_blocking(
                 sync_mode: None,
                 message: error,
             };
-            save_validation_if_current(
+            let _ = save_validation_if_current(
                 state,
                 validation_target.as_ref(),
                 false,
@@ -76,6 +78,8 @@ fn validate_library_sync_host_blocking(
             matches_library_id: false,
             pairing_checked: false,
             pairing_valid: false,
+            target_generation: None,
+            app_version: None,
             api_version: None,
             auth_mode: None,
             access_mode: None,
@@ -84,7 +88,7 @@ fn validate_library_sync_host_blocking(
             sync_mode: None,
             message: format!("Host check returned {}.", response.status()),
         };
-        save_validation_if_current(
+        let _ = save_validation_if_current(
             state,
             validation_target.as_ref(),
             true,
@@ -173,13 +177,15 @@ fn validate_library_sync_host_blocking(
         }
     }
 
-    let result = LibrarySyncHostValidationResult {
+    let mut result = LibrarySyncHostValidationResult {
         base_url: normalized_base_url,
         reachable: true,
         ok: parsed.ok,
         matches_library_id,
         pairing_checked,
         pairing_valid,
+        target_generation: None,
+        app_version: parsed.app_version,
         api_version: Some(parsed.api_version),
         auth_mode: Some(parsed.auth_mode),
         access_mode: parsed.access_mode,
@@ -188,7 +194,7 @@ fn validate_library_sync_host_blocking(
         sync_mode: parsed.sync_mode,
         message,
     };
-    save_validation_if_current(
+    result.target_generation = save_validation_if_current(
         state,
         validation_target.as_ref(),
         result.reachable,
@@ -204,12 +210,89 @@ fn save_validation_if_current(
     reachable: bool,
     message: Option<&str>,
     device_name: Option<&str>,
-) -> Result<(), String> {
+) -> Result<Option<u64>, String> {
     let Some(target) = target else {
-        return Ok(());
+        return Ok(None);
     };
     with_current_library_sync_target_if_current(state, target, |engine| {
-        engine.save_library_sync_validation_state(reachable, message, device_name)
-    })?;
-    Ok(())
+        engine.save_library_sync_validation_state(reachable, message, device_name)?;
+        Ok(target.generation())
+    })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::save_validation_if_current;
+    use crate::backend::filament_database::FilamentDatabase;
+    use crate::credential_store::CredentialStore;
+    use crate::library_sync_runtime_auth::LibrarySyncRuntimeAuth;
+    use crate::library_sync_target_guard::capture_library_sync_target;
+    use crate::state::{
+        AppState, CompanionRuntimeState, TrustedLanCompanionRuntime, TRUSTED_LAN_DEFAULT_PORT,
+    };
+
+    #[test]
+    fn host_version_validation_generation_is_withheld_after_an_a_to_b_to_a_target_change() {
+        let path = std::env::temp_dir().join(format!(
+            "filament-version-validation-{}-{}.sqlite",
+            std::process::id(),
+            crate::document_commands::chrono_id()
+        ));
+        let db = FilamentDatabase::open(&path).unwrap();
+        db.apply_schema().unwrap();
+        let mut settings = db.get_library_sync_settings().unwrap();
+        settings.mode = "CLIENT".to_string();
+        settings.host_base_url = Some("http://host-a.local:4278".to_string());
+        settings.library_id = "library-a".to_string();
+        db.save_library_sync_settings(&settings).unwrap();
+        drop(db);
+        let state = AppState {
+            db_path: path.to_string_lossy().into_owned(),
+            companion: CompanionRuntimeState::new(TrustedLanCompanionRuntime::new(
+                TRUSTED_LAN_DEFAULT_PORT,
+            )),
+            credentials: CredentialStore::in_memory(),
+            library_sync_auth: LibrarySyncRuntimeAuth::new(),
+        };
+        let guard =
+            capture_library_sync_target(&state, "http://host-a.local:4278", Some("library-a"))
+                .unwrap();
+        assert_eq!(
+            save_validation_if_current(&state, Some(&guard), true, Some("matched"), None).unwrap(),
+            Some(guard.generation())
+        );
+
+        let db = FilamentDatabase::open(&path).unwrap();
+        let mut settings = db.get_library_sync_settings().unwrap();
+        settings.host_base_url = Some("http://host-b.local:4278".to_string());
+        settings.library_id = "library-b".to_string();
+        let mut returned_to_a = db.save_library_sync_settings(&settings).unwrap();
+        returned_to_a.host_base_url = Some("http://host-a.local:4278".to_string());
+        returned_to_a.library_id = "library-a".to_string();
+        let current = db.save_library_sync_settings(&returned_to_a).unwrap();
+        assert_eq!(current.target_generation, guard.generation() + 2);
+        drop(db);
+
+        assert_eq!(
+            save_validation_if_current(
+                &state,
+                Some(&guard),
+                true,
+                Some("stale version check"),
+                None
+            )
+            .unwrap(),
+            None
+        );
+        let db = FilamentDatabase::open(&path).unwrap();
+        assert_ne!(
+            db.get_library_sync_settings()
+                .unwrap()
+                .last_validation_message
+                .as_deref(),
+            Some("stale version check")
+        );
+        drop(db);
+        let _ = std::fs::remove_file(path);
+    }
 }

@@ -12,7 +12,7 @@ async function buildHarnessDocument() {
     import React,{useLayoutEffect} from 'react';
     import {createRoot} from 'react-dom/client';import {flushSync} from 'react-dom';
     import {useInventorySpoolQrArtifacts} from './use_inventory_spool_qr_artifacts';
-    const spools={a:{id:'a'},b:{id:'b'}},calls=[],history=[];let state;
+    const spools={a:{id:'a'},b:{id:'b'}},calls=[],history=[];let state,retry;
     window.qrStage=options=>new Promise((resolve,reject)=>{
       calls.push({options,resolve:()=>resolve({qrReference:options.spoolId,
         qrPayload:options.clientHostBaseUrl+'/'+options.spoolId,
@@ -20,16 +20,16 @@ async function buildHarnessDocument() {
         qrDataUrl:'qr:'+options.clientHostBaseUrl+'/'+options.spoolId,
         companionShellUrl:options.clientHostBaseUrl}),reject:()=>reject(Error('synthetic QR failure'))});
     });
-    function Harness({id='a',host='http://host-a.local',client=true,open=true}){
+    function Harness({id='a',host='http://host-a.local',client=true,open=true,generation=1,library='library'}){
       const result=useInventorySpoolQrArtifacts({selectedSpool:spools[id]??null,
-        clientHostBaseUrl:host,clientReadOnly:client,showRollModal:open});
+        clientHostBaseUrl:host,clientReadOnly:client,showRollModal:open,clientTargetGeneration:generation,clientLibraryId:library});retry=result.retry;
       const visible={id,host,client,open,dataUrl:result.dataUrl,target:result.target,
         companionShellUrl:result.companionShellUrl,loading:result.loading};
       useLayoutEffect(()=>{state=visible;history.push(visible);});
       return React.createElement('output',null,result.target??'unavailable');
     }
     const root=createRoot(document.getElementById('root'));
-    window.qrs={render:(props={})=>flushSync(()=>root.render(React.createElement(Harness,props))),
+    window.qrs={retry:()=>retry(),render:(props={})=>flushSync(()=>root.render(React.createElement(Harness,props))),
       finish:(index,fail=false)=>fail?calls[index].reject():calls[index].resolve(),
       snapshot:()=>({...state,calls:calls.map(call=>call.options),history:[...history]})};
   `;
@@ -80,6 +80,8 @@ test("rendered spool QR artifacts keep their image and original target within th
       ["selected spool", "{id:'b'}", "http://host-a.local/b"],
       ["paired Host", "{host:'http://host-b.local'}", "http://host-b.local/a"],
       ["client mode", "{client:false}", "http://host-a.local/a"],
+      ["target generation", "{generation:2}", "http://host-a.local/a"],
+      ["library", "{library:'other'}", "http://host-a.local/a"],
     ]) {
       await scenario(`${name} changes hide the previous target before effects run`, async (page) => {
         await page.evaluate("qrs.finish(0)"); await ready(page);
@@ -126,6 +128,10 @@ test("rendered spool QR artifacts keep their image and original target within th
       assert.equal(closed.target, null);
       assert.equal(closed.dataUrl, null);
       assert.equal(closed.loading, false);
+    });
+    await scenario("current failure can be retried explicitly without reusing old artifacts", async page => {
+      await page.evaluate("qrs.finish(0,true)");await page.waitForFunction("!qrs.snapshot().loading");await page.waitForTimeout(30);assert.equal((await page.evaluate('qrs.snapshot()')).calls.length,1);
+      await page.evaluate('qrs.retry()');await page.waitForFunction('qrs.snapshot().calls.length===2');assert.equal((await page.evaluate('qrs.snapshot()')).target,null);await page.evaluate('qrs.finish(1)');await ready(page);assert.equal((await page.evaluate('qrs.snapshot()')).target,'http://host-a.local/a');
     });
     await scenario("current failure clears loading without reusing an old successful QR", async (page) => {
       await page.evaluate("qrs.finish(0)"); await ready(page);

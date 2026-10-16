@@ -15,6 +15,11 @@ export type InventoryLabelSheetModalProps = {
   items: InventoryLabelSheetItem[];
   loading: boolean;
   onClose: () => void;
+  onRetryPreview?: () => void;
+  onOpenSavedFile?: () => Promise<void> | void;
+  openingSavedFile?: boolean;
+  savedMessage?: string | null;
+  onPaperChange?: (paperId: InventoryLabelSheetPaperId) => void;
   onSave: (paperId: InventoryLabelSheetPaperId) => Promise<void> | void;
   open: boolean;
   saving: boolean;
@@ -25,7 +30,12 @@ export function InventoryLabelSheetModal({
   items,
   loading,
   onClose,
+  onRetryPreview,
+  onOpenSavedFile,
+  openingSavedFile = false,
+  savedMessage = null,
   onSave,
+  onPaperChange,
   open,
   saving,
 }: InventoryLabelSheetModalProps) {
@@ -81,7 +91,14 @@ export function InventoryLabelSheetModal({
         onClose={onClose}
       />
 
-      {error ? <ModalNotice className="mx-5 my-4 shrink-0" tone="danger" role="alert">{error}</ModalNotice> : null}
+      {error ? <ModalNotice className="mx-5 my-4 shrink-0" tone="danger" role="alert">
+        {error}
+        {!loading && !saving && items.length === 0 && onRetryPreview ? (
+          <button type="button" className={`mt-3 block ${settingsActionButtonClass()}`} onClick={onRetryPreview}>
+            {t("settings.inventoryOverviewRetryPreview", "Try preview again")}
+          </button>
+        ) : null}
+      </ModalNotice> : null}
       {!(error && !loading && items.length === 0) ? <div
         id="inventory-label-sheet-builder"
         className="grid min-h-0 gap-5 overflow-y-auto p-5 lg:grid-cols-[minmax(0,1.45fr)_minmax(17rem,0.55fr)]"
@@ -185,12 +202,14 @@ export function InventoryLabelSheetModal({
                   key={paper.id}
                   type="button"
                   aria-pressed={selected}
+                  disabled={loading || saving || openingSavedFile}
                   className={`app-control-focus rounded-lg border px-3 py-3 text-left text-sm outline-none transition ${
                     selected
                       ? "app-selected-control"
                       : "app-soft-control"
                   }`}
                   onClick={() => {
+                    if (paper.id !== paperId) onPaperChange?.(paper.id);
                     setPaperId(paper.id);
                     setPageIndex(0);
                   }}
@@ -216,16 +235,25 @@ export function InventoryLabelSheetModal({
             )}
           </div>
 
+          <p className="mt-3 text-xs leading-5 text-slate-600 dark:text-slate-300">
+            {t("inventory.labelPrintActualSize", "Print at 100% or Actual size, with page fitting turned off. Match the selected label or paper size in your print settings.")}
+          </p>
           <button
             type="button"
             className={`mt-4 w-full ${settingsActionButtonClass("primary")}`}
             onClick={() => void onSave(paperId)}
-            disabled={loading || saving || items.length === 0}
+            disabled={loading || saving || openingSavedFile || items.length === 0}
           >
             {saving
               ? t("settings.inventoryOverviewPrintSaving", "Saving PDF...")
               : t("settings.inventoryOverviewPrintSave", "Save PDF to Downloads")}
           </button>
+          {savedMessage ? <ModalNotice className="mt-3" tone="success" role="status">{savedMessage}</ModalNotice> : null}
+          {onOpenSavedFile ? (
+            <button type="button" className={`mt-3 w-full ${settingsActionButtonClass()}`} disabled={saving || openingSavedFile || loading} onClick={() => void onOpenSavedFile()}>
+              {openingSavedFile ? t("inventory.labelOpeningSavedFile", "Opening file...") : t("inventory.labelOpenSavedFile", "Open saved file")}
+            </button>
+          ) : null}
         </section>
       </div> : null}
     </AppModal>

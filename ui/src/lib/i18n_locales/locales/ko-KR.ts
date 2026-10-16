@@ -49,6 +49,8 @@ export const koKRDictionary: DictionaryNode = {
     "optional": "선택 과목"
   },
   "errors": {
+    "savedLabelFileUnavailable": "저장된 라벨 파일을 더 이상 사용할 수 없거나 파일이 변경되었습니다. 열기 전에 다시 저장하세요.",
+    "savedLabelFileOpenFailed": "저장된 라벨 파일을 열지 못했습니다. 다운로드 폴더에서 열거나 다시 저장하세요.",
     "inventoryBulkReactivationRequiresWeight": "다시 활성화하기 전에 측정된 총 중량을 빈 스풀 중량보다 높게 설정하십시오.",
       hostUnavailable: "호스트에 연결할 수 없습니다. 다시 연결될 때까지 변경 사항을 저장할 수 없습니다. 호스트와 네트워크를 확인한 후 새로고침하세요.",
       "inventoryWeightHostUnsupported": "측정한 롤 무게를 저장하기 전에 호스트를 업데이트하세요. 변경 사항은 전송되지 않았습니다.",
@@ -296,6 +298,11 @@ export const koKRDictionary: DictionaryNode = {
     "badgeNoPrinterSlots": "아직 구성된 프린터 슬롯이 없습니다."
   },
   "inventory": {
+    "labelPreviewFailed": "라벨 미리보기를 준비하지 못했습니다. 다시 시도하세요.",
+    "labelRetryPreview": "미리보기 다시 시도",
+    "labelOpenSavedFile": "저장된 파일 열기",
+    "labelOpeningSavedFile": "파일 여는 중...",
+    "labelPrintActualSize": "페이지 맞춤을 끄고 100% 또는 실제 크기로 인쇄하세요. 인쇄 설정에서 선택한 라벨이나 용지와 같은 크기를 지정하세요.",
     "bambuBatchSaving": "{count, plural, other {롤 #개 저장 중}}...",
     "bambuBatchUncertain": "이 일괄 등록이 저장되었는지 확인할 수 없습니다. 동일한 일괄 등록을 계속하면 중복을 만들지 않고 확인하거나 완료할 수 있습니다.",
     "bambuBatchRejected": "이 일괄 등록은 저장되지 않았습니다. 오류를 확인한 후 일괄 등록을 편집하세요.",
@@ -1406,6 +1413,27 @@ export const koKRDictionary: DictionaryNode = {
     }
   },
   "settings": {
+    "catalogRefreshStatusUncertain": "상태를 확인하지 못했습니다. 새로고침 로그를 확인하세요. 업데이트가 계속 진행 중일 수 있습니다.",
+    "catalogRefreshFailedNextStep": "업데이트가 완료되지 않았습니다. 다른 업데이트를 시작하기 전에 새로고침 로그를 확인하세요.",
+    "catalogRefreshInterruptedNextStep": "업데이트가 중단되었습니다. 다시 시작하기 전에 카탈로그와 새로고침 로그를 확인하세요.",
+    "catalogAuditFailedNextStep": "확인이 완료되지 않았습니다. 새로고침 로그를 확인한 다음 사용 가능한 재료 찾기로 다시 시도하세요.",
+    "catalogHostUnavailableNextStep": "호스트 카탈로그를 사용할 수 없습니다. 다시 시도하기 전에 도서관 및 웹 앱에서 호스트 연결을 확인하세요.",
+    "inventoryOverviewRetryPreview": "미리보기 다시 시도",
+    "deviceVersionsTitle": "앱 버전",
+    "thisDevice": "이 기기",
+    "hostVersionChecked": "마지막 호스트 확인 정보",
+    "hostVersionCached": "마지막 호스트 스냅샷 정보",
+    "hostVersionUnknown": "버전이 보고되지 않음",
+    "deviceUpdateAvailable": "업데이트 사용 가능",
+    "deviceVersionCurrent": "최신 공개 버전",
+    "deviceVersionNewer": "공개된 릴리스보다 최신",
+    "deviceUpdatesUnchecked": "업데이트를 확인하지 않음",
+    "hostCatalogRunsHere": "카탈로그 새로고침은 호스트에서 실행됩니다. 카탈로그 수정 사항을 받으려면 호스트도 업데이트하세요.",
+    "deviceVersionsIndependent": "이 기기를 업데이트해도 호스트는 업데이트되지 않습니다.",
+    "hostVersionRefresh": "호스트 상태 새로고침",
+    "deviceLatestRelease": "최신 공개 버전: {version}",
+    "hostVersionUnverified": "설정된 호스트를 확인하기 전에는 호스트 앱 버전을 확인할 수 없습니다.",
+    "hostVersionCachedHint": "저장된 이 버전은 변경되었을 수 있습니다. 호스트 상태를 새로고침하여 확인하세요.",
     "importFileEmpty": "파일이 비어 있습니다. 데이터가 포함된 내보내기 파일을 선택하세요.",
     "importJsonInvalid": "JSON 파일이 손상되었거나 불완전합니다. 다시 내보내거나 다운로드한 후 재시도하세요.",
     "importBackupUnsupported": "지원되지 않는 백업 버전입니다. Filament Manager를 업데이트하거나 현재 버전에서 내보낸 백업을 선택하세요.",

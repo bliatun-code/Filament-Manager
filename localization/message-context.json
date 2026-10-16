@@ -825,6 +825,186 @@
       "key": "dashboard.overviewDetailsUnavailable",
       "meaning": "The current cached or Host snapshot does not contain the detailed printer overview or individual low-stock roll rows required by a dashboard section. Missing details are not a confirmed empty printer list or a zero-stock result. Refresh retrieves supported details from the active local or Host source; cached supported details can still be shown with their source warning.",
       "screenshot": "docs/screenshots/dashboard.jpg"
+    },
+    {
+      "surface": "desktop",
+      "key": "settings.deviceVersionsTitle",
+      "meaning": "Heading for the app versions of this desktop and its configured library Host. Updating one device never installs an update on another device.",
+      "screenshot": "docs/screenshots/settings-library-network.jpg"
+    },
+    {
+      "surface": "desktop",
+      "key": "settings.thisDevice",
+      "meaning": "Label for the running local desktop app installation, whose version is read from the native application. Distinct from the library-owning Host in Client mode.",
+      "screenshot": "docs/screenshots/settings-library-network.jpg"
+    },
+    {
+      "surface": "desktop",
+      "key": "settings.hostVersionChecked",
+      "meaning": "Source label for an app version actually reported by the last successful check of the configured Host, bound to the exact Host URL, library and current target generation with verified pairing. A result from before an A-to-B-to-A target change is not current. This does not derive an app version from the API capability number.",
+      "screenshot": "docs/screenshots/settings-library-network.jpg"
+    },
+    {
+      "surface": "desktop",
+      "key": "settings.hostVersionCached",
+      "meaning": "Source label for the Host app version saved in a snapshot. A cached version is not a fresh statement about the installed version currently running on the Host.",
+      "screenshot": "docs/screenshots/settings-library-network.jpg"
+    },
+    {
+      "surface": "desktop",
+      "key": "settings.hostVersionUnknown",
+      "meaning": "The checked Host did not report an app-version string, for example because it runs an older protocol. Do not invent version zero, infer it from API version, or claim the latest version is installed.",
+      "screenshot": "docs/screenshots/settings-library-network.jpg"
+    },
+    {
+      "surface": "desktop",
+      "key": "settings.deviceUpdateAvailable",
+      "meaning": "The reported app version is older than the checked latest stable published release. Status does not install an update or trigger remote updates.",
+      "screenshot": "docs/screenshots/settings-library-network.jpg"
+    },
+    {
+      "surface": "desktop",
+      "key": "settings.deviceVersionCurrent",
+      "meaning": "The reported app version matches the latest stable published version from the update check. The cached Host-source label remains visible separately.",
+      "screenshot": "docs/screenshots/settings-library-network.jpg"
+    },
+    {
+      "surface": "desktop",
+      "key": "settings.deviceVersionNewer",
+      "meaning": "The reported app version compares newer than the latest stable published release. It is not presented as an update error or a suggestion to downgrade.",
+      "screenshot": "docs/screenshots/settings-library-network.jpg"
+    },
+    {
+      "surface": "desktop",
+      "key": "settings.deviceUpdatesUnchecked",
+      "meaning": "No usable latest published version is available from the current update-check result, so an up-to-date claim cannot be made.",
+      "screenshot": "docs/screenshots/settings-library-network.jpg"
+    },
+    {
+      "surface": "desktop",
+      "key": "settings.hostCatalogRunsHere",
+      "meaning": "In Client mode, vendor catalog discovery and material refresh execute on the library-owning Host. Updating only this desktop cannot deliver backend catalog fixes to that Host.",
+      "screenshot": "docs/screenshots/settings-library-network.jpg"
+    },
+    {
+      "surface": "desktop",
+      "key": "settings.deviceVersionsIndependent",
+      "meaning": "Clarifies installation scope: updating this local desktop does not also update the separate library Host.",
+      "screenshot": "docs/screenshots/settings-library-network.jpg"
+    },
+    {
+      "surface": "desktop",
+      "key": "settings.hostVersionRefresh",
+      "meaning": "A read-only action to verify the configured Host and refresh its reported app version. It neither updates the Host application nor starts a catalog refresh.",
+      "screenshot": "docs/screenshots/settings-library-network.jpg"
+    },
+    {
+      "surface": "desktop",
+      "key": "settings.deviceLatestRelease",
+      "meaning": "Displays the latest stable published app version from the existing update-check result. Keep the already formatted {version} placeholder unchanged.",
+      "screenshot": "docs/screenshots/settings-library-network.jpg"
+    },
+    {
+      "surface": "desktop",
+      "key": "settings.hostVersionUnverified",
+      "meaning": "Host app version is withheld until the configured Host is verified, to avoid attaching old or unverified metadata to the current Host target.",
+      "screenshot": "docs/screenshots/settings-library-network.jpg"
+    },
+    {
+      "surface": "desktop",
+      "key": "settings.hostVersionCachedHint",
+      "meaning": "Warns that the saved Host app version can be stale and offers a read-only Host status refresh to verify it.",
+      "screenshot": "docs/screenshots/settings-library-network.jpg"
+    },
+    {
+      "surface": "desktop",
+      "key": "inventory.labelPreviewFailed",
+      "meaning": "An individual roll label could not be rendered for preview. A manual retry rebuilds only the preview for the same current roll, target URL and label size; no file was saved or print job sent.",
+      "screenshot": "docs/screenshots/filament-details.jpg"
+    },
+    {
+      "surface": "desktop",
+      "key": "inventory.labelRetryPreview",
+      "meaning": "Manual retry of the current label PNG preview after rendering failed. The retry does not save or print automatically.",
+      "screenshot": "docs/screenshots/filament-details.jpg"
+    },
+    {
+      "surface": "desktop",
+      "key": "inventory.labelOpenSavedFile",
+      "meaning": "Opens the exact successfully saved current label file in the operating system default app. It is unavailable before successful save and does not print or accept an arbitrary path.",
+      "screenshot": "docs/screenshots/filament-details.jpg"
+    },
+    {
+      "surface": "desktop",
+      "key": "inventory.labelOpeningSavedFile",
+      "meaning": "Busy state while asking the operating system to open the registered saved label file. It is not a physical print operation.",
+      "screenshot": "docs/screenshots/filament-details.jpg"
+    },
+    {
+      "surface": "desktop",
+      "key": "inventory.labelPrintActualSize",
+      "meaning": "Instructions for printing an exported PNG label or PDF sheet at its designed physical dimensions: 100 percent or Actual size, no fit-to-page scaling, matching selected label or paper size. This is guidance, not evidence of a physical printer test.",
+      "screenshot": "docs/screenshots/filament-details.jpg"
+    },
+    {
+      "surface": "desktop",
+      "key": "settings.inventoryOverviewRetryPreview",
+      "meaning": "Manual retry of the current A4 or US Letter label-sheet preview. It preserves current selections and does not save or print automatically.",
+      "screenshot": "docs/screenshots/settings-maintenance.jpg"
+    },
+    {
+      "surface": "desktop",
+      "key": "errors.savedLabelFileUnavailable",
+      "meaning": "The exact registered saved label file is missing or its verified contents changed. Open is rejected. Save the current label again before trying to open it; no arbitrary filesystem path is accepted.",
+      "screenshot": "docs/screenshots/filament-details.jpg"
+    },
+    {
+      "surface": "desktop",
+      "key": "errors.savedLabelFileOpenFailed",
+      "meaning": "The operating system could not open a verified saved label file. The user can open the exported file from Downloads manually or save again. Do not expose raw filesystem paths or imply that a print job completed.",
+      "screenshot": "docs/screenshots/filament-details.jpg"
+    },
+    {
+      "surface": "companion",
+      "key": "errors.savedLabelFileUnavailable",
+      "meaning": "Shared structured-error translation for a desktop label export/open operation. The exact registered saved label file is missing or its verified contents changed. Open is rejected. Save the current label again before trying to open it; no arbitrary filesystem path is accepted. This mapping does not add any browser API for opening host files.",
+      "screenshot": "docs/screenshots/filament-details.jpg"
+    },
+    {
+      "surface": "companion",
+      "key": "errors.savedLabelFileOpenFailed",
+      "meaning": "Shared structured-error translation for a desktop label export/open operation. The operating system could not open a verified saved label file. The user can open the exported file from Downloads manually or save again. Do not expose raw filesystem paths or imply that a print job completed. This mapping does not add any browser API for opening host files.",
+      "screenshot": "docs/screenshots/filament-details.jpg"
+    },
+    {
+      "surface": "desktop",
+      "key": "settings.catalogRefreshStatusUncertain",
+      "meaning": "The app could not confirm the catalog job status, so the job may still be running. Check the diagnostic refresh log and avoid starting another job until its state is known. This does not promise the catalog is unchanged or that retry is safe.",
+      "screenshot": "docs/screenshots/settings-catalog.jpg"
+    },
+    {
+      "surface": "desktop",
+      "key": "settings.catalogRefreshFailedNextStep",
+      "meaning": "A catalog refresh reached a failed terminal state. Ask the user to inspect the available refresh log before manually starting another guarded update; no automatic retry or unchanged-data guarantee is implied.",
+      "screenshot": "docs/screenshots/settings-catalog.jpg"
+    },
+    {
+      "surface": "desktop",
+      "key": "settings.catalogRefreshInterruptedNextStep",
+      "meaning": "A catalog refresh was interrupted. Its resulting catalog state must be checked along with the refresh log before the user starts again. Do not promise that no mutation occurred.",
+      "screenshot": "docs/screenshots/settings-catalog.jpg"
+    },
+    {
+      "surface": "desktop",
+      "key": "settings.catalogAuditFailedNextStep",
+      "meaning": "A read-only vendor material-discovery check failed. The user can inspect the refresh log and manually retry using the existing Discover available materials action. The translated action name should match settings.discoverCatalogMaterials.",
+      "screenshot": "docs/screenshots/settings-catalog.jpg"
+    },
+    {
+      "surface": "desktop",
+      "key": "settings.catalogHostUnavailableNextStep",
+      "meaning": "A Client could not obtain the Host catalog. The next step is to check the configured Host connection in the existing Library & web app settings tab before retrying. The translated tab name should match settings.tabLibrary.",
+      "screenshot": "docs/screenshots/settings-catalog.jpg"
     }
   ],
   "groups": [

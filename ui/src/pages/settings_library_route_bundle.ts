@@ -25,6 +25,7 @@ type BuildSettingsLibraryRouteBundleInput =
   LibraryRouteScalars;
 
 export function buildSettingsLibraryRouteBundle({
+  appVersion,
   actionBusy,
   activeBrowsers,
   browserLabelDraft,
@@ -178,6 +179,7 @@ export function buildSettingsLibraryRouteBundle({
     onToggleRevokedBrowsers,
   });
   const settingsLibraryClientPanelProps = buildSettingsLibraryClientPanelProps({
+    appVersion,
     librarySyncBusy,
     librarySyncDeviceNameDirty,
     librarySyncDeviceNameDraft,

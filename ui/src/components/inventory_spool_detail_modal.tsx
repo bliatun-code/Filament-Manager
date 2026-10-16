@@ -1,3 +1,4 @@
+import type { FilamentLabelExportResult } from "../lib/tauri_label_file_client";
 import { useState } from "react";
 import { AppModal } from "./app_modal";
 import {
@@ -119,7 +120,8 @@ type InventorySpoolDetailModalProps = {
   onMarkEmpty: () => void;
   onLoadInPrinter: () => void;
   onLoanOut: () => void;
-  onPrintLabel: (labelSize: FilamentLabelSize, pngDataUrl: string) => Promise<{ message: string; success: boolean } | void>;
+  onRetryQr?: () => void;
+  onPrintLabel: (labelSize: FilamentLabelSize, pngDataUrl: string) => Promise<FilamentLabelExportResult | void>;
   onPurge: () => void;
   onRefill: () => void;
   onSaveCommonDetails: () => void;
@@ -140,6 +142,7 @@ type InventorySpoolDetailModalProps = {
   purchaseMetadataDraft: PurchaseReceiptMetadataDraft;
   purchaseMetadataErrors: PurchaseReceiptMetadataValidationErrors;
   qrCompanionAvailable: boolean;
+  qrAuthorityKey?: string | null;
   qrDataUrl: string | null;
   qrLoading: boolean;
   qrTarget: string | null;
@@ -212,6 +215,7 @@ export function InventorySpoolDetailModal({
   onMarkEmpty,
   onLoadInPrinter,
   onLoanOut,
+  onRetryQr,
   onPrintLabel,
   onPurge,
   onRefill,
@@ -233,6 +237,7 @@ export function InventorySpoolDetailModal({
   purchaseMetadataDraft,
   purchaseMetadataErrors,
   qrCompanionAvailable,
+  qrAuthorityKey,
   qrDataUrl,
   qrLoading,
   qrTarget,
@@ -407,11 +412,13 @@ export function InventorySpoolDetailModal({
 
                 <InventorySpoolQrRfidPanel
                   companionAvailable={qrCompanionAvailable}
+                  authorityKey={qrAuthorityKey}
                   dataUrl={qrDataUrl}
                   deterministicLabelPreferences={deterministicLabelPreferences}
                   loading={qrLoading}
                   initialLabelPanelOpen={initialLabelPanelOpen}
                   labelPanelRequestId={labelPanelRequestId}
+                  onRetryQr={onRetryQr}
                   onPrintLabel={onPrintLabel}
                   onStartRfidCapture={onStartRfidCapture}
                   resolvedTheme={resolvedTheme}

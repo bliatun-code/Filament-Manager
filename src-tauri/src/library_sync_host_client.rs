@@ -1883,6 +1883,7 @@ mod tests {
     fn test_health(library_id: Option<&str>, ok: bool) -> CompanionHealthCheckResponse {
         CompanionHealthCheckResponse {
             ok,
+            app_version: None,
             api_version: "v1".to_string(),
             capabilities: Vec::new(),
             auth_mode: "pairing".to_string(),

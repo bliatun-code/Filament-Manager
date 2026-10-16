@@ -35,6 +35,7 @@ pub(super) async fn handle_health(
             let sync_settings = read_library_sync_settings(&state)?;
             Ok(Json(CompanionHealthResponse {
                 ok: true,
+                app_version: env!("CARGO_PKG_VERSION"),
                 api_version: "v1",
                 capabilities: &[
                     LOAN_METADATA_CAPABILITY,
@@ -93,6 +94,7 @@ pub(super) async fn handle_library_snapshot(
 
             Ok(Json(CompanionLibrarySnapshotResponse {
                 ok: true,
+                app_version: env!("CARGO_PKG_VERSION"),
                 captured_at: snapshot.captured_at,
                 library_id: snapshot.sync_settings.library_id,
                 device_name: snapshot.sync_settings.device_name,

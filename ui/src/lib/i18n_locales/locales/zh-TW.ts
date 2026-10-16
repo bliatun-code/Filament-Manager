@@ -49,6 +49,8 @@ export const zhTWDictionary: DictionaryNode = {
     "optional": "選填"
   },
   "errors": {
+    "savedLabelFileUnavailable": "已儲存的標籤檔案已無法使用或已變更。請重新儲存後再開啟。",
+    "savedLabelFileOpenFailed": "無法開啟已儲存的標籤檔案。請從「下載項目」中開啟，或重新儲存。",
     "inventoryBulkReactivationRequiresWeight": "在重新啟動之前，將測得的總重量設定為高於空線材捲重量。",
       hostUnavailable: "主機無法使用。恢復連線之前無法儲存變更。請檢查主機和網路，然後重新整理。",
       "inventoryWeightHostUnsupported": "儲存測得的料卷重量前，請先更新主機。未傳送任何變更。",
@@ -296,6 +298,11 @@ export const zhTWDictionary: DictionaryNode = {
     "badgeNoPrinterSlots": "尚未配置印表機插槽。"
   },
   "inventory": {
+    "labelPreviewFailed": "無法準備標籤預覽。請重試。",
+    "labelRetryPreview": "重試預覽",
+    "labelOpenSavedFile": "開啟已儲存的檔案",
+    "labelOpeningSavedFile": "正在開啟檔案...",
+    "labelPrintActualSize": "請以 100% 或實際大小列印，並關閉符合頁面。在列印設定中選擇相同的標籤或紙張尺寸。",
     "bambuBatchSaving": "正在儲存{count, plural, other { # 卷耗材}}...",
     "bambuBatchUncertain": "無法確認此批次是否已儲存。繼續同一批次即可檢查或完成操作，而不會建立重複記錄。",
     "bambuBatchRejected": "此批次未儲存。請查看錯誤，然後編輯批次。",
@@ -1406,6 +1413,27 @@ export const zhTWDictionary: DictionaryNode = {
     }
   },
   "settings": {
+    "catalogRefreshStatusUncertain": "無法確認狀態。請檢查重新整理記錄；更新可能仍在進行。",
+    "catalogRefreshFailedNextStep": "更新未完成。請先檢查重新整理記錄，再開始另一次更新。",
+    "catalogRefreshInterruptedNextStep": "更新已中斷。請先檢查目錄和重新整理記錄，再重新開始。",
+    "catalogAuditFailedNextStep": "檢查未完成。請檢查重新整理記錄，然後使用「尋找可用材料」重試。",
+    "catalogHostUnavailableNextStep": "主機目錄無法使用。請先在「資料庫與 Web 應用程式」中檢查主機連線，再重試。",
+    "inventoryOverviewRetryPreview": "重試預覽",
+    "deviceVersionsTitle": "應用程式版本",
+    "thisDevice": "此裝置",
+    "hostVersionChecked": "來自上次主機檢查",
+    "hostVersionCached": "來自上次主機快照",
+    "hostVersionUnknown": "未回報版本",
+    "deviceUpdateAvailable": "有可用更新",
+    "deviceVersionCurrent": "最新發佈版本",
+    "deviceVersionNewer": "比已發佈版本更新",
+    "deviceUpdatesUnchecked": "尚未檢查更新",
+    "hostCatalogRunsHere": "目錄重新整理在主機上執行。請同時更新主機，以取得目錄修正。",
+    "deviceVersionsIndependent": "更新此裝置不會更新主機。",
+    "hostVersionRefresh": "重新整理主機狀態",
+    "deviceLatestRelease": "最新發佈：{version}",
+    "hostVersionUnverified": "驗證已設定的主機之前，無法取得主機應用程式版本。",
+    "hostVersionCachedHint": "此已儲存的版本可能已經變更。請重新整理主機狀態以確認。",
     "importFileEmpty": "此檔案為空。請選擇含有資料的匯出檔案。",
     "importJsonInvalid": "JSON 檔案已損毀或不完整。請重新匯出或下載後再試。",
     "importBackupUnsupported": "不支援此備份版本。請更新 Filament Manager，或選擇由目前版本匯出的備份。",

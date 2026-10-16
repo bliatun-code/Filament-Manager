@@ -245,6 +245,7 @@ pub(crate) struct PairSessionRequest {
 #[derive(Serialize)]
 pub(crate) struct CompanionHealthResponse {
     pub(crate) ok: bool,
+    pub(crate) app_version: &'static str,
     pub(crate) api_version: &'static str,
     pub(crate) capabilities: &'static [&'static str],
     pub(crate) auth_mode: String,
@@ -272,6 +273,7 @@ pub(crate) const CATALOG_REFRESH_JOBS_CAPABILITY: &str = "catalog-refresh-jobs-v
 #[derive(Serialize)]
 pub(crate) struct CompanionLibrarySnapshotResponse {
     pub(crate) ok: bool,
+    pub(crate) app_version: &'static str,
     pub(crate) captured_at: String,
     pub(crate) library_id: String,
     pub(crate) device_name: String,

@@ -38,6 +38,7 @@ fn seed_all_library_sync_host_caches(
 ) -> Result<(), String> {
     db.save_library_sync_cached_snapshot(&LibrarySyncCachedSnapshotRow {
         captured_at: "2026-08-26 10:00:00".to_string(),
+        app_version: Some("0.32.1".to_string()),
         library_id: library_id.to_string(),
         device_name: "Cached Host".to_string(),
         sync_mode: "HOST".to_string(),
@@ -86,6 +87,13 @@ fn assert_all_library_sync_host_caches_present(db: &FilamentDatabase) -> Result<
         .get_library_sync_settings()
         .map_err(|error| error.to_string())?;
     assert!(settings.cached_snapshot.is_some());
+    assert_eq!(
+        settings
+            .cached_snapshot
+            .as_ref()
+            .and_then(|snapshot| snapshot.app_version.as_deref()),
+        Some("0.32.1")
+    );
     assert!(settings.cached_spools.is_some());
     assert!(settings.cached_printers.is_some());
     assert!(settings.cached_loans.is_some());
@@ -4139,6 +4147,7 @@ fn library_sync_settings_default_and_persist_cleanly() {
                 low_stock_policy_valid: true,
                 cached_snapshot: Some(LibrarySyncCachedSnapshotRow {
                     captured_at: "2026-04-09 10:00:00".to_string(),
+                    app_version: None,
                     library_id: saved.library_id.clone(),
                     device_name: "Main Host".to_string(),
                     sync_mode: "HOST".to_string(),

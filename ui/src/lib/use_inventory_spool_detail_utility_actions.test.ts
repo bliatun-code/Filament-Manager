@@ -11,7 +11,7 @@ async function harness() {
   const source=`
     import React,{useState} from 'react';import {createRoot} from 'react-dom/client';import {flushSync} from 'react-dom';
     import {useInventorySpoolDetailUtilityActions} from './use_inventory_spool_detail_utility_actions';
-    let api,state,calls=[],reloads=[],old,held=false,release,failure='LIVE';
+    let api,state,calls=[],reloads=[],results=[],old,held=false,release,failure='LIVE';
     window.__TAURI__={invoke:(command,payload)=>new Promise((resolve,reject)=>calls.push({command,payload,resolve,reject}))};
     const t=(_key,fallback='')=>fallback;
     function Harness({active=true,ready=true,host='local',generation=1,id='a',capture=true,tag='TAG-123',slot='slot-a',paired=true,allowed=true,tauri=true}) {
@@ -26,10 +26,10 @@ async function harness() {
       state={busy,error,info,rfidError,open};return React.createElement('div');
     }
     const root=createRoot(document.getElementById('root'));const render=(props={})=>flushSync(()=>root.render(React.createElement(Harness,props)));
-    const run=kind=>{void(kind==='RFID'?api.handleSaveCapturedRfid():api.handlePrintLabel('ptouch-24','data:image/png;base64,cG5n'));};
+    const run=kind=>{void(kind==='RFID'?api.handleSaveCapturedRfid():api.handlePrintLabel('ptouch-24','data:image/png;base64,cG5n')).then(result=>results.push(result??null));};
     window.utility={render,run,start:()=>api.handleStartRfidCapture(),double:kind=>{run(kind);run(kind);},capture:kind=>{const fn=api.handlePrintLabel;old=kind==='RFID'?api.handleSaveCapturedRfid:()=>fn('ptouch-24','data:image/png;base64,cG5n');},old:()=>{void old();},
       hold:()=>{held=true;},failure:value=>{failure=value;},release:()=>release(),finish:async(index,fail=false)=>{await new Promise(resolve=>setTimeout(resolve,0));fail?calls[index].reject(Error('write rejected')):calls[index].resolve('/Downloads/label.png');},
-      snapshot:()=>({...state,calls:calls.map(({command,payload})=>({command,payload})),reloads})};
+      snapshot:()=>({...state,results,calls:calls.map(({command,payload})=>({command,payload})),reloads})};
   `;
   const result=await build({root:fileURLToPath(new URL('../../',import.meta.url)),configFile:false,logLevel:'error',define:{'process.env.NODE_ENV':JSON.stringify('production')},
     plugins:[{name:'utilities',resolveId:(id:string)=>id===entry?entry:null,load:(id:string)=>id===entry?source:null}],
@@ -51,12 +51,12 @@ test('inventory detail utility lifecycle',async context=>{
     });
     for(const kind of ['RFID','PNG']) {
       await scenario(`${kind}: duplicate submission sends one command`,async page=>{
-        await page.evaluate(`utility.double('${kind}')`);assert.equal((await page.evaluate('utility.snapshot()')).calls.length,1);await page.evaluate('utility.finish(0)');await page.waitForFunction('!utility.snapshot().busy');const done=await page.evaluate('utility.snapshot()');assert.equal(done.error,null);assert.equal(done.rfidError,null);assert.ok(done.info);if(kind==='RFID')assert.equal(done.open,false);
+        await page.evaluate(`utility.double('${kind}')`);assert.equal((await page.evaluate('utility.snapshot()')).calls.length,1);await page.evaluate('utility.finish(0)');await page.waitForFunction('!utility.snapshot().busy');const done=await page.evaluate('utility.snapshot()');assert.equal(done.error,null);assert.equal(done.rfidError,null);assert.ok(done.info);if(kind==='RFID')assert.equal(done.open,false);else assert.deepEqual(done.results,[null,{success:true,message:done.info,exportedPath:'/Downloads/label.png'}]);
       });
       for(const fail of [false,true]) {
         await scenario(`${kind}: old ${fail?'failure':'success'} cannot alter a new detail operation`,async page=>{
           await page.evaluate(`utility.run('${kind}');utility.render({id:'b'});utility.run('${kind}');utility.finish(0,${fail})`);await page.waitForTimeout(30);
-          const s=await page.evaluate('utility.snapshot()');assert.equal(s.busy,true);assert.equal(s.error,null);assert.equal(s.rfidError,null);assert.equal(s.info,null);assert.deepEqual(s.reloads,[]);await page.evaluate('utility.finish(1)');
+          const s=await page.evaluate('utility.snapshot()');assert.equal(s.busy,true);assert.equal(s.error,null);assert.equal(s.rfidError,null);assert.equal(s.info,null);assert.deepEqual(s.reloads,[]);if(kind==='PNG')assert.deepEqual(s.results,[null]);await page.evaluate('utility.finish(1)');
         });
       }
       for(const props of ['{active:false}','{ready:false}','{host:"other"}','{generation:2}','{id:"b"}','{tauri:false}']) {

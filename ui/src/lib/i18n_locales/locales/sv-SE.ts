@@ -71,6 +71,8 @@ export const svSEDictionary: DictionaryNode = {
     "optional": "Valfritt"
   },
   "errors": {
+    "savedLabelFileUnavailable": "Den sparade etikettfilen är inte längre tillgänglig eller har ändrats. Spara den igen innan du öppnar den.",
+    "savedLabelFileOpenFailed": "Det gick inte att öppna den sparade etikettfilen. Öppna den från Hämtade filer eller spara den igen.",
     "inventoryBulkReactivationRequiresWeight": "Ställ in uppmätt totalvikt över tomspolevikten innan du återaktiverar.",
       hostUnavailable: "Värden är inte tillgänglig. Ändringar kan inte sparas förrän anslutningen är tillbaka. Kontrollera värden och nätverket och uppdatera sedan.",
       "inventoryWeightHostUnsupported": "Uppdatera värden innan du sparar en uppmätt rullvikt. Inga ändringar har skickats.",
@@ -775,6 +777,11 @@ export const svSEDictionary: DictionaryNode = {
     }
   },
   "inventory": {
+    "labelPreviewFailed": "Det gick inte att förbereda etikettförhandsvisningen. Försök igen.",
+    "labelRetryPreview": "Försök förhandsvisa igen",
+    "labelOpenSavedFile": "Öppna sparad fil",
+    "labelOpeningSavedFile": "Öppnar fil...",
+    "labelPrintActualSize": "Skriv ut i 100 % eller faktisk storlek, utan anpassning till sidan. Välj samma etikett- eller pappersstorlek i utskriftsinställningarna.",
     "bambuBatchSaving": "Sparar {count, plural, one {# rulle} other {# rullar}}...",
     "bambuBatchUncertain": "Vi kunde inte bekräfta om denna batch sparades. Fortsätt med samma batch för att kontrollera eller slutföra den utan att skapa dubbletter.",
     "bambuBatchRejected": "Denna batch sparades inte. Granska felet och redigera sedan batchen.",
@@ -1406,6 +1413,27 @@ export const svSEDictionary: DictionaryNode = {
     }
   },
   "settings": {
+    "catalogRefreshStatusUncertain": "Status kunde inte bekräftas. Se uppdateringsloggen; uppdateringen kan fortfarande pågå.",
+    "catalogRefreshFailedNextStep": "Uppdateringen slutfördes inte. Se uppdateringsloggen innan du startar en ny uppdatering.",
+    "catalogRefreshInterruptedNextStep": "Uppdateringen avbröts. Kontrollera katalogen och uppdateringsloggen innan du börjar om.",
+    "catalogAuditFailedNextStep": "Kontrollen slutfördes inte. Se uppdateringsloggen och använd Hitta tillgängliga material för att försöka igen.",
+    "catalogHostUnavailableNextStep": "Värdens katalog är inte tillgänglig. Kontrollera anslutningen till värden under Bibliotek & webbapp innan du försöker igen.",
+    "inventoryOverviewRetryPreview": "Försök förhandsvisa igen",
+    "deviceVersionsTitle": "Appversioner",
+    "thisDevice": "Den här enheten",
+    "hostVersionChecked": "Från senaste kontrollen av värden",
+    "hostVersionCached": "Från senaste värdögonblicksbilden",
+    "hostVersionUnknown": "Version har inte rapporterats",
+    "deviceUpdateAvailable": "Uppdatering tillgänglig",
+    "deviceVersionCurrent": "Senaste publicerade version",
+    "deviceVersionNewer": "Nyare än den publicerade versionen",
+    "deviceUpdatesUnchecked": "Uppdateringar har inte kontrollerats",
+    "hostCatalogRunsHere": "Katalogen uppdateras på värden. Uppdatera även värden för att få katalogrättelser.",
+    "deviceVersionsIndependent": "Uppdatering av den här enheten uppdaterar inte värden.",
+    "hostVersionRefresh": "Uppdatera värdstatus",
+    "deviceLatestRelease": "Senast publicerad: {version}",
+    "hostVersionUnverified": "Värdens appversion är inte tillgänglig förrän den konfigurerade värden har verifierats.",
+    "hostVersionCachedHint": "Den här sparade versionen kan ha ändrats. Uppdatera värdstatusen för att kontrollera den.",
     "importFileEmpty": "Filen är tom. Välj en export som innehåller data.",
     "importJsonInvalid": "JSON-filen är skadad eller ofullständig. Exportera eller ladda ner den igen och försök på nytt.",
     "importBackupUnsupported": "Den här säkerhetskopians version stöds inte. Uppdatera Filament Manager eller välj en kopia exporterad med den här versionen.",

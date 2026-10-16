@@ -71,6 +71,8 @@ export const daDKDictionary: DictionaryNode = {
     "optional": "Valgfrit"
   },
   "errors": {
+    "savedLabelFileUnavailable": "Den gemte etiketfil er ikke længere tilgængelig eller er blevet ændret. Gem den igen, før du åbner den.",
+    "savedLabelFileOpenFailed": "Kunne ikke åbne den gemte etiketfil. Åbn den fra Overførsler, eller gem den igen.",
     "inventoryBulkReactivationRequiresWeight": "Indstil den målte totalvægt over den tomme spolevægt før genaktivering.",
       hostUnavailable: "Værten er utilgængelig. Ændringer kan ikke gemmes, før forbindelsen er tilbage. Kontrollér værten og netværket, og opdater derefter.",
       "inventoryWeightHostUnsupported": "Opdater værten, før du gemmer en målt rullevægt. Ingen ændringer blev sendt.",
@@ -775,6 +777,11 @@ export const daDKDictionary: DictionaryNode = {
     }
   },
   "inventory": {
+    "labelPreviewFailed": "Kunne ikke klargøre etiketforhåndsvisningen. Prøv igen.",
+    "labelRetryPreview": "Prøv forhåndsvisning igen",
+    "labelOpenSavedFile": "Åbn gemt fil",
+    "labelOpeningSavedFile": "Åbner fil...",
+    "labelPrintActualSize": "Udskriv i 100 % eller faktisk størrelse uden tilpasning til siden. Vælg samme etiket- eller papirstørrelse i udskriftsindstillingerne.",
     "bambuBatchSaving": "Gemmer {count, plural, one {# rulle} other {# ruller}}...",
     "bambuBatchUncertain": "Vi kunne ikke bekræfte, om denne batch blev gemt. Fortsæt med samme batch for at kontrollere eller fuldføre den uden at oprette dubletter.",
     "bambuBatchRejected": "Denne batch blev ikke gemt. Gennemgå fejlen, og rediger derefter batchen.",
@@ -1406,6 +1413,27 @@ export const daDKDictionary: DictionaryNode = {
     }
   },
   "settings": {
+    "catalogRefreshStatusUncertain": "Status kunne ikke bekræftes. Se opdateringsloggen; opdateringen kan stadig være i gang.",
+    "catalogRefreshFailedNextStep": "Opdateringen blev ikke fuldført. Se opdateringsloggen, før du starter en ny opdatering.",
+    "catalogRefreshInterruptedNextStep": "Opdateringen blev afbrudt. Kontrollér kataloget og opdateringsloggen, før du starter igen.",
+    "catalogAuditFailedNextStep": "Kontrollen blev ikke fuldført. Se opdateringsloggen, og brug Find tilgængelige materialer for at prøve igen.",
+    "catalogHostUnavailableNextStep": "Værtens katalog er utilgængeligt. Kontrollér forbindelsen til værten under Bibliotek og web-app, før du prøver igen.",
+    "inventoryOverviewRetryPreview": "Prøv forhåndsvisning igen",
+    "deviceVersionsTitle": "Appversioner",
+    "thisDevice": "Denne enhed",
+    "hostVersionChecked": "Fra seneste kontrol af værten",
+    "hostVersionCached": "Fra seneste øjebliksbillede fra værten",
+    "hostVersionUnknown": "Version er ikke oplyst",
+    "deviceUpdateAvailable": "Opdatering tilgængelig",
+    "deviceVersionCurrent": "Seneste udgivne version",
+    "deviceVersionNewer": "Nyere end den udgivne version",
+    "deviceUpdatesUnchecked": "Opdateringer er ikke kontrolleret",
+    "hostCatalogRunsHere": "Katalogopdatering køres på værten. Opdater også værten for at få katalogrettelser.",
+    "deviceVersionsIndependent": "Opdatering af denne enhed opdaterer ikke værten.",
+    "hostVersionRefresh": "Opdater værtsstatus",
+    "deviceLatestRelease": "Senest udgivet: {version}",
+    "hostVersionUnverified": "Appversionen på værten er ikke tilgængelig, før den konfigurerede vært er bekræftet.",
+    "hostVersionCachedHint": "Denne gemte version kan have ændret sig. Opdater værtsstatussen for at kontrollere den.",
     "importFileEmpty": "Filen er tom. Vælg en eksport, der indeholder data.",
     "importJsonInvalid": "JSON-filen er beskadiget eller ufuldstændig. Eksportér eller hent den igen, og prøv på ny.",
     "importBackupUnsupported": "Denne backupversion understøttes ikke. Opdatér Filament Manager, eller vælg en backup eksporteret med denne version.",

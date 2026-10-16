@@ -5,7 +5,7 @@
 | Planstatus     | Implementering ferdig; brukermålinger gjenstår |
 | Planperiode    | 12 uker        |
 | Oppstart       | 2026-08-21     |
-| Sist oppdatert | 2026-10-01     |
+| Sist oppdatert | 2026-10-17     |
 | Eier           | Prosjektteamet |
 
 ## Datatilkoblet UI-vurdering
@@ -13,6 +13,27 @@
 Den [visuelle sluttgjennomgangen 1. oktober](visual-modernization-2026-10-01/critic-current-ledger.md) er ferdig og merget i [PR #143](https://github.com/bliatun-code/Filament-Manager/pull/143) som `1ef116db`. Den uavhengige syntetiske kritikeren gir 9/10 på hvert relevant kriterium per produktfamilie og tema, med eksplisitt gjenbruk av tidligere bevis og dokumenterte avgrensninger. De sterke filament- og printerfargene er bevart. [Sluttrapporten](visual-modernization-2026-10-01/critic-final-inspection.md) og [implementeringsloggen](visual-modernization-2026-10-01/implementation-log.md) dokumenterer rettinger og retester.
 
 [Evalueringen 19. september](UI_USABILITY_REVIEW_2026-09-19.md) og eldre restlister er historiske runder, ikke dagens åpne arbeid. Agentvurderingen erstatter ikke målene for tester med faktiske brukere nedenfor.
+
+### Produktpolering 17. oktober
+
+Brukeren har godkjent enklere Oversikt og Statistikk med de sterke filament- og
+printerfargene beholdt. De fire konkrete korrekthetsfunnene er rettet i
+[PR #167](https://github.com/bliatun-code/Filament-Manager/pull/167), og det
+forenklede oppsettet følges opp i
+[PR #168](https://github.com/bliatun-code/Filament-Manager/pull/168).
+
+Neste leveranse samler handlingsrettet katalogfeedback, separate programversjoner
+for denne enheten og verten, og en tydelig etikettflyt med manuell ny
+forhåndsvisning, åpning av vellykket lagret eksport og veiledning om faktisk
+utskriftsstørrelse. Ukjent vertsversjon og sist lagret versjon skal ikke fremstå
+som en fersk kontroll. Et sent svar fra en tidligere vertsforbindelse skal heller
+ikke gi et nytt oppdateringsråd. Teknisk kataloglogg beholdes bak eksplisitt
+åpning, og en bekreftet jobbkvittering går foran senere feil i statussjekken.
+
+Punkt 6 fra den siste vurderingen er uttrykkelig utsatt: brukertesting med
+mennesker, fysisk etikett-/kameravalidering og Windows-signering inngår ikke i
+denne leveransen. Automatiserte syntetiske tester erstatter ikke slik validering.
+Ingen ny release eller oppdatering av installerte apper er bestilt.
 
 ## Mål
 

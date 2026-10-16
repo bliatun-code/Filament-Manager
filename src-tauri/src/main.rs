@@ -109,6 +109,7 @@ mod printer_settings_commands;
 mod printer_slot_write_commands;
 mod printer_usage_commands;
 mod release_update_commands;
+mod saved_label_exports;
 mod secure_credential_mutation;
 mod security;
 mod sqlite_recovery;
@@ -532,6 +533,7 @@ fn main() {
             inventory_stats_commands::statistics_period_report,
             document_commands::export_inventory_label_sheet_pdf,
             document_commands::export_label_png,
+            document_commands::open_exported_label_file,
             external_url_commands::open_external_url,
             release_update_commands::check_for_app_update,
         ])

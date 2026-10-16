@@ -212,6 +212,8 @@ export const plPLDictionary: DictionaryNode = {
     "legacyLowStockFallback": "Zapasowy próg 200 g dla starszej wersji hosta"
   },
   "errors": {
+    "savedLabelFileUnavailable": "Zapisany plik etykiety jest już niedostępny lub został zmieniony. Zapisz go ponownie przed otwarciem.",
+    "savedLabelFileOpenFailed": "Nie udało się otworzyć zapisanego pliku etykiety. Otwórz go z folderu Pobrane lub zapisz ponownie.",
     "inventoryBulkReactivationRequiresWeight": "Przed ponownym włączeniem ustawić zmierzoną masę całkowitą powyżej masy pustej szpuli.",
       hostUnavailable: "Host jest niedostępny. Zmian nie można zapisać do czasu przywrócenia połączenia. Sprawdź host i sieć, a następnie odśwież dane.",
       "inventoryWeightHostUnsupported": "Zaktualizuj hosta przed zapisaniem zmierzonej wagi szpuli. Nie wysłano żadnych zmian.",
@@ -292,6 +294,11 @@ export const plPLDictionary: DictionaryNode = {
     "filamentStandardsInvalid": "Zapisane standardy filamentu są już nieaktualne. Wczytaj je ponownie i sprawdź."
   },
   "inventory": {
+    "labelPreviewFailed": "Nie udało się przygotować podglądu etykiety. Spróbuj ponownie.",
+    "labelRetryPreview": "Ponów podgląd",
+    "labelOpenSavedFile": "Otwórz zapisany plik",
+    "labelOpeningSavedFile": "Otwieranie pliku...",
+    "labelPrintActualSize": "Drukuj w skali 100% lub w rozmiarze rzeczywistym, bez dopasowania do strony. Ustaw ten sam rozmiar etykiety lub papieru w opcjach drukowania.",
     "bambuBatchSaving": "Zapisywanie {count, plural, one {# szpuli} few {# szpul} many {# szpul} other {# szpuli}}...",
     "bambuBatchUncertain": "Nie udało się potwierdzić, czy ta partia została zapisana. Kontynuuj tę samą partię, aby ją sprawdzić lub dokończyć bez tworzenia duplikatów.",
     "bambuBatchRejected": "Ta partia nie została zapisana. Sprawdź błąd, a następnie edytuj partię.",
@@ -1162,6 +1169,27 @@ export const plPLDictionary: DictionaryNode = {
     "withToolheads": "Głowica wielofunkcyjna"
   },
   "settings": {
+    "catalogRefreshStatusUncertain": "Nie udało się potwierdzić stanu. Sprawdź dziennik odświeżania; aktualizacja może nadal trwać.",
+    "catalogRefreshFailedNextStep": "Aktualizacja nie została ukończona. Sprawdź dziennik odświeżania przed rozpoczęciem kolejnej aktualizacji.",
+    "catalogRefreshInterruptedNextStep": "Aktualizacja została przerwana. Sprawdź katalog i dziennik odświeżania, zanim zaczniesz ponownie.",
+    "catalogAuditFailedNextStep": "Sprawdzanie nie zostało ukończone. Sprawdź dziennik odświeżania, a następnie użyj Znajdź dostępne materiały, aby spróbować ponownie.",
+    "catalogHostUnavailableNextStep": "Katalog hosta jest niedostępny. Sprawdź połączenie z hostem w Biblioteka i aplikacja internetowa, zanim spróbujesz ponownie.",
+    "inventoryOverviewRetryPreview": "Ponów podgląd",
+    "deviceVersionsTitle": "Wersje aplikacji",
+    "thisDevice": "To urządzenie",
+    "hostVersionChecked": "Z ostatniego sprawdzenia hosta",
+    "hostVersionCached": "Z ostatniej migawki hosta",
+    "hostVersionUnknown": "Wersja nie została podana",
+    "deviceUpdateAvailable": "Dostępna aktualizacja",
+    "deviceVersionCurrent": "Najnowsza opublikowana wersja",
+    "deviceVersionNewer": "Nowsza niż opublikowane wydanie",
+    "deviceUpdatesUnchecked": "Nie sprawdzono aktualizacji",
+    "hostCatalogRunsHere": "Katalog jest odświeżany na hoście. Zaktualizuj także hosta, aby otrzymać poprawki katalogu.",
+    "deviceVersionsIndependent": "Aktualizacja tego urządzenia nie aktualizuje hosta.",
+    "hostVersionRefresh": "Odśwież stan hosta",
+    "deviceLatestRelease": "Najnowsza opublikowana: {version}",
+    "hostVersionUnverified": "Wersja aplikacji hosta jest niedostępna, dopóki skonfigurowany host nie zostanie zweryfikowany.",
+    "hostVersionCachedHint": "Ta zapisana wersja mogła się zmienić. Odśwież stan hosta, aby ją sprawdzić.",
     "importFileEmpty": "Ten plik jest pusty. Wybierz eksport zawierający dane.",
     "importJsonInvalid": "Plik JSON jest uszkodzony lub niekompletny. Wyeksportuj lub pobierz go ponownie i spróbuj jeszcze raz.",
     "importBackupUnsupported": "Ta wersja kopii zapasowej nie jest obsługiwana. Zaktualizuj Filament Manager lub wybierz kopię wyeksportowaną przez tę wersję.",

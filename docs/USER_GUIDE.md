@@ -340,6 +340,11 @@ To create a label for one spool:
 4. For a custom label, enter its width and height, then check the preview.
 5. Choose **Save PNG to Downloads** to save the print-ready 300-DPI image.
 
+If a preview cannot be created, use **Try preview again**. After a successful save,
+**Open saved file** opens that export in the default viewer. If it has been moved,
+deleted or changed, save a new copy instead. Print at **100% / actual size**;
+disable Fit to page so the label keeps its selected dimensions.
+
 The screen QR uses the colored reel logo. Individual label PNGs use a
 black-and-white logo for printers with one ink color. Both contain the same
 spool link. Keep the white border around the QR when printing or cutting the
@@ -685,6 +690,10 @@ To create label sheets for the on-hand inventory:
    more than one page.
 4. Choose **Save PDF to Downloads**.
 
+The preview stays open after saving, with **Open saved file** for the completed
+export. Print the PDF at **100% / actual size**, without Fit to page. A4 and
+US Letter are separate exports; changing paper size requires saving that size.
+
 Each page holds up to 30 labels in the same readable 60 × 24 mm layout as the
 P-Touch QR label. This batch layout is fixed and does not use the custom size
 saved by the individual label builder. For one spool, or for a different label
@@ -699,6 +708,13 @@ Library and webapp:
 - browser pairing
 - connected browsers and revocation
 - desktop client pairing against a host
+
+In Client mode, **App versions** separates **This device** from the configured,
+named Host. **Refresh host status** rechecks the Host; an older saved snapshot is
+labelled as saved and cannot confirm the Host's current update need. Older Hosts
+may not report their app version. **Check for updates** reuses the normal public
+release check and compares each verified version separately. Catalog refresh
+runs on the Host, so updating a client alone does not deliver Host catalog fixes.
 
 3D printers:
 
@@ -727,6 +743,12 @@ before completion, the job is marked interrupted when status is next checked;
 start a new refresh explicitly when ready. Client job tracking requires an
 updated Host. Job receipts are local operational data and are not included in
 portable backups.
+
+After a failed or interrupted operation, follow the short next-step message and
+open **View refresh log** if you need the technical details. The log no longer
+opens automatically. Uncertain status can mean that the job is still running;
+check its status before starting another update. A confirmed completion remains
+confirmed even if a later status check cannot reach the Host.
 
 Green confirmations in Settings disappear after 20 seconds. A completed catalog
 job retains its result without announcing the same success each time the page

@@ -2,6 +2,7 @@ import { useId, useRef, useState } from "react";
 import { FeedbackBanner, type FeedbackTone } from "../components/feedback_banner";
 import { SettingsLibraryDeviceNameField } from "../components/settings_library_device_name_field";
 import { SettingsMetricTile } from "../components/settings_ui";
+import { SettingsDeviceVersionPanel } from "../components/settings_device_version_panel";
 import { inlineStatusSignalClass } from "../lib/chip_styles";
 import {
   settingsActionButtonClass,
@@ -40,6 +41,7 @@ function librarySyncValidationFeedbackTone(
 }
 
 type SettingsLibraryClientPanelProps = {
+  appVersion?: string | null;
   librarySyncBusy: boolean;
   librarySyncDeviceNameDirty: boolean;
   librarySyncDeviceNameDraft: string;
@@ -71,6 +73,7 @@ type SettingsLibraryClientPanelProps = {
 };
 
 export function SettingsLibraryClientPanel({
+  appVersion = null,
   librarySyncBusy,
   librarySyncDeviceNameDirty,
   librarySyncDeviceNameDraft,
@@ -123,6 +126,15 @@ export function SettingsLibraryClientPanel({
   );
   return (
     <div className="space-y-4">
+      <SettingsDeviceVersionPanel
+        appVersion={appVersion}
+        busy={librarySyncBusy || librarySyncSnapshotBusy || librarySyncValidationBusy}
+        onRefreshHost={onFetchSnapshot}
+        settings={librarySyncSettings}
+        t={t}
+        tauri={tauri}
+        validation={librarySyncValidation}
+      />
       <div className={settingsSurfacePanelClass}>
         <div className="font-semibold text-slate-900 dark:text-slate-100">
           {t("settings.librarySyncClientAuthTitle", "Desktop client pairing")}

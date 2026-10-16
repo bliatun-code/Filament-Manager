@@ -131,7 +131,9 @@ and published release tags are retained.
   or US Letter inventory label sheets remain fixed at 60 × 24 mm and are saved
   as PDF files, all through the Downloads workflow. Filament QR codes use the
   reel logo in color on screen and on PDF sheets; individual label PNGs use
-  its black-and-white version for label printers.
+  its black-and-white version for label printers. Failed previews offer an
+  explicit retry, and successful exports can be opened from the app. Print at
+  100% / actual size rather than fitting the page to preserve label dimensions.
 - Local companion/webapp for paired phones, tablets, and workshop browsers;
   long inventory and loan lists use incremental result controls, and library
   reads and writes require an authenticated paired session.
@@ -163,6 +165,11 @@ and published release tags are retained.
   in the background. Initial role and data resolution does not flash a false
   Host-unavailable state, and cached, partial, or offline pages use one shared
   retryable fallback message.
+- Client settings show this device's app version separately from the named
+  Host's verified or last-saved version. An existing public update check can
+  identify which device needs updating; updating a client does not update its
+  Host, where catalog refresh runs. Older Hosts that do not report an app version
+  remain explicitly unknown.
 - Catalog refresh and maintenance for Bambu and eSUN filament data starts with
   lightweight read-only discovery of the currently available material
   families. One selected family is refreshed at a time; blocked, incomplete, or
@@ -587,6 +594,11 @@ does not import products or change catalog lifecycle state. Then select exactly
 one discovered material type and refresh it. The app deliberately avoids
 full-catalog batch downloads and does not expose a parallel command-line
 scraper.
+
+Failures show a short next step; **View refresh log** opens the retained technical
+details only when requested. If job status is uncertain, the app warns that the
+update may still be running instead of submitting another import. A later status
+read failure does not replace an already confirmed completion or interruption.
 
 Catalog data is stored in SQLite in `filament_master_list`. The app ships with
 a sanitized, case-normalized seed catalog in

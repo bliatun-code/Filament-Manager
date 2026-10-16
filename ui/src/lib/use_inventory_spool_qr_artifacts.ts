@@ -7,12 +7,17 @@ type SpoolQrArtifactsModule = typeof import("./spool_qr_artifacts");
 let spoolQrArtifactsModulePromise: Promise<SpoolQrArtifactsModule> | null = null;
 
 function loadSpoolQrArtifactsModule(): Promise<SpoolQrArtifactsModule> {
-  spoolQrArtifactsModulePromise ??= import("./spool_qr_artifacts");
+  spoolQrArtifactsModulePromise ??= import("./spool_qr_artifacts").catch((error) => {
+    spoolQrArtifactsModulePromise = null;
+    throw error;
+  });
   return spoolQrArtifactsModulePromise;
 }
 
 type InventorySpoolQrArtifactsInput = {
   clientHostBaseUrl: string | null;
+  clientLibraryId?: string | null;
+  clientTargetGeneration?: number | null;
   clientReadOnly: boolean;
   selectedSpool: InventorySpool | null;
   showRollModal: boolean;
@@ -20,13 +25,17 @@ type InventorySpoolQrArtifactsInput = {
 
 export function useInventorySpoolQrArtifacts({
   clientHostBaseUrl,
+  clientLibraryId = null,
+  clientTargetGeneration = null,
   clientReadOnly,
   selectedSpool,
   showRollModal,
 }: InventorySpoolQrArtifactsInput) {
   const sourceKey = selectedSpool && showRollModal
-    ? JSON.stringify([selectedSpool.id, clientReadOnly, clientHostBaseUrl])
+    ? JSON.stringify([selectedSpool.id, clientReadOnly, clientHostBaseUrl, clientLibraryId, clientTargetGeneration])
     : null;
+  const [attempt, setAttempt] = useState(0);
+  const retry = useCallback(() => setAttempt((current) => current + 1), []);
   const [rendered, setRendered] = useState<{
     sourceKey: string | null;
     loading: boolean;
@@ -69,7 +78,7 @@ export function useInventorySpoolQrArtifacts({
     return () => {
       cancelled = true;
     };
-  }, [buildArtifacts, selectedSpool, showRollModal, sourceKey]);
+  }, [attempt, buildArtifacts, selectedSpool, showRollModal, sourceKey]);
 
   // Hide the previous spool or Host's image during the render that changes
   // authority, before the effect starts generating its replacement.
@@ -79,6 +88,8 @@ export function useInventorySpoolQrArtifacts({
 
   return {
     buildArtifacts,
+    authorityKey: sourceKey,
+    retry,
     companionShellUrl: current?.artifacts?.companionShellUrl ?? null,
     dataUrl: current?.artifacts?.qrDataUrl ?? null,
     loading: sourceKey !== null && (current?.loading ?? true),

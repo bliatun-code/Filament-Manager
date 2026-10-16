@@ -142,6 +142,7 @@ export function useSettingsCatalogRefreshActions({
       const fallbackMessage = buildSettingsCatalogAuditFallbackErrorMessage(vendor, labels);
       const technicalMessage = diagnosticErrorText(auditError) || fallbackMessage;
       failCatalogRefreshResult(technicalMessage);
+      setCatalogRefreshPhase("FAILED");
       setError(fallbackMessage);
     } finally {
       completeCatalogRefreshOperation(operation.id);
