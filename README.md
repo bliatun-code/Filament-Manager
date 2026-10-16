@@ -89,9 +89,12 @@ and published release tags are retained.
   single-material printers.
 - Compact printer cards that keep assigned filament swatches and material names
   visible while detailed slots are collapsed.
-- Dashboard consumption keeps the **Last 30 days** card separate from a rolling
-  twelve-month chart based on local calendar months. The chart runs oldest to
-  newest, keeps zero-use months visible, and totals recorded printer-linked
+- Dashboard puts inventory totals, the last 30 days of usage, printer summaries,
+  low-stock rolls and recent activity first. Printer brand accents and filament
+  colors stay vivid; live status is shown only from fresh, trusted local data.
+  **Setup and library details** holds ownership, health, goals and the separate
+  rolling twelve-month consumption chart. Its local calendar months run oldest
+  to newest, keep zero-use months visible, and total recorded printer-linked
   jobs and Bambu Live usage from the same twelve buckets.
 - Dashboard follow-up separates important overdue-loan, incoming-order, and
   trust work from quieter optional low-stock suggestions. Suggestions can be
@@ -103,6 +106,9 @@ and published release tags are retained.
 - Purchase metadata, bounded reporting periods, inventory value, material cost,
   traceable coverage gaps, and deterministic consumption forecasts make price
   and usage data auditable without currency conversion or guessed supplier data.
+  Statistics separates **Consumption**, **Inventory value**, and **Printers**
+  into focused views, with ownership, loan, forecast and calculation details
+  available on demand.
 - Optional Bambu Live integration for local AMS slot observations, RFID matching,
   estimated AMS weight, Bambu filament settings/status diagnostics, nozzle
   temperature, and print-session usage accounting. Printer identity is approved

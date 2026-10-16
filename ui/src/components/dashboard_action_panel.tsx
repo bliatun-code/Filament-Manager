@@ -1,10 +1,11 @@
+import { dashboardOverviewStyles } from "../lib/dashboard_overview_styles";
 import type {
   DashboardActionItem,
   DashboardLowStockAction,
 } from "../lib/dashboard_action_model";
 import { formatDateTime } from "../lib/date_time";
 import { useI18n } from "../lib/i18n";
-import { formatInventoryDisplayTitle } from "../lib/inventory_list_model";
+import { formatFilamentDisplayTitle as formatInventoryDisplayTitle } from "../lib/display_format";
 import { formatLoanExpectedReturnDate } from "../lib/loan_due_state";
 import type { WishlistStatus } from "../lib/wishlist_data_source";
 import { PageHeaderButton } from "./page_header_button";
@@ -122,9 +123,9 @@ export function DashboardActionPanel({
             className="section-eyebrow"
             id="dashboard-action-required-title"
           >
-            {t("dashboard.actionRequiredTitle", "Requires action")}
+            {t("dashboard.followUpTitle", "Follow up")}
           </h2>
-          <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">
+          <p className={`mt-2 text-sm ${dashboardOverviewStyles.muted}`}>
             {t(
               "dashboard.actionRequiredHint",
               "Follow up overdue loans, incoming purchases and printer trust issues.",
@@ -146,13 +147,13 @@ export function DashboardActionPanel({
               data-action-kind={item.kind}
             >
               <div className="min-w-0">
-                <h3 className="text-sm font-semibold text-slate-950 dark:text-slate-50">
+                <h3 className={`text-sm font-semibold ${dashboardOverviewStyles.primary}`}>
                   {itemTitle(item)}
                 </h3>
                 <p className="mt-1 text-sm leading-5 text-slate-700 dark:text-slate-200">
                   {reason(item)}
                 </p>
-                <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                <p className={`mt-1 text-xs ${dashboardOverviewStyles.subtle}`}>
                   {ageLabel(item)}
                 </p>
               </div>

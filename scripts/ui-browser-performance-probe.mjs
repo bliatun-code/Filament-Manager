@@ -559,7 +559,9 @@ export function buildUiBrowserPerformanceFixture(dbPath) {
           null,
         printers: printerRows[0]?.printer.name ?? null,
         settings: PERFORMANCE_APP_VERSION,
-        statistics: printerRows[0]?.printer.name ?? null,
+        // The initial analysis view shows actual recorded use; printer cards
+        // remain mounted in a separate, initially hidden analysis panel.
+        statistics: `${new Intl.NumberFormat("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(overview.total_consumption_30d / 1000)} kg`,
       },
       filamentStandards: {
         settings: {

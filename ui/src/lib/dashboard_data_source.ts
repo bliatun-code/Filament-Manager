@@ -15,7 +15,10 @@ import {
   type InventoryOverview,
   type TrustedLanCompanionStatus,
   type WishlistItemRow,
+  type BambuLiveIntegrationEntry,
+  type PrinterOverviewRow,
 } from "./tauri_client";
+import { buildDashboardLowStockPreview, sanitizeDashboardBambuLiveIntegrations, type DashboardStockPreviewRow } from "./dashboard_overview_data";
 import {
   buildDashboardBambuLiveAttention,
   type DashboardBambuLiveAttention,
@@ -58,6 +61,11 @@ export type DashboardSyncSource =
   "local" | "client-live" | "client-cached" | "client-offline";
 
 export type DashboardDataLoadResult = {
+  printerOverview: PrinterOverviewRow[];
+  printerOverviewAvailable: boolean;
+  bambuLiveIntegrations: BambuLiveIntegrationEntry[];
+  lowStockPreview: DashboardStockPreviewRow[];
+  lowStockPreviewAvailable: boolean;
   actionItems: DashboardActionItem[];
   bambuLiveAttention: DashboardBambuLiveAttention[];
   derived: DashboardDerivedState;
@@ -427,6 +435,11 @@ export async function loadDashboardData(
       normalizeLoanDetailsRow,
     );
     return {
+      printerOverview: clientPrinterRows ?? [],
+      printerOverviewAvailable: clientPrinterRows != null,
+      bambuLiveIntegrations: [],
+      lowStockPreview: buildDashboardLowStockPreview(normalizedClientSpoolRows ?? []),
+      lowStockPreviewAvailable: normalizedClientSpoolRows != null,
       actionItems: buildDashboardActionItems({
         bambuLiveAttention: [],
         loans: normalizedClientLoans,
@@ -489,6 +502,11 @@ export async function loadDashboardData(
   const bambuLiveAttention = buildDashboardBambuLiveAttention(printerSettings);
 
   return {
+    printerOverview: printers,
+    printerOverviewAvailable: true,
+    bambuLiveIntegrations: sanitizeDashboardBambuLiveIntegrations(printerSettings?.bambu_live_integrations ?? []),
+    lowStockPreview: buildDashboardLowStockPreview(spoolRows),
+    lowStockPreviewAvailable: true,
     actionItems: buildDashboardActionItems({
       bambuLiveAttention,
       loans: normalizedLoans,

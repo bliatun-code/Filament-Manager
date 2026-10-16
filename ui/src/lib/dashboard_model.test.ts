@@ -1,13 +1,13 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import {
-  buildDashboardBadges,
   buildDashboardCompanionPresentation,
   buildDashboardDerivedState,
   dashboardCalendarMonthChanged,
   dashboardCalendarMonthKey,
   normalizeDashboardUsageMonths,
 } from "./dashboard_model";
+import { buildDashboardBadges } from "./dashboard_badges";
 import { lookup } from "./i18n";
 import { nbDictionary } from "./i18n_locales/locales/nb";
 import {

@@ -6,6 +6,7 @@ const source = readFileSync(
   new URL("./dashboard.tsx", import.meta.url),
   "utf8",
 );
+const libraryDetailsSource = readFileSync(new URL("./dashboard_library_details.tsx", import.meta.url), "utf8");
 const actionPanelSource = readFileSync(
   new URL("../components/dashboard_action_panel.tsx", import.meta.url),
   "utf8",
@@ -46,8 +47,11 @@ test("Dashboard header action button keeps shared focus treatment", () => {
   );
 });
 
-test("Dashboard shows headline data in two columns in compact desktop windows", () => {
-  assert.match(source, /min-\[720px\]:grid-cols-2 xl:grid-cols-4/);
+test("Dashboard keeps three compact headline values above printer and stock details", () => {
+  assert.match(source, /sm:grid-cols-3/);
+  assert.match(source, /dashboard-headline-summary/);
+  assert.match(source, /stat.id !== "lowStock"/);
+  assert.match(source, /<DashboardPrinterOverview/);
   assert.doesNotMatch(source, /gap-4 md:grid-cols-2 xl:grid-cols-4/);
 });
 
@@ -88,7 +92,17 @@ test("annual consumption visual QA scrolls the real populated panel into view", 
     /DESKTOP_VISUAL_QA_DASHBOARD_CONSUMPTION_READINESS_TOKEN/,
   );
   assert.match(source, /signalDesktopVisualQaReadiness/);
-  assert.match(source, /data-testid="dashboard-consumption-panel"/);
+  assert.match(source, /!libraryDetailsReady/);
+  assert.match(libraryDetailsSource, /data-testid="dashboard-consumption-panel"/);
+  assert.match(libraryDetailsSource, /useEffect\(\(\) => \{ onReady\(\); \}/);
+});
+
+test("secondary library details load on disclosure and remain mounted after their first request", () => {
+  assert.match(source, /lazy\(\(\) => import\("\.\/dashboard_library_details"\)\)/);
+  assert.match(source, /if \(event\.currentTarget\.open\) setLibraryDetailsRequested\(true\)/);
+  assert.match(source, /libraryDetailsRequested \? \(/);
+  assert.doesNotMatch(source, /setLibraryDetailsRequested\(false\)/);
+  assert.match(source, /showRequiredSetup \? onboardingChecklist : null/);
 });
 
 test("dashboard overview visual QA waits for the rendered Bambu Live attention action", () => {
@@ -111,7 +125,7 @@ test("dashboard separates advisory low stock from mandatory actions below the he
   assert.match(source, /items=\{priorityActionItems\}/);
   assert.match(source, /items=\{lowStockActionItems\}/);
   assert.ok(
-    source.indexOf("min-[720px]:grid-cols-2 xl:grid-cols-4") <
+    source.indexOf('data-testid="dashboard-headline-summary"') <
       source.indexOf("<DashboardLowStockPanel"),
   );
   assert.match(lowStockPanelSource, /defaultExpanded = false/);

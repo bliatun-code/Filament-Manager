@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { type ActivityItem } from "../components/dashboard_widgets";
+import type { ActivityItem } from "../components/dashboard_activity_timeline";
 import { parseDateTime } from "../lib/date_time";
 import {
   type DashboardGoalMetrics,
@@ -10,7 +10,8 @@ import {
   dashboardCalendarMonthKey,
   normalizeDashboardUsageMonths,
 } from "../lib/dashboard_model";
-import { loadDashboardData } from "../lib/dashboard_data_source";
+import { loadDashboardData, type DashboardSyncSource } from "../lib/dashboard_data_source";
+import type { DashboardStockPreviewRow } from "../lib/dashboard_overview_data";
 import type { DashboardBambuLiveAttention } from "../lib/dashboard_bambu_live_attention";
 import type { DashboardActionItem } from "../lib/dashboard_action_model";
 import {
@@ -42,6 +43,8 @@ import {
   getTrustedLanCompanionStatus,
   isTauri,
   type TrustedLanCompanionStatus,
+  type BambuLiveIntegrationEntry,
+  type PrinterOverviewRow,
 } from "../lib/tauri_client";
 
 type TranslateFn = (key: string, fallback: string) => string;
@@ -217,6 +220,12 @@ export function useDashboardPageData(t: TranslateFn, locale: string) {
   const [activity, setActivity] = useState<ActivityItem[]>(
     () => initialSnapshot?.activity ?? createEmptyActivity(t),
   );
+  const [printerOverview, setPrinterOverview] = useState<PrinterOverviewRow[]>(() => initialSnapshot?.printerOverview ?? []);
+  const [printerOverviewAvailable, setPrinterOverviewAvailable] = useState(() => initialSnapshot?.printerOverviewAvailable ?? false);
+  const [bambuLiveIntegrations, setBambuLiveIntegrations] = useState<BambuLiveIntegrationEntry[]>(() => initialSnapshot?.bambuLiveIntegrations ?? []);
+  const [lowStockPreview, setLowStockPreview] = useState<DashboardStockPreviewRow[]>(() => initialSnapshot?.lowStockPreview ?? []);
+  const [lowStockPreviewAvailable, setLowStockPreviewAvailable] = useState(() => initialSnapshot?.lowStockPreviewAvailable ?? false);
+  const [syncSource, setSyncSource] = useState<DashboardSyncSource>(() => initialSnapshot?.syncSource ?? (initialSnapshot?.dashboardSyncMode === "CLIENT" ? "client-cached" : "local"));
   const [actionItems, setActionItems] = useState<DashboardActionItem[]>(
     () => initialSnapshot?.actionItems ?? [],
   );
@@ -376,6 +385,12 @@ export function useDashboardPageData(t: TranslateFn, locale: string) {
 
         const cacheAccepted = writeDashboardPageSnapshot(
           {
+            printerOverview: loaded.printerOverview,
+            printerOverviewAvailable: loaded.printerOverviewAvailable,
+            bambuLiveIntegrations: loaded.bambuLiveIntegrations,
+            lowStockPreview: loaded.lowStockPreview,
+            lowStockPreviewAvailable: loaded.lowStockPreviewAvailable,
+            syncSource: loaded.syncSource,
             activity: loaded.derived.activity,
             actionItems: loaded.actionItems,
             bambuLiveAttention: loaded.bambuLiveAttention,
@@ -414,6 +429,12 @@ export function useDashboardPageData(t: TranslateFn, locale: string) {
         usageCalendarMonthRef.current = dashboardCalendarMonthKey();
 
         setDashboardSyncMode(loaded.syncMode);
+        setPrinterOverview(loaded.printerOverview);
+        setPrinterOverviewAvailable(loaded.printerOverviewAvailable);
+        setBambuLiveIntegrations(loaded.bambuLiveIntegrations);
+        setLowStockPreview(loaded.lowStockPreview);
+        setLowStockPreviewAvailable(loaded.lowStockPreviewAvailable);
+        setSyncSource(loaded.syncSource);
         setActionItems(loaded.actionItems);
         setBambuLiveAttention(loaded.bambuLiveAttention);
         setCompanionStatus(loaded.trustedLan);
@@ -765,6 +786,12 @@ export function useDashboardPageData(t: TranslateFn, locale: string) {
   }, [performDashboardRefresh, pollDashboard, tauri]);
 
   return {
+    printerOverview,
+    printerOverviewAvailable,
+    bambuLiveIntegrations,
+    lowStockPreview,
+    lowStockPreviewAvailable,
+    syncSource,
     activity,
     actionItems,
     bambuLiveAttention,

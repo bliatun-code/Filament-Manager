@@ -67,7 +67,7 @@ export function StatisticsOwnershipSnapshotPanel({
         <div className="mt-2 text-sm text-slate-600 dark:text-slate-300">
           {t(
             "statistics.ownershipSnapshotHint",
-            "Additive ownership split for on-hand stock and recorded print usage. The headline cards above still show the combined totals.",
+            "Owned and borrowed-in stock are shown separately. Stock is the current snapshot; recorded use follows the selected period.",
           )}
         </div>
         <div className="mt-1 text-xs font-medium text-slate-500 dark:text-slate-400">

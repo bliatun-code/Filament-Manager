@@ -1,5 +1,4 @@
 import { useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
-import { StatCard } from "../components/dashboard_widgets";
 import { FeedbackBanner } from "../components/feedback_banner";
 import { PageDataFallbackBanner } from "../components/page_data_fallback_banner";
 import { PageLoadErrorBanner } from "../components/page_load_error_banner";
@@ -9,7 +8,6 @@ import {
   resolveDesktopVisualQaScenario,
 } from "../lib/desktop_visual_qa_scenario";
 import { useI18n } from "../lib/i18n";
-import { formatDisplayInteger, formatDisplayPercent } from "../lib/number_display";
 import { buildConsumptionForecast } from "../lib/statistics_forecast_model";
 import {
   buildActiveSlotRows,
@@ -18,7 +16,6 @@ import {
   filterBorrowerRows,
   filterConsumptionRows,
   filterLoanUsageRows,
-  gramsToKgText,
   groupedLoanUsage,
   isInboundLoanDirection,
   isLoanDirection,
@@ -71,6 +68,12 @@ import {
   StatisticsBorrowerUsageModal,
   StatisticsConsumptionModal,
 } from "./statistics_usage_modals";
+import {
+  StatisticsAnalysisNavigation,
+  StatisticsAnalysisPanel,
+} from "./statistics_analysis_navigation";
+import type { StatisticsAnalysisView } from "./statistics_analysis_model";
+import { StatisticsConsumptionPanel } from "./statistics_consumption_panel";
 import { StatisticsForecastPanel } from "./statistics_forecast_panel";
 import { StatisticsPeriodPicker } from "./statistics_period_picker";
 import { StatisticsValueCostPanel } from "./statistics_value_cost_panel";
@@ -138,7 +141,8 @@ export default function StatisticsPage({ onOpenFilamentDefaults }: StatisticsPag
   const [slotOwnershipFilter, setSlotOwnershipFilter] = useState<OwnershipFilter>("ALL");
   const [loanUsageListFilter, setLoanUsageListFilter] =
     useState<LoanUsageListFilter>("ACTIVE");
-  const desktopVisualQaScenarioRef = useRef(resolveDesktopVisualQaScenario());
+  const [desktopVisualQaScenario] = useState(resolveDesktopVisualQaScenario);
+  const [analysisView, setAnalysisView] = useState<StatisticsAnalysisView>("CONSUMPTION");
   const desktopVisualQaActionStartedRef = useRef(false);
   const deferredConsumptionSearch = useDeferredValue(consumptionPrefs.search);
   const deferredBorrowerSearch = useDeferredValue(borrowerPrefs.search);
@@ -198,17 +202,6 @@ export default function StatisticsPage({ onOpenFilamentDefaults }: StatisticsPag
     () =>
       periodReport ? applyStatisticsPeriodReportToPrinters(printers, periodReport) : [],
     [periodReport, printers],
-  );
-  const totals = useMemo(
-    () =>
-      periodReport
-        ? {
-            totalUsed: periodReport.total_used_g,
-            totalJobs: periodReport.total_jobs,
-            failedJobs: periodReport.failed_jobs,
-          }
-        : null,
-    [periodReport],
   );
   const ownershipOverview = useMemo(() => {
     const currentOverview =
@@ -276,7 +269,7 @@ export default function StatisticsPage({ onOpenFilamentDefaults }: StatisticsPag
       return;
     }
 
-    if (desktopVisualQaScenarioRef.current === "statistics-consumption") {
+    if (desktopVisualQaScenario === "statistics-consumption") {
       if (desktopVisualQaActionStartedRef.current) {
         return;
       }
@@ -285,7 +278,7 @@ export default function StatisticsPage({ onOpenFilamentDefaults }: StatisticsPag
       return;
     }
 
-    if (desktopVisualQaScenarioRef.current !== "statistics-loans") {
+    if (desktopVisualQaScenario !== "statistics-loans") {
       return;
     }
     const target = document.getElementById("statistics-outbound-loan-usage");
@@ -320,7 +313,7 @@ export default function StatisticsPage({ onOpenFilamentDefaults }: StatisticsPag
         window.cancelAnimationFrame(scheduledFrameId);
       }
     };
-  }, [error, loading, openConsumptionModal]);
+  }, [desktopVisualQaScenario, error, loading, openConsumptionModal]);
 
   const consumptionMaterialOptions = useMemo(
     () => listConsumptionMaterialOptions(consumptionRows),
@@ -386,7 +379,7 @@ export default function StatisticsPage({ onOpenFilamentDefaults }: StatisticsPag
       loading ||
       error ||
       desktopVisualQaActionStartedRef.current ||
-      desktopVisualQaScenarioRef.current !== "statistics-borrower"
+      desktopVisualQaScenario !== "statistics-borrower"
     ) {
       return;
     }
@@ -400,7 +393,7 @@ export default function StatisticsPage({ onOpenFilamentDefaults }: StatisticsPag
     }
     desktopVisualQaActionStartedRef.current = true;
     void openBorrowerModal(borrower, "OUTBOUND");
-  }, [error, loading, loanUsage, openBorrowerModal]);
+  }, [desktopVisualQaScenario, error, loading, loanUsage, openBorrowerModal]);
 
   const activeSlotRows = useMemo(() => buildActiveSlotRows(printers), [printers]);
 
@@ -437,7 +430,7 @@ export default function StatisticsPage({ onOpenFilamentDefaults }: StatisticsPag
           <p className="page-subtitle">
             {t(
               "statistics.subtitle",
-              "Track printer activity, filament usage and loan consumption in one place.",
+              "Understand recorded use and plan your stock.",
             )}
           </p>
         </div>
@@ -527,107 +520,125 @@ export default function StatisticsPage({ onOpenFilamentDefaults }: StatisticsPag
         </FeedbackBanner>
       ) : null}
 
-      <div className="content-section grid grid-cols-1 gap-3 min-[720px]:grid-cols-2 xl:grid-cols-4">
-        <StatCard
-          title={t("statistics.totalConsumption", "Total Consumption")}
-          value={totals ? gramsToKgText(totals.totalUsed, locale) : "—"}
-          subtitle={t("statistics.acrossPrinters", "Across all printers")}
-          accent="amber"
-          actionLabel={t("statistics.viewDetails", "View details")}
-          opensDialog
-          onClick={() => {
-            openConsumptionModal();
-          }}
+      <StatisticsAnalysisNavigation
+        onViewChange={setAnalysisView}
+        t={t}
+        view={analysisView}
+      />
+
+      <StatisticsAnalysisPanel activeView={analysisView} view="CONSUMPTION">
+        <StatisticsConsumptionPanel
+          activeSlots={currentTotals.activeSlots}
+          loading={loading}
+          locale={locale}
+          onOpenConsumption={() => openConsumptionModal()}
+          onOpenMetric={setMetricModalKind}
+          periodLabel={periodRangeLabel}
+          report={periodReport}
+          t={t}
+          tauri={tauri}
+          unavailableMessage={t(
+            "statistics.periodDetailsUnavailable",
+            "Selected-period totals and filament or printer details are unavailable from this host snapshot. Update or reconnect the host.",
+          )}
         />
-        <StatCard
-          title={t("statistics.loggedJobs", "Logged Jobs")}
-          value={totals ? formatDisplayInteger(totals.totalJobs, locale) : "—"}
-          subtitle={t("statistics.linkedActivity", "Printer-linked activity")}
-          accent="sky"
-          actionLabel={periodReport ? t("statistics.viewDetails", "View details") : undefined}
-          opensDialog={periodReport != null}
-          onClick={periodReport ? () => setMetricModalKind("LOGGED_JOBS") : undefined}
-        />
-        <StatCard
-          title={t("statistics.activeAms", "Active loaded slots")}
-          value={formatDisplayInteger(currentTotals.activeSlots, locale)}
-          subtitle={t("statistics.assignedSlots", "Slots with assigned rolls")}
-          trend={t("statistics.currentSnapshot", "Current snapshot")}
-          accent="emerald"
-          actionLabel={t("statistics.viewDetails", "View details")}
-          opensDialog
-          onClick={() => setMetricModalKind("ACTIVE_SLOTS")}
-        />
-        <StatCard
-          title={t("statistics.failedJobs", "Failed Jobs")}
-          value={totals ? formatDisplayInteger(totals.failedJobs, locale) : "—"}
-          subtitle={t("statistics.acrossPrinters", "Across all printers")}
-          trend={
-            totals
-              ? formatDisplayPercent(
-                  totals.totalJobs > 0
-                    ? (totals.failedJobs / totals.totalJobs) * 100
-                    : 0,
-                  locale,
-                )
+        <details className="content-section border-t border-slate-200/80 pt-4 dark:border-slate-700">
+          <summary className="app-control-focus cursor-pointer rounded text-sm font-semibold text-slate-800 outline-none dark:text-slate-200">
+            {t("statistics.showForecast", "Show consumption forecast · last 30 days")}
+          </summary>
+          <StatisticsForecastPanel
+            forecast={consumptionForecast}
+            locale={locale}
+            t={t}
+          />
+        </details>
+        <details className="content-section border-t border-slate-200/80 pt-4 dark:border-slate-700">
+          <summary className="app-control-focus cursor-pointer rounded text-sm font-semibold text-slate-800 outline-none dark:text-slate-200">
+            {t("statistics.ownershipDetails", "Ownership and stock details")}
+          </summary>
+          <StatisticsOwnershipSnapshotPanel
+            locale={locale}
+            ownershipOverview={ownershipOverview}
+            periodDataAvailable={periodReport != null}
+            periodLabel={periodRangeLabel}
+            t={t}
+          />
+        </details>
+        <details
+          className="content-section border-t border-slate-200/80 pt-4 dark:border-slate-700"
+          open={
+            desktopVisualQaScenario === "statistics-loans" ||
+            desktopVisualQaScenario === "statistics-borrower"
+              ? true
               : undefined
           }
-          accent="rose"
-          actionLabel={periodReport ? t("statistics.viewDetails", "View details") : undefined}
-          opensDialog={periodReport != null}
-          onClick={periodReport ? () => setMetricModalKind("FAILED_JOBS") : undefined}
+        >
+          <summary className="app-control-focus cursor-pointer rounded text-sm font-semibold text-slate-800 outline-none dark:text-slate-200">
+            {t("statistics.loanUsageDetails", "Loan usage · all recorded activity")}
+          </summary>
+          <StatisticsOutboundLoanUsagePanel
+            filteredLoanUsage={filteredLoanUsage}
+            locale={locale}
+            loading={loading}
+            loanUsageListFilter={loanUsageListFilter}
+            onOpenBorrower={(borrowerName) => {
+              void openBorrowerModal(borrowerName, "OUTBOUND");
+            }}
+            setLoanUsageListFilter={setLoanUsageListFilter}
+            t={t}
+          />
+
+          <StatisticsInboundLoanUsagePanel
+            inboundLoanUsage={inboundLoanUsage}
+            locale={locale}
+            loading={loading}
+            onOpenOwner={(ownerName) => {
+              void openBorrowerModal(ownerName, "INBOUND");
+            }}
+            t={t}
+          />
+        </details>
+      </StatisticsAnalysisPanel>
+
+      <StatisticsAnalysisPanel activeView={analysisView} view="VALUE">
+        <StatisticsValueCostPanel
+          filamentDefaultsManagedOnHost={clientReadOnly}
+          hostUpgradeRequired={
+            clientReadOnly &&
+            (periodStatus === "LEGACY_HOST" ||
+              (periodReport != null && periodReport.value_cost == null))
+          }
+          loading={loading}
+          locale={locale}
+          onOpenFilamentDefaults={onOpenFilamentDefaults}
+          periodLabel={periodRangeLabel}
+          report={periodReport?.value_cost ?? null}
+          t={t}
         />
-      </div>
+      </StatisticsAnalysisPanel>
 
-      <StatisticsOwnershipSnapshotPanel
-        locale={locale}
-        ownershipOverview={ownershipOverview}
-        periodDataAvailable={periodReport != null}
-        periodLabel={periodRangeLabel}
-        t={t}
-      />
-
-      <StatisticsValueCostPanel
-        filamentDefaultsManagedOnHost={clientReadOnly}
-        hostUpgradeRequired={
-          clientReadOnly &&
-          (periodStatus === "LEGACY_HOST" ||
-            (periodReport != null && periodReport.value_cost == null))
-        }
-        loading={loading}
-        locale={locale}
-        onOpenFilamentDefaults={onOpenFilamentDefaults}
-        periodLabel={periodRangeLabel}
-        report={periodReport?.value_cost ?? null}
-        t={t}
-      />
-
-      <StatisticsForecastPanel
-        forecast={consumptionForecast}
-        locale={locale}
-        t={t}
-      />
-
-      <StatisticsPerPrinterUsagePanel
-        loading={loading}
-        locale={locale}
-        onOpenConsumption={(row) => {
-          openConsumptionModal(row);
-        }}
-        periodLabel={periodRangeLabel}
-        periodUnavailableMessage={
-          periodReport
-            ? null
-            : t(
-                "statistics.periodDetailsUnavailable",
-                "Selected-period totals and filament or printer details are unavailable from this host snapshot. Update or reconnect the host.",
-              )
-        }
-        printerCount={printers.length}
-        printers={periodPrinters}
-        resolvedTheme={resolvedTheme}
-        t={t}
-      />
+      <StatisticsAnalysisPanel activeView={analysisView} view="PRINTERS">
+        <StatisticsPerPrinterUsagePanel
+          loading={loading}
+          locale={locale}
+          onOpenConsumption={(row) => {
+            openConsumptionModal(row);
+          }}
+          periodLabel={periodRangeLabel}
+          periodUnavailableMessage={
+            periodReport
+              ? null
+              : t(
+                  "statistics.periodDetailsUnavailable",
+                  "Selected-period totals and filament or printer details are unavailable from this host snapshot. Update or reconnect the host.",
+                )
+          }
+          printerCount={printers.length}
+          printers={periodPrinters}
+          resolvedTheme={resolvedTheme}
+          t={t}
+        />
+      </StatisticsAnalysisPanel>
 
       {showConsumptionModal ? (
         <StatisticsConsumptionModal
@@ -645,28 +656,6 @@ export default function StatisticsPage({ onOpenFilamentDefaults }: StatisticsPag
           t={t}
         />
       ) : null}
-
-      <StatisticsOutboundLoanUsagePanel
-        filteredLoanUsage={filteredLoanUsage}
-        locale={locale}
-        loading={loading}
-        loanUsageListFilter={loanUsageListFilter}
-        onOpenBorrower={(borrowerName) => {
-          void openBorrowerModal(borrowerName, "OUTBOUND");
-        }}
-        setLoanUsageListFilter={setLoanUsageListFilter}
-        t={t}
-      />
-
-      <StatisticsInboundLoanUsagePanel
-        inboundLoanUsage={inboundLoanUsage}
-        locale={locale}
-        loading={loading}
-        onOpenOwner={(ownerName) => {
-          void openBorrowerModal(ownerName, "INBOUND");
-        }}
-        t={t}
-      />
 
       {showBorrowerModal ? (
         <StatisticsBorrowerUsageModal

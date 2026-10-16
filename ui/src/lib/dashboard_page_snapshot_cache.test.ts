@@ -13,6 +13,12 @@ import {
 
 function populatedSnapshot(): DashboardPageSnapshot {
   return {
+    printerOverview: [],
+    printerOverviewAvailable: true,
+    bambuLiveIntegrations: [],
+    lowStockPreview: [],
+    lowStockPreviewAvailable: true,
+    syncSource: "local",
     activity: [
       {
         id: "loan-return",
@@ -146,6 +152,12 @@ test("dashboard snapshot safely upgrades an older cached view without annual usa
   delete legacySnapshot.usageAvailable;
   delete legacySnapshot.actionItems;
   delete legacySnapshot.libraryId;
+  delete legacySnapshot.printerOverview;
+  delete legacySnapshot.printerOverviewAvailable;
+  delete legacySnapshot.bambuLiveIntegrations;
+  delete legacySnapshot.lowStockPreview;
+  delete legacySnapshot.lowStockPreviewAvailable;
+  delete legacySnapshot.syncSource;
 
   writeDashboardPageSnapshot(legacySnapshot);
 
@@ -155,6 +167,47 @@ test("dashboard snapshot safely upgrades an older cached view without annual usa
   assert.equal(restored?.usageTotal12m, 0);
   assert.deepEqual(restored?.actionItems, []);
   assert.equal(restored?.libraryId, null);
+  assert.deepEqual(restored?.printerOverview, []);
+  assert.equal(restored?.printerOverviewAvailable, false);
+  assert.deepEqual(restored?.bambuLiveIntegrations, []);
+  assert.deepEqual(restored?.lowStockPreview, []);
+  assert.equal(restored?.lowStockPreviewAvailable, false);
+  assert.equal(restored?.syncSource, "local");
+});
+
+test("dashboard overview cache isolates nested printer rows, live observations and preview data", () => {
+  clearDashboardPageSnapshot();
+  const snapshot = populatedSnapshot();
+  snapshot.printerOverview = [{ printer: { id: "bambu", name: "Atlas", model: "Bambu Lab P1S", created_at: "", updated_at: "" }, usage: { total_jobs: 1, successful_jobs: 1, failed_jobs: 0, total_used_g: 30 }, slots: [{ slot_id: "slot", ams_id: "ams", slot_index: 1, spool_id: "spool", spool_hex_color: "#2563EB" }] }];
+  snapshot.bambuLiveIntegrations = [{ printer_id: "bambu", config: { enabled: true, host: "private-host", printer_serial: "private-serial", tls_certificate_fingerprint: "private-fingerprint", access_code_configured: true, tls_trust_state: "TRUSTED", observed_state: { online: true, mqtt_connected: true, gcode_state: "PAUSE", last_seen_at: "2026-10-17T12:00:00Z", raw_payload_json: { private: true }, trays: [{ loaded: true, tray_index: 1, color_hex: "#2563EB" }] } } }];
+  snapshot.lowStockPreview = [{ spoolId: "spool", vendor: "Bambu", material: "PLA", filamentName: "Basic", colorName: "Blue", hexColor: "#2563EB", remainingG: 100, locationLabel: "Shelf A" }];
+  writeDashboardPageSnapshot(snapshot);
+  snapshot.printerOverview[0].slots[0].spool_hex_color = "#000000";
+  snapshot.bambuLiveIntegrations[0].config.observed_state!.gcode_state = "RUNNING";
+  snapshot.lowStockPreview[0].remainingG = 999;
+  const restored = readDashboardPageSnapshot("en")!;
+  assert.equal(restored.printerOverview![0].slots[0].spool_hex_color, "#2563EB");
+  assert.equal(restored.bambuLiveIntegrations![0].config.observed_state!.gcode_state, "PAUSE");
+  assert.equal(restored.lowStockPreview![0].remainingG, 100);
+  const serialized = JSON.stringify(restored.bambuLiveIntegrations);
+  assert.doesNotMatch(serialized, /private-host|private-serial|private-fingerprint|raw_payload_json|access_code_configured/);
+  assert.deepEqual(restored.bambuLiveIntegrations![0].config.observed_state!.trays, []);
+  restored.printerOverview![0].usage.total_jobs = 999;
+  restored.bambuLiveIntegrations![0].config.observed_state!.gcode_state = "IDLE";
+  restored.lowStockPreview![0].hexColor = "#000000";
+  const reread = readDashboardPageSnapshot("en")!;
+  assert.equal(reread.printerOverview![0].usage.total_jobs, 1);
+  assert.equal(reread.bambuLiveIntegrations![0].config.observed_state!.gcode_state, "PAUSE");
+  assert.equal(reread.lowStockPreview![0].hexColor, "#2563EB");
+});
+
+test("legacy client snapshots default to saved host setup without borrowing local live status", () => {
+  clearDashboardPageSnapshot();
+  const snapshot = populatedSnapshot();
+  snapshot.dashboardSyncMode = "CLIENT";
+  delete snapshot.syncSource;
+  writeDashboardPageSnapshot(snapshot);
+  assert.equal(readDashboardPageSnapshot("en")?.syncSource, "client-cached");
 });
 
 test("dashboard snapshot is locale-keyed and isolated from caller mutation", () => {

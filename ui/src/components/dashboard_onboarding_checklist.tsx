@@ -1,3 +1,4 @@
+import { dashboardOverviewStyles } from "../lib/dashboard_overview_styles";
 import {
   groupDashboardOnboardingTasks,
   type DashboardOnboardingState,
@@ -66,16 +67,16 @@ export function DashboardOnboardingChecklist({
         className="rounded-xl border border-slate-200/90 bg-white/70 px-4 py-3 dark:border-slate-700/80 dark:bg-slate-950/35"
       >
         <div className="flex items-start justify-between gap-3">
-          <div className="text-sm font-semibold text-slate-950 dark:text-slate-50">
+          <div className={`text-sm font-semibold ${dashboardOverviewStyles.primary}`}>
             {copy.title}
           </div>
-          <span className="shrink-0 text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500 dark:text-slate-400">
+          <span className={`shrink-0 text-[11px] font-semibold uppercase tracking-[0.14em] ${dashboardOverviewStyles.subtle}`}>
             {task.optional
               ? t("dashboard.onboardingOptional", "Optional")
               : t("dashboard.onboardingPending", "To do")}
           </span>
         </div>
-        <p className="mt-1.5 text-xs leading-5 text-slate-600 dark:text-slate-300">
+        <p className={`mt-1.5 text-xs leading-5 ${dashboardOverviewStyles.muted}`}>
           {copy.body}
         </p>
         <div className="mt-2.5 flex flex-wrap gap-2">
@@ -129,6 +130,20 @@ export function DashboardOnboardingChecklist({
     );
   };
 
+  const renderPendingGroup = (
+    kind: "required" | "optional",
+    tasks: DashboardOnboardingTask[],
+    label: string,
+  ) => tasks.length > 0 ? (
+    <section className="onboarding-pending-group" aria-labelledby={`dashboard-onboarding-${kind}-title`} data-onboarding-group={kind}>
+      <div className="flex items-center gap-2">
+        <h3 id={`dashboard-onboarding-${kind}-title`} className="section-eyebrow">{label}</h3>
+        <span className={`text-xs font-semibold ${dashboardOverviewStyles.subtle}`}>{tasks.length}</span>
+      </div>
+      <div className="mt-2 grid gap-2">{tasks.map(renderPendingTask)}</div>
+    </section>
+  ) : null;
+
   return (
     <section className="surface-card dashboard-onboarding mt-4" aria-labelledby="dashboard-onboarding-title">
       <div className="flex flex-wrap items-start justify-between gap-4">
@@ -138,11 +153,11 @@ export function DashboardOnboardingChecklist({
           </div>
           <h2
             id="dashboard-onboarding-title"
-            className="mt-1 text-base font-semibold text-slate-950 dark:text-slate-50"
+            className={`mt-1 ${dashboardOverviewStyles.heading}`}
           >
             {t("dashboard.onboardingTitle", "Finish setup")}
           </h2>
-          <p className="mt-1 text-sm leading-5 text-slate-600 dark:text-slate-300">
+          <p className={`mt-1 text-sm leading-5 ${dashboardOverviewStyles.muted}`}>
             {t(
               "dashboard.onboardingDescription",
               "Use the steps that fit your setup. Printer and browser access are optional.",
@@ -174,51 +189,8 @@ export function DashboardOnboardingChecklist({
       </div>
 
       <div className="mt-3 grid gap-3 min-[900px]:grid-cols-2">
-        {taskGroups.pendingRequired.length > 0 ? (
-          <section
-            className="onboarding-pending-group"
-            aria-labelledby="dashboard-onboarding-required-title"
-            data-onboarding-group="required"
-          >
-            <div className="flex items-center gap-2">
-              <h3
-                id="dashboard-onboarding-required-title"
-                className="section-eyebrow"
-              >
-                {t("dashboard.onboardingPending", "To do")}
-              </h3>
-              <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">
-                {taskGroups.pendingRequired.length}
-              </span>
-            </div>
-            <div className="mt-2 grid gap-2">
-              {taskGroups.pendingRequired.map(renderPendingTask)}
-            </div>
-          </section>
-        ) : null}
-
-        {taskGroups.pendingOptional.length > 0 ? (
-          <section
-            className="onboarding-pending-group"
-            aria-labelledby="dashboard-onboarding-optional-title"
-            data-onboarding-group="optional"
-          >
-            <div className="flex items-center gap-2">
-              <h3
-                id="dashboard-onboarding-optional-title"
-                className="section-eyebrow"
-              >
-                {t("dashboard.onboardingOptional", "Optional")}
-              </h3>
-              <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">
-                {taskGroups.pendingOptional.length}
-              </span>
-            </div>
-            <div className="mt-2 grid gap-2">
-              {taskGroups.pendingOptional.map(renderPendingTask)}
-            </div>
-          </section>
-        ) : null}
+        {renderPendingGroup("required", taskGroups.pendingRequired, t("dashboard.onboardingPending", "To do"))}
+        {renderPendingGroup("optional", taskGroups.pendingOptional, t("dashboard.onboardingOptional", "Optional"))}
 
       </div>
 
@@ -231,7 +203,7 @@ export function DashboardOnboardingChecklist({
             {t("dashboard.onboardingComplete", "Complete")} ·{" "}
             {taskGroups.completed.length}
           </summary>
-          <ul className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-slate-600 dark:text-slate-300">
+          <ul className={`mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs ${dashboardOverviewStyles.muted}`}>
             {taskGroups.completed.map((task) => (
               <li key={task.id} className="inline-flex items-center gap-1.5">
                 <span aria-hidden="true" className="text-emerald-600 dark:text-emerald-300">
@@ -239,7 +211,7 @@ export function DashboardOnboardingChecklist({
                 </span>
                 <span>{taskCopy[task.id].title}</span>
                 {task.optional ? (
-                  <span className="text-slate-500 dark:text-slate-400">
+                  <span className={dashboardOverviewStyles.subtle}>
                     ({t("dashboard.onboardingOptional", "Optional")})
                   </span>
                 ) : null}

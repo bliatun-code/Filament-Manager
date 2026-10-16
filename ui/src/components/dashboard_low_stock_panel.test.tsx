@@ -1,8 +1,9 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
+import { PassThrough } from "node:stream";
 import test from "node:test";
 import React from "react";
-import { renderToStaticMarkup } from "react-dom/server";
+import { renderToPipeableStream } from "react-dom/server";
 
 import { formatMessage } from "../../../src-tauri/companion_browser/message_format.js";
 import type { DashboardLowStockAction } from "../lib/dashboard_action_model";
@@ -62,7 +63,7 @@ const hiddenItem = lowStockItem({
   productKey: "master:hidden",
 });
 
-function renderPanel({
+async function renderPanel({
   defaultExpanded = false,
   error = null,
   hiddenProductKeys = new Set<string>(),
@@ -75,7 +76,7 @@ function renderPanel({
   items?: DashboardLowStockAction[];
   message?: string | null;
 } = {}) {
-  return renderToStaticMarkup(
+  const element = (
     <I18nContext.Provider value={i18nValue}>
       <DashboardLowStockPanel
         defaultExpanded={defaultExpanded}
@@ -88,16 +89,26 @@ function renderPanel({
         onQueueLowStock={() => {}}
         onRestoreLowStock={() => {}}
       />
-    </I18nContext.Provider>,
+    </I18nContext.Provider>
   );
+  return new Promise<string>((resolve, reject) => {
+    const output = new PassThrough();
+    let html = "";
+    output.on("data", (chunk) => { html += chunk.toString(); });
+    output.on("end", () => resolve(html));
+    const render = renderToPipeableStream(element, {
+      onAllReady: () => render.pipe(output),
+      onError: reject,
+    });
+  });
 }
 
 function escapeRegExp(value: string): string {
   return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
-test("low-stock suggestions use a neutral collapsed button disclosure by default", () => {
-  const html = renderPanel();
+test("low-stock suggestions use a neutral collapsed button disclosure by default", async () => {
+  const html = await renderPanel();
   const disclosure = /<button[^>]*aria-controls="([^"]+)"[^>]*aria-expanded="false"/.exec(
     html,
   );
@@ -112,10 +123,11 @@ test("low-stock suggestions use a neutral collapsed button disclosure by default
   );
   assert.doesNotMatch(html, /aria-live=/);
   assert.doesNotMatch(html, /amber/);
+  assert.doesNotMatch(html, /data-low-stock-state=/);
 });
 
-test("expanded suggestions separate visible and hidden products with specific controls", () => {
-  const html = renderPanel({
+test("expanded suggestions separate visible and hidden products with specific controls", async () => {
+  const html = await renderPanel({
     defaultExpanded: true,
     hiddenProductKeys: new Set([hiddenItem.candidate.productKey]),
   });
@@ -130,7 +142,7 @@ test("expanded suggestions separate visible and hidden products with specific co
   );
   assert.equal((html.match(/data-low-stock-state="visible"/g) ?? []).length, 1);
   assert.equal((html.match(/data-low-stock-state="hidden"/g) ?? []).length, 1);
-  assert.match(html, />1 suggestion · 1 hidden</);
+  assert.match(html, />1 suggestion(?:<!-- -->)? · 1 hidden</);
   assert.match(html, />Hidden suggestions</);
   assert.match(html, />Show again</);
   assert.match(
@@ -150,8 +162,8 @@ test("expanded suggestions separate visible and hidden products with specific co
   assert.match(html, />Open low-stock inventory</);
 });
 
-test("the compact panel keeps errors and updates in targeted announcement roles", () => {
-  const html = renderPanel({
+test("the compact panel keeps errors and updates in targeted announcement roles", async () => {
+  const html = await renderPanel({
     defaultExpanded: true,
     error: "Could not update the suggestion.",
     message: "Wishlist updated.",
@@ -170,11 +182,15 @@ test("hidden suggestions restore through the focus-preserving handler", () => {
     new URL("./dashboard_low_stock_panel.tsx", import.meta.url),
     "utf8",
   );
+  const contentSource = readFileSync(new URL("./dashboard_low_stock_content.tsx", import.meta.url), "utf8");
 
-  assert.match(source, /onClick=\{\(\) => handleRestore\(item\)\}/);
+  assert.match(contentSource, /onClick=\{\(\) => handleRestore\(item\)\}/);
   assert.match(
     source,
     /lastHidden\?\.candidate\.productKey === item\.candidate\.productKey/,
   );
   assert.match(source, /disclosureButtonRef\.current\?\.focus\(\)/);
+  assert.match(source, /lazy\(\(\) => import\("\.\/dashboard_low_stock_content"\)\)/);
+  assert.match(source, /contentRequested \? \(/);
+  assert.doesNotMatch(source, /setContentRequested\(false\)/);
 });

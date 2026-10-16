@@ -305,6 +305,11 @@ test("loadDashboardData loads local dashboard data outside client mode", async (
   );
 
   assert.equal(result.syncSource, "local");
+  assert.equal(result.printerOverviewAvailable, true);
+  assert.equal(result.lowStockPreviewAvailable, true);
+  assert.deepEqual(result.printerOverview, [printerOverviewRow("printer-local")]);
+  assert.deepEqual(result.bambuLiveIntegrations, [{ printer_id: "printer-local", config: { enabled: true, tls_trust_state: "UNPAIRED", observed_state: null } }]);
+  assert.deepEqual(result.lowStockPreview, []);
   assert.equal(result.syncMode, "STANDALONE");
   assert.equal(result.libraryId, "library-1");
   assert.equal(result.clientHostNeedsRepair, false);
@@ -374,6 +379,8 @@ test("loadDashboardData builds action items from the same local dashboard snapsh
     result.actionItems.some((item) => item.kind === "LOW_STOCK"),
     false,
   );
+  // Purchasing suggestions may disappear while the physical low rolls remain.
+  assert.deepEqual(result.lowStockPreview.map((row) => [row.spoolId, row.remainingG]), [["low-b", 80], ["low-a", 120]]);
 });
 
 test("loadDashboardData keeps unresolved low stock actionable until a purchase is open", async () => {
@@ -455,6 +462,9 @@ test("loadDashboardData prefers live host data for paired clients", async () => 
   );
 
   assert.equal(result.syncSource, "client-live");
+  assert.equal(result.printerOverviewAvailable, true);
+  assert.deepEqual(result.printerOverview, [printerOverviewRow("printer-host")]);
+  assert.deepEqual(result.bambuLiveIntegrations, []);
   assert.equal(result.libraryId, "library-1");
   assert.deepEqual(result.actionItems, []);
   assert.deepEqual(result.bambuLiveAttention, []);
@@ -516,6 +526,9 @@ test("loadDashboardData marks partial client host reads as cached", async () => 
   assert.equal(result.syncSource, "client-cached");
   assert.equal(result.setupDataAvailable, true);
   assert.equal(result.capturedAt, "printer-cache");
+  assert.equal(result.printerOverviewAvailable, true);
+  assert.deepEqual(result.printerOverview, [printerOverviewRow("printer-cache")]);
+  assert.deepEqual(result.bambuLiveIntegrations, []);
   assert.equal(result.clientHostCompanionTone, "live");
   assert.equal(result.revisionPollComplete, false);
   assert.deepEqual(
@@ -900,6 +913,9 @@ test("loadDashboardData stays client-offline without cache instead of loading lo
   );
 
   assert.equal(result.syncSource, "client-offline");
+  assert.equal(result.printerOverviewAvailable, false);
+  assert.equal(result.lowStockPreviewAvailable, false);
+  assert.deepEqual(result.bambuLiveIntegrations, []);
   assert.equal(result.clientHostPaired, false);
   assert.equal(result.setupDataAvailable, false);
   assert.equal(result.capturedAt, null);
@@ -1161,4 +1177,37 @@ test("loadDashboardData does not treat 401 digits in a transport URL as pairing 
   assert.equal(result.clientHostConnectionObservation, "failed");
   assert.equal(result.clientHostNeedsRepair, false);
   assert.equal(result.clientHostCompanionTone, "live");
+});
+
+test("client overview availability distinguishes unknown rows from confirmed empty host results", async () => {
+  for (const available of [false, true]) {
+    const loadRows = async () => {
+      if (!available) throw new Error("host detail rows unavailable");
+      return [];
+    };
+    let localSettingsReads = 0;
+    const result = await loadDashboardData(
+      { previousClientHostNeedsRepair: false, t },
+      {
+        loadSyncSettings: async () => syncSettings({ mode: "CLIENT", host_base_url: "http://host", library_id: "library-1" }),
+        loadTrustedLanStatus: async () => null,
+        fetchHostSnapshot: async () => snapshot("Host", { inventory: overview({ low_stock: 3 }) }),
+        fetchHostPrinterOverview: loadRows,
+        loadSpoolRows: loadRows,
+        fetchHostLoans: async () => [],
+        fetchHostWishlist: async () => [],
+        loadPrinterSettings: async () => {
+          localSettingsReads += 1;
+          return printerSettingsSnapshot();
+        },
+        onLoadError: () => {},
+      },
+    );
+    assert.equal(result.printerOverviewAvailable, available);
+    assert.equal(result.lowStockPreviewAvailable, available);
+    assert.deepEqual(result.printerOverview, []);
+    assert.deepEqual(result.lowStockPreview, []);
+    assert.deepEqual(result.bambuLiveIntegrations, []);
+    assert.equal(localSettingsReads, 0);
+  }
 });
