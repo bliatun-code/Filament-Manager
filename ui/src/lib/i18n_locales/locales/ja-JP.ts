@@ -1543,6 +1543,7 @@ export const jaJPDictionary: DictionaryNode = {
     "help": "ヘルプ",
     "helpHint": "ビジュアル製品ツアーを開いて主要な desktop および Companion ワークフローのスクリーンショットを確認するか、ステップバイステップの動作についてはテキスト マニュアルを使用してください。",
     "productTour": "製品ツアー",
+    "versionedHelpUnavailable": "公開済みのアプリバージョンが確認されるまで、バージョン別のヘルプは利用できません。",
     "userManual": "ユーザーマニュアル",
     "libraryTabTitle": "ライブラリとウェブアプリ",
     "libraryTabHint": "",

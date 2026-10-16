@@ -1857,6 +1857,7 @@ export const plPLDictionary: DictionaryNode = {
     "updated": "zaktualizowany",
     "updatedPrinter": "Zaktualizowana drukarka",
     "updatingSwatches": "Aktualizowanie próbek...",
+    "versionedHelpUnavailable": "Pomoc dla tej wersji będzie dostępna po rozpoznaniu opublikowanej wersji aplikacji.",
     "userManual": "Instrukcja obsługi",
     "validateBackup": "Sprawdź poprawność pliku kopii zapasowej",
     "validationExtraTables": "Dodatkowe stoły",

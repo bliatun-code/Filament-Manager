@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { useSettingsCatalogRefreshJobs } from "./use_settings_catalog_refresh_jobs";
 import { observeCatalogRefreshJobSession } from "../lib/catalog_refresh_job_session";
+import { completeCatalogRefreshOperation, tryBeginCatalogRefreshOperation } from "../lib/catalog_refresh_operation";
 import type { CatalogRefreshJobSnapshot, StartCatalogRefreshJobInput } from "../lib/tauri_catalog_client";
 import { catalogRefreshJobStorageKey, catalogRefreshJobTargetKey } from "../lib/catalog_refresh_jobs";
 
@@ -75,7 +76,9 @@ function baseInput(): Input {
     reloadSettings: async () => undefined,
     setCatalogRefreshBusy: () => undefined,
     setCatalogRefreshPhase: () => undefined,
-    setCatalogRefreshProgressMessage: () => undefined,
+    setCatalogRefreshKind: () => undefined,
+    setCatalogRefreshUnavailable: () => undefined,
+    setCatalogRefreshMaterial: () => undefined,
     setCatalogRefreshStartedAt: () => undefined,
     setCatalogRefreshVendor: () => undefined,
     setError: () => undefined,
@@ -89,8 +92,6 @@ function baseInput(): Input {
     }),
     settingsCatalogRefreshSummaryLabels: () => ({ imported: "Imported", reactivated: "Reactivated", discontinued: "Discontinued" }),
     tauri: true,
-    refreshingMessage: "Refreshing",
-    unavailableMessage: "Temporarily unavailable",
   };
 }
 
@@ -120,6 +121,7 @@ test("Settings renders the authoritative vendor/material and recovers a completi
   let busy = false;
   let vendor = "";
   let progress = "";
+  let material: string | null = null;
   let info: string | null = null;
   let announcements = 0;
   let imported: number | null = null;
@@ -132,8 +134,8 @@ test("Settings renders the authoritative vendor/material and recovers a completi
     locale: "en",
     reloadSettings: async () => { reloads += 1; },
     setCatalogRefreshBusy: (value) => { busy = typeof value === "function" ? value(busy) : value; },
-    setCatalogRefreshPhase: () => undefined,
-    setCatalogRefreshProgressMessage: (value) => { progress = typeof value === "function" ? value(progress) : value; },
+    setCatalogRefreshPhase: (value) => { progress = typeof value === "function" ? value(progress) : value; },
+    setCatalogRefreshMaterial: (value) => { material = typeof value === "function" ? value(material) : value; },
     setCatalogRefreshStartedAt: () => undefined,
     setCatalogRefreshVendor: (value) => { vendor = typeof value === "function" ? value("Bambu") : value; },
     setError: () => undefined,
@@ -150,7 +152,8 @@ test("Settings renders the authoritative vendor/material and recovers a completi
     await controller.checkNow();
     assert.equal(busy, true);
     assert.equal(vendor, "eSUN");
-    assert.equal(progress, "eSUN PETG: Refreshing");
+    assert.equal(progress, "RUNNING", "a RUNNING receipt must not claim a fetch or import subphase");
+    assert.equal(material, "PETG", "the receipt material must stay separate from translated copy");
     await first.startCatalogRefreshJob("Bambu", "PLA");
     assert.deepEqual(invokes, ["get_library_sync_host_catalog_refresh_job"]);
     first.unmount();
@@ -483,6 +486,7 @@ test("idle status failures preserve a successful receipt and later active work i
   let busy = false;
   let vendor = "";
   let progress = "";
+  let material: string | null = null;
   const failures: string[] = [];
   const displayedErrors: string[] = [];
   const input: Input = {
@@ -493,7 +497,8 @@ test("idle status failures preserve a successful receipt and later active work i
     setError: (value) => { if (typeof value === "string") displayedErrors.push(value); },
     setCatalogRefreshBusy: (value) => { busy = typeof value === "function" ? value(busy) : value; },
     setCatalogRefreshVendor: (value) => { vendor = typeof value === "function" ? value("Bambu") : value; },
-    setCatalogRefreshProgressMessage: (value) => { progress = typeof value === "function" ? value(progress) : value; },
+    setCatalogRefreshPhase: (value) => { progress = typeof value === "function" ? value(progress) : value; },
+    setCatalogRefreshMaterial: (value) => { material = typeof value === "function" ? value(material) : value; },
   };
   let mounted: ReturnType<typeof MountCatalogJobs> | null = null;
   try {
@@ -516,7 +521,8 @@ test("idle status failures preserve a successful receipt and later active work i
     assert.deepEqual(receiptAfterIdleFailure, completed);
     assert.equal(busy, true);
     assert.equal(vendor, "eSUN");
-    assert.equal(progress, "eSUN PETG: Refreshing");
+    assert.equal(progress, "RUNNING", "a RUNNING receipt must not claim a fetch or import subphase");
+    assert.equal(material, "PETG", "the receipt material must stay separate from translated copy");
     assert.equal(imported, null, "the previous summary clears when the new job is adopted");
   } finally {
     mounted?.unmount();
@@ -613,6 +619,159 @@ test("a new request's pre-POST persistence failure clears the old receipt and re
   } finally {
     mounted?.unmount();
     observeCatalogRefreshJobSession({ clientReadOnly: true }, () => undefined);
+    globalThis.window = previousWindow;
+  }
+});
+
+
+test("an accepted refresh starts with structured preparation and keeps terminal errors diagnostic", async () => {
+  const previousWindow = globalThis.window;
+  globalThis.window = fakeWindow();
+  let resolveStart!: (job: CatalogRefreshJobSnapshot) => void;
+  const response = new Promise<CatalogRefreshJobSnapshot>((resolve) => { resolveStart = resolve; });
+  let request: StartCatalogRefreshJobInput | null = null;
+  invokeHandler = async (command, payload) => {
+    if (command === "start_library_sync_host_catalog_refresh_job") {
+      request = (payload as { input: StartCatalogRefreshJobInput }).input;
+      return response;
+    }
+    return null;
+  };
+  let phase = "";
+  let material: string | null = null;
+  let kind = "";
+  const diagnostics: string[] = [];
+  const input: Input = {
+    ...baseInput(),
+    setCatalogRefreshPhase: (value) => { phase = typeof value === "function" ? value(phase) : value; },
+    setCatalogRefreshKind: (value) => { kind = typeof value === "function" ? value("REFRESH") : value; },
+    setCatalogRefreshMaterial: (value) => { material = typeof value === "function" ? value(material) : value; },
+    failCatalogRefreshResult: (error) => { diagnostics.push(error); },
+  };
+  let mounted: ReturnType<typeof MountCatalogJobs> | null = null;
+  try {
+    mounted = MountCatalogJobs(input);
+    const controller = observeCatalogRefreshJobSession(input.target, () => undefined)!;
+    await controller.checkNow();
+    const pending = mounted.startCatalogRefreshJob("eSUN", "PETG");
+    await Promise.resolve();
+    assert.ok(request);
+    assert.equal(phase, "PREPARE");
+    assert.equal(kind, "REFRESH");
+    assert.equal(material, "PETG");
+    resolveStart({
+      ...(request as StartCatalogRefreshJobInput), status: "FAILED",
+      started_at: "2026-10-17T10:00:00Z", finished_at: "2026-10-17T10:01:00Z",
+      result: null, error: "Internal English network diagnostic remains unchanged",
+    });
+    await pending;
+    assert.equal(phase, "FAILED");
+    assert.deepEqual(diagnostics, ["Internal English network diagnostic remains unchanged"]);
+  } finally {
+    mounted?.unmount();
+    observeCatalogRefreshJobSession({ clientReadOnly: true }, () => undefined);
+    globalThis.window = previousWindow;
+  }
+});
+
+
+test("retained terminal receipts cannot replace an active audit's progress or feedback on poll and remount", async () => {
+  const previousWindow = globalThis.window;
+  try {
+    for (const [status, revisitOutsideAudit] of [
+      ["SUCCEEDED", false], ["FAILED", false],
+      ["SUCCEEDED", true], ["FAILED", true],
+    ] as const) {
+      const storage = new Map<string, string>();
+      const terminal: CatalogRefreshJobSnapshot = {
+        job_id: `prior-${status}`, vendor: "eSUN", material: "ABS", status,
+        started_at: "2026-10-17T10:00:00Z", finished_at: "2026-10-17T10:01:00Z",
+        result: status === "SUCCEEDED"
+          ? { imported: 17, reactivated_count: 0, discontinued_count: 0, output: "Original refresh receipt" }
+          : null,
+        error: status === "FAILED" ? "Original refresh failure diagnostic" : null,
+      };
+      let response: CatalogRefreshJobSnapshot = terminal;
+      globalThis.window = fakeWindow(storage);
+      invokeHandler = async () => response;
+      const writes: string[] = [];
+      let busy = false;
+      const input: Input = {
+        ...baseInput(),
+        beginCatalogRefreshResult: () => { writes.push("begin"); },
+        completeCatalogRefreshResult: (result) => { writes.push(`result:${result.imported}`); },
+        failCatalogRefreshResult: (error) => { writes.push(`log:${error}`); },
+        setCatalogRefreshBusy: (value) => { busy = typeof value === "function" ? value(busy) : value; },
+        setCatalogRefreshKind: (value) => { writes.push(`kind:${String(value)}`); },
+        setCatalogRefreshPhase: (value) => { writes.push(`phase:${String(value)}`); },
+        setCatalogRefreshVendor: (value) => { writes.push(`vendor:${String(value)}`); },
+        setCatalogRefreshMaterial: (value) => { writes.push(`material:${String(value)}`); },
+        setCatalogRefreshUnavailable: (value) => { writes.push(`unavailable:${String(value)}`); },
+        setCatalogRefreshStartedAt: (value) => { writes.push(`started:${String(value)}`); },
+        setError: (value) => { writes.push(`error:${String(value)}`); },
+        setInfo: (value) => { writes.push(`info:${String(value)}`); },
+      };
+      let mounted: ReturnType<typeof MountCatalogJobs> | null = null;
+      let auditId: number | null = null;
+      try {
+        mounted = MountCatalogJobs(input);
+        const controller = observeCatalogRefreshJobSession(input.target, () => undefined)!;
+        await controller.checkNow();
+        assert.ok(writes.includes(status === "SUCCEEDED" ? "result:17" : "log:Original refresh failure diagnostic"));
+        const audit = tryBeginCatalogRefreshOperation({
+          kind: "AUDIT", vendor: "Bambu", phase: "DISCOVER", message: "Discovering",
+        });
+        assert.ok(audit);
+        auditId = audit.id;
+        // The audit handler now owns progress, summary, error/info, and diagnostics.
+        writes.length = 0;
+        await controller.checkNow();
+        assert.deepEqual(writes, [], `${status} receipt polling must leave active audit presentation untouched`);
+        assert.equal(busy, true, "the app-owned audit lock must remain active");
+        mounted.unmount();
+        mounted = MountCatalogJobs(input);
+        await controller.checkNow();
+        assert.deepEqual(writes, [], `${status} receipt restoration must not reset active audit feedback`);
+        assert.equal(busy, true);
+        assert.deepEqual(controller.snapshot().job, terminal, "background polling must retain the authoritative receipt");
+        completeCatalogRefreshOperation(audit.id);
+        auditId = null;
+        await controller.checkNow();
+        assert.deepEqual(writes, [], "the audit's fresh feedback must survive the next idle poll after completion");
+        assert.equal(busy, false, "audit completion releases the lock without replaying an older receipt");
+        assert.deepEqual(controller.snapshot().job, terminal);
+        if (revisitOutsideAudit) {
+          mounted.unmount();
+          mounted = MountCatalogJobs(input);
+          await controller.checkNow();
+          assert.ok(writes.includes(status === "SUCCEEDED" ? "result:17" : "log:Original refresh failure diagnostic"),
+            "a later intentional Settings visit still recovers the retained result or failure");
+        }
+        writes.length = 0;
+        response = {
+          job_id: `later-${status}`, vendor: "Bambu", material: "PETG", status: "RUNNING",
+          started_at: "2026-10-17T10:02:00Z", finished_at: null, result: null, error: null,
+        };
+        await controller.checkNow();
+        assert.ok(writes.includes("kind:REFRESH"));
+        assert.ok(writes.includes("phase:RUNNING"));
+        assert.ok(writes.includes("vendor:Bambu"));
+        assert.ok(writes.includes("material:PETG"));
+        assert.equal(busy, true);
+        writes.length = 0;
+        response = { ...response, status: "SUCCEEDED", finished_at: "2026-10-17T10:03:00Z", result: {
+          imported: 9, reactivated_count: 0, discontinued_count: 0, output: "Later import",
+        } };
+        await controller.checkNow();
+        assert.ok(writes.includes("result:9"), "later normal job completions must still be presented");
+        assert.equal(busy, false);
+      } finally {
+        mounted?.unmount();
+        if (auditId !== null) completeCatalogRefreshOperation(auditId);
+        observeCatalogRefreshJobSession({ clientReadOnly: true }, () => undefined);
+      }
+    }
+  } finally {
     globalThis.window = previousWindow;
   }
 });

@@ -1465,6 +1465,7 @@ export const svSEDictionary: DictionaryNode = {
     "libraryWebappLabel": "Webbapp",
     "libraryWebappRunsOnHost": "Körs på värd",
     "libraryRoleLabel": "Bibliotekets roll",
+    "versionedHelpUnavailable": "Hjälp för den här versionen är inte tillgänglig förrän en publicerad appversion har identifierats.",
     "userManual": "Användarmanual",
     "libraryTabTitle": "Bibliotek och webbapp",
     "productTour": "Produktrundtur",

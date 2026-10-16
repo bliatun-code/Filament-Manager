@@ -1543,6 +1543,7 @@ export const zhTWDictionary: DictionaryNode = {
     "help": "幫助",
     "helpHint": "開啟視覺產品導覽以取得主要 desktop 和 Companion 工作流程的螢幕截圖，或使用文字手冊瞭解分步行為。",
     "productTour": "產品展示",
+    "versionedHelpUnavailable": "識別到已發佈的應用程式版本後，才能查看對應版本的說明。",
     "userManual": "使用者手冊",
     "libraryTabTitle": "資料庫與 Web 應用程式",
     "libraryTabHint": "",

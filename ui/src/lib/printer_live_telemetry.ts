@@ -165,14 +165,14 @@ function derivePrinterState(
   if (isTerminalGcodeState(gcodeState)) {
     return "idle";
   }
-  if (gcodeState === "RUNNING" || (printCapableNozzle && activeProgress)) {
-    return "printing";
-  }
   if (gcodeState === "PAUSE" || gcodeState === "PAUSED") {
     return "paused";
   }
   if (gcodeState === "PREPARE" || gcodeState === "SLICING") {
     return "preparing";
+  }
+  if (gcodeState === "RUNNING" || (printCapableNozzle && activeProgress)) {
+    return "printing";
   }
   if (isIdlePrintType(observed?.print_type) && !printCapableNozzle) {
     return "idle";

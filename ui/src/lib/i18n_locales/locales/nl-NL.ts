@@ -1955,6 +1955,7 @@ export const nlNLDictionary: DictionaryNode = {
     "updated": "bijgewerkt",
     "updatedPrinter": "Bijgewerkte printer",
     "updatingSwatches": "Stalen bijwerken...",
+    "versionedHelpUnavailable": "Versiespecifieke hulp is pas beschikbaar nadat een gepubliceerde appversie is vastgesteld.",
     "userManual": "Gebruikershandleiding",
     "validateBackup": "Valideer het back-upbestand",
     "validationExtraTables": "Extra tafels",

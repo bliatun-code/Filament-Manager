@@ -5,7 +5,10 @@ import { renderToStaticMarkup } from "react-dom/server";
 
 import { AppUpdateProvider } from "../lib/app_update_provider";
 import { I18nContext, lookup, type I18nContextValue, type Locale } from "../lib/i18n";
+import type { DictionaryNode } from "../lib/i18n_types";
+import { loadLocaleDictionary } from "../lib/i18n_locales/load_dictionary";
 import nbDictionary from "../lib/i18n_locales/locales/nb";
+import { CATALOG_LOCALES } from "../../../src-tauri/companion_browser/supported_locales.js";
 import { SettingsGeneralTab, type SettingsGeneralTabProps } from "./settings_general_tab";
 
 const norwegianMessages: Record<string, string> = {
@@ -24,6 +27,7 @@ const norwegianMessages: Record<string, string> = {
   "settings.viewNotices": "Notiser",
   "settings.help": "Hjelp",
   "settings.userManual": "Brukermanual",
+  "settings.versionedHelpUnavailable": "Hjelp for denne versjonen er utilgjengelig til en utgitt appversjon er identifisert.",
 };
 
 function i18nValue(locale: Locale = "en"): I18nContextValue {
@@ -61,7 +65,12 @@ const defaultDesktopLifecycle: DesktopLifecycleRenderProps = {
 function renderGeneralTab(
   locale: Locale = "en",
   desktopLifecycleOverrides: Partial<DesktopLifecycleRenderProps> = {},
+  appVersion: string | null = "0.32.1",
+  dictionary?: DictionaryNode,
 ) {
+  const translations = dictionary
+    ? { ...i18nValue(locale), t: (key: string, fallback = "") => lookup(dictionary, key) ?? fallback }
+    : i18nValue(locale);
   const desktopLifecycle = {
     ...defaultDesktopLifecycle,
     ...desktopLifecycleOverrides,
@@ -69,18 +78,18 @@ function renderGeneralTab(
   return renderToStaticMarkup(
     React.createElement(
       I18nContext.Provider,
-      { value: i18nValue(locale) },
+      { value: translations },
       React.createElement(
         AppUpdateProvider,
         null,
         React.createElement(SettingsGeneralTab, {
-          appVersion: "0.16.0",
+          appVersion,
           busy: false,
           ...desktopLifecycle,
           locale,
           tauri: true,
           themeMode: "dark",
-          t: i18nValue(locale).t,
+          t: translations.t,
           onLocaleSelection: () => {},
           onContinueInBackground: () => {},
           onLaunchAtLogin: () => {},
@@ -97,6 +106,47 @@ test("SettingsGeneralTab keeps filament defaults out of the General route", () =
 
   assert.doesNotMatch(html, /Low-stock thresholds/);
   assert.doesNotMatch(html, /Default threshold/);
+});
+
+test("SettingsGeneralTab renders help links for the installed version and selected guide language", () => {
+  const english = renderGeneralTab("en", {}, "0.31.0");
+  assert.match(english, /href="https:\/\/github\.com\/bliatun-code\/Filament-Manager\/tree\/v0\.31\.0"/);
+  assert.match(english, /href="https:\/\/github\.com\/bliatun-code\/Filament-Manager\/blob\/v0\.31\.0\/docs\/SCREENSHOTS\.md"/);
+  assert.match(english, /href="https:\/\/github\.com\/bliatun-code\/Filament-Manager\/blob\/v0\.31\.0\/docs\/USER_GUIDE\.md"/);
+  assert.doesNotMatch(english, /blob\/main\/docs/);
+
+  const norwegian = renderGeneralTab("nb", {}, "v0.32.1");
+  assert.match(norwegian, /href="https:\/\/github\.com\/bliatun-code\/Filament-Manager\/blob\/v0\.32\.1\/docs\/BRUKERVEILEDNING\.md"/);
+  assert.match(norwegian, /href="https:\/\/github\.com\/bliatun-code\/Filament-Manager\/blob\/v0\.32\.1\/docs\/SCREENSHOTS\.md"/);
+  assert.doesNotMatch(norwegian, /blob\/main\/docs/);
+});
+
+test("SettingsGeneralTab disables unidentified and development help instead of opening newer docs", () => {
+  for (const appVersion of [null, "", "0.0.0", "0.33.0-dev", "invalid/version"]) {
+    const html = renderGeneralTab("en", {}, appVersion);
+    assert.match(html, /Version-specific help is unavailable/);
+    assert.match(html, /<button[^>]*disabled=""[^>]*>Product tour<\/button>/);
+    assert.match(html, /<button[^>]*disabled=""[^>]*>User manual<\/button>/);
+    assert.match(html, /<button[^>]*disabled=""[^>]*>Source code<\/button>/);
+    assert.doesNotMatch(html, /href="[^"]*\/docs\//);
+    assert.match(html, /View license/);
+    assert.match(html, /Notices/);
+  }
+  assert.match(renderGeneralTab("nb", {}, null), /Hjelp for denne versjonen er utilgjengelig/);
+});
+
+test("SettingsGeneralTab loads and renders the unavailable-help notice in every selectable language", async () => {
+  const english = await loadLocaleDictionary("en");
+  const englishNotice = lookup(english, "settings.versionedHelpUnavailable");
+  for (const { id } of CATALOG_LOCALES) {
+    const dictionary = await loadLocaleDictionary(id);
+    const notice = lookup(dictionary, "settings.versionedHelpUnavailable");
+    assert.ok(notice, `${id} contains the versioned-help notice`);
+    if (id !== "en") assert.notEqual(notice, englishNotice, `${id} has localized notice text`);
+    const html = renderGeneralTab(id, {}, null, dictionary);
+    assert.ok(html.includes(notice), `${id} renders its own notice without English fallback`);
+    assert.doesNotMatch(html, /href="[^"]*\/docs\//);
+  }
 });
 
 test("SettingsGeneralTab exposes license and source links", () => {

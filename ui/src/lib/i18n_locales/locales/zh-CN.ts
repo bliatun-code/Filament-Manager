@@ -1543,6 +1543,7 @@ export const zhCNDictionary: DictionaryNode = {
     "help": "帮助",
     "helpHint": "打开视觉产品导览以获取主要 desktop 和 Companion 工作流程的屏幕截图，或使用文本手册了解分步行为。",
     "productTour": "产品展示",
+    "versionedHelpUnavailable": "识别到已发布的应用版本后，才能查看对应版本的帮助。",
     "userManual": "用户手册",
     "libraryTabTitle": "资料库和 Web 应用",
     "libraryTabHint": "",

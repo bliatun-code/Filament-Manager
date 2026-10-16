@@ -1782,6 +1782,7 @@ export const esDictionary: DictionaryNode = {
     helpHint:
       "Abre el recorrido visual para ver capturas de los principales flujos de escritorio y Companion, o consulta el manual de usuario para seguirlos paso a paso.",
     productTour: "Recorrido del producto",
+    versionedHelpUnavailable: "La ayuda para esta versión no está disponible hasta identificar una versión publicada de la aplicación.",
     userManual: "Manual de usuario",
     libraryTabTitle: "Biblioteca y aplicación web",
     libraryTabHint: "",

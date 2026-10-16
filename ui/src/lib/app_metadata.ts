@@ -7,8 +7,22 @@ export const APP_REPOSITORY_URL = "https://github.com/bliatun-code/Filament-Mana
 
 type AppVersionUrlBuilder = (appVersion: string | null | undefined) => string;
 
-export const sourceUrlForAppVersion: AppVersionUrlBuilder = () =>
-  `${APP_REPOSITORY_URL}/tree/main`;
+function releasedAppTag(appVersion: string | null | undefined): string | null {
+  const match = /^v?(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$/.exec(
+    appVersion?.trim() ?? "",
+  );
+  if (!match || !match.slice(1).every((part) => Number.isSafeInteger(Number(part)))) {
+    return null;
+  }
+  // A development/unknown version must not silently open newer main-branch help.
+  if (match.slice(1).every((part) => part === "0")) return null;
+  return `v${match.slice(1).join(".")}`;
+}
+
+export function sourceUrlForAppVersion(appVersion: string | null | undefined): string | null {
+  const tag = releasedAppTag(appVersion);
+  return tag ? `${APP_REPOSITORY_URL}/tree/${tag}` : null;
+}
 
 export const licenseUrlForAppVersion: AppVersionUrlBuilder = () => {
   // Legal documents were added after earlier release tags, so keep these links stable.
@@ -20,14 +34,19 @@ export const noticeUrlForAppVersion: AppVersionUrlBuilder = () => {
   return `${APP_REPOSITORY_URL}/blob/main/NOTICE.md`;
 };
 
-export function screenshotTourUrl(): string {
-  return `${APP_REPOSITORY_URL}/blob/main/docs/SCREENSHOTS.md`;
+export function screenshotTourUrl(appVersion: string | null | undefined): string | null {
+  const tag = releasedAppTag(appVersion);
+  return tag ? `${APP_REPOSITORY_URL}/blob/${tag}/docs/SCREENSHOTS.md` : null;
 }
 
 export function latestReleaseUrl(): string {
   return `${APP_REPOSITORY_URL}/releases/latest`;
 }
 
-export function userGuideUrlForLocale(locale: Locale): string {
-  return `${APP_REPOSITORY_URL}/blob/main/${guidePathForLocale(locale)}`;
+export function userGuideUrlForLocale(
+  locale: Locale,
+  appVersion: string | null | undefined,
+): string | null {
+  const tag = releasedAppTag(appVersion);
+  return tag ? `${APP_REPOSITORY_URL}/blob/${tag}/${guidePathForLocale(locale)}` : null;
 }

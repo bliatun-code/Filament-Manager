@@ -1465,6 +1465,7 @@ export const daDKDictionary: DictionaryNode = {
     "libraryWebappLabel": "Webapp",
     "libraryWebappRunsOnHost": "Kører på vært",
     "libraryRoleLabel": "Bibliotekets rolle",
+    "versionedHelpUnavailable": "Hjælp til denne version er ikke tilgængelig, før en udgivet appversion er identificeret.",
     "userManual": "Brugermanual",
     "libraryTabTitle": "Bibliotek og web-app",
     "productTour": "Produktrundvisning",

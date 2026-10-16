@@ -1460,6 +1460,7 @@ export const huHUDictionary: DictionaryNode = {
     "help": "Segítség",
     "viewNotices": "Megjegyzések",
     "libraryTabHint": "",
+    "versionedHelpUnavailable": "A verzióhoz tartozó súgó egy kiadott alkalmazásverzió azonosítása után lesz elérhető.",
     "userManual": "Felhasználói kézikönyv",
     "productTour": "Terméktúra",
     "sourceCode": "Forráskód",
