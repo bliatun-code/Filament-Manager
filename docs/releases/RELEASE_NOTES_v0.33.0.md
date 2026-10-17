@@ -107,6 +107,10 @@ saved-file validation. New copy is included in all 21 supported language
 catalogs. This does not imply human usability research, native-speaker review,
 exhaustive accessibility certification or physical-printer certification.
 
+Cold macOS CI runs have a larger finite job budget so that the final packaged
+application checks can complete after full verification. All checks, application
+timeouts and cache-write safeguards remain in place.
+
 The tagged release workflow publishes these artifacts after its required gates
 pass:
 

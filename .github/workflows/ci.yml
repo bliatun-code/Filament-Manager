@@ -85,7 +85,7 @@ jobs:
   macos-smoke:
     name: macOS Smoke
     runs-on: macos-latest
-    timeout-minutes: 45
+    timeout-minutes: 60
     env:
       CARGO_INCREMENTAL: "0"
     steps:
@@ -243,7 +243,7 @@ jobs:
         continue-on-error: true
         env:
           CI_JOB_STARTED_AT: ${{ steps.job-clock.outputs.started-at }}
-        run: node ./scripts/plan-rust-cache-save.mjs --job-timeout-minutes=45 --github-output
+        run: node ./scripts/plan-rust-cache-save.mjs --job-timeout-minutes=60 --github-output
 
       - name: Prepare cache-clean target markers
         id: rust-cache-markers
