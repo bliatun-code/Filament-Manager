@@ -609,3 +609,56 @@ test("packaged Host-Client scenario replaces dependency errors with safe step me
     },
   );
 });
+
+test("Host pairing failures retain only fixed diagnostic categories without retrying", async () => {
+  const secret = `secret invitation ${baseConfiguration.pairing_url}`;
+  const cases: Array<[unknown, string]> = [
+    [`Trusted-LAN companion health check failed: ${secret}`, "health-transport"],
+    [new Error(`Failed to prepare Trusted-LAN companion health check: ${secret}`), "health-client"],
+    [`Trusted-LAN companion health check body could not be read: ${secret}`, "health-body"],
+    [`Trusted-LAN companion health check returned invalid JSON: ${secret}`, "health-response"],
+    ["Trusted-LAN companion health check reported not ready.", "health-not-ready"],
+    ["Trusted-LAN companion access is disabled.", "disabled"],
+    ["Trusted-LAN companion is not ready yet. Refresh status and try again.", "runtime-not-ready"],
+    ["Trusted-LAN shell URL is not available.", "shell-url"],
+    ["Trusted-LAN companion does not have a valid interface binding yet.", "interface"],
+    [JSON.stringify({ code: "common.forbidden", safe_detail: secret, diagnostic_id: secret }), "authority"],
+    [JSON.stringify({ code: "common.internal", safe_detail: secret, diagnostic_id: secret }), "internal"],
+    [new Error(secret), "unclassified"],
+    [{ message: secret }, "unclassified"],
+  ];
+  for (const [failure, category] of cases) {
+    let pairingCalls = 0;
+    let readyCalls = 0;
+    const status = {
+      enabled: true, running: true, shell_reachable: true, local_name_running: true,
+      listen_port: baseConfiguration.listen_port, direct_base_url: baseConfiguration.base_url,
+      api_version: "v1", auth_mode: "pairing-session",
+    };
+    const dependencies: ScenarioDependencies = {
+      ...unusedDependencies(),
+      async createManualSpool() {},
+      async listSpools() { return [spoolRow(baseConfiguration.host_initial_weight_g, "Host")]; },
+      async getLibrarySyncSettings() { return settings(); },
+      async saveLibrarySyncSettings(input) { return settings({ ...input, mode: "HOST" }); },
+      async listTrustedLanInterfaces() { return [{ name: "QA", address: "127.0.0.1", label: "QA" }]; },
+      async updateTrustedLanCompanionConfig() { return status; },
+      async getTrustedLanCompanionStatus() { return status; },
+      async createTrustedLanPairing() { pairingCalls += 1; throw failure; },
+      async hostReadyAndWaitForStop() { readyCalls += 1; },
+    };
+    await assert.rejects(
+      () => runPackagedHostClientE2eScenario({ ...baseConfiguration, role: "host", phase: "generation-1" }, dependencies),
+      (error: unknown) => {
+        assert.ok(error instanceof PackagedHostClientE2eScenarioError);
+        assert.equal(error.step, `create-host-pairing-${category}`);
+        assert.equal(error.failureKind, "scenario");
+        assert.equal(error.message, "The Host pairing invitation could not be created.");
+        assert.doesNotMatch(JSON.stringify({ step: error.step, message: error.message }), /secret|opaque-token|host\.local/);
+        return true;
+      },
+    );
+    assert.equal(pairingCalls, 1);
+    assert.equal(readyCalls, 0);
+  }
+});

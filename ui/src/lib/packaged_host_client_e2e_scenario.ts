@@ -39,6 +39,7 @@ import {
   packagedCatalogBatchTransport, requirePackagedBatchReceipt, requirePackagedBatchRows,
   runPackagedCatalogBatch, type PackagedCatalogBatchDependencies,
 } from "./packaged_catalog_spool_batch_e2e_scenario";
+import { appErrorCode } from "./error_text";
 
 export type {
   PackagedHostClientE2eClientCompletion,
@@ -133,6 +134,40 @@ async function safeStep<T>(
       scenarioFailure(error.step, error.message);
     }
     scenarioFailure(step, safeMessage);
+  }
+}
+
+function hostPairingFailureStep(error: unknown): string {
+  const message = error instanceof Error ? error.message : error;
+  // Keep only fixed categories. Native errors may contain a pairing URL,
+  // database path or transport details and must never reach the QA artifacts.
+  if (typeof message === "string") {
+    for (const [prefix, category] of [
+      ["Trusted-LAN companion access is disabled.", "disabled"],
+      ["Trusted-LAN companion is not ready yet.", "runtime-not-ready"],
+      ["Trusted-LAN shell URL is not available.", "shell-url"],
+      ["Trusted-LAN companion does not have a valid interface binding yet.", "interface"],
+      ["Failed to prepare Trusted-LAN companion health check:", "health-client"],
+      ["Trusted-LAN companion health check failed:", "health-transport"],
+      ["Trusted-LAN companion health check body could not be read:", "health-body"],
+      ["Trusted-LAN companion health check returned ", "health-response"],
+      ["Trusted-LAN companion health check reported not ready.", "health-not-ready"],
+    ]) {
+      if (message.startsWith(prefix)) return `create-host-pairing-${category}`;
+    }
+  }
+  switch (appErrorCode(error)) {
+    case "common.forbidden": return "create-host-pairing-authority";
+    case "common.internal": return "create-host-pairing-internal";
+    default: return "create-host-pairing-unclassified";
+  }
+}
+
+async function createHostPairing(dependencies: ScenarioDependencies) {
+  try {
+    return await dependencies.createTrustedLanPairing("Packaged Host-Client E2E Client");
+  } catch (error) {
+    scenarioFailure(hostPairingFailureStep(error), "The Host pairing invitation could not be created.");
   }
 }
 
@@ -450,14 +485,10 @@ async function runHostGenerationOne(
   await enableHostRuntime(config, dependencies, loopback.name, loopback.address);
   await waitForHostReady(config, dependencies, baseUrl);
 
-  const pairing = await safeStep(
-    "create-host-pairing",
-    "The Host pairing invitation could not be created.",
-    () => dependencies.createTrustedLanPairing("Packaged Host-Client E2E Client"),
-  );
+  const pairing = await createHostPairing(dependencies);
   const pairingUrl = requireNonEmpty(
     pairing.pairing_url,
-    "create-host-pairing",
+    "create-host-pairing-invalid-invitation",
     "The Host pairing invitation is invalid.",
   );
   await safeStep(

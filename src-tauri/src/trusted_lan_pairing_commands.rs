@@ -1,5 +1,6 @@
 use crate::active_library_gateway::with_authoritative_local_library;
 use crate::companion_api;
+use crate::library_sync_blocking_executor::run_library_sync_blocking;
 use crate::security::hash_secret;
 use crate::state::AppState;
 use crate::trusted_lan_status_commands::trusted_lan_server_status_snapshot;
@@ -15,11 +16,28 @@ pub(crate) struct TrustedLanPairingLink {
 }
 
 #[tauri::command]
-pub(crate) fn create_trusted_lan_pairing(
+pub(crate) async fn create_trusted_lan_pairing(
     state: tauri::State<'_, AppState>,
     browser_label: Option<String>,
 ) -> Result<TrustedLanPairingLink, String> {
-    create_trusted_lan_pairing_inner(&state, browser_label)
+    create_trusted_lan_pairing_under_reconcile(state.inner().clone(), browser_label).await
+}
+
+pub(crate) async fn create_trusted_lan_pairing_under_reconcile(
+    state: AppState,
+    browser_label: Option<String>,
+) -> Result<TrustedLanPairingLink, String> {
+    // Match configuration changes' reconcile -> authority lock order. A queued
+    // rebind must finish before the health probe, and cannot close its listener
+    // while the invitation is being persisted.
+    let reconcile_guard = state.companion.trusted_lan.lock_reconcile().await;
+    run_library_sync_blocking(move || {
+        // Blocking operations outlive cancellation of the invoking future. Keep
+        // the owned guard with the actual work rather than with that future.
+        let _reconcile_guard = reconcile_guard;
+        create_trusted_lan_pairing_inner(&state, browser_label)
+    })
+    .await
 }
 
 fn create_trusted_lan_pairing_inner(
@@ -64,7 +82,7 @@ fn create_trusted_lan_pairing_inner(
 
 #[cfg(test)]
 mod tests {
-    use super::create_trusted_lan_pairing_inner;
+    use super::create_trusted_lan_pairing_under_reconcile;
     use crate::backend::filament_database::FilamentDatabase;
     use crate::credential_store::CredentialStore;
     use crate::library_sync_runtime_auth::LibrarySyncRuntimeAuth;
@@ -73,8 +91,8 @@ mod tests {
     };
     use std::time::{SystemTime, UNIX_EPOCH};
 
-    #[test]
-    fn client_role_cannot_create_local_companion_pairing_tokens() {
+    #[tokio::test]
+    async fn client_role_cannot_create_local_companion_pairing_tokens() {
         let suffix = SystemTime::now()
             .duration_since(UNIX_EPOCH)
             .expect("clock")
@@ -97,7 +115,8 @@ mod tests {
             library_sync_auth: LibrarySyncRuntimeAuth::new(),
         };
 
-        let error = create_trusted_lan_pairing_inner(&state, Some("Browser".to_string()))
+        let error = create_trusted_lan_pairing_under_reconcile(state, Some("Browser".to_string()))
+            .await
             .expect_err("Client mode must reject local Companion pairing");
         assert!(error.contains("common.forbidden"));
 

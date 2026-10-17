@@ -182,3 +182,18 @@ the final packaged desktop and Host/Client flows. Product, request and smoke
 deadlines have not changed. This accommodates the observed cold workload without
 claiming that every future runner slowdown will fit. Publication still requires
 a complete successful ordinary main run on the exact commit that will be tagged.
+
+The first [budget-fix PR run](https://github.com/bliatun-code/Filament-Manager/actions/runs/38992195274)
+then completed all earlier gates and the packaged desktop mutation/restore flow,
+but failed the separate Host/Client flow at invitation creation after about
+24 minutes. This was a scenario failure, not another timeout or cache issue.
+The redacted result identifies the step but cannot prove which native branch
+rejected the historical request. Code inspection found a real synchronization
+gap: an asynchronous settings reload can restart the listener during pairing's
+fresh health check. Pairing now uses the existing reconciliation gate through
+health validation and invitation persistence, on the bounded blocking executor;
+the owned guard stays with that work if its caller is cancelled. A real
+listener-drain regression checks waiting, successful rebind health and exactly
+one persisted invitation. QA failures retain only fixed, allowlisted categories,
+never transport errors, database paths or invitation tokens. No unchanged rerun,
+health-timeout increase or authentication bypass substitutes for these checks.

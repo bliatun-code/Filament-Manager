@@ -77,6 +77,9 @@ See the [QR validation report](https://github.com/bliatun-code/Filament-Manager/
   separately; an older Host that does not report its version stays explicitly
   unknown. **Refresh host status** rechecks the configured Host, and the normal
   public update check compares each verified version separately.
+- Creating a Host pairing invitation waits for an ongoing server restart, then
+  keeps the listener stable while its health is checked and the invitation is
+  saved. The existing health deadline and authorization checks are retained.
 - Failed or interrupted catalog work shows a short next step. **View refresh
   log** opens retained technical details only when requested. Uncertain status
   warns that a job may still be running rather than submitting another import.
