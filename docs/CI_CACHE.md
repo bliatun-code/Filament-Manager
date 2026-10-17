@@ -58,7 +58,7 @@ not available to the default branch.
 Each native job records its clock in its first step, before checkout and setup.
 After all verification gates and log uploads, the
 [budget planner](../scripts/plan-rust-cache-save.mjs) checks the remaining time
-against the job's existing limit (45 minutes on macOS, 60 on Windows). Cache
+against the job's limit (60 minutes on both macOS and Windows). Cache
 maintenance starts only when at least ten minutes remain. A missing or invalid
 clock disables saving; it never authorizes a write. The reserve covers one minute
 each for marker preparation and cleanup, five minutes for packing/uploading, and
@@ -77,7 +77,7 @@ see [step contexts](https://docs.github.com/en/actions/reference/workflows-and-a
 and [step timeouts/error handling](https://docs.github.com/en/actions/reference/workflows-and-actions/workflow-syntax#jobsjob_idstepscontinue-on-error).
 
 All MSRV, test, build, database and installed-application gates remain blocking
-and unconditional. Their existing job timeouts remain in force. Cache paths,
+and unconditional. Both jobs retain a finite wall-clock budget. Cache paths,
 exact environment keys and the successful-main-only write policy are unchanged.
 Compiled debug, release and MSRV dependencies remain useful: full verification
 includes release Clippy as well as debug tests.
@@ -161,3 +161,39 @@ save in about 1 minute 33 seconds. Its complete job passed in about 39 minutes
 all other CI and CodeQL jobs passed. This confirms normal save/reuse behavior,
 not that the change itself accelerated compression or experimentally exercised
 the timeout path. The timeout/budget contracts remain covered by focused tests.
+
+## Cold macOS release verification budget
+
+The ordinary [v0.33.0 preparation main run](https://github.com/bliatun-code/Filament-Manager/actions/runs/38987597255)
+on `8b4d9ee9` missed its exact Rust cache. Updating the release's Cargo manifests
+and lockfile intentionally changes that key; no broader fallback is appropriate.
+Full verification passed in 33 minutes 38 seconds, including all Rust tests and
+both Clippy profiles. Companion data E2E, the database upgrade and the packaged
+DMG build also passed. The final installed-application test had run for only
+26 seconds when GitHub cancelled the job, with the annotation **The job has
+exceeded the maximum execution time of 45m0s**. Its uploaded summary records an
+in-progress smoke, not a passing result. No cache maintenance had started.
+
+The macOS job now has the same finite 60-minute allocation as Windows, and its
+cache planner uses that actual deadline. The ten-minute maintenance reserve,
+one-/five-minute cache-step limits, exact cache keys and successful-main-only
+writes remain unchanged. Every verification command remains blocking, including
+the final packaged desktop and Host/Client flows. Product, request and smoke
+deadlines have not changed. This accommodates the observed cold workload without
+claiming that every future runner slowdown will fit. Publication still requires
+a complete successful ordinary main run on the exact commit that will be tagged.
+
+The first [budget-fix PR run](https://github.com/bliatun-code/Filament-Manager/actions/runs/38992195274)
+then completed all earlier gates and the packaged desktop mutation/restore flow,
+but failed the separate Host/Client flow at invitation creation after about
+24 minutes. This was a scenario failure, not another timeout or cache issue.
+The redacted result identifies the step but cannot prove which native branch
+rejected the historical request. Code inspection found a real synchronization
+gap: an asynchronous settings reload can restart the listener during pairing's
+fresh health check. Pairing now uses the existing reconciliation gate through
+health validation and invitation persistence, on the bounded blocking executor;
+the owned guard stays with that work if its caller is cancelled. A real
+listener-drain regression checks waiting, successful rebind health and exactly
+one persisted invitation. QA failures retain only fixed, allowlisted categories,
+never transport errors, database paths or invitation tokens. No unchanged rerun,
+health-timeout increase or authentication bypass substitutes for these checks.

@@ -77,6 +77,9 @@ See the [QR validation report](https://github.com/bliatun-code/Filament-Manager/
   separately; an older Host that does not report its version stays explicitly
   unknown. **Refresh host status** rechecks the configured Host, and the normal
   public update check compares each verified version separately.
+- Creating a Host pairing invitation waits for an ongoing server restart, then
+  keeps the listener stable while its health is checked and the invitation is
+  saved. The existing health deadline and authorization checks are retained.
 - Failed or interrupted catalog work shows a short next step. **View refresh
   log** opens retained technical details only when requested. Uncertain status
   warns that a job may still be running rather than submitting another import.
@@ -106,6 +109,10 @@ navigation, report scopes, stale replies, Host changes, explicit retries and
 saved-file validation. New copy is included in all 21 supported language
 catalogs. This does not imply human usability research, native-speaker review,
 exhaustive accessibility certification or physical-printer certification.
+
+Cold macOS CI runs have a larger finite job budget so that the final packaged
+application checks can complete after full verification. All checks, application
+timeouts and cache-write safeguards remain in place.
 
 The tagged release workflow publishes these artifacts after its required gates
 pass:

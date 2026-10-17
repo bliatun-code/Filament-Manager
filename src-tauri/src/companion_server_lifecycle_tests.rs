@@ -3,6 +3,7 @@ use crate::companion_api::{
     reconcile_trusted_lan_server, COMPANION_SERVER_SHUTDOWN_TIMEOUT_SECONDS,
 };
 use axum::middleware::Next;
+use axum::serve::ListenerExt;
 use tokio::sync::{oneshot, Semaphore};
 
 const TEST_DEADLINE: Duration = Duration::from_secs(8);
@@ -55,6 +56,186 @@ async fn observed(signal: &Semaphore) {
         .expect("lifecycle signal must arrive")
         .expect("lifecycle signal stays open")
         .forget();
+}
+
+struct ObservedClosingListener {
+    listener: Option<tokio::net::TcpListener>,
+    closed: Option<oneshot::Sender<()>>,
+}
+
+impl axum::serve::Listener for ObservedClosingListener {
+    type Io = tokio::net::TcpStream;
+    type Addr = SocketAddr;
+
+    async fn accept(&mut self) -> (Self::Io, Self::Addr) {
+        axum::serve::Listener::accept(self.listener.as_mut().expect("listener is open")).await
+    }
+
+    fn local_addr(&self) -> std::io::Result<Self::Addr> {
+        self.listener
+            .as_ref()
+            .expect("listener is open")
+            .local_addr()
+    }
+}
+
+impl Drop for ObservedClosingListener {
+    fn drop(&mut self) {
+        drop(self.listener.take());
+        if let Some(closed) = self.closed.take() {
+            let _ = closed.send(());
+        }
+    }
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn pairing_waits_for_a_draining_listener_before_health_and_token_persistence() {
+    let library = TestLibrary(temp_db_path("pairing-reconcile-drain"));
+    seed_db(&library.0).expect("seed private test library");
+    let listener = tokio::net::TcpListener::bind("127.0.0.1:0")
+        .await
+        .expect("bind loopback listener");
+    let address = listener.local_addr().unwrap();
+    let runtime = TrustedLanCompanionRuntime::new(address.port())
+        .with_selected_interface("Test interface", "127.0.0.1")
+        .with_enabled(true)
+        .with_qa_mode(true);
+    let state = app_state(runtime.clone(), &library.0);
+    let api_state = CompanionApiState::new(
+        state.db_path.clone(),
+        runtime.clone(),
+        state.credentials.clone(),
+    );
+    let response_ready = Arc::new(Semaphore::new(0));
+    let release_response = Arc::new(Semaphore::new(0));
+    let _cleanup = TestServerCleanup {
+        runtime: runtime.clone(),
+        release_response: release_response.clone(),
+    };
+    let ready = response_ready.clone();
+    let release = release_response.clone();
+    let router = build_router(api_state).layer(middleware::from_fn(
+        move |request: Request<Body>, next: Next| {
+            let ready = ready.clone();
+            let release = release.clone();
+            async move {
+                let hold_response = request.uri().path() == "/api/v1/health";
+                let response = next.run(request).await;
+                if hold_response {
+                    ready.add_permits(1);
+                    release.acquire().await.unwrap().forget();
+                }
+                response
+            }
+        },
+    ));
+    let (listener_closed_tx, listener_closed_rx) = oneshot::channel();
+    let listener = ObservedClosingListener {
+        listener: Some(listener),
+        closed: Some(listener_closed_tx),
+    };
+    let (shutdown_tx, shutdown_rx) = oneshot::channel();
+    let server = tauri::async_runtime::spawn(async move {
+        axum::serve(
+            listener.tap_io(|_: &mut tokio::net::TcpStream| {}),
+            router.into_make_service_with_connect_info::<SocketAddr>(),
+        )
+        .with_graceful_shutdown(async move {
+            let _ = shutdown_rx.await;
+        })
+        .await
+        .expect("serve draining test router");
+    });
+    runtime.install_server_handle(shutdown_tx, server);
+    runtime.mark_running();
+
+    let client = reqwest::Client::builder()
+        .no_proxy()
+        .timeout(TEST_DEADLINE)
+        .build()
+        .unwrap();
+    let health_url = format!("http://{address}/api/v1/health");
+    let mut accepted_health = AbortTask(tokio::spawn(async move {
+        let response = client.get(health_url).send().await.unwrap();
+        let status = response.status();
+        let _ = response.bytes().await.unwrap();
+        status
+    }));
+    observed(&response_ready).await;
+    let mut restart = AbortTask(tokio::spawn(reconcile_trusted_lan_server(state.clone())));
+    tokio::time::timeout(TEST_DEADLINE, listener_closed_rx)
+        .await
+        .expect("reconcile closes its old listener")
+        .expect("listener closure signal stays open");
+    assert!(tokio::net::TcpStream::connect(address).await.is_err());
+
+    let pairing_state = state.clone();
+    let mut pairing = AbortTask(tokio::spawn(async move {
+        crate::trusted_lan_pairing_commands::create_trusted_lan_pairing_under_reconcile(
+            pairing_state,
+            Some("Reconcile regression".to_string()),
+        )
+        .await
+    }));
+    // Without reconciliation serialization, the real 400 ms health probe
+    // reaches the closed listener and returns an error while drain is held.
+    assert!(
+        tokio::time::timeout(Duration::from_secs(1), &mut pairing.0)
+            .await
+            .is_err(),
+        "pairing must wait for listener drain and rebind"
+    );
+    let count: i64 = FilamentDatabase::open(&library.0)
+        .unwrap()
+        .connection()
+        .query_row("SELECT COUNT(*) FROM trusted_lan_pairings", [], |row| {
+            row.get(0)
+        })
+        .unwrap();
+    assert_eq!(count, 0, "no invitation exists before the Host is ready");
+
+    release_response.add_permits(1);
+    assert_eq!(
+        tokio::time::timeout(TEST_DEADLINE, &mut accepted_health.0)
+            .await
+            .unwrap()
+            .unwrap(),
+        StatusCode::OK
+    );
+    tokio::time::timeout(TEST_DEADLINE, &mut restart.0)
+        .await
+        .unwrap()
+        .unwrap()
+        .unwrap();
+    let pairing = tokio::time::timeout(TEST_DEADLINE, &mut pairing.0)
+        .await
+        .unwrap()
+        .unwrap()
+        .expect("pair only after the rebound Host passes its real health probe");
+    let pairing = serde_json::to_value(pairing).unwrap();
+    let url = reqwest::Url::parse(pairing["pairing_url"].as_str().unwrap()).unwrap();
+    let token = url
+        .query_pairs()
+        .find(|(key, _)| key == "pairing")
+        .expect("invitation includes its one-use token")
+        .1
+        .into_owned();
+    assert_eq!(pairing["expires_in_seconds"], 600);
+    let db = FilamentDatabase::open(&library.0).unwrap();
+    let (count, saved_hash): (i64, String) = db
+        .connection()
+        .query_row(
+            "SELECT COUNT(*), pairing_token_hash FROM trusted_lan_pairings",
+            [],
+            |row| Ok((row.get(0)?, row.get(1)?)),
+        )
+        .unwrap();
+    assert_eq!(count, 1, "persist exactly one invitation without retries");
+    assert_eq!(saved_hash, hash_secret(&token));
+    drop(db);
+    tokio::time::timeout(TEST_DEADLINE, shutdown_trusted_lan_server(&state))
+        .await
+        .expect("stop rebound Host");
 }
 
 #[tokio::test]

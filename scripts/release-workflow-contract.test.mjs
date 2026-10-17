@@ -1460,7 +1460,7 @@ test("macOS CI makes the sanitized database upgrade smoke a release gate", () =>
     packageManifest.scripts["smoke:release:database-upgrade"],
     "node ./scripts/smoke-release-database-upgrade.mjs",
   );
-  assert.match(macosJob, /timeout-minutes: 45/);
+  assert.match(macosJob, /^    timeout-minutes: 60$/m);
   assert.match(
     macosJob,
     /- name: Build database upgrade candidate\s+run: cargo build --locked --package bambu-filament-manager/,
