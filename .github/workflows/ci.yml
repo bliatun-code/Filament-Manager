@@ -36,7 +36,7 @@ jobs:
         run: node ./scripts/read-rust-toolchain.mjs --github-output
 
       - name: Setup Rust
-        uses: dtolnay/rust-toolchain@e2a55d2ffb04f378e9626c28d38b36d230d1e12f # master
+        uses: dtolnay/rust-toolchain@683b588c487a69d01f6c6ddf40f036ff682cc2c8 # master
         with:
           toolchain: ${{ steps.rust-toolchain.outputs.toolchain }}
 
@@ -75,7 +75,7 @@ jobs:
         run: node ./scripts/read-rust-toolchain.mjs --github-output
 
       - name: Setup Rust
-        uses: dtolnay/rust-toolchain@e2a55d2ffb04f378e9626c28d38b36d230d1e12f # master
+        uses: dtolnay/rust-toolchain@683b588c487a69d01f6c6ddf40f036ff682cc2c8 # master
         with:
           toolchain: ${{ steps.rust-toolchain.outputs.toolchain }}
 
@@ -111,7 +111,7 @@ jobs:
             ui/package-lock.json
 
       - name: Setup Rust MSRV
-        uses: dtolnay/rust-toolchain@e2a55d2ffb04f378e9626c28d38b36d230d1e12f # master
+        uses: dtolnay/rust-toolchain@683b588c487a69d01f6c6ddf40f036ff682cc2c8 # master
         with:
           toolchain: 1.90.0
 
@@ -120,7 +120,7 @@ jobs:
         run: node ./scripts/read-rust-toolchain.mjs --github-output
 
       - name: Setup Rust
-        uses: dtolnay/rust-toolchain@e2a55d2ffb04f378e9626c28d38b36d230d1e12f # master
+        uses: dtolnay/rust-toolchain@683b588c487a69d01f6c6ddf40f036ff682cc2c8 # master
         with:
           toolchain: ${{ steps.rust-toolchain.outputs.toolchain }}
           components: clippy,rustfmt
@@ -347,7 +347,7 @@ jobs:
         run: npm run check:command-portability
 
       - name: Setup Rust MSRV
-        uses: dtolnay/rust-toolchain@e2a55d2ffb04f378e9626c28d38b36d230d1e12f # master
+        uses: dtolnay/rust-toolchain@683b588c487a69d01f6c6ddf40f036ff682cc2c8 # master
         with:
           toolchain: 1.90.0
 
@@ -356,7 +356,7 @@ jobs:
         run: node ./scripts/read-rust-toolchain.mjs --github-output
 
       - name: Setup Rust
-        uses: dtolnay/rust-toolchain@e2a55d2ffb04f378e9626c28d38b36d230d1e12f # master
+        uses: dtolnay/rust-toolchain@683b588c487a69d01f6c6ddf40f036ff682cc2c8 # master
         with:
           toolchain: ${{ steps.rust-toolchain.outputs.toolchain }}
           components: clippy,rustfmt
