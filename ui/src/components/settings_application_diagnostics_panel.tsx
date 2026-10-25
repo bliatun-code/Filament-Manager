@@ -90,6 +90,7 @@ export function SettingsApplicationDiagnosticsPanel({
           ) : null
         }
       >
+        <p className="mb-3 text-sm font-medium text-slate-700 dark:text-slate-200">{t("settings.localDiagnosticsScope", "This device · local database")}</p>
         {diagnosticsStatus === "loading" ? (
           <div className="mt-3 text-xs text-slate-500 dark:text-slate-400" role="status">
             {t("common.loading", "Loading...")}

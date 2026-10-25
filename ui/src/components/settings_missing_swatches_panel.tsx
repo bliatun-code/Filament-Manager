@@ -25,6 +25,8 @@ import type { I18nContextValue } from "../lib/i18n";
 
 type SettingsMissingSwatchesPanelProps = {
   compact?: boolean;
+  swatchSearch?: string;
+  onSwatchSearchChange?: (value: string) => void;
   busy: boolean;
   catalogRowsAvailable: boolean;
   catalogRowsUnavailable: boolean;
@@ -49,6 +51,8 @@ type SettingsMissingSwatchesPanelProps = {
 
 export function SettingsMissingSwatchesPanel({
   compact = false,
+  swatchSearch = "",
+  onSwatchSearchChange,
   busy,
   catalogRowsAvailable,
   catalogRowsUnavailable,
@@ -107,6 +111,10 @@ export function SettingsMissingSwatchesPanel({
 
       <SettingsSectionBody>
         <SettingsSectionControls>
+          {onSwatchSearchChange ? <label className="mb-4 block text-sm text-slate-700 dark:text-slate-200">
+            {t("settings.swatchSearch", "Search vendor, filament, color or ID")}
+            <input type="search" value={swatchSearch} onChange={event => onSwatchSearchChange(event.target.value)} className={`${settingsCompactFormControlClass} mt-2 w-full`} />
+          </label> : null}
           <div
             role="group"
             aria-label={t("settings.swatchVendorFilter", "Filter by vendor")}
@@ -190,7 +198,7 @@ export function SettingsMissingSwatchesPanel({
           </SettingsSectionEmptyState>
         ) : visibleMissingSwatchMasters.length === 0 ? (
           <SettingsSectionEmptyState>
-            {t("settings.noMissingSwatches", "No missing swatches to fill.")}
+            {swatchSearch.trim() ? t("settings.noMatchingSwatches", "No missing color samples match this search.") : t("settings.noMissingSwatches", "No missing swatches to fill.")}
           </SettingsSectionEmptyState>
         ) : (
           <div

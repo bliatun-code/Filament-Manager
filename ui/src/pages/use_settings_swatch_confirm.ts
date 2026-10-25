@@ -6,6 +6,7 @@ type UseSettingsSwatchConfirmInput = {
   setConfirmBulkSwatch: (confirmed: boolean) => void;
   swatchVendorFilter: string;
   visibleMissingSwatchCount: number;
+  visibleMissingSwatchIds?: string;
 };
 
 export function useSettingsSwatchConfirm({
@@ -13,6 +14,7 @@ export function useSettingsSwatchConfirm({
   setConfirmBulkSwatch,
   swatchVendorFilter,
   visibleMissingSwatchCount,
+  visibleMissingSwatchIds,
 }: UseSettingsSwatchConfirmInput) {
   const clearConfirmBulkSwatch = useCallback(() => {
     setConfirmBulkSwatch(false);
@@ -22,7 +24,7 @@ export function useSettingsSwatchConfirm({
 
   useEffect(() => {
     clearConfirmBulkSwatch();
-  }, [clearConfirmBulkSwatch, swatchVendorFilter, visibleMissingSwatchCount]);
+  }, [clearConfirmBulkSwatch, swatchVendorFilter, visibleMissingSwatchCount, visibleMissingSwatchIds]);
 
   return { clearConfirmBulkSwatch };
 }

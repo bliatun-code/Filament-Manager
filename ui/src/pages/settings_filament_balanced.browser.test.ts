@@ -23,7 +23,23 @@ test("balanced filament settings selects one group, preserves drafts and keeps c
       await page.evaluate(async args=>{await (window as unknown as {FilamentSettingsPreview:{mountFilamentSettingsPreview:(locale:string,theme:string)=>Promise<void>}}).FilamentSettingsPreview.mountFilamentSettingsPreview(args.locale,args.theme);},{locale,theme});
       const editor=page.locator('.settings-filament-editor:visible');await editor.waitFor();assert.equal(await editor.count(),1);assert.equal(await editor.locator('details[open]').count(),0);
       const price=editor.locator('input[type=number]').first();assert.equal(await price.isDisabled(),locale!=='en');
-      if(locale==='en') await price.fill('310');
+      if(locale==='en') {
+        await price.fill('310');
+        await page.getByRole('status').filter({hasText:'Unsaved changes'}).waitFor();
+        await page.getByRole('tab').first().click();
+        assert.equal(await page.getByRole('tabpanel').count(),1);
+        await page.getByRole('tab').nth(1).click();
+        assert.equal(await price.inputValue(),'310');
+        await page.locator('.settings-filament-sections button').nth(1).click();
+        const currency=page.locator('#settings-filament-default-currency input');await currency.fill('EUR');
+        await page.getByRole('tab').first().click();await page.getByRole('tab').nth(1).click();
+        assert.equal(await currency.inputValue(),'EUR');await currency.fill('NOK');
+        await page.locator('.settings-filament-sections button').nth(2).click();
+        const threshold=page.getByRole('spinbutton',{name:'Default threshold',exact:true});
+        await threshold.fill('350');await page.evaluate(()=>(window as unknown as {refreshLowStockPolicy:()=>void}).refreshLowStockPolicy());assert.equal(await threshold.inputValue(),'350');await page.getByRole('tab').first().click();await page.getByRole('tab').nth(1).click();
+        assert.equal(await threshold.inputValue(),'350');await threshold.fill('200');
+        await page.locator('.settings-filament-sections button').first().click();
+      }
       const chooseGroup=async (index:number) => { const select=page.locator('.settings-filament-group-select select');if(await select.isVisible()) await select.selectOption({index});else await page.locator('.settings-filament-group').nth(index).click(); };
       await chooseGroup(1);assert.equal(await editor.count(),1);
       await chooseGroup(0);if(locale==='en') assert.equal(await price.inputValue(),'310');

@@ -9,6 +9,8 @@ import { SettingsPrinterObservedDetailsToggle } from "./settings_printer_observe
 type SettingsPrinterCardHeaderProps = {
   actionsLocked: boolean;
   busy: boolean;
+  captureActive?: boolean;
+  onStopCapture?: () => void;
   configuredSetup: string;
   confirmDelete: boolean;
   hasLiveIntegration: boolean;
@@ -27,6 +29,8 @@ type SettingsPrinterCardHeaderProps = {
 export function SettingsPrinterCardHeader({
   actionsLocked,
   busy,
+  captureActive = false,
+  onStopCapture,
   configuredSetup,
   confirmDelete,
   hasLiveIntegration,
@@ -85,6 +89,10 @@ export function SettingsPrinterCardHeader({
         ) : null}
       </div>
       <div className="settings-printer-observed-toggle">
+        {captureActive && onStopCapture ? <div className="mb-2 flex flex-wrap items-center gap-3">
+          <span role="status" className="text-xs font-medium text-slate-700 dark:text-slate-200">{t("settings.bambuLiveCaptureRunning", "Capture is running")}</span>
+          {!isExpanded ? <button type="button" onClick={onStopCapture} className={settingsActionButtonClass("warningQuiet", "compact")}>{t("settings.bambuLiveStopCapture", "Stop capture")}</button> : null}
+        </div> : null}
         {hasLiveIntegration && !isEditing ? (
           <SettingsPrinterObservedDetailsToggle
             controlsId={observedDetailsId}

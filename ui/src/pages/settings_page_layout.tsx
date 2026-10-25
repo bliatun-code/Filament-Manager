@@ -5,6 +5,7 @@ import { SettingsLibraryRoleModalRoute } from "./settings_library_role_modal_rou
 import type { SettingsPageTabButton } from "./settings_page_model";
 import { SettingsRouteOutlet } from "./settings_route_outlet";
 import { SettingsTabNav } from "./settings_tab_nav";
+import { SettingsPageHeader } from "./settings_page_header";
 
 type SettingsPageLayoutProps = {
   activeTab: SettingsTabKey;
@@ -35,10 +36,7 @@ export function SettingsPageLayout({
 }: SettingsPageLayoutProps) {
   return (
     <div className="page-shell settings-balanced-layout">
-      <header className="settings-balanced-header">
-        <h1 className="text-xl font-semibold tracking-tight text-slate-900 dark:text-slate-100">{title}</h1>
-        <p className="sr-only">{subtitle}</p>
-      </header>
+      <SettingsPageHeader subtitle={subtitle} title={title} />
       <div className="settings-balanced-body">
         <SettingsTabNav label={title} onTabChange={onTabChange} tabs={tabButtons} />
         <div className="settings-balanced-content">

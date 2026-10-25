@@ -1420,6 +1420,14 @@ export const koKRDictionary: DictionaryNode = {
     }
   },
   "settings": {
+    "noMatchingSwatches": "검색과 일치하는 누락된 색상 샘플이 없습니다.",
+    "autoSaveHint": "이 페이지의 변경 사항은 자동으로 저장됩니다.",
+    "changeLibraryRole": "라이브러리 역할 변경",
+    "localDiagnosticsScope": "이 기기 · 로컬 데이터베이스",
+    "unsavedChanges": "저장하지 않은 변경 사항",
+    "filamentDefaultsSaveGroupHint": "그룹 기본 가격을 저장합니다. 기존 스풀 가격은 아래 가격을 적용할 때만 변경됩니다.",
+    "swatchSearch": "제조사, 필라멘트, 색상 또는 ID 검색",
+
     "catalogRefreshStatusUncertain": "상태를 확인하지 못했습니다. 새로고침 로그를 확인하세요. 업데이트가 계속 진행 중일 수 있습니다.",
     "catalogRefreshFailedNextStep": "업데이트가 완료되지 않았습니다. 다른 업데이트를 시작하기 전에 새로고침 로그를 확인하세요.",
     "catalogRefreshInterruptedNextStep": "업데이트가 중단되었습니다. 다시 시작하기 전에 카탈로그와 새로고침 로그를 확인하세요.",

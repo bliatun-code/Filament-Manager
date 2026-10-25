@@ -108,6 +108,7 @@ export function SettingsGeneralTab({
 
   return (
     <div className="settings-general-balanced">
+      <p className="mb-5 text-sm text-slate-600 dark:text-slate-300">{t("settings.autoSaveHint", "Changes on this page are saved automatically.")}</p>
       <GeneralSection
         eyebrow={t("settings.appearance", "Appearance")}
         description={t("settings.autoHint", "Auto follows your system light/dark preference.")}

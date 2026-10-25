@@ -1420,6 +1420,14 @@ export const daDKDictionary: DictionaryNode = {
     }
   },
   "settings": {
+    "noMatchingSwatches": "Ingen manglende farveprøver matcher søgningen.",
+    "autoSaveHint": "Ændringer på denne side gemmes automatisk.",
+    "changeLibraryRole": "Skift biblioteksrolle",
+    "localDiagnosticsScope": "Denne enhed · lokal database",
+    "unsavedChanges": "Ikke-gemte ændringer",
+    "filamentDefaultsSaveGroupHint": "Gem gruppens standardpris. Priser på eksisterende ruller ændres først, når du anvender prisen nedenfor.",
+    "swatchSearch": "Søg efter leverandør, filament, farve eller ID",
+
     "catalogRefreshStatusUncertain": "Status kunne ikke bekræftes. Se opdateringsloggen; opdateringen kan stadig være i gang.",
     "catalogRefreshFailedNextStep": "Opdateringen blev ikke fuldført. Se opdateringsloggen, før du starter en ny opdatering.",
     "catalogRefreshInterruptedNextStep": "Opdateringen blev afbrudt. Kontrollér kataloget og opdateringsloggen, før du starter igen.",

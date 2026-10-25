@@ -565,6 +565,14 @@ export function SettingsFilamentDefaultsTab({
     }));
   }
 
+  function groupHasUnsavedChanges(group: FilamentPriceGroup) {
+    const draft = groupDrafts[group.key];
+    if (!draft) return false;
+    const saved = persistedByGroup.get(group.key);
+    return draft.priceRaw !== (saved ? String(saved.price) : "") ||
+      draft.currencyRaw !== (saved?.currency ?? normalizedDefaultCurrency ?? "");
+  }
+
   function setSpoolSelected(spoolId: string, selected: boolean) {
     setSelectionAnnouncement(null);
     setSelectedSpoolIds((current) => {
@@ -856,6 +864,7 @@ export function SettingsFilamentDefaultsTab({
         <div><span>{t("settings.filamentDefaultsCurrency", "Default purchase currency")}</span><strong>{!loadFailed && settingsValid ? defaultCurrency : "—"}</strong></div>
         <div><span>{t("settings.lowStockDefaultThreshold", "Default threshold")}</span><strong>{lowStock.policyValid && lowStock.policy ? `${lowStock.policy.default_threshold_g.toLocaleString(locale)} g` : "—"}</strong></div>
       </div>
+      {!readOnly && (defaultCurrencyRaw !== defaultCurrency || groups.some(groupHasUnsavedChanges)) ? <p role="status" className="text-sm font-medium text-amber-800 dark:text-amber-200">{t("settings.unsavedChanges", "Unsaved changes")}</p> : null}
       {readOnly ? <SettingsNotice tone="neutral">{t("settings.filamentDefaultsHostOwned", "Manage library-wide filament defaults on the Host desktop app.")}</SettingsNotice> : null}
       <div className="settings-filament-sections" role="group" aria-label={t("settings.tabFilamentDefaults", "Filament defaults")}>
         {([
@@ -957,7 +966,7 @@ export function SettingsFilamentDefaultsTab({
               {selectionAnnouncement}
             </p>
           ) : null}
-          <div className="settings-filament-vendors" role="group" aria-label={t("inventory.vendor", "Vendor")}>
+          <div className="settings-filament-vendors" role="group" aria-label={t("inventory.vendorGroup", "Vendor")}>
             {categories.map((category) => <button key={category.key} type="button" className="settings-filament-vendor app-control-focus" aria-pressed={selectedCategory?.key === category.key} onClick={() => { setSelectedCategoryKey(category.key); setSelectedGroupKey(null); }}>
               <span>{category.key === "generic" ? t("vendor.generic", "Generic") : category.label}</span>
               <span className="text-xs opacity-75">{t("settings.filamentDefaultsGroups", "{count, plural, one {# price group} other {# price groups}}", {count:category.groupCount})}</span>
@@ -966,13 +975,14 @@ export function SettingsFilamentDefaultsTab({
           {selectedCategory ? <label className="settings-filament-group-select text-sm">
             <span className="sr-only">{t("settings.filamentDefaultsGroupPrices", "Filament group prices")}</span>
             <select className={settingsFormControlClass} value={selectedGroup?.key ?? ""} onChange={(event) => setSelectedGroupKey(event.target.value)}>
-              {selectedCategory.groups.map((group) => <option key={group.key} value={group.key}>{localizedGroupLabel(group.materialLabel,t)} · {localizedGroupLabel(group.filamentLabel,t)} · {groupWeightLabel(group,locale,t)}</option>)}
+              {selectedCategory.groups.map((group) => <option key={group.key} value={group.key}>{localizedGroupLabel(group.materialLabel,t)} · {localizedGroupLabel(group.filamentLabel,t)} · {groupWeightLabel(group,locale,t)}{groupHasUnsavedChanges(group) ? ` · ${t("settings.unsavedChanges", "Unsaved changes")}` : ""}</option>)}
             </select>
           </label> : null}
           <div className="settings-filament-workspace">
             {selectedCategory ? <div className="settings-filament-groups" role="group" aria-label={t("settings.filamentDefaultsGroupPrices", "Filament group prices")}>
               {selectedCategory.groups.map((group) => <button key={group.key} type="button" className="settings-filament-group app-control-focus" aria-pressed={selectedGroup?.key === group.key} onClick={() => setSelectedGroupKey(group.key)}>
                 <span className="font-medium">{localizedGroupLabel(group.materialLabel,t)} · {localizedGroupLabel(group.filamentLabel,t)}</span>
+                {groupHasUnsavedChanges(group) ? <span className="text-xs font-semibold text-amber-800 dark:text-amber-200">{t("settings.unsavedChanges", "Unsaved changes")}</span> : null}
                 <span className="text-xs opacity-75">{groupWeightLabel(group,locale,t)} · {t("settings.filamentDefaultsSpools", "{count, plural, one {# spool} other {# spools}}", {count:group.counts.total})}</span>
               </button>)}
             </div> : null}
@@ -1053,6 +1063,7 @@ export function SettingsFilamentDefaultsTab({
                           </span>
                         </header>
                         <div className="space-y-4 border-t border-slate-200/80 p-4 dark:border-slate-700/80">
+                          <p className="text-xs text-slate-600 dark:text-slate-300">{t("settings.filamentDefaultsSaveGroupHint", "Save the reusable group standard. Existing spool prices change only when you apply the price below.")}</p>
                           <div className="grid gap-3 grid-cols-[minmax(0,1fr)_minmax(0,1fr)] [&>button]:col-span-2">
                             <label className="text-xs font-medium text-slate-600 dark:text-slate-300">
                               {t("settings.filamentDefaultsGroupPrice", "Price per spool")}

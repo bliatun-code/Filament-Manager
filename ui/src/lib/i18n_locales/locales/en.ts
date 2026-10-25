@@ -1663,6 +1663,14 @@ export const enDictionary: DictionaryNode = {
       },
     },
     settings: {
+      "noMatchingSwatches": "No missing color samples match this search.",
+      "autoSaveHint": "Changes on this page are saved automatically.",
+      "changeLibraryRole": "Change library role",
+      "localDiagnosticsScope": "This device · local database",
+      "unsavedChanges": "Unsaved changes",
+      "filamentDefaultsSaveGroupHint": "Save the reusable group standard. Existing spool prices change only when you apply the price below.",
+      "swatchSearch": "Search vendor, filament, color or ID",
+
       "catalogRefreshStatusUncertain": "Status could not be confirmed. Check the refresh log; the update may still be running.",
       "catalogRefreshFailedNextStep": "The update was not completed. Check the refresh log before starting another update.",
       "catalogRefreshInterruptedNextStep": "The update was interrupted. Check the catalog and refresh log before starting again.",

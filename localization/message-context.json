@@ -1041,6 +1041,48 @@
       "key": "settings.catalogHostUnavailableNextStep",
       "meaning": "A Client could not obtain the Host catalog. The next step is to check the configured Host connection in the existing Library & web app settings tab before retrying. The translated tab name should match settings.tabLibrary.",
       "screenshot": "docs/screenshots/settings-catalog.jpg"
+    },
+    {
+      "surface": "desktop",
+      "key": "settings.autoSaveHint",
+      "meaning": "General settings only: appearance, language, background operation and update preferences save immediately. This is not a promise of autosave for the rest of Settings.",
+      "screenshot": "docs/screenshots/settings-general.jpg"
+    },
+    {
+      "surface": "desktop",
+      "key": "settings.changeLibraryRole",
+      "meaning": "Disclosure that opens role-changing controls for Standalone, Host and Client. Role changes still require the existing confirmation flow.",
+      "screenshot": "docs/screenshots/settings-library-network.jpg"
+    },
+    {
+      "surface": "desktop",
+      "key": "settings.localDiagnosticsScope",
+      "meaning": "Labels the database health result as belonging to this device. On a Client it is the local database, not a health check of the paired Host database.",
+      "screenshot": "docs/screenshots/settings-maintenance.jpg"
+    },
+    {
+      "surface": "desktop",
+      "key": "settings.unsavedChanges",
+      "meaning": "A draft setting differs from its persisted value. Drafts remain available when switching Settings sidebar sections; this label does not mean a save failed.",
+      "screenshot": "docs/screenshots/settings-filament-defaults.jpg"
+    },
+    {
+      "surface": "desktop",
+      "key": "settings.filamentDefaultsSaveGroupHint",
+      "meaning": "Distinguishes saving a reusable filament group price standard from the separate explicit action that writes prices to selected existing inventory rolls.",
+      "screenshot": "docs/screenshots/settings-filament-defaults.jpg"
+    },
+    {
+      "surface": "desktop",
+      "key": "settings.swatchSearch",
+      "meaning": "Search field for missing catalog color samples. Matches vendor, material, filament name, color name or catalog ID; combines with the vendor filter. Bulk auto-fill targets all matched entries.",
+      "screenshot": "docs/screenshots/settings-catalog.jpg"
+    },
+    {
+      "surface": "desktop",
+      "key": "settings.noMatchingSwatches",
+      "meaning": "Empty search results among missing color samples. Other missing samples may still exist outside the current search and vendor filter.",
+      "screenshot": "docs/screenshots/settings-catalog.jpg"
     }
   ],
   "groups": [

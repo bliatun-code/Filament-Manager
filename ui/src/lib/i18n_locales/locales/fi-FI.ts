@@ -1420,6 +1420,14 @@ export const fiFIDictionary: DictionaryNode = {
     }
   },
   "settings": {
+    "noMatchingSwatches": "Hakua vastaavia puuttuvia värinäytteitä ei löytynyt.",
+    "autoSaveHint": "Tämän sivun muutokset tallennetaan automaattisesti.",
+    "changeLibraryRole": "Vaihda kirjaston roolia",
+    "localDiagnosticsScope": "Tämä laite · paikallinen tietokanta",
+    "unsavedChanges": "Tallentamattomia muutoksia",
+    "filamentDefaultsSaveGroupHint": "Tallenna ryhmän oletushinta. Nykyisten kelojen hinnat muuttuvat vasta, kun otat alla olevan hinnan käyttöön.",
+    "swatchSearch": "Hae valmistajaa, filamenttia, väriä tai tunnusta",
+
     "catalogRefreshStatusUncertain": "Tilaa ei voitu vahvistaa. Tarkista päivitysloki; päivitys saattaa olla yhä käynnissä.",
     "catalogRefreshFailedNextStep": "Päivitys ei valmistunut. Tarkista päivitysloki ennen uuden päivityksen aloittamista.",
     "catalogRefreshInterruptedNextStep": "Päivitys keskeytyi. Tarkista katalogi ja päivitysloki ennen uudelleen aloittamista.",

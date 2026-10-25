@@ -1176,6 +1176,14 @@ export const trTRDictionary: DictionaryNode = {
     "withToolheads": "Çoklu takım başlığı"
   },
   "settings": {
+    "noMatchingSwatches": "Bu aramayla eşleşen eksik renk örneği yok.",
+    "autoSaveHint": "Bu sayfadaki değişiklikler otomatik kaydedilir.",
+    "changeLibraryRole": "Kitaplık rolünü değiştir",
+    "localDiagnosticsScope": "Bu cihaz · yerel veritabanı",
+    "unsavedChanges": "Kaydedilmemiş değişiklikler",
+    "filamentDefaultsSaveGroupHint": "Grubun varsayılan fiyatını kaydedin. Mevcut makaraların fiyatları yalnızca aşağıdaki fiyatı uyguladığınızda değişir.",
+    "swatchSearch": "Üretici, filament, renk veya kimlik ara",
+
     "catalogRefreshStatusUncertain": "Durum doğrulanamadı. Yenileme günlüğünü kontrol edin; güncelleme hâlâ çalışıyor olabilir.",
     "catalogRefreshFailedNextStep": "Güncelleme tamamlanmadı. Başka bir güncelleme başlatmadan önce yenileme günlüğünü kontrol edin.",
     "catalogRefreshInterruptedNextStep": "Güncelleme kesintiye uğradı. Yeniden başlamadan önce kataloğu ve yenileme günlüğünü kontrol edin.",

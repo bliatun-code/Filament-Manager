@@ -1176,6 +1176,14 @@ export const csCZDictionary: DictionaryNode = {
     "withToolheads": "Vícenástrojová hlava"
   },
   "settings": {
+    "noMatchingSwatches": "Vyhledávání neodpovídají žádné chybějící vzorky barev.",
+    "autoSaveHint": "Změny na této stránce se ukládají automaticky.",
+    "changeLibraryRole": "Změnit roli knihovny",
+    "localDiagnosticsScope": "Toto zařízení · místní databáze",
+    "unsavedChanges": "Neuložené změny",
+    "filamentDefaultsSaveGroupHint": "Uložte výchozí cenu skupiny. Ceny stávajících cívek se změní až po použití ceny níže.",
+    "swatchSearch": "Hledat výrobce, filament, barvu nebo ID",
+
     "catalogRefreshStatusUncertain": "Stav se nepodařilo potvrdit. Zkontrolujte protokol obnovení; aktualizace může stále probíhat.",
     "catalogRefreshFailedNextStep": "Aktualizace nebyla dokončena. Před zahájením další aktualizace zkontrolujte protokol obnovení.",
     "catalogRefreshInterruptedNextStep": "Aktualizace byla přerušena. Před novým spuštěním zkontrolujte katalog a protokol obnovení.",

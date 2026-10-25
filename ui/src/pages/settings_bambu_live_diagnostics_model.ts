@@ -81,6 +81,7 @@ type SettingsBambuLiveSummarySource = {
   amsStatusMain?: number | null;
   amsStatusSub?: number | null;
   jobStateCode?: number | null;
+  gcodeState?: string | null;
   progressPercent?: number | null;
   remainingMinutes?: number | null;
 };
@@ -99,6 +100,18 @@ const NO_LIVE_STATUS_DURING_POLL_NOTE =
   "Connected, but no live MQTT status arrived during this poll.";
 const WAITING_FOR_STATUS_BURST_NOTE =
   "Connected, waiting for the next MQTT status burst.";
+
+export function settingsPrinterJobStateLabel(state: string | null | undefined, t: TranslateFn): string {
+  switch (state?.trim().toUpperCase()) {
+    case "RUNNING": return t("printers.liveTelemetryPrinting", "Printing");
+    case "PAUSE": case "PAUSED": return t("printers.liveTelemetryPaused", "Paused");
+    case "PREPARE": case "SLICING": return t("printers.liveTelemetryPreparing", "Preparing");
+    case "FINISH": case "FINISHED": return t("statistics.completed", "Completed");
+    case "FAILED": return t("printers.failed", "Failed");
+    case "IDLE": case "STOP": case "STOPPED": case "CANCELLED": return t("printers.liveTelemetryIdle", "Idle");
+    default: return t("common.unknown", "Unknown");
+  }
+}
 
 function buildSettingsBambuLiveSummaryParts(
   source: SettingsBambuLiveSummarySource,
@@ -129,12 +142,9 @@ function buildSettingsBambuLiveSummaryParts(
       )}`,
     );
   }
-  if (source.jobStateCode != null) {
+  if (source.jobStateCode != null || source.gcodeState) {
     parts.push(
-      `${t("settings.bambuLiveSummaryJobState", "Job state")} ${formatDisplayInteger(
-        source.jobStateCode,
-        locale,
-      )}`,
+      `${t("settings.bambuLiveSummaryJobState", "Job state")}: ${settingsPrinterJobStateLabel(source.gcodeState, t)}`,
     );
   }
   if (source.amsStatusCode != null) {
@@ -165,6 +175,7 @@ export function buildSettingsBambuLiveFallbackSummaryParts(
       amsStatusMain: fallbackSummary.amsStatusMain,
       amsStatusSub: fallbackSummary.amsStatusSub,
       jobStateCode: fallbackSummary.jobStateCode,
+      gcodeState: diagnosticFields.find(field => ["_bfm_job.gcode_state", "gcode_state", "print.gcode_state"].includes(field.path))?.valueText.replace(/^"|"$/g, ""),
       progressPercent: fallbackSummary.progressPercent,
       remainingMinutes: fallbackSummary.remainingMinutes,
     },
@@ -187,6 +198,7 @@ export function buildSettingsBambuLiveObservedSummaryParts(
       amsStatusMain: observedState?.ams_status_main,
       amsStatusSub: observedState?.ams_status_sub,
       jobStateCode: observedState?.job_state_code,
+      gcodeState: observedState?.gcode_state,
       progressPercent: observedState?.progress_percent,
       remainingMinutes: observedState?.remaining_minutes,
     },

@@ -44,6 +44,7 @@ export function useSettingsCatalogSectionState({
     esunDiscoveredMaterials: refreshMaterials.esunDiscoveredMaterials,
     esunRefreshMaterial: refreshMaterials.esunRefreshMaterial,
     swatchVendorFilter: swatchState.swatchVendorFilter,
+    swatchSearch: swatchState.swatchSearch,
   });
 
   return {

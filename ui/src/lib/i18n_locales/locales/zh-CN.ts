@@ -1420,6 +1420,14 @@ export const zhCNDictionary: DictionaryNode = {
     }
   },
   "settings": {
+    "noMatchingSwatches": "没有符合此搜索条件的缺失色样。",
+    "autoSaveHint": "此页面上的更改会自动保存。",
+    "changeLibraryRole": "更改库角色",
+    "localDiagnosticsScope": "此设备 · 本地数据库",
+    "unsavedChanges": "未保存的更改",
+    "filamentDefaultsSaveGroupHint": "保存组的默认价格。现有料卷的价格仅在应用下方价格时才会更改。",
+    "swatchSearch": "搜索厂商、耗材、颜色或 ID",
+
     "catalogRefreshStatusUncertain": "无法确认状态。请检查刷新日志；更新可能仍在进行。",
     "catalogRefreshFailedNextStep": "更新未完成。请先检查刷新日志，再开始另一次更新。",
     "catalogRefreshInterruptedNextStep": "更新已中断。请先检查目录和刷新日志，再重新开始。",

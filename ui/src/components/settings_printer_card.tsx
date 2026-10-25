@@ -156,6 +156,8 @@ export function SettingsPrinterCard({
       <SettingsPrinterCardHeader
         actionsLocked={actionsLocked}
         busy={busy}
+        captureActive={liveDiagnostics.captureActive}
+        onStopCapture={liveDiagnosticsActions.onToggleCapture}
         configuredSetup={configuredSetup}
         confirmDelete={confirmDelete}
         hasLiveIntegration={Boolean(liveDiagnostics.liveConfig?.enabled)}

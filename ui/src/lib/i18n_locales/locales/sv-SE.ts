@@ -1420,6 +1420,14 @@ export const svSEDictionary: DictionaryNode = {
     }
   },
   "settings": {
+    "noMatchingSwatches": "Inga saknade färgprover matchar sökningen.",
+    "autoSaveHint": "Ändringar på den här sidan sparas automatiskt.",
+    "changeLibraryRole": "Ändra biblioteksroll",
+    "localDiagnosticsScope": "Den här enheten · lokal databas",
+    "unsavedChanges": "Osparade ändringar",
+    "filamentDefaultsSaveGroupHint": "Spara gruppens standardpris. Priser på befintliga rullar ändras först när du tillämpar priset nedan.",
+    "swatchSearch": "Sök efter leverantör, filament, färg eller ID",
+
     "catalogRefreshStatusUncertain": "Status kunde inte bekräftas. Se uppdateringsloggen; uppdateringen kan fortfarande pågå.",
     "catalogRefreshFailedNextStep": "Uppdateringen slutfördes inte. Se uppdateringsloggen innan du startar en ny uppdatering.",
     "catalogRefreshInterruptedNextStep": "Uppdateringen avbröts. Kontrollera katalogen och uppdateringsloggen innan du börjar om.",

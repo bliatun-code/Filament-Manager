@@ -53,7 +53,13 @@ export function SettingsLowStockPanel({
   t,
   onSave,
 }: SettingsLowStockPanelProps) {
-  const initialDraft = useMemo(() => policyDrafts(policy), [policy]);
+  // A background refresh may return a new object containing the same policy.
+  // Only changed saved values should reset an editor, not object identity.
+  const policySignature = JSON.stringify(policyDrafts(policy));
+  const initialDraft = useMemo(
+    () => JSON.parse(policySignature) as ReturnType<typeof policyDrafts>,
+    [policySignature],
+  );
   const [defaultThresholdRaw, setDefaultThresholdRaw] = useState(
     initialDraft.defaultThresholdRaw,
   );
@@ -134,6 +140,7 @@ export function SettingsLowStockPanel({
         "Set one default for the library and override it only for materials that need a different restock point.",
       )}
     >
+      {!readOnly && (defaultThresholdRaw !== initialDraft.defaultThresholdRaw || JSON.stringify(overrides) !== JSON.stringify(initialDraft.overrides)) ? <p role="status" className="text-sm font-medium text-amber-800 dark:text-amber-200">{t("settings.unsavedChanges", "Unsaved changes")}</p> : null}
       {readOnly ? (
         <p className="surface-subtle px-3 py-2 text-xs leading-5 text-slate-600 dark:text-slate-300">
           {t(

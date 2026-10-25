@@ -56,7 +56,7 @@ export function SettingsLibraryRolePanel({
         <span className="font-medium">{librarySyncRoleOptions.find((option) => option.mode === librarySyncModeDraft)?.label}</span>
       </div>
       <details className="settings-library-role-editor">
-        <summary className="app-control-focus">{t("common.show", "Show")}</summary>
+        <summary className="app-control-focus">{t("settings.changeLibraryRole", "Change library role")}</summary>
         <div className="mt-3 space-y-3">
         <div
           role="group"

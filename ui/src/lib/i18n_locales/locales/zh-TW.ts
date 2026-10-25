@@ -1420,6 +1420,14 @@ export const zhTWDictionary: DictionaryNode = {
     }
   },
   "settings": {
+    "noMatchingSwatches": "沒有符合此搜尋條件的缺失色樣。",
+    "autoSaveHint": "此頁面上的變更會自動儲存。",
+    "changeLibraryRole": "變更資料庫角色",
+    "localDiagnosticsScope": "此裝置 · 本機資料庫",
+    "unsavedChanges": "未儲存的變更",
+    "filamentDefaultsSaveGroupHint": "儲存群組的預設價格。現有料卷的價格僅在套用下方價格時才會變更。",
+    "swatchSearch": "搜尋廠商、耗材、顏色或 ID",
+
     "catalogRefreshStatusUncertain": "無法確認狀態。請檢查重新整理記錄；更新可能仍在進行。",
     "catalogRefreshFailedNextStep": "更新未完成。請先檢查重新整理記錄，再開始另一次更新。",
     "catalogRefreshInterruptedNextStep": "更新已中斷。請先檢查目錄和重新整理記錄，再重新開始。",

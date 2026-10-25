@@ -1420,6 +1420,14 @@ export const huHUDictionary: DictionaryNode = {
     }
   },
   "settings": {
+    "noMatchingSwatches": "Nincs a keresésnek megfelelő hiányzó színminta.",
+    "autoSaveHint": "Az ezen az oldalon végzett módosítások automatikusan mentődnek.",
+    "changeLibraryRole": "Könyvtárszerep módosítása",
+    "localDiagnosticsScope": "Ez az eszköz · helyi adatbázis",
+    "unsavedChanges": "Nem mentett módosítások",
+    "filamentDefaultsSaveGroupHint": "Mentse a csoport alapértelmezett árát. A meglévő tekercsek ára csak az alábbi ár alkalmazásakor változik.",
+    "swatchSearch": "Gyártó, filament, szín vagy azonosító keresése",
+
     "catalogRefreshStatusUncertain": "Az állapot nem erősíthető meg. Ellenőrizze a frissítési naplót; a frissítés még folyamatban lehet.",
     "catalogRefreshFailedNextStep": "A frissítés nem fejeződött be. Új frissítés indítása előtt ellenőrizze a frissítési naplót.",
     "catalogRefreshInterruptedNextStep": "A frissítés megszakadt. Újrakezdés előtt ellenőrizze a katalógust és a frissítési naplót.",

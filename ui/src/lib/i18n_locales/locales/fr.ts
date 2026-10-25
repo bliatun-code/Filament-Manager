@@ -1684,6 +1684,14 @@ export const frDictionary: DictionaryNode = {
     },
   },
   settings: {
+    "noMatchingSwatches": "Aucun échantillon de couleur manquant ne correspond à cette recherche.",
+    "autoSaveHint": "Les modifications de cette page sont enregistrées automatiquement.",
+    "changeLibraryRole": "Modifier le rôle de la bibliothèque",
+    "localDiagnosticsScope": "Cet appareil · base de données locale",
+    "unsavedChanges": "Modifications non enregistrées",
+    "filamentDefaultsSaveGroupHint": "Enregistrez le prix de référence du groupe. Les prix des bobines existantes ne changent que si vous appliquez le prix ci-dessous.",
+    "swatchSearch": "Rechercher un fabricant, un filament, une couleur ou un ID",
+
     "catalogRefreshStatusUncertain": "L’état n’a pas pu être confirmé. Consultez le journal d’actualisation ; la mise à jour est peut-être encore en cours.",
     "catalogRefreshFailedNextStep": "La mise à jour n’a pas abouti. Consultez le journal d’actualisation avant d’en lancer une autre.",
     "catalogRefreshInterruptedNextStep": "La mise à jour a été interrompue. Vérifiez le catalogue et le journal d’actualisation avant de recommencer.",

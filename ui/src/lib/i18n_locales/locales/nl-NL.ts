@@ -1176,6 +1176,14 @@ export const nlNLDictionary: DictionaryNode = {
     "withToolheads": "Multitoolkop"
   },
   "settings": {
+    "noMatchingSwatches": "Geen ontbrekende kleurstalen komen overeen met deze zoekopdracht.",
+    "autoSaveHint": "Wijzigingen op deze pagina worden automatisch opgeslagen.",
+    "changeLibraryRole": "Bibliotheekrol wijzigen",
+    "localDiagnosticsScope": "Dit apparaat · lokale database",
+    "unsavedChanges": "Niet-opgeslagen wijzigingen",
+    "filamentDefaultsSaveGroupHint": "Sla de standaardprijs van de groep op. Prijzen van bestaande spoelen veranderen pas als u de onderstaande prijs toepast.",
+    "swatchSearch": "Zoek op fabrikant, filament, kleur of ID",
+
     "catalogRefreshStatusUncertain": "De status kon niet worden bevestigd. Bekijk het vernieuwingslogboek; de update kan nog bezig zijn.",
     "catalogRefreshFailedNextStep": "De update is niet voltooid. Bekijk het vernieuwingslogboek voordat je een nieuwe update start.",
     "catalogRefreshInterruptedNextStep": "De update is onderbroken. Controleer de catalogus en het vernieuwingslogboek voordat je opnieuw begint.",

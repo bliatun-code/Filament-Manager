@@ -1489,6 +1489,14 @@ export const ptBRDictionary: DictionaryNode = {
     withToolheads: "Multi-ferramenta",
   },
   settings: {
+    "noMatchingSwatches": "Nenhuma amostra de cor ausente corresponde à busca.",
+    "autoSaveHint": "As alterações nesta página são salvas automaticamente.",
+    "changeLibraryRole": "Alterar função da biblioteca",
+    "localDiagnosticsScope": "Este dispositivo · banco de dados local",
+    "unsavedChanges": "Alterações não salvas",
+    "filamentDefaultsSaveGroupHint": "Salve o preço padrão do grupo. Os preços dos rolos existentes só mudam ao aplicar o preço abaixo.",
+    "swatchSearch": "Buscar fabricante, filamento, cor ou ID",
+
     "catalogRefreshStatusUncertain": "Não foi possível confirmar o status. Consulte o registro de atualização; a atualização ainda pode estar em andamento.",
     "catalogRefreshFailedNextStep": "A atualização não foi concluída. Consulte o registro antes de iniciar outra atualização.",
     "catalogRefreshInterruptedNextStep": "A atualização foi interrompida. Verifique o catálogo e o registro de atualização antes de começar novamente.",

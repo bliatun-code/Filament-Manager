@@ -19,6 +19,7 @@ function Preview() {
   const [readOnly] = useState(() => new URLSearchParams(location.search).get("writable") !== "true");
   const [currency,setCurrency] = useState("NOK");
   const [policy,setPolicy] = useState({default_threshold_g:200,material_overrides:[]});
+  Object.assign(window,{refreshLowStockPolicy:()=>setPolicy(current=>({...current}))});
   const rows:FilamentDefaultsSpoolRow[] = [];
   for (const [vendor, material, filamentName, count] of [["Bambu Lab","PLA","PLA Basic",16],["Bambu Lab","PLA","PLA Matte",7],["Bambu Lab","ABS","ABS",4],["eSUN","PLA","PLA+HS",3]] as const) {
     for(let i=0;i<count;i++) rows.push({spoolId:`qa-${vendor}-${filamentName}-${i}`,masterId:`qa-master-${filamentName}-${i}`,groupKey:`v1:${JSON.stringify([vendor.toUpperCase(),material,filamentName.toUpperCase(),1000])}`,vendor,material,filamentName,colorName:["Black","White","Green","Yellow"][i%4],nominalWeightG:1000,purchasePrice:i===0?null:295,purchaseCurrency:i===0?null:"NOK",purchasePriceSource:i===0?null:"MANUAL",batchPriceLocked:i>12,ownershipType:"OWNED",status:i>12?"EMPTY":"IN_STOCK"});

@@ -1450,6 +1450,14 @@ export const itITDictionary: DictionaryNode = {
     withToolheads: "Testa multiutensile",
   },
   settings: {
+    "noMatchingSwatches": "Nessun campione di colore mancante corrisponde alla ricerca.",
+    "autoSaveHint": "Le modifiche in questa pagina vengono salvate automaticamente.",
+    "changeLibraryRole": "Cambia ruolo della libreria",
+    "localDiagnosticsScope": "Questo dispositivo · database locale",
+    "unsavedChanges": "Modifiche non salvate",
+    "filamentDefaultsSaveGroupHint": "Salva il prezzo predefinito del gruppo. I prezzi delle bobine esistenti cambiano solo applicando il prezzo qui sotto.",
+    "swatchSearch": "Cerca produttore, filamento, colore o ID",
+
     "catalogRefreshStatusUncertain": "Impossibile confermare lo stato. Controlla il registro di aggiornamento: l’aggiornamento potrebbe essere ancora in corso.",
     "catalogRefreshFailedNextStep": "L’aggiornamento non è stato completato. Controlla il registro prima di avviare un altro aggiornamento.",
     "catalogRefreshInterruptedNextStep": "L’aggiornamento è stato interrotto. Controlla il catalogo e il registro di aggiornamento prima di ricominciare.",

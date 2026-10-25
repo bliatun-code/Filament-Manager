@@ -1420,6 +1420,14 @@ export const jaJPDictionary: DictionaryNode = {
     }
   },
   "settings": {
+    "noMatchingSwatches": "検索条件に一致する未設定の色見本はありません。",
+    "autoSaveHint": "このページの変更は自動的に保存されます。",
+    "changeLibraryRole": "ライブラリの役割を変更",
+    "localDiagnosticsScope": "このデバイス · ローカルデータベース",
+    "unsavedChanges": "未保存の変更",
+    "filamentDefaultsSaveGroupHint": "グループの標準価格を保存します。既存のスプール価格は、下の価格を適用した場合にのみ変更されます。",
+    "swatchSearch": "メーカー、フィラメント、色、IDで検索",
+
     "catalogRefreshStatusUncertain": "状態を確認できませんでした。更新ログを確認してください。更新はまだ実行中の可能性があります。",
     "catalogRefreshFailedNextStep": "更新は完了しませんでした。別の更新を始める前に更新ログを確認してください。",
     "catalogRefreshInterruptedNextStep": "更新が中断されました。再開する前にカタログと更新ログを確認してください。",

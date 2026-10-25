@@ -1176,6 +1176,14 @@ export const plPLDictionary: DictionaryNode = {
     "withToolheads": "Głowica wielofunkcyjna"
   },
   "settings": {
+    "noMatchingSwatches": "Żadna brakująca próbka koloru nie pasuje do wyszukiwania.",
+    "autoSaveHint": "Zmiany na tej stronie są zapisywane automatycznie.",
+    "changeLibraryRole": "Zmień rolę biblioteki",
+    "localDiagnosticsScope": "To urządzenie · lokalna baza danych",
+    "unsavedChanges": "Niezapisane zmiany",
+    "filamentDefaultsSaveGroupHint": "Zapisz domyślną cenę grupy. Ceny istniejących szpul zmienią się dopiero po zastosowaniu ceny poniżej.",
+    "swatchSearch": "Szukaj producenta, filamentu, koloru lub ID",
+
     "catalogRefreshStatusUncertain": "Nie udało się potwierdzić stanu. Sprawdź dziennik odświeżania; aktualizacja może nadal trwać.",
     "catalogRefreshFailedNextStep": "Aktualizacja nie została ukończona. Sprawdź dziennik odświeżania przed rozpoczęciem kolejnej aktualizacji.",
     "catalogRefreshInterruptedNextStep": "Aktualizacja została przerwana. Sprawdź katalog i dziennik odświeżania, zanim zaczniesz ponownie.",

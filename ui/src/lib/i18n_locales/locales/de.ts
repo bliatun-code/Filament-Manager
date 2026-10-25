@@ -1644,6 +1644,14 @@ export const deDictionary: DictionaryNode = {
     },
   },
   settings: {
+    "noMatchingSwatches": "Keine fehlenden Farbmuster entsprechen dieser Suche.",
+    "autoSaveHint": "Änderungen auf dieser Seite werden automatisch gespeichert.",
+    "changeLibraryRole": "Bibliotheksrolle ändern",
+    "localDiagnosticsScope": "Dieses Gerät · lokale Datenbank",
+    "unsavedChanges": "Ungespeicherte Änderungen",
+    "filamentDefaultsSaveGroupHint": "Speichern Sie den wiederverwendbaren Gruppenstandard. Preise vorhandener Spulen ändern sich erst, wenn Sie den Preis unten anwenden.",
+    "swatchSearch": "Nach Hersteller, Filament, Farbe oder ID suchen",
+
     "catalogRefreshStatusUncertain": "Der Status konnte nicht bestätigt werden. Prüfen Sie das Aktualisierungsprotokoll; die Aktualisierung läuft möglicherweise noch.",
     "catalogRefreshFailedNextStep": "Die Aktualisierung wurde nicht abgeschlossen. Prüfen Sie das Aktualisierungsprotokoll, bevor Sie eine weitere Aktualisierung starten.",
     "catalogRefreshInterruptedNextStep": "Die Aktualisierung wurde unterbrochen. Prüfen Sie den Katalog und das Aktualisierungsprotokoll, bevor Sie erneut starten.",

@@ -1420,6 +1420,14 @@ export const ukUADictionary: DictionaryNode = {
     }
   },
   "settings": {
+    "noMatchingSwatches": "За цим запитом немає відсутніх зразків кольору.",
+    "autoSaveHint": "Зміни на цій сторінці зберігаються автоматично.",
+    "changeLibraryRole": "Змінити роль бібліотеки",
+    "localDiagnosticsScope": "Цей пристрій · локальна база даних",
+    "unsavedChanges": "Незбережені зміни",
+    "filamentDefaultsSaveGroupHint": "Збережіть типову ціну групи. Ціни наявних котушок зміняться лише після застосування ціни нижче.",
+    "swatchSearch": "Пошук за виробником, філаментом, кольором або ID",
+
     "catalogRefreshStatusUncertain": "Не вдалося підтвердити стан. Перевірте журнал оновлення; оновлення ще може тривати.",
     "catalogRefreshFailedNextStep": "Оновлення не завершено. Перевірте журнал оновлення, перш ніж починати нове оновлення.",
     "catalogRefreshInterruptedNextStep": "Оновлення перервано. Перевірте каталог і журнал оновлення, перш ніж починати знову.",

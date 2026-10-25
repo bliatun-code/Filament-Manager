@@ -27,7 +27,7 @@ test("settings tabs and active panel expose matching ARIA relationships", () => 
   assert.match(accessibilitySource, /key === "ArrowRight"/);
   assert.match(accessibilitySource, /key === "ArrowLeft"/);
   assert.match(outletSource, /role="tabpanel"/);
-  assert.match(outletSource, /aria-labelledby=\{settingsTabId\(activeTab\)\}/);
+  assert.match(outletSource, /aria-labelledby=\{settingsTabId\(tab\)\}/);
   assert.match(layoutSource, /<SettingsTabNav label=\{title\}/);
   assert.equal(settingsTabId("GENERAL"), "settings-tab-general");
   assert.equal(settingsTabPanelId("GENERAL"), "settings-panel-general");
