@@ -1,6 +1,7 @@
 import {
   fetchLibrarySyncLoans,
   fetchLibrarySyncPrinterOverview,
+  fetchLibrarySyncPrinterSettings,
   fetchLibrarySyncSnapshot,
   fetchLibrarySyncWishlistItems,
   getLibrarySyncSettings,
@@ -91,6 +92,7 @@ type DashboardDataDependencies = {
   validateHost?: typeof validateLibrarySyncHost;
   fetchHostSnapshot?: typeof fetchLibrarySyncSnapshot;
   fetchHostPrinterOverview?: typeof fetchLibrarySyncPrinterOverview;
+  fetchHostPrinterSettings?: typeof fetchLibrarySyncPrinterSettings;
   fetchHostLoans?: typeof fetchLibrarySyncLoans;
   fetchHostWishlist?: typeof fetchLibrarySyncWishlistItems;
   loadSpoolRows?: typeof loadAllSpoolRows;
@@ -202,6 +204,7 @@ export async function loadDashboardData(
     dependencies.fetchHostSnapshot ?? fetchLibrarySyncSnapshot;
   const fetchHostPrinterOverview =
     dependencies.fetchHostPrinterOverview ?? fetchLibrarySyncPrinterOverview;
+  const fetchHostPrinterSettings = dependencies.fetchHostPrinterSettings ?? fetchLibrarySyncPrinterSettings;
   const fetchHostLoans = dependencies.fetchHostLoans ?? fetchLibrarySyncLoans;
   const fetchHostWishlist =
     dependencies.fetchHostWishlist ?? fetchLibrarySyncWishlistItems;
@@ -257,6 +260,8 @@ export async function loadDashboardData(
   let clientLoanRows = syncSettings?.cached_loans?.rows ?? null;
   let clientWishlistRows: WishlistItemRow[] =
     syncSettings?.cached_wishlist?.rows ?? [];
+  let clientLiveIntegrations: BambuLiveIntegrationEntry[] = [];
+  let clientPrinterSettingsLive = false;
   let clientSnapshotLive = false;
   let clientSpoolsLive = false;
   let clientPrintersLive = false;
@@ -276,6 +281,7 @@ export async function loadDashboardData(
       printersResult,
       loansResult,
       wishlistResult,
+      printerSettingsResult,
     ] = await Promise.allSettled([
       fetchHostSnapshot(clientHostTarget.baseUrl, clientHostTarget.libraryId),
       loadSpoolRows({
@@ -298,7 +304,17 @@ export async function loadDashboardData(
         clientHostTarget.libraryId,
         500,
       ),
+      fetchHostPrinterSettings(clientHostTarget.baseUrl, clientHostTarget.libraryId),
     ]);
+
+    if (printerSettingsResult.status === "fulfilled") {
+      clientLiveIntegrations = sanitizeDashboardBambuLiveIntegrations(
+        printerSettingsResult.value.bambu_live_integrations,
+      );
+      clientPrinterSettingsLive = true;
+    } else {
+      onLoadError(printerSettingsResult.reason);
+    }
 
     if (snapshotResult.status === "fulfilled") {
       activeClientSnapshot = snapshotResult.value;
@@ -437,7 +453,7 @@ export async function loadDashboardData(
     return {
       printerOverview: clientPrinterRows ?? [],
       printerOverviewAvailable: clientPrinterRows != null,
-      bambuLiveIntegrations: [],
+      bambuLiveIntegrations: syncSource === "client-live" ? clientLiveIntegrations : [],
       lowStockPreview: buildDashboardLowStockPreview(normalizedClientSpoolRows ?? []),
       lowStockPreviewAvailable: normalizedClientSpoolRows != null,
       actionItems: buildDashboardActionItems({
@@ -476,7 +492,7 @@ export async function loadDashboardData(
           ? liveCapturedAt
           : (fallbackCapturedAt ?? liveCapturedAt),
       revisionSource,
-      revisionPollComplete: allClientReadsLive,
+      revisionPollComplete: allClientReadsLive && clientPrinterSettingsLive,
     };
   }
 

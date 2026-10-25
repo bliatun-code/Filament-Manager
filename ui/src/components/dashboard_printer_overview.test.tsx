@@ -67,7 +67,7 @@ test("compact dashboard printer cards show accessible real print progress and re
 test("manual Prusa and disconnected host cards never show fabricated current print progress", () => {
   const prusa = { ...printer, printer: { ...printer.printer, model: "Prusa MK4S" } };
   const manual = render({ printers: [prusa] });
-  assert.match(manual, /Manual setup/);
+  assert.doesNotMatch(manual, /Manual setup/);
   assert.doesNotMatch(manual, /progressbar|Tool tray|64%|Nozzle|remaining/);
   const cached = render({ syncSource: "client-cached" });
   assert.match(cached, /Saved printer setup/);
@@ -87,4 +87,17 @@ test("dark dashboard printer cards retain brand accent and surface color", () =>
   assert.match(html, /border-left-color:#00B140/);
   assert.match(html, /background-color:rgb\(10, 17, 31\)/);
   assert.match(html, /rgba\(0, 177, 64, 0\.14\)/);
+});
+
+test("printers without live integration omit the manual status badge on local and client dashboards", () => {
+  for (const syncSource of ["local", "client-live", "client-cached", "client-offline"] as const) {
+    const html = render({ syncSource, printers: [{ ...printer, printer: { ...printer.printer, model: "Prusa MK4S" } }], bambuLiveIntegrations: {} });
+    assert.doesNotMatch(html, /Manual setup|Saved printer setup|Live status unavailable|mt-2 inline-flex max-w-full/);
+    assert.match(html, /Prusa MK4S/);
+    assert.match(html, /Assigned filament/);
+  }
+  for (const syncSource of ["local", "client-live"] as const) {
+    const html = render({ syncSource, bambuLiveIntegrations: { bambu: { enabled: false } } });
+    assert.doesNotMatch(html, /Manual setup|mt-2 inline-flex max-w-full/);
+  }
 });

@@ -46,3 +46,40 @@ phone-camera capture was used. Simulated DPI, blur and tilt do not establish
 universal printing or camera performance. Print a sample at its intended size,
 preserve the quiet zone and confirm it with a phone before printing a batch.
 Pairing QR flows and their credentials are outside this filament-label change.
+
+
+## Centered-logo update — 25 October 2026
+
+The offset placement described above is superseded. Desktop PNGs and Companion
+SVGs now select the smallest H-correction QR version with a centered data-only
+logo window, including the existing one-module buffer around every functional
+pattern. The plate remains at most 11 modules / 21% of matrix width. A central
+alignment pattern therefore causes a larger encoding, not an offset logo or an
+obscured functional pattern. Version-1 codes stay plain; if no centered window is
+available through version 40, the original smallest plain code is retained.
+Payloads, quiet zones and source scaling are unchanged.
+
+Validation for this update:
+
+- 112 paired ZXing scenarios across four realistic URLs, including the URL from
+  the reported screenshot: 99 decode directly; 13 require the same bounded
+  camera adjustment as their identical plain controls. All actual 138-pixel
+  screen scenarios decode directly. No branded-only decoding misses are allowed.
+- The recovery diagnostics retain 0.8/1.2 scaling and two-degree tilt and now
+  also try five-degree tilt. The denser version-14 encoding at minimum custom
+  label size / simulated 203 DPI can fail the earlier diagnostics even without
+  a logo; both branded and plain images recover at five degrees. This is a
+  digital sampling limitation, not evidence of physical printer reliability.
+- Four browser tests pass, covering screen color and monochrome, all four label
+  presets, minimum/maximum custom labels, 203-DPI simulation, rotation/blur and
+  actual RGB image streams embedded in A4 and Letter PDFs.
+- Fourteen label/geometry unit tests and five Rust spool-QR tests pass. Rust
+  geometry checks cover all 40 versions and assert exact centering whenever a
+  plate exists. Changed JavaScript/TypeScript files pass lint.
+- The full UI production build passes after removing 21 pre-existing untracked
+  duplicate files with ` 2` in their filenames, each verified byte-identical to
+  its tracked original. No physical print or phone-camera test was performed.
+
+The earlier Apple Vision and rasterized Rust SVG decoding evidence applies to
+that earlier implementation; those decoder checks were not repeated for this
+update. The new Rust checks validate encoding structure and reserved modules.

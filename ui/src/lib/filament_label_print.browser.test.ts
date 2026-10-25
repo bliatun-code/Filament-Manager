@@ -153,8 +153,9 @@ test(
 test(
   "branded screen and monochrome tape QRs remain ZXing-decodable under modest camera sampling",
   { timeout: 60_000 },
-  async () => {
+  async (t) => {
     const payloads = [
+      "http://fm-tfbb9pbv.local:4278/companion?spool_qr=v1%3Aspool_592e99a56bc81250c588e1100aa44954",
       "http://192.168.1.50:4278/companion?spool_qr=v1%3AQR-22",
       QR_PAYLOAD,
       "https://filament-manager-0123456789abcdef01234567.local:4278/companion?spool_qr=v1%3Aspool_01234567-89ab-cdef-0123-456789abcdef",
@@ -187,6 +188,8 @@ test(
         return fixture.decodeBrandedQrMatrix(values);
       }, payloads);
       assert.equal(evidence.length, payloads.length);
+      const scenarios = evidence.flatMap((entry) => entry.scenarios);
+      t.diagnostic(`${scenarios.length} paired scans: ${scenarios.filter((s) => s.decodedPayload !== null).length} direct; ${scenarios.filter((s) => s.decodedPayload === null).length} required the same camera adjustment as the plain control.`);
       for (const entry of evidence) {
         assert.ok(entry.coloredPixels > 100, "screen output retains the colored spool logo");
         assert.equal(entry.monochromePixels, 0, "tape output uses no color");
@@ -203,7 +206,7 @@ test(
             assert.equal(scenario.decodedPayload, entry.payload, message);
           } else {
             assert.equal(scenario.plainDecodedPayload, null, `logo caused a new decoder miss: ${message}`);
-            assert.ok(["scale-0.8", "scale-1.2", "tilt-2"].includes(scenario.recoveryView ?? ""), message);
+            assert.ok(["scale-0.8", "scale-1.2", "tilt-2", "tilt-5"].includes(scenario.recoveryView ?? ""), message);
             assert.equal(scenario.recoveredPayload, entry.payload, message);
             assert.equal(scenario.plainRecoveredPayload, entry.payload, message);
           }

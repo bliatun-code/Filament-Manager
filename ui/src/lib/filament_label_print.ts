@@ -1,4 +1,5 @@
 import QRCode from "qrcode";
+import { findFilamentQrLogoPlate } from "./filament_qr_geometry";
 import { formatSpoolReference } from "./display_format";
 import {
   FILAMENT_LABEL_DPI,
@@ -29,7 +30,18 @@ const QR_QUIET_ZONE_MODULES = 4;
 const QR_SOURCE_MODULE_SCALE = 12;
 
 export function filamentQrModuleLayout(payload: string) {
-  return QRCode.create(payload.trim(), { errorCorrectionLevel: "H" }).modules;
+  const normalized = payload.trim();
+  const smallest = QRCode.create(normalized, { errorCorrectionLevel: "H" }).modules;
+  if (smallest.size === 21) return smallest;
+  const minimumVersion = (smallest.size - 17) / 4;
+  // Select the smallest encoding with a protected, truly centered logo window.
+  // Never cover alignment patterns or move the logo away from the center.
+  for (let version = minimumVersion; version <= 40; version++) {
+    const modules = version === minimumVersion ? smallest
+      : QRCode.create(normalized, { errorCorrectionLevel: "H", version }).modules;
+    if (findFilamentQrLogoPlate(modules)) return modules;
+  }
+  return smallest;
 }
 
 function defaultCanvas(): HTMLCanvasElement {
@@ -333,6 +345,7 @@ export async function buildFilamentLabelQrDataUrl(
   }
   return qrEncoder.toDataURL(normalized, {
     errorCorrectionLevel: "H",
+    version: (filamentQrModuleLayout(normalized).size - 17) / 4,
     margin: QR_QUIET_ZONE_MODULES,
     scale: QR_SOURCE_MODULE_SCALE,
     color: {

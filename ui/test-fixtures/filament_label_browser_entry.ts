@@ -121,7 +121,7 @@ type ComparedCameraSample = ReturnType<typeof scannedSample> & {
   plainDecodedPayload: string | null;
   recoveredPayload?: string | null;
   plainRecoveredPayload?: string | null;
-  recoveryView?: "scale-0.8" | "scale-1.2" | "tilt-2";
+  recoveryView?: "scale-0.8" | "scale-1.2" | "tilt-2" | "tilt-5";
 };
 
 function comparedSample(
@@ -145,6 +145,7 @@ function comparedSample(
     { id: "scale-0.8", options: { scale: 0.8 } },
     { id: "scale-1.2", options: { scale: 1.2 } },
     { id: "tilt-2", options: { rotation: 2 } },
+    { id: "tilt-5", options: { rotation: 5 } },
   ] as const;
   for (const view of recoveryViews) {
     const recovered = scannedSample(
@@ -425,4 +426,15 @@ export async function renderDecodeCustomLabel(
     labelWidth: image.naturalWidth,
     pngByteLength: dataUrlBytes(labelPngDataUrl).length,
   };
+}
+
+export async function renderCenteredQrExamples(payload: string) {
+  const color = await buildBrandedFilamentQrDataUrl(payload);
+  const monochrome = await buildBrandedFilamentQrDataUrl(payload, "monochrome");
+  const label = await buildFilamentLabelPngDataUrl({
+    vendor: "Bambu", material: "ABS", filamentName: "ABS",
+    colorName: "Black (40101)", reference: "spool_592e99a56bc81250c588e1100aa44954",
+    qrDataUrl: monochrome,
+  }, "ptouch-24");
+  return { color, monochrome, label };
 }

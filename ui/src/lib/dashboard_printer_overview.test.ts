@@ -45,7 +45,7 @@ test("dashboard printer presentation uses fresh trusted state, preserving explic
 test("dashboard printer presentation never treats saved or remote slot percentages as current print activity", () => {
   const remotePrinter = { ...printer, slots: [{ slot_id: "slot", ams_id: "ams", slot_index: 1, live_progress_percent: 92, live_mqtt_connected: true, live_printer_last_seen_at: new Date().toISOString() }] };
   for (const syncSource of ["client-live", "client-cached", "client-offline"] as const) {
-    const result = buildDashboardPrinterPresentation({ printer: remotePrinter, liveConfig: liveConfig(), syncSource, t });
+    const result = buildDashboardPrinterPresentation({ printer: remotePrinter, liveConfig: syncSource === "client-live" ? null : liveConfig(), syncSource, t });
     assert.equal(result.telemetry, null);
     assert.equal(result.progressPercent, null);
     assert.equal(result.jobName, null);
@@ -59,7 +59,7 @@ test("dashboard printer presentation rejects stale, disconnected, disabled and u
     [liveConfig({ last_seen_at: null }), "Live data is out of date"],
     [liveConfig({ online: false }), "Printer disconnected"],
     [liveConfig({ mqtt_connected: false }), "Printer disconnected"],
-    [{ ...liveConfig(), enabled: false }, "Manual setup"],
+    [{ ...liveConfig(), enabled: false }, null],
     [{ ...liveConfig(), tls_trust_state: "CHANGED" }, "Review live connection"],
     [{ ...liveConfig(), tls_trust_state: undefined }, "Review live connection"],
     [{ enabled: true, tls_trust_state: "TRUSTED" }, "Live waiting"],
@@ -72,10 +72,10 @@ test("dashboard printer presentation rejects stale, disconnected, disabled and u
   }
 });
 
-test("Prusa and unknown printers use explicit manual setup even when supplied Bambu configuration", () => {
+test("Prusa and unknown printers have no status badge even when supplied Bambu configuration", () => {
   for (const model of ["Prusa MK4S with MMU3", "Generic printer"]) {
     const result = buildDashboardPrinterPresentation({ printer: { ...printer, printer: { ...printer.printer, model } }, liveConfig: liveConfig(), t });
-    assert.equal(result.stateLabel, "Manual setup");
+    assert.equal(result.stateLabel, null);
     assert.equal(result.telemetry, null);
     assert.equal(result.progressPercent, null);
   }
@@ -89,4 +89,17 @@ test("finished jobs hide carried progress and job names; invalid percentages nev
     const result = buildDashboardPrinterPresentation({ printer, liveConfig: liveConfig({ progress_percent }), t });
     assert.equal(result.progressPercent, null);
   }
+});
+
+test("live clients display fresh trusted Host telemetry and reject stale or cached state", () => {
+  for (const gcode_state of ["RUNNING", "PAUSE"]) {
+    const result = buildDashboardPrinterPresentation({ printer, liveConfig: liveConfig({ gcode_state }), syncSource: "client-live", t });
+    assert.equal(result.stateLabel, gcode_state === "PAUSE" ? "Paused" : "Printing");
+    assert.equal(result.progressPercent, 64);
+    assert.equal(result.jobName, "Tool tray.3mf");
+    assert.equal(result.needsTrustReview, false);
+  }
+  const stale = buildDashboardPrinterPresentation({ printer, liveConfig: liveConfig({ last_seen_at: "2000-01-01T00:00:00Z" }), syncSource: "client-live", t });
+  assert.equal(stale.stateLabel, "Live data is out of date");
+  assert.equal(stale.telemetry, null);
 });

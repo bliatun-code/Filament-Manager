@@ -8,7 +8,7 @@ import type { BambuLiveIntegrationSettings, PrinterOverviewRow } from "./tauri_c
 type TranslateFn = (key: string, fallback?: string) => string;
 
 export type DashboardPrinterPresentation = {
-  stateLabel: string;
+  stateLabel: string | null;
   tone: "neutral" | "success" | "warning";
   telemetry: PrinterLiveTelemetry | null;
   progressPercent: number | null;
@@ -29,7 +29,7 @@ export function buildDashboardPrinterPresentation({
   locale?: NumberDisplayLocale;
   t: TranslateFn;
 }): DashboardPrinterPresentation {
-  const unavailable = (stateLabel: string, tone: "neutral" | "warning" = "neutral") => ({
+  const unavailable = (stateLabel: string | null, tone: "neutral" | "warning" = "neutral") => ({
     stateLabel,
     tone,
     telemetry: null,
@@ -38,20 +38,19 @@ export function buildDashboardPrinterPresentation({
     needsTrustReview: false,
   });
 
+  if (resolvePrinterBrandTone(printer.printer.model) !== "bambu") {
+    return unavailable(null);
+  }
   // Saved host rows describe assignments, not the printer's current activity.
   if (syncSource === "client-cached" || syncSource === "client-offline") {
     return unavailable(t("dashboard.printerSavedSetup", "Saved printer setup"));
   }
-  if (resolvePrinterBrandTone(printer.printer.model) !== "bambu") {
-    return unavailable(t("dashboard.printerManualSetup", "Manual setup"));
-  }
-  // The host overview contract does not include the trusted live configuration
-  // or gcode state. Slot percentages cannot safely distinguish printing/paused.
-  if (syncSource === "client-live") {
+  // A live client must use fresh Host settings, never local settings or slot percentages.
+  if (syncSource === "client-live" && !liveConfig) {
     return unavailable(t("dashboard.printerLiveUnavailable", "Live status unavailable"));
   }
   if (!liveConfig?.enabled) {
-    return unavailable(t("dashboard.printerManualSetup", "Manual setup"));
+    return unavailable(null);
   }
   if (liveConfig.tls_trust_state !== "TRUSTED") {
     return {

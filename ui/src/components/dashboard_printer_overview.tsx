@@ -36,12 +36,12 @@ export function DashboardPrinterOverview({
 }: DashboardPrinterOverviewProps) {
   const { t, locale } = useI18n();
   const [, refreshFreshness] = useState(0);
-  const hasLocalObservation = syncSource === "local" && printers.some((printer) => {
+  const hasLiveObservation = (syncSource === "local" || syncSource === "client-live") && printers.some((printer) => {
     const config = bambuLiveIntegrations[printer.printer.id];
     return config?.enabled && config.observed_state?.last_seen_at;
   });
   useEffect(() => {
-    if (!hasLocalObservation) return;
+    if (!hasLiveObservation) return;
     // Age out telemetry even when revision polling finds no new library data.
     // This clock only redraws visible cards and makes no network requests.
     const refresh = () => {
@@ -53,7 +53,7 @@ export function DashboardPrinterOverview({
       window.clearInterval(timer);
       document.removeEventListener("visibilitychange", refresh);
     };
-  }, [hasLocalObservation]);
+  }, [hasLiveObservation]);
   return (
     <div className="grid min-w-0 gap-3 lg:grid-cols-2">
       {printers.map((printer) => {
@@ -91,9 +91,9 @@ export function DashboardPrinterOverview({
                 <p className={`mt-0.5 break-words text-xs ${dashboardOverviewStyles.muted}`}>
                   {printer.printer.model}
                 </p>
-                <span className={`mt-2 inline-flex max-w-full rounded-md border px-2 py-1 text-xs font-medium ${stateToneClasses[presentation.tone]}`}>
+                {presentation.stateLabel ? <span className={`mt-2 inline-flex max-w-full rounded-md border px-2 py-1 text-xs font-medium ${stateToneClasses[presentation.tone]}`}>
                   {presentation.stateLabel}
-                </span>
+                </span> : null}
               </div>
             </div>
             {presentation.jobName || hasProgress ? (

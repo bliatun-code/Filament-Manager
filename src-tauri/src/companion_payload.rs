@@ -108,8 +108,23 @@ pub(crate) fn build_qr_svg(payload: &str) -> Result<String, CompanionApiError> {
     const LOGO_WIDTH: f64 = 780.0;
     const LOGO_HEIGHT: f64 = 674.0;
 
-    let code = QrCode::with_error_correction_level(payload.as_bytes(), EcLevel::H)
+    let smallest = QrCode::with_error_correction_level(payload.as_bytes(), EcLevel::H)
         .map_err(|error| CompanionApiError::Internal(error.to_string()))?;
+    let mut code = smallest.clone();
+    if let qrcode::Version::Normal(minimum @ 2..=40) = smallest.version() {
+        for version in minimum..=40 {
+            let candidate = QrCode::with_version(
+                payload.as_bytes(),
+                qrcode::Version::Normal(version),
+                EcLevel::H,
+            )
+            .map_err(|error| CompanionApiError::Internal(error.to_string()))?;
+            if qr_logo_plate(&candidate).is_some() {
+                code = candidate;
+                break;
+            }
+        }
+    }
     let image = code
         .render::<svg::Color>()
         .quiet_zone(true)
@@ -155,28 +170,13 @@ fn qr_logo_plate(code: &qrcode::QrCode) -> Option<(usize, usize, usize)> {
     let mut reserved = Canvas::new(code.version(), EcLevel::H);
     reserved.draw_all_functional_patterns();
     for plate in (5..=max_plate).rev().filter(|size| size % 2 == 1) {
-        let mut best = None;
-        for y in 1..width - plate {
-            for x in 1..width - plate {
-                let clear = (y - 1..=y + plate).all(|row| {
-                    (x - 1..=x + plate)
-                        .all(|column| reserved.get(column as i16, row as i16) == Module::Empty)
-                });
-                if !clear {
-                    continue;
-                }
-                let dx = (x * 2 + plate) as i32 - width as i32;
-                let dy = (y * 2 + plate) as i32 - width as i32;
-                let rank = (dx * dx + dy * dy, std::cmp::Reverse(y), dx.abs(), x);
-                if best
-                    .as_ref()
-                    .is_none_or(|(current_rank, _, _)| rank < *current_rank)
-                {
-                    best = Some((rank, x, y));
-                }
-            }
-        }
-        if let Some((_, x, y)) = best {
+        let x = (width - plate) / 2;
+        let y = x;
+        let clear = (y - 1..=y + plate).all(|row| {
+            (x - 1..=x + plate)
+                .all(|column| reserved.get(column as i16, row as i16) == Module::Empty)
+        });
+        if clear {
             return Some((x, y, plate));
         }
     }
@@ -372,7 +372,7 @@ mod tests {
         use qrcode::{EcLevel, QrCode};
 
         let payload = "http://filament-manager-0123456789abcdef01234567.local:4278/companion?spool_qr=v1%3Aspool_1775592053186";
-        let code = QrCode::with_error_correction_level(payload, EcLevel::H).unwrap();
+        let code = QrCode::with_version(payload, qrcode::Version::Normal(14), EcLevel::H).unwrap();
         let plain = code
             .render::<svg::Color>()
             .quiet_zone(true)
@@ -382,7 +382,7 @@ mod tests {
             .build();
         let branded = build_qr_svg(payload).expect("branded spool QR");
 
-        // The base encoder's complete matrix and quiet zone survive unchanged;
+        // The selected centered encoding's matrix and quiet zone survive unchanged;
         // only a small structurally safe white plate and transparent logo follow.
         assert!(branded.starts_with(plain.strip_suffix("</svg>").unwrap()));
         assert!(branded.contains("M48 48h12v12"));
@@ -427,6 +427,8 @@ mod tests {
             };
             assert!((5..=11).contains(&size));
             assert_eq!(size % 2, 1);
+            assert_eq!(x * 2 + size, code.width());
+            assert_eq!(y * 2 + size, code.width());
             assert!(size * 100 <= code.width() * 21);
             let mut functional = Canvas::new(code.version(), EcLevel::H);
             functional.draw_all_functional_patterns();
@@ -442,9 +444,7 @@ mod tests {
         }
 
         let version7 = QrCode::with_version("x", Version::Normal(7), EcLevel::H).unwrap();
-        let (x, y, size) = qr_logo_plate(&version7).expect("version 7 safe logo plate");
-        assert_eq!(x * 2 + size, version7.width());
-        assert!(y * 2 + size > version7.width());
+        assert!(qr_logo_plate(&version7).is_none());
     }
 
     #[test]

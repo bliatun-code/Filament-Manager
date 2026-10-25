@@ -47,7 +47,7 @@ export async function buildBrandedFilamentQrDataUrl(
   }
 
   // Keep finder, timing, alignment, format and version patterns fully intact,
-  // with one clear module around them. Long URLs may need a slightly offset logo.
+  // with one clear module around them. The encoder selects a centered window.
   const plate = findFilamentQrLogoPlate(modules);
   if (!plate) return plainDataUrl;
 

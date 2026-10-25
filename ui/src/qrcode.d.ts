@@ -6,6 +6,7 @@ declare module "qrcode" {
 
   type ToDataUrlOptions = {
     errorCorrectionLevel?: "L" | "M" | "Q" | "H";
+    version?: number;
     margin?: number;
     scale?: number;
     width?: number;

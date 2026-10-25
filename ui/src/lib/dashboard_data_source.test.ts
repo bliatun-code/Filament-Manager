@@ -248,6 +248,7 @@ test("loadDashboardData fails closed when the library role cannot be resolved", 
       { previousClientHostNeedsRepair: false, t },
       {
         fetchHostLoans: unexpectedRead,
+        fetchHostPrinterSettings: async () => printerSettingsSnapshot(),
         fetchHostPrinterOverview: unexpectedRead,
         fetchHostSnapshot: unexpectedRead,
         fetchHostWishlist: unexpectedRead,
@@ -447,6 +448,7 @@ test("loadDashboardData prefers live host data for paired clients", async () => 
         assert.equal(options.clientLibraryId, "library-1");
         return [];
       },
+      fetchHostPrinterSettings: async () => printerSettingsSnapshot(),
       fetchHostPrinterOverview: async () => [
         printerOverviewRow("printer-host"),
       ],
@@ -512,6 +514,7 @@ test("loadDashboardData marks partial client host reads as cached", async () => 
       fetchHostSnapshot: async () =>
         snapshot("Live Host", { captured_at: "snapshot-live" }),
       loadSpoolRows: async () => [],
+      fetchHostPrinterSettings: async () => printerSettingsSnapshot(),
       fetchHostPrinterOverview: async () => {
         throw new Error("printers unavailable");
       },
@@ -567,6 +570,7 @@ test("loadDashboardData relies on core reads instead of a separate pairing valid
       },
       fetchHostSnapshot: async () => snapshot("Live Host"),
       loadSpoolRows: async () => [],
+      fetchHostPrinterSettings: async () => printerSettingsSnapshot(),
       fetchHostPrinterOverview: async () => [],
       fetchHostLoans: async () => [],
       fetchHostWishlist: async () => [],
@@ -602,6 +606,7 @@ test("a successful authenticated core read clears a stale persisted repair state
       loadPrinterSettings: async () => printerSettingsSnapshot(),
       fetchHostSnapshot: async () => snapshot("Live Host"),
       loadSpoolRows: async () => [],
+      fetchHostPrinterSettings: async () => printerSettingsSnapshot(),
       fetchHostPrinterOverview: async () => [],
       fetchHostLoans: async () => [],
       fetchHostWishlist: async () => [],
@@ -850,6 +855,7 @@ test("loadDashboardData renders paired-client cache without waiting for host rea
       validateHost: hostRead,
       fetchHostSnapshot: hostRead,
       loadSpoolRows: hostRead,
+      fetchHostPrinterSettings: async () => printerSettingsSnapshot(),
       fetchHostPrinterOverview: hostRead,
       fetchHostLoans: hostRead,
       fetchHostWishlist: hostRead,
@@ -951,6 +957,7 @@ test("loadDashboardData marks annual usage unavailable for an older host snapsho
           }),
         }),
       loadSpoolRows: async () => [],
+      fetchHostPrinterSettings: async () => printerSettingsSnapshot(),
       fetchHostPrinterOverview: async () => [],
       fetchHostLoans: async () => [],
       fetchHostWishlist: async () => [],
@@ -992,6 +999,7 @@ test("loadDashboardData falls back to cached client snapshot when host snapshot 
         throw new Error("snapshot unavailable");
       },
       loadSpoolRows: async () => [],
+      fetchHostPrinterSettings: async () => printerSettingsSnapshot(),
       fetchHostPrinterOverview: async () => {
         throw new Error("printers unavailable");
       },
@@ -1090,6 +1098,7 @@ test("loadDashboardData warns only after consecutive core host failures and rese
       validateHost: async () => validation(),
       fetchHostSnapshot: async () => snapshot("Live Host"),
       loadSpoolRows: async () => [],
+      fetchHostPrinterSettings: async () => printerSettingsSnapshot(),
       fetchHostPrinterOverview: async () => [],
       fetchHostLoans: async () => [],
       fetchHostWishlist: async () => [],
@@ -1127,6 +1136,7 @@ test("loadDashboardData treats a 401 as an immediate pairing repair", async () =
         throw new Error("HTTP 401 Unauthorized");
       },
       loadSpoolRows: async () => [],
+      fetchHostPrinterSettings: async () => printerSettingsSnapshot(),
       fetchHostPrinterOverview: async () => [],
       fetchHostLoans: async () => [],
       fetchHostWishlist: async () => [],
@@ -1167,6 +1177,7 @@ test("loadDashboardData does not treat 401 digits in a transport URL as pairing 
       validateHost: async () => validation(),
       fetchHostSnapshot: failedRead,
       loadSpoolRows: failedRead,
+      fetchHostPrinterSettings: async () => printerSettingsSnapshot(),
       fetchHostPrinterOverview: failedRead,
       fetchHostLoans: failedRead,
       fetchHostWishlist: failedRead,
@@ -1192,6 +1203,7 @@ test("client overview availability distinguishes unknown rows from confirmed emp
         loadSyncSettings: async () => syncSettings({ mode: "CLIENT", host_base_url: "http://host", library_id: "library-1" }),
         loadTrustedLanStatus: async () => null,
         fetchHostSnapshot: async () => snapshot("Host", { inventory: overview({ low_stock: 3 }) }),
+        fetchHostPrinterSettings: async () => printerSettingsSnapshot(),
         fetchHostPrinterOverview: loadRows,
         loadSpoolRows: loadRows,
         fetchHostLoans: async () => [],
@@ -1210,4 +1222,73 @@ test("client overview availability distinguishes unknown rows from confirmed emp
     assert.deepEqual(result.bambuLiveIntegrations, []);
     assert.equal(localSettingsReads, 0);
   }
+});
+
+test("client dashboard reads sanitized live settings from its Host and clears them on fallback", async () => {
+  let settingsCalls = 0;
+  let failSettings = false;
+  let failPrinters = false;
+  let localReads = 0;
+  const hostConfig = {
+    enabled: true,
+    tls_trust_state: "TRUSTED",
+    host: "private-printer-address",
+    printer_serial: "private-serial",
+    observed_state: {
+      online: true, mqtt_connected: true, last_seen_at: new Date().toISOString(),
+      gcode_state: "PAUSE", progress_percent: 64, subtask_name: "Host job.3mf",
+      nozzle_temp_c: 218, trays: [], raw_payload_json: "private-payload",
+    },
+  };
+  const errors: unknown[] = [];
+  const dependencies = {
+    loadSyncSettings: async () => syncSettings({
+      mode: "CLIENT", host_base_url: " http://host ", library_id: " library-1 ",
+      client_auth_paired: true,
+      cached_printers: { captured_at: "2026-10-25T00:00:00Z", rows: [printerOverviewRow("host-printer")] },
+    }),
+    loadTrustedLanStatus: async () => null,
+    loadPrinterSettings: async () => { localReads++; return printerSettingsSnapshot(); },
+    fetchHostSnapshot: async () => snapshot("Host"),
+    loadSpoolRows: async () => [],
+    fetchHostPrinterOverview: async () => {
+      if (failPrinters) throw new Error("printer list unavailable");
+      return [printerOverviewRow("host-printer")];
+    },
+    fetchHostLoans: async () => [],
+    fetchHostWishlist: async () => [],
+    fetchHostPrinterSettings: async (baseUrl: string, libraryId?: string | null) => {
+      settingsCalls++;
+      assert.equal(baseUrl, "http://host");
+      assert.equal(libraryId, "library-1");
+      if (failSettings) throw new Error("live settings unavailable");
+      return { ...printerSettingsSnapshot(), bambu_live_integrations: [{ printer_id: "host-printer", config: hostConfig }] };
+    },
+    onLoadError: (error: unknown) => { errors.push(error); },
+  };
+  const params = { previousClientHostNeedsRepair: false, t };
+  const live = await loadDashboardData(params, dependencies);
+  assert.equal(live.syncSource, "client-live");
+  assert.equal(live.revisionPollComplete, true);
+  assert.equal(live.bambuLiveIntegrations[0].config.observed_state?.gcode_state, "PAUSE");
+  assert.equal(live.bambuLiveIntegrations[0].config.observed_state?.progress_percent, 64);
+  assert.doesNotMatch(JSON.stringify(live.bambuLiveIntegrations), /private-/);
+
+  failSettings = true;
+  const missingStatus = await loadDashboardData(params, dependencies);
+  assert.equal(missingStatus.syncSource, "client-live");
+  assert.deepEqual(missingStatus.bambuLiveIntegrations, []);
+  assert.equal(missingStatus.revisionPollComplete, false, "failed status read must be retried even without a revision change");
+  assert.equal(errors.length, 1);
+
+  failSettings = false;
+  failPrinters = true;
+  const partial = await loadDashboardData(params, dependencies);
+  assert.equal(partial.syncSource, "client-cached");
+  assert.deepEqual(partial.bambuLiveIntegrations, []);
+  const callsBeforeCache = settingsCalls;
+  const cached = await loadDashboardData({ ...params, clientCacheOnly: true }, dependencies);
+  assert.deepEqual(cached.bambuLiveIntegrations, []);
+  assert.equal(settingsCalls, callsBeforeCache);
+  assert.equal(localReads, 0, "client must never read this device's shadow printer settings");
 });

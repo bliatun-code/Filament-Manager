@@ -65,6 +65,26 @@ test("dashboard live cards expire without data reloads and retain their navigati
         assert.deepEqual(await page.evaluate("cardsUI.calls()"), ["printers"]);
       } finally { await page.close(); }
     });
+    await context.test("live client cards show Host progress, expire, and clear on cached fallback", async () => {
+      const page = await browser.newPage();
+      try {
+        await page.clock.install({ time: new Date("2026-10-17T12:00:00Z") });
+        await page.clock.pauseAt(new Date("2026-10-17T12:00:01Z"));
+        await page.setContent(html);
+        await page.evaluate("cardsUI.render({syncSource:'client-live'})");
+        await page.getByRole("progressbar").waitFor({ state: "attached" });
+        await page.getByText("Printing", { exact: true }).waitFor();
+        await page.clock.runFor(330_000);
+        await page.getByText("Live data is out of date", { exact: true }).waitFor();
+        assert.equal(await page.getByRole("progressbar").count(), 0);
+        await page.evaluate("cardsUI.render({syncSource:'client-cached'})");
+        await page.getByText("Saved printer setup", { exact: true }).waitFor();
+        assert.equal(await page.getByRole("progressbar").count(), 0);
+        await page.evaluate("cardsUI.render({syncSource:'client-live',bambuLiveIntegrations:{}})");
+        await page.getByText("Live status unavailable", { exact: true }).waitFor();
+        assert.equal(await page.getByRole("progressbar").count(), 0);
+      } finally { await page.close(); }
+    });
     await context.test("hidden cards refresh freshness on visibility and trust actions target the actual printer", async () => {
       const page = await browser.newPage();
       try {
