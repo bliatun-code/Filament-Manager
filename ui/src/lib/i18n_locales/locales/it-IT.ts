@@ -58,6 +58,13 @@ export const itITDictionary: DictionaryNode = {
     unknown: "Sconosciuto",
   },
   dashboard: {
+      "spoolsOnHand": "Bobine in magazzino",
+      "outboundLoans": "Bobine prestate",
+      "outboundLoansSubtitle": "Prestiti in uscita attivi",
+      "usageLast30Days": "Consumo degli ultimi 30 giorni",
+      "noLowStock": "Nessuna bobina con scorte basse.",
+      "printerUsageSummary": "{count, plural, one {# lavoro} other {# lavori}} · {grams} utilizzati",
+
     "overviewDetailsUnavailable": "I dettagli non sono disponibili in questa istantanea. Aggiorna per caricarli.",
     "libraryDetails": "Configurazione e dettagli della libreria",
     "showOlderActivity": "Mostra attività precedenti",

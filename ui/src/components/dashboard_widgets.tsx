@@ -1,6 +1,5 @@
 import { useI18n } from "../lib/i18n";
 import type { DashboardUsageMonth } from "../lib/dashboard_model";
-import { formatDisplayInteger, formatDisplayPercent } from "../lib/number_display";
 import { formatGrams } from "../lib/weight_display";
 export { ActivityTimeline, type ActivityItem } from "./dashboard_activity_timeline";
 
@@ -199,7 +198,6 @@ export function UsageChart({
   const maxUsage = Math.max(0, ...months.map((item) => item.usedGrams));
   const isUnavailable = Boolean(unavailableMessage);
   const isEmptyTrend = !isUnavailable && maxUsage === 0;
-  const chartLabel = `${title}. ${period}: ${value}`;
   const header = (
     <>
       <span className="min-w-0 text-left">
@@ -219,7 +217,6 @@ export function UsageChart({
       {onClick ? (
         <button
           type="button"
-          aria-label={chartLabel}
           className="relative z-10 flex min-h-7 w-full items-center justify-between gap-4 rounded-lg text-left outline-none transition hover:opacity-80 focus-visible:ring-2 focus-visible:ring-sky-400/70 focus-visible:ring-offset-4 focus-visible:ring-offset-white dark:focus-visible:ring-offset-slate-900"
           onClick={onClick}
         >
@@ -317,101 +314,6 @@ export function UsageChart({
         ) : null}
       </div>
       <div className="mt-3 text-xs text-slate-600 dark:text-slate-300">{caption}</div>
-    </div>
-  );
-}
-
-const panelCountClass =
-  "rounded-lg border border-slate-300 bg-slate-50 px-2.5 py-1 text-sm font-semibold text-slate-900 shadow-sm dark:border-slate-500/70 dark:bg-slate-900 dark:text-slate-50 dark:shadow-none";
-
-type Badge = {
-  id: string;
-  title: string;
-  description: string;
-  status: string;
-  progress: number;
-};
-
-export function BadgePanel({ badges }: { badges: Badge[] }) {
-  const { locale, t } = useI18n();
-  const accentStyles = [
-    {
-      panel:
-        "border-sky-200/80 bg-sky-50/58 dark:border-sky-400/20 dark:bg-sky-500/[0.07]",
-      dot: "bg-sky-500 dark:bg-sky-300",
-      pill:
-        "border-sky-200/80 bg-white/78 text-sky-800 dark:border-sky-400/25 dark:bg-slate-950/52 dark:text-sky-200",
-      track: "bg-sky-100/85 dark:bg-slate-950/55",
-      bar: "bg-sky-700 dark:bg-sky-300",
-    },
-    {
-      panel:
-        "border-emerald-200/80 bg-emerald-50/58 dark:border-emerald-400/20 dark:bg-emerald-500/[0.07]",
-      dot: "bg-emerald-500 dark:bg-emerald-300",
-      pill:
-        "border-emerald-200/80 bg-white/78 text-emerald-800 dark:border-emerald-400/25 dark:bg-slate-950/52 dark:text-emerald-200",
-      track: "bg-emerald-100/85 dark:bg-slate-950/55",
-      bar: "bg-emerald-700 dark:bg-emerald-300",
-    },
-    {
-      panel:
-        "border-amber-200/80 bg-amber-50/58 dark:border-amber-400/20 dark:bg-amber-500/[0.07]",
-      dot: "bg-amber-500 dark:bg-amber-300",
-      pill:
-        "border-amber-200/80 bg-white/78 text-amber-800 dark:border-amber-400/25 dark:bg-slate-950/52 dark:text-amber-200",
-      track: "bg-amber-100/85 dark:bg-slate-950/55",
-      bar: "bg-amber-700 dark:bg-amber-300",
-    },
-  ];
-  return (
-    <div className="surface-card">
-      <div className="flex items-start justify-between gap-3">
-        <div>
-          <div className="section-eyebrow">
-            {t("dashboard.achievements", "Achievements")}
-          </div>
-        </div>
-        <div className={panelCountClass}>
-          {formatDisplayInteger(badges.length, locale)}
-        </div>
-      </div>
-      <div className="mt-4 grid gap-3 [grid-template-columns:repeat(auto-fit,minmax(240px,1fr))]">
-        {badges.map((badge, index) => {
-          const tone = accentStyles[index % accentStyles.length];
-          return (
-            <div
-              key={badge.id}
-              className={`rounded-lg border px-4 py-4 ${tone.panel}`}
-            >
-              <div className="flex items-start justify-between gap-3">
-                <div className="min-w-0">
-                  <div className="flex items-center gap-2">
-                    <span className={`h-2.5 w-2.5 shrink-0 rounded-full ${tone.dot}`} />
-                    <div className="text-sm font-semibold text-slate-950 dark:text-slate-50">
-                      {badge.title}
-                    </div>
-                  </div>
-                </div>
-                <div className={`rounded-lg border px-2.5 py-1 text-xs font-semibold ${tone.pill}`}>
-                  {formatDisplayPercent(badge.progress * 100, locale)}
-                </div>
-              </div>
-              <div className="mt-3 text-sm font-medium text-slate-800 dark:text-slate-100">
-                {badge.status}
-              </div>
-              <div className="mt-1 text-xs leading-6 text-slate-600 dark:text-slate-300">
-                {badge.description}
-              </div>
-              <div className={`mt-4 h-2 w-full rounded-full ${tone.track}`}>
-                <div
-                  className={`h-2 rounded-full ${tone.bar}`}
-                  style={{ width: `${badge.progress * 100}%` }}
-                />
-              </div>
-            </div>
-          );
-        })}
-      </div>
     </div>
   );
 }

@@ -6,6 +6,7 @@ import { buildDashboardPrinterPresentation } from "../lib/dashboard_printer_over
 import type { DashboardSyncSource } from "../lib/dashboard_data_source";
 import { hasConfiguredMultiMaterial } from "../lib/printer_profiles";
 import type { BambuLiveIntegrationEntry, PrinterOverviewRow } from "../lib/tauri_client";
+import { formatGrams } from "../lib/weight_display";
 import type { ResolvedTheme } from "../lib/theme_mode";
 import { PrinterModelPreview } from "./printer_model_preview";
 import { PrinterSlotSummaryStrip } from "./printer_slot_summary_strip";
@@ -15,6 +16,7 @@ export type DashboardPrinterOverviewProps = {
   bambuLiveIntegrations: Record<string, BambuLiveIntegrationEntry["config"]>;
   resolvedTheme: ResolvedTheme;
   syncSource?: DashboardSyncSource;
+  stacked?: boolean;
   onOpenPrinters?: () => void;
   onOpenBambuLiveSettings?: (printerId: string) => void;
 };
@@ -31,6 +33,7 @@ export function DashboardPrinterOverview({
   bambuLiveIntegrations,
   resolvedTheme,
   syncSource = "local",
+  stacked = false,
   onOpenPrinters,
   onOpenBambuLiveSettings,
 }: DashboardPrinterOverviewProps) {
@@ -55,7 +58,7 @@ export function DashboardPrinterOverview({
     };
   }, [hasLiveObservation]);
   return (
-    <div className="grid min-w-0 gap-3 lg:grid-cols-2">
+    <div className={`grid min-w-0 gap-3 ${stacked ? "" : "lg:grid-cols-2"}`}>
       {printers.map((printer) => {
         const liveConfig = bambuLiveIntegrations[printer.printer.id] ?? null;
         const presentation = buildDashboardPrinterPresentation({
@@ -68,7 +71,7 @@ export function DashboardPrinterOverview({
         return (
           <article
             key={printer.printer.id}
-            className={`${dashboardOverviewStyles.card} border-l-4 p-4`}
+            className={`${dashboardOverviewStyles.card} border-l-4 ${stacked ? "p-3" : "p-4"}`}
             style={{
               ...brandSurface,
               borderTopColor: borderColor,
@@ -79,11 +82,11 @@ export function DashboardPrinterOverview({
             aria-label={printer.printer.name}
           >
             <div className="flex items-start gap-3">
-              <PrinterModelPreview
+              <div className={stacked ? "[&_img]:h-10" : ""}><PrinterModelPreview
                 model={printer.printer.model}
                 hasMultiMaterial={hasConfiguredMultiMaterial(printer.slots)}
                 compact
-              />
+              /></div>
               <div className="min-w-0 flex-1">
                 <h3 className="break-words text-base font-semibold text-slate-900 dark:text-slate-50">
                   {printer.printer.name}
@@ -122,15 +125,16 @@ export function DashboardPrinterOverview({
                 {presentation.telemetry.nozzleTempLabel ? <span>{t("printers.liveTelemetryNozzle", "Nozzle")} {presentation.telemetry.nozzleTempLabel}</span> : null}
               </div>
             ) : null}
-            <div className="mt-4 border-t border-slate-200/70 pt-3 dark:border-slate-700/70">
-              <p className={`mb-2 text-[11px] font-medium ${dashboardOverviewStyles.subtle}`}>
+            <div className={stacked ? "mt-3" : "mt-4 border-t border-slate-200/70 pt-3 dark:border-slate-700/70"}>
+              <p className={`${stacked ? "sr-only" : "mb-2 text-[11px]"} font-medium ${dashboardOverviewStyles.subtle}`}>
                 {t("dashboard.printerAssignedFilament", "Assigned filament")}
               </p>
               {assignedSlots.length > 0 ? (
                 <PrinterSlotSummaryStrip model={printer.printer.model} slots={assignedSlots} findSpoolById={() => null} />
               ) : <p className={`text-xs ${dashboardOverviewStyles.subtle}`}>{t("dashboard.printerNoAssignedFilament", "No rolls assigned")}</p>}
             </div>
-            <div className={`mt-3 ${dashboardOverviewStyles.between}`}>
+            <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
+              <span className={`text-xs ${dashboardOverviewStyles.subtle}`}>{t("dashboard.printerUsageSummary", "{count, plural, one {# job} other {# jobs}} · {grams} used", { count: printer.usage.total_jobs ?? 0, grams: formatGrams(printer.usage.total_used_g ?? 0, "zero", locale) })}</span>
               {resolvePrinterBrandTone(printer.printer.model) === "bambu" && syncSource === "local" && !liveConfig?.enabled ? (
                 <span className={`text-xs ${dashboardOverviewStyles.subtle}`}>{t("dashboard.printerLiveDisabled", "Live connection is not enabled")}</span>
               ) : null}

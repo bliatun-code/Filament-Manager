@@ -80,13 +80,15 @@ test("unavailable detail rows remain unknown and expose refresh instead of claim
   } finally { clearDashboardPageSnapshot(); }
 });
 
-test("required backup setup and trust actions stay ahead of the collapsed optional library details", () => {
+test("required setup and trust actions remain ahead of the balanced content", () => {
   clearDashboardPageSnapshot();
   try {
     const snapshot = hostSnapshot();
     writeDashboardPageSnapshot({ ...snapshot, actionItems: [{ kind: "BAMBU_TRUST", id: "trust", printerId: "printer-1", printerName: "Atlas", trustState: "CHANGED", age: { basis: "DETECTED_NOW", value: null, elapsedDays: null } }] });
     const html = renderNativeDashboard();
-    const details = html.indexOf("Setup and library details");
+    const details = html.indexOf('data-testid="dashboard-balanced-primary"');
+    assert.ok(details > 0);
+    assert.doesNotMatch(html, /Setup and library details|Progress goals|Inventory Health/);
     assert.ok(html.indexOf("Follow up") < details);
     assert.ok(html.indexOf("Finish setup") < details);
     assert.ok(html.indexOf("Open Live settings") < details);

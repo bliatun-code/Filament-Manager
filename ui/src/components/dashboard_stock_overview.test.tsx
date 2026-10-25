@@ -36,3 +36,16 @@ test("recent activity previews three entries and preserves older entries in a na
   assert.match(html, /Event 5/);
   assert.doesNotMatch(html, /<details[^>]*open=/);
 });
+
+test("low-stock overview distinguishes confirmed empty stock from unavailable Host data", () => {
+  const render = (available: boolean) => renderToStaticMarkup(
+    <I18nContext.Provider value={{locale: "en", setLocale: () => {}, t: (_key, fallback) => fallback ?? _key}}>
+      <DashboardStockOverview items={[]} available={available} />
+    </I18nContext.Provider>,
+  );
+  assert.match(render(true), /No low-stock spools/);
+  assert.doesNotMatch(render(true), /Details are unavailable/);
+  assert.match(render(false), /Details are unavailable/);
+  assert.doesNotMatch(render(false), /No low-stock spools/);
+  assert.match(render(true), /aria-label="Open low-stock inventory"/);
+});

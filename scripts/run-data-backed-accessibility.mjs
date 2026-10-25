@@ -244,6 +244,7 @@ export async function runDataBackedAccessibilityAnalysis(options) {
         activePageLabel = spec.label;
         if (index > 0) {
           await page
+            .getByRole("navigation", { name: "Navigation", exact: true })
             .getByRole("button", { exact: true, name: spec.label })
             .click();
         }

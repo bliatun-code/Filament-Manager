@@ -189,6 +189,13 @@ export const esDictionary: DictionaryNode = {
     settings: "Ajustes",
   },
   dashboard: {
+      "spoolsOnHand": "Bobinas en inventario",
+      "outboundLoans": "Bobinas prestadas",
+      "outboundLoansSubtitle": "Préstamos salientes activos",
+      "usageLast30Days": "Consumo de los últimos 30 días",
+      "noLowStock": "No hay bobinas con existencias bajas.",
+      "printerUsageSummary": "{count, plural, one {# trabajo} other {# trabajos}} · {grams} usados",
+
     "overviewDetailsUnavailable": "Los detalles no están disponibles en esta instantánea. Actualiza para cargarlos.",
     "libraryDetails": "Configuración y detalles de la biblioteca",
     "showOlderActivity": "Mostrar actividad anterior",

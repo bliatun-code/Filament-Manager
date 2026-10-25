@@ -208,6 +208,13 @@ export const huHUDictionary: DictionaryNode = {
     "receiveQuantity": "{count, plural, one {# tekercs bevételezése} other {# tekercs bevételezése}}"
   },
   "dashboard": {
+      "spoolsOnHand": "Raktáron lévő tekercsek",
+      "outboundLoans": "Kölcsönadott tekercsek",
+      "outboundLoansSubtitle": "Aktív kimenő kölcsönzések",
+      "usageLast30Days": "Az elmúlt 30 nap fogyasztása",
+      "noLowStock": "Nincs alacsony készletű tekercs.",
+      "printerUsageSummary": "{count} feladat · {grams} felhasználva",
+
     "overviewDetailsUnavailable": "A részletek nem érhetők el ebben a pillanatképben. Betöltésükhöz frissítsen.",
     "libraryDetails": "Beállítás és könyvtárrészletek",
     "showOlderActivity": "Korábbi tevékenységek megjelenítése",

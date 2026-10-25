@@ -336,7 +336,7 @@ test("loadDashboardData loads local dashboard data outside client mode", async (
     ["BAMBU_TRUST"],
   );
   assert.equal(
-    result.derived.stats.find((stat) => stat.id === "activePrinters")?.value,
+    String(result.derived.goalMetrics.configuredPrinters),
     "1",
   );
 });
@@ -482,7 +482,7 @@ test("loadDashboardData prefers live host data for paired clients", async () => 
   });
   assert.equal(result.revisionPollComplete, true);
   assert.equal(
-    result.derived.stats.find((stat) => stat.id === "activePrinters")?.value,
+    String(result.derived.goalMetrics.configuredPrinters),
     "1",
   );
   assert.equal(
@@ -535,7 +535,7 @@ test("loadDashboardData marks partial client host reads as cached", async () => 
   assert.equal(result.clientHostCompanionTone, "live");
   assert.equal(result.revisionPollComplete, false);
   assert.deepEqual(
-    result.derived.stats.find((stat) => stat.id === "activePrinters")?.value,
+    String(result.derived.goalMetrics.configuredPrinters),
     "1",
   );
   assert.equal(errors.length, 1);
@@ -733,7 +733,7 @@ test("loadDashboardData uses cached client rows without a cached snapshot", asyn
   );
   assert.equal(result.derived.ownershipOnHand.borrowedIn, 1);
   assert.equal(
-    result.derived.stats.find((stat) => stat.id === "activePrinters")?.value,
+    String(result.derived.goalMetrics.configuredPrinters),
     "1",
   );
   assert.equal(
@@ -930,7 +930,7 @@ test("loadDashboardData stays client-offline without cache instead of loading lo
     "0",
   );
   assert.equal(
-    result.derived.stats.find((stat) => stat.id === "activePrinters")?.value,
+    String(result.derived.goalMetrics.configuredPrinters),
     "0",
   );
 });
@@ -1019,7 +1019,7 @@ test("loadDashboardData falls back to cached client snapshot when host snapshot 
   assert.equal(result.clientHostDisplayName, "Cached Host");
   assert.equal(result.capturedAt, "2026-04-01 09:00:00");
   assert.equal(
-    result.derived.stats.find((stat) => stat.id === "activePrinters")?.value,
+    String(result.derived.goalMetrics.configuredPrinters),
     "1",
   );
   assert.equal(

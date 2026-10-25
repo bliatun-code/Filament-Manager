@@ -474,6 +474,13 @@ export const svSEDictionary: DictionaryNode = {
     "valueCostReasonCalculationInvalid": "Värdet kunde inte beräknas"
   },
   "dashboard": {
+      "spoolsOnHand": "Rullar i lager",
+      "outboundLoans": "Utlånade rullar",
+      "outboundLoansSubtitle": "Aktiva utlån",
+      "usageLast30Days": "Förbrukning de senaste 30 dagarna",
+      "noLowStock": "Inga rullar med lågt saldo.",
+      "printerUsageSummary": "{count, plural, one {# jobb} other {# jobb}} · {grams} förbrukat",
+
     "overviewDetailsUnavailable": "Detaljer är inte tillgängliga i den här ögonblicksbilden. Uppdatera för att läsa in dem.",
     "libraryDetails": "Inställningar och biblioteksdetaljer",
     "showOlderActivity": "Visa äldre aktivitet",

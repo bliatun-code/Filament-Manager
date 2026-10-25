@@ -58,6 +58,13 @@ export const nlNLDictionary: DictionaryNode = {
     "optional": "Optioneel"
   },
   "dashboard": {
+      "spoolsOnHand": "Spoelen op voorraad",
+      "outboundLoans": "Uitgeleende spoelen",
+      "outboundLoansSubtitle": "Actieve uitgaande leningen",
+      "usageLast30Days": "Verbruik in de afgelopen 30 dagen",
+      "noLowStock": "Geen spoelen met lage voorraad.",
+      "printerUsageSummary": "{count, plural, one {# printopdracht} other {# printopdrachten}} · {grams} gebruikt",
+
     "overviewDetailsUnavailable": "Details zijn niet beschikbaar in deze momentopname. Vernieuw om ze te laden.",
     "libraryDetails": "Instellingen en bibliotheekgegevens",
     "showOlderActivity": "Oudere activiteit tonen",

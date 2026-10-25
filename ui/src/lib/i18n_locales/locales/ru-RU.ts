@@ -474,6 +474,13 @@ export const ruRUDictionary: DictionaryNode = {
     }
   },
   "dashboard": {
+      "spoolsOnHand": "Катушки в наличии",
+      "outboundLoans": "Выданные катушки",
+      "outboundLoansSubtitle": "Активные выдачи",
+      "usageLast30Days": "Расход за последние 30 дней",
+      "noLowStock": "Нет катушек с низким остатком.",
+      "printerUsageSummary": "{count, plural, one {# задание} few {# задания} many {# заданий} other {# задания}} · использовано {grams}",
+
     "overviewDetailsUnavailable": "В этом снимке подробности недоступны. Обновите данные, чтобы загрузить их.",
     "libraryDetails": "Настройка и сведения о библиотеке",
     "showOlderActivity": "Показать более раннюю активность",

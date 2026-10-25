@@ -144,6 +144,13 @@ export const jaJPDictionary: DictionaryNode = {
     "settings": "設定"
   },
   "dashboard": {
+      "spoolsOnHand": "在庫スプール",
+      "outboundLoans": "貸出中のスプール",
+      "outboundLoansSubtitle": "有効な貸出",
+      "usageLast30Days": "過去30日間の使用量",
+      "noLowStock": "残量が少ないスプールはありません。",
+      "printerUsageSummary": "ジョブ {count} 件 · 使用量 {grams}",
+
     "overviewDetailsUnavailable": "このスナップショットでは詳細を利用できません。更新して読み込んでください。",
     "libraryDetails": "設定とライブラリの詳細",
     "showOlderActivity": "以前の活動を表示",

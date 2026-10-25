@@ -32,11 +32,11 @@ export default function DashboardLowStockContent({
               return (
                 <li
                   key={item.id}
-                  className="flex flex-col gap-2 py-3 first:pt-2.5 last:pb-2.5 sm:flex-row sm:items-center sm:justify-between"
+                  className="flex flex-col gap-2 py-3 first:pt-2.5 last:pb-2.5 "
                   data-low-stock-state="visible"
                 >
                   <div className="min-w-0">
-                    <h3 className="truncate text-sm font-semibold text-slate-900 dark:text-slate-100">
+                    <h3 className="break-words text-sm font-semibold text-slate-900 dark:text-slate-100">
                       {title}
                     </h3>
                     <p className="mt-0.5 text-xs leading-5 text-slate-500 dark:text-slate-400">
@@ -59,7 +59,7 @@ export default function DashboardLowStockContent({
                       )}
                     </p>
                   </div>
-                  <div className="flex shrink-0 flex-wrap gap-2 sm:justify-end">
+                  <div className="flex min-w-0 flex-wrap gap-2">
                     <PageHeaderButton
                       aria-label={t(
                         "dashboard.queueLowStockSuggestionAria",

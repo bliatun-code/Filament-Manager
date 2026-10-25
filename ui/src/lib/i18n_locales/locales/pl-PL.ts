@@ -58,6 +58,13 @@ export const plPLDictionary: DictionaryNode = {
     "optional": "Opcjonalne"
   },
   "dashboard": {
+      "spoolsOnHand": "Szpule w magazynie",
+      "outboundLoans": "Wypożyczone szpule",
+      "outboundLoansSubtitle": "Aktywne wypożyczenia na zewnątrz",
+      "usageLast30Days": "Zużycie w ostatnich 30 dniach",
+      "noLowStock": "Brak szpul z niskim stanem magazynowym.",
+      "printerUsageSummary": "{count, plural, one {# zadanie} few {# zadania} many {# zadań} other {# zadania}} · zużyto {grams}",
+
     "overviewDetailsUnavailable": "Szczegóły nie są dostępne w tej migawce. Odśwież, aby je wczytać.",
     "libraryDetails": "Konfiguracja i szczegóły biblioteki",
     "showOlderActivity": "Pokaż starszą aktywność",

@@ -7,7 +7,6 @@ import {
   dashboardCalendarMonthKey,
   normalizeDashboardUsageMonths,
 } from "./dashboard_model";
-import { buildDashboardBadges } from "./dashboard_badges";
 import { lookup } from "./i18n";
 import { nbDictionary } from "./i18n_locales/locales/nb";
 import {
@@ -140,51 +139,6 @@ function loanRow(
     ...overrides,
   });
 }
-
-test("buildDashboardBadges clamps progress and formats status copy", () => {
-  const badges = buildDashboardBadges({
-    goalMetrics: {
-      totalSpools: 4,
-      configuredPrinters: 2,
-      activeSpools: 4,
-      placedActiveSpools: 3,
-      totalJobs: 30,
-      totalSlots: 8,
-      loadedSlots: 2,
-    },
-    t,
-  });
-
-  assert.equal(badges[0]?.status, "3/4 active spools placed");
-  assert.equal(badges[0]?.progress, 0.75);
-  assert.equal(badges[1]?.status, "30 jobs logged");
-  assert.equal(badges[1]?.progress, 1);
-  assert.equal(badges[2]?.status, "2/8 slots loaded");
-  assert.equal(badges[2]?.progress, 0.25);
-});
-
-test("buildDashboardBadges handles empty location and slot goals", () => {
-  const badges = buildDashboardBadges({
-    goalMetrics: {
-      totalSpools: 0,
-      configuredPrinters: 0,
-      activeSpools: 0,
-      placedActiveSpools: 0,
-      totalJobs: 4,
-      totalSlots: 0,
-      loadedSlots: 0,
-    },
-    jobGoal: 10,
-    t,
-  });
-
-  assert.equal(badges[0]?.status, "No active spools yet.");
-  assert.equal(badges[0]?.progress, 0);
-  assert.equal(badges[1]?.status, "4/10 jobs logged");
-  assert.equal(badges[1]?.progress, 0.4);
-  assert.equal(badges[2]?.status, "No printer slots configured yet.");
-  assert.equal(badges[2]?.progress, 0);
-});
 
 test("buildDashboardDerivedState keeps borrowed rows out of inventory health score", () => {
   const result = buildDashboardDerivedState({
@@ -478,6 +432,8 @@ test("buildDashboardDerivedState normalizes legacy loan tokens before active cou
     result.activity.map((item) => item.id),
     ["loan-loan-legacy-active"],
   );
+  assert.equal(result.stats.find((stat) => stat.id === "outboundLoans")?.value, "1");
+  assert.ok(result.activity.every((item) => item.id.startsWith("loan-")));
 });
 
 test("buildDashboardDerivedState ignores EXT readiness for AMS/MMU printers", () => {

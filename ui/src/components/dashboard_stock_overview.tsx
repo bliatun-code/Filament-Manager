@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { dashboardOverviewStyles } from "../lib/dashboard_overview_styles";
 import type { DashboardStockPreviewRow } from "../lib/dashboard_overview_data";
 import { formatFilamentDisplayTitle as formatInventoryDisplayTitle } from "../lib/display_format";
@@ -8,26 +9,30 @@ import { InventorySwatchChip } from "./inventory_swatch_chip";
 export function DashboardStockOverview({
   items,
   onOpenLowStock,
+  available = true,
+  children,
 }: {
   items: DashboardStockPreviewRow[];
   onOpenLowStock?: () => void;
+  available?: boolean;
+  children?: ReactNode;
 }) {
   const { locale, t } = useI18n();
-  if (items.length === 0) return null;
+
   return (
     <section className={dashboardOverviewStyles.card} aria-labelledby="dashboard-stock-overview-title">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h2 id="dashboard-stock-overview-title" className={dashboardOverviewStyles.heading}>
           {t("dashboard.lowStock", "Low Stock")}
         </h2>
-        <button type="button" onClick={onOpenLowStock} className={`rounded ${dashboardOverviewStyles.action}`}>
+        <button type="button" aria-label={t("dashboard.openLowStockInventory", "Open low-stock inventory")} onClick={onOpenLowStock} className={`rounded ${dashboardOverviewStyles.action}`}>
           {t("nav.inventory", "Inventory")} <span aria-hidden="true">→</span>
         </button>
       </div>
       <p className={`mt-1 text-xs ${dashboardOverviewStyles.muted}`}>
         {t("dashboard.lowStockOverviewHint", "Spools at or below your low-stock thresholds.")}
       </p>
-      <ul className={`mt-3 ${dashboardOverviewStyles.rows}`}>
+      {!available ? <p className={`mt-3 text-sm ${dashboardOverviewStyles.muted}`}>{t("dashboard.overviewDetailsUnavailable", "Details are unavailable in this snapshot. Refresh to load them.")}</p> : items.length === 0 ? <p className={`mt-3 text-sm ${dashboardOverviewStyles.muted}`}>{t("dashboard.noLowStock", "No low-stock spools.")}</p> : <ul className={`mt-3 ${dashboardOverviewStyles.rows}`}>
         {items.map((item) => (
           <li key={item.spoolId} className="flex items-center gap-3 py-3">
             <InventorySwatchChip swatchColor={item.hexColor} className="h-10 w-10 rounded-xl" />
@@ -40,7 +45,8 @@ export function DashboardStockOverview({
             <span className={`shrink-0 text-sm font-semibold tabular-nums ${dashboardOverviewStyles.primary}`}>{formatGrams(item.remainingG, "zero", locale)}</span>
           </li>
         ))}
-      </ul>
+      </ul>}
+      {children}
     </section>
   );
 }

@@ -183,6 +183,13 @@ export const enDictionary: DictionaryNode = {
       settings: "Settings",
     },
     dashboard: {
+      printerUsageSummary: "{count, plural, one {# job} other {# jobs}} · {grams} used",
+      spoolsOnHand: "Spools on hand",
+      outboundLoans: "Spools on loan",
+      outboundLoansSubtitle: "Active outbound loans",
+      usageLast30Days: "Consumption in the last 30 days",
+      noLowStock: "No low-stock spools.",
+
       "overviewDetailsUnavailable": "Details are unavailable in this snapshot. Refresh to load them.",
       "libraryDetails": "Setup and library details",
       "showOlderActivity": "Show older activity",

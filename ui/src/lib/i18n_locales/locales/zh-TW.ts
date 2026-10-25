@@ -144,6 +144,13 @@ export const zhTWDictionary: DictionaryNode = {
     "settings": "設定"
   },
   "dashboard": {
+      "spoolsOnHand": "庫存料盤",
+      "outboundLoans": "借出的料盤",
+      "outboundLoansSubtitle": "進行中的借出",
+      "usageLast30Days": "最近30天用量",
+      "noLowStock": "沒有餘量不足的料盤。",
+      "printerUsageSummary": "{count} 個任務 · 已用 {grams}",
+
     "overviewDetailsUnavailable": "此快照中沒有可用的詳細資料。請重新整理以載入詳細資料。",
     "libraryDetails": "設定與資料庫詳細資料",
     "showOlderActivity": "顯示較早的活動",

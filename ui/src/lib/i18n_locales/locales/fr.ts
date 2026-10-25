@@ -189,6 +189,13 @@ export const frDictionary: DictionaryNode = {
     generic: "Générique",
   },
   dashboard: {
+      "spoolsOnHand": "Bobines en stock",
+      "outboundLoans": "Bobines prêtées",
+      "outboundLoansSubtitle": "Prêts sortants actifs",
+      "usageLast30Days": "Consommation des 30 derniers jours",
+      "noLowStock": "Aucune bobine avec un stock faible.",
+      "printerUsageSummary": "{count, plural, one {# impression} other {# impressions}} · {grams} utilisés",
+
     "overviewDetailsUnavailable": "Les détails ne sont pas disponibles dans cet instantané. Actualisez pour les charger.",
     "libraryDetails": "Configuration et détails de la bibliothèque",
     "showOlderActivity": "Afficher les activités plus anciennes",

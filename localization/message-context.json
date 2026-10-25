@@ -3,6 +3,42 @@
   "messages": [
     {
       "surface": "desktop",
+      "key": "dashboard.spoolsOnHand",
+      "meaning": "Headline count of physical rolls currently on hand, including rolls loaded in printers and rolls borrowed from others. Excludes rolls loaned out, empty or lost. Do not translate as total lifetime roll count.",
+      "screenshot": "docs/screenshots/dashboard.jpg"
+    },
+    {
+      "surface": "desktop",
+      "key": "dashboard.outboundLoans",
+      "meaning": "Headline count of physical rolls currently loaned out to other people. This is not stock borrowed from other people and not a count of borrowers.",
+      "screenshot": "docs/screenshots/dashboard.jpg"
+    },
+    {
+      "surface": "desktop",
+      "key": "dashboard.outboundLoansSubtitle",
+      "meaning": "Explains the outbound loan count. Only active, not yet returned loans to other people are included.",
+      "screenshot": "docs/screenshots/dashboard.jpg"
+    },
+    {
+      "surface": "desktop",
+      "key": "dashboard.usageLast30Days",
+      "meaning": "Measured filament consumption over the rolling last 30 days. This is not the current calendar month; the annual chart uses calendar-month buckets.",
+      "screenshot": "docs/screenshots/dashboard.jpg"
+    },
+    {
+      "surface": "desktop",
+      "key": "dashboard.noLowStock",
+      "meaning": "Empty low-stock list after a successful inventory read. Does not imply that inventory is empty and must not be used for an unavailable Host snapshot.",
+      "screenshot": "docs/screenshots/dashboard.jpg"
+    },
+    {
+      "surface": "desktop",
+      "key": "dashboard.printerUsageSummary",
+      "meaning": "Compact lifetime summary inside a printer card: count is the number of recorded printer jobs and grams is a preformatted consumed filament mass including unit. Preserve both parameters and locale-appropriate plural forms; this is not live print progress.",
+      "screenshot": "docs/screenshots/dashboard.jpg"
+    },
+    {
+      "surface": "desktop",
       "key": "settings.versionedHelpUnavailable",
       "meaning": "The installed application has not reported a stable release version, or reports a development or prerelease identifier. Source, product tour and manual actions stay disabled to avoid silently showing main-branch instructions for a different version. License and notices remain available.",
       "screenshot": "docs/screenshots/settings-general.jpg"

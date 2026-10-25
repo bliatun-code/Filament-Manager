@@ -144,6 +144,13 @@ export const fiFIDictionary: DictionaryNode = {
     "settings": "Asetukset"
   },
   "dashboard": {
+      "spoolsOnHand": "Kelat varastossa",
+      "outboundLoans": "Lainatut kelat",
+      "outboundLoansSubtitle": "Aktiiviset ulospäin annetut lainat",
+      "usageLast30Days": "Kulutus viimeisten 30 päivän aikana",
+      "noLowStock": "Ei keloja, joiden varasto on vähissä.",
+      "printerUsageSummary": "{count, plural, one {# työ} other {# työtä}} · {grams} käytetty",
+
     "overviewDetailsUnavailable": "Tiedot eivät ole käytettävissä tässä tilannevedoksessa. Päivitä ladataksesi ne.",
     "libraryDetails": "Asetukset ja kirjaston tiedot",
     "showOlderActivity": "Näytä vanhempi toiminta",

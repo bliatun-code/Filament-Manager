@@ -58,6 +58,13 @@ export const trTRDictionary: DictionaryNode = {
     "unknown": "Bilinmiyor"
   },
   "dashboard": {
+      "spoolsOnHand": "Stoktaki makaralar",
+      "outboundLoans": "Ödünç verilen makaralar",
+      "outboundLoansSubtitle": "Etkin dışarı verilen ödünçler",
+      "usageLast30Days": "Son 30 gündeki tüketim",
+      "noLowStock": "Az stoklu makara yok.",
+      "printerUsageSummary": "{count} iş · {grams} kullanıldı",
+
     "overviewDetailsUnavailable": "Bu anlık görüntüde ayrıntılar kullanılamıyor. Yüklemek için yenileyin.",
     "libraryDetails": "Kurulum ve kitaplık ayrıntıları",
     "showOlderActivity": "Eski etkinlikleri göster",

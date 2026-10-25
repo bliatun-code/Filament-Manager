@@ -9,6 +9,7 @@ import { appControlFocusClassName } from "./ui_class_names";
 const DashboardLowStockContent = lazy(() => import("./dashboard_low_stock_content"));
 
 type DashboardLowStockPanelProps = {
+  embedded?: boolean;
   busyIds?: ReadonlySet<string>;
   defaultExpanded?: boolean;
   error?: string | null;
@@ -30,6 +31,7 @@ function lowStockTitle(item: DashboardLowStockAction): string {
 }
 
 export function DashboardLowStockPanel({
+  embedded = false,
   busyIds = new Set<string>(),
   defaultExpanded = false,
   error = null,
@@ -94,20 +96,22 @@ export function DashboardLowStockPanel({
     }
   };
 
+  const Heading = embedded ? "h3" : "h2";
   return (
     <section
       aria-labelledby={titleId}
-      className="rounded-xl border border-slate-200/90 bg-white/55 px-4 py-3 dark:border-slate-700/80 dark:bg-slate-950/25"
+      className={embedded ? "mt-3 border-t border-slate-200 pt-3 dark:border-slate-700" : "rounded-xl border border-slate-200/90 bg-white/55 px-4 py-3 dark:border-slate-700/80 dark:bg-slate-950/25"}
       data-testid="dashboard-low-stock-suggestions"
     >
       <div className={`${dashboardOverviewStyles.between}`}>
+        {!embedded ? (
         <div className="min-w-0">
-          <h2
+          <Heading
             className="text-sm font-semibold text-slate-900 dark:text-slate-100"
             id={titleId}
           >
             {t("dashboard.lowStockSuggestionsTitle", "Low-stock suggestions")}
-          </h2>
+          </Heading>
           <p className={`mt-0.5 text-xs leading-5 ${dashboardOverviewStyles.subtle}`}>
             {t(
               "dashboard.lowStockSuggestionsHint",
@@ -115,6 +119,7 @@ export function DashboardLowStockPanel({
             )}
           </p>
         </div>
+        ) : <h3 id={titleId} className="sr-only">{t("dashboard.lowStockSuggestionsTitle", "Low-stock suggestions")}</h3>}
         <button
           ref={disclosureButtonRef}
           type="button"

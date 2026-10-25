@@ -474,6 +474,13 @@ export const daDKDictionary: DictionaryNode = {
     "valueCostReasonCalculationInvalid": "Værdien kunne ikke beregnes"
   },
   "dashboard": {
+      "spoolsOnHand": "Ruller på lager",
+      "outboundLoans": "Udlånte ruller",
+      "outboundLoansSubtitle": "Aktive udlån",
+      "usageLast30Days": "Forbrug de seneste 30 dage",
+      "noLowStock": "Ingen ruller med lav beholdning.",
+      "printerUsageSummary": "{count, plural, one {# job} other {# job}} · {grams} brugt",
+
     "overviewDetailsUnavailable": "Detaljer er ikke tilgængelige i dette øjebliksbillede. Opdater for at hente dem.",
     "libraryDetails": "Opsætning og biblioteksdetaljer",
     "showOlderActivity": "Vis ældre aktivitet",

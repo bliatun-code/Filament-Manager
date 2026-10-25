@@ -15,7 +15,7 @@ const activityDotClasses: Record<NonNullable<ActivityItem["tone"]>, string> = {
   slate: "bg-slate-400 dark:bg-slate-500",
 };
 
-export function ActivityTimeline({ items }: { items: ActivityItem[] }) {
+export function ActivityTimeline({ items, onOpenLoans }: { items: ActivityItem[]; onOpenLoans?: () => void }) {
   const { t } = useI18n();
   const renderItem = (item: ActivityItem) => (
     <li key={item.id} className="flex min-w-0 gap-3 py-3">
@@ -28,7 +28,11 @@ export function ActivityTimeline({ items }: { items: ActivityItem[] }) {
   );
   return (
     <section className={dashboardOverviewStyles.card} aria-labelledby="dashboard-recent-activity-title">
-      <h2 id="dashboard-recent-activity-title" className={dashboardOverviewStyles.heading}>{t("dashboard.recentActivity", "Recent Activity")}</h2>
+      <div className={dashboardOverviewStyles.between}>
+        <h2 id="dashboard-recent-activity-title" className={dashboardOverviewStyles.heading}>{t("dashboard.recentActivity", "Recent Activity")}</h2>
+        {onOpenLoans ? <button type="button" className={`rounded ${dashboardOverviewStyles.action}`} onClick={onOpenLoans}>{t("nav.loans", "Loans")} <span aria-hidden="true">→</span></button> : null}
+      </div>
+      {items.length === 0 ? <p className={`mt-3 text-xs ${dashboardOverviewStyles.muted}`}>{t("dashboard.noRecentActivity", "No recent activity yet.")}</p> : null}
       <ul className={`mt-2 ${dashboardOverviewStyles.rows}`}>{items.slice(0, 3).map(renderItem)}</ul>
       {items.length > 3 ? (
         <details className="mt-2 border-t border-slate-200 pt-3 dark:border-slate-700">

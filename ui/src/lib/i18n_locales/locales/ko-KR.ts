@@ -144,6 +144,13 @@ export const koKRDictionary: DictionaryNode = {
     "settings": "설정"
   },
   "dashboard": {
+      "spoolsOnHand": "보유 스풀",
+      "outboundLoans": "대여 중인 스풀",
+      "outboundLoansSubtitle": "진행 중인 대여",
+      "usageLast30Days": "최근 30일 사용량",
+      "noLowStock": "재고가 부족한 스풀이 없습니다.",
+      "printerUsageSummary": "작업 {count}개 · {grams} 사용",
+
     "overviewDetailsUnavailable": "이 스냅샷에서는 상세 정보를 확인할 수 없습니다. 새로고침하여 불러오세요.",
     "libraryDetails": "설정 및 라이브러리 상세 정보",
     "showOlderActivity": "이전 활동 보기",

@@ -21,6 +21,7 @@ import {
   formatDisplayInteger,
   type NumberDisplayLocale,
 } from "./number_display";
+import { formatFilamentDisplayTitle } from "./display_format";
 import { formatGrams } from "./weight_display";
 import { resolveSpoolLowStockThreshold } from "./low_stock_policy";
 
@@ -184,7 +185,6 @@ export function buildDashboardDerivedState(params: {
     t,
   } = params;
   const activeLoans = loans.filter(isActiveOutboundLoan);
-  const printerCount = printers.length;
   const effectiveSlotTotals = printers.reduce(
     (sum, printer) => {
       const summary = summarizeEffectivePrinterSlots(printer.slots);
@@ -258,38 +258,30 @@ export function buildDashboardDerivedState(params: {
       : t("dashboard.materialLowStockThresholds", "Thresholds by material");
 
   const activity: ActivityItem[] = [
-    ...activeLoans.slice(0, 3).map((loan) => ({
+    ...activeLoans.map((loan) => ({
       id: `loan-${loan.loan.id}`,
       title: `${t("dashboard.loanedTo", "Loaned to")} ${loan.loan.borrower_name}`,
-      detail: `${loan.material} ${loan.filament_name} · ${formatGrams(loan.loan.grams_out, "zero", locale)}`,
+      detail: `${formatFilamentDisplayTitle(loan.material, loan.filament_name, loan.color_name)} · ${formatGrams(loan.loan.grams_out, "zero", locale)}`,
       tone: "amber" as const,
     })),
-    ...printers.slice(0, 3).map((printer) => ({
-      id: `printer-${printer.printer.id}`,
-      title: printer.printer.name,
-      detail: `${formatDisplayInteger(printer.usage.total_jobs, locale)} ${t("printers.jobs", "jobs")} · ${formatGrams(printer.usage.total_used_g, "zero", locale)} ${t("printers.used", "used")}`,
-      tone: "sky" as const,
-    })),
+
   ];
 
   const stats: DashboardStat[] = [
     {
       id: "total",
-      title: t("dashboard.totalSpools", "Total Spools"),
+      title: t("dashboard.spoolsOnHand", "Spools on hand"),
       value: formatDisplayInteger(onHandTotal, locale),
       subtitle: t("dashboard.totalSpoolsSubtitle", "Across all locations"),
       trend: `${formatDisplayInteger(onHandInUse, locale)} ${t("dashboard.assigned", "assigned")}`,
       accent: "sky",
     },
     {
-      id: "activePrinters",
-      title: t("dashboard.activePrinters", "Active Printers"),
-      value: formatDisplayInteger(printerCount, locale),
-      subtitle: `${formatDisplayInteger(printerCount, locale)} ${t("dashboard.configured", "configured")}`,
-      trend:
-        printerCount > 0
-          ? ""
-          : t("dashboard.noPrintersConfigured", "No printers configured"),
+      id: "outboundLoans",
+      title: t("dashboard.outboundLoans", "Spools on loan"),
+      value: formatDisplayInteger(activeLoans.length, locale),
+      subtitle: t("dashboard.outboundLoansSubtitle", "Active outbound loans"),
+      trend: "",
       accent: "emerald",
     },
     {
@@ -302,7 +294,7 @@ export function buildDashboardDerivedState(params: {
     },
     {
       id: "monthlyUsage",
-      title: t("dashboard.monthlyUsage", "Monthly Usage"),
+      title: t("dashboard.usageLast30Days", "Consumption in the last 30 days"),
       value: formatGrams(overview.total_consumption_30d, "zero", locale),
       subtitle: t("dashboard.last30", "Last 30 days"),
       trend: t("dashboard.gramsPerDay", "{count} g/day", {

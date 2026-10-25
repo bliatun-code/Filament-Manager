@@ -144,6 +144,13 @@ export const zhCNDictionary: DictionaryNode = {
     "settings": "设置"
   },
   "dashboard": {
+      "spoolsOnHand": "库存料盘",
+      "outboundLoans": "借出的料盘",
+      "outboundLoansSubtitle": "进行中的借出",
+      "usageLast30Days": "最近30天用量",
+      "noLowStock": "没有余量不足的料盘。",
+      "printerUsageSummary": "{count} 个任务 · 已用 {grams}",
+
     "overviewDetailsUnavailable": "此快照中没有可用的详情。请刷新以加载详情。",
     "libraryDetails": "设置与库详情",
     "showOlderActivity": "显示更早的活动",

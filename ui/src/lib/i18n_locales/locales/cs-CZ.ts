@@ -58,6 +58,13 @@ export const csCZDictionary: DictionaryNode = {
     "optional": "Volitelné"
   },
   "dashboard": {
+      "spoolsOnHand": "Cívky skladem",
+      "outboundLoans": "Zapůjčené cívky",
+      "outboundLoansSubtitle": "Aktivní odchozí zápůjčky",
+      "usageLast30Days": "Spotřeba za posledních 30 dní",
+      "noLowStock": "Žádné cívky s nízkou zásobou.",
+      "printerUsageSummary": "{count, plural, one {# úloha} few {# úlohy} other {# úloh}} · spotřebováno {grams}",
+
     "overviewDetailsUnavailable": "Podrobnosti nejsou v tomto snímku dostupné. Obnovte data a načtěte je.",
     "libraryDetails": "Nastavení a podrobnosti knihovny",
     "showOlderActivity": "Zobrazit starší aktivitu",

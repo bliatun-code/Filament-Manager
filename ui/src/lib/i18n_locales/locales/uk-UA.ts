@@ -144,6 +144,13 @@ export const ukUADictionary: DictionaryNode = {
     "settings": "Налаштування"
   },
   "dashboard": {
+      "spoolsOnHand": "Котушки в наявності",
+      "outboundLoans": "Позичені іншим котушки",
+      "outboundLoansSubtitle": "Активні вихідні позики",
+      "usageLast30Days": "Витрата за останні 30 днів",
+      "noLowStock": "Немає котушок із низьким залишком.",
+      "printerUsageSummary": "{count, plural, one {# завдання} few {# завдання} many {# завдань} other {# завдання}} · використано {grams}",
+
     "overviewDetailsUnavailable": "У цьому знімку подробиці недоступні. Оновіть дані, щоб завантажити їх.",
     "libraryDetails": "Налаштування та подробиці бібліотеки",
     "showOlderActivity": "Показати старішу активність",

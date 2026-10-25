@@ -188,6 +188,13 @@ export const deDictionary: DictionaryNode = {
     generic: "Generisch",
   },
   dashboard: {
+      "spoolsOnHand": "Spulen im Bestand",
+      "outboundLoans": "Verliehene Spulen",
+      "outboundLoansSubtitle": "Aktive Ausleihen",
+      "usageLast30Days": "Verbrauch der letzten 30 Tage",
+      "noLowStock": "Keine Spulen mit niedrigem Bestand.",
+      "printerUsageSummary": "{count, plural, one {# Auftrag} other {# Aufträge}} · {grams} verbraucht",
+
     "overviewDetailsUnavailable": "Details sind in diesem Schnappschuss nicht verfügbar. Aktualisieren Sie, um sie zu laden.",
     "libraryDetails": "Einrichtung und Bibliotheksdetails",
     "showOlderActivity": "Ältere Aktivitäten anzeigen",

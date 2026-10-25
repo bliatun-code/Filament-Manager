@@ -2,48 +2,14 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
-
-import { InventoryHealthPanel } from "./dashboard_panels";
-
+import { OwnershipSnapshotPanel } from "./dashboard_panels";
 (globalThis as typeof globalThis & { React: typeof React }).React = React;
-
 const t = (_key: string, fallback: string) => fallback;
 
-test("empty inventory health shows an honest score state and direct add action", () => {
-  const html = renderToStaticMarkup(
-    <InventoryHealthPanel
-      health={{
-        score: null,
-        headline: "Not enough data",
-        detail: "Add rolls to start health tracking.",
-        metrics: [],
-      }}
-      onAddFirstSpool={() => {}}
-      t={t}
-    />,
-  );
-
-  assert.match(html, /aria-label="Not enough data"/);
-  assert.match(html, />—</);
-  assert.match(html, /<button[^>]*>Add spool<\/button>/);
-  assert.doesNotMatch(html, /100%|Stable supply/);
-});
-
-test("inventory health keeps the percentage and hides onboarding after data exists", () => {
-  const html = renderToStaticMarkup(
-    <InventoryHealthPanel
-      health={{
-        score: 100,
-        headline: "Stable supply",
-        detail: "Watch stock.",
-        metrics: [],
-      }}
-      onAddFirstSpool={() => {}}
-      t={t}
-    />,
-  );
-
-  assert.match(html, /aria-label="100%"/);
-  assert.match(html, />100%<\/span>/);
-  assert.doesNotMatch(html, />Add spool<\/button>/);
+test("ownership footer preserves borrowed-in inventory without scores or repeating the headline total", () => {
+  const render = (borrowedIn: number) => renderToStaticMarkup(<OwnershipSnapshotPanel onHand={{ owned: 48, borrowedIn }} loadedSlots={4} onOrder="0" t={t} />);
+  assert.match(render(0), /No borrowed-in stock/);
+  assert.doesNotMatch(render(0), />48|Inventory Health|%/);
+  assert.match(render(2), /Owned on hand.*48.*Borrowed in on hand.*2/);
+  assert.match(render(0), /4.*slots loaded.*0.*on order/);
 });

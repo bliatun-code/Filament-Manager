@@ -1,6 +1,6 @@
 import { dashboardOverviewStyles } from "../lib/dashboard_overview_styles";
+import { OwnershipSnapshotPanel } from "./dashboard_panels";
 import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { ActivityTimeline } from "../components/dashboard_activity_timeline";
 import { DashboardOnboardingChecklist } from "../components/dashboard_onboarding_checklist";
 import { DashboardActionPanel } from "../components/dashboard_action_panel";
 import { DashboardLowStockPanel } from "../components/dashboard_low_stock_panel";
@@ -48,7 +48,8 @@ import { readLatestFullBackupExport } from "./settings_full_backup_activity";
 import type { PageKey } from "../lib/app_navigation_model";
 import { useResolvedTheme } from "../lib/theme_mode";
 
-const DashboardLibraryDetails = lazy(() => import("./dashboard_library_details"));
+const ActivityTimeline = lazy(() => import("../components/dashboard_activity_timeline").then((module) => ({ default: module.ActivityTimeline })));
+const DashboardConsumptionPanel = lazy(() => import("./dashboard_consumption_panel"));
 
 type DashboardPageProps = {
   onNavigate?: (page: PageKey) => void;
@@ -99,7 +100,6 @@ export default function DashboardPage({
     lastSyncLabel,
     libraryId,
     loading,
-    ownershipLowStock,
     ownershipOnHand,
     refreshAvailable,
     refreshDashboard,
@@ -131,11 +131,8 @@ export default function DashboardPage({
         0,
       )
     : usageTotal12m;
-  const [libraryDetailsRequested, setLibraryDetailsRequested] = useState(
-    desktopVisualQaScenario === "dashboard-consumption",
-  );
-  const [libraryDetailsReady, setLibraryDetailsReady] = useState(false);
-  const handleLibraryDetailsReady = useCallback(() => setLibraryDetailsReady(true), []);
+  const [consumptionReady, setConsumptionReady] = useState(false);
+  const handleConsumptionReady = useCallback(() => setConsumptionReady(true), []);
   const forceOnboardingVisible =
     desktopVisualQaScenario === "dashboard-onboarding";
   const deterministicDashboardPreferences = desktopVisualQaScenario != null;
@@ -193,7 +190,7 @@ export default function DashboardPage({
       loading ||
       !tauri ||
       displayedUsageTotal12m <= 0 ||
-      !libraryDetailsReady ||
+      !consumptionReady ||
       consumptionPanelPositionedRef.current ||
       dashboardConsumptionReadinessSignaledRef.current
     ) {
@@ -222,7 +219,7 @@ export default function DashboardPage({
         window.cancelAnimationFrame(paintFrame);
       }
     };
-  }, [desktopVisualQaScenario, displayedUsageTotal12m, libraryDetailsReady, loading, tauri]);
+  }, [desktopVisualQaScenario, displayedUsageTotal12m, consumptionReady, loading, tauri]);
   const [onboardingDismissed, setOnboardingDismissed] = useState(() =>
     forceOnboardingVisible ? false : readDashboardOnboardingDismissed(),
   );
@@ -450,12 +447,7 @@ export default function DashboardPage({
       <div className="page-header">
         <div className="page-header-copy">
           <h1 className="page-title">{t("nav.dashboard", "Dashboard")}</h1>
-          <div className="page-subtitle">
-            {t(
-              "dashboard.subtitle",
-              "Follow inventory health, current usage and printer activity from one overview.",
-            )}
-          </div>
+
         </div>
         <div className="flex flex-wrap items-center gap-3 xl:pt-1">
           <PageHeaderButton
@@ -495,10 +487,10 @@ export default function DashboardPage({
             key={stat.id}
             type="button"
             className="min-w-0 rounded py-4 text-left outline-none hover:bg-slate-100/60 focus-visible:ring-2 focus-visible:ring-sky-400 dark:hover:bg-slate-800/50"
-            onClick={() => onNavigate?.(stat.id === "total" ? "inventory" : stat.id === "activePrinters" ? "printers" : "statistics")}
+            onClick={() => onNavigate?.(stat.id === "total" ? "inventory" : stat.id === "outboundLoans" ? "loans" : "statistics")}
           >
             <span className={`block text-xs font-medium ${dashboardOverviewStyles.muted}`}>
-              {stat.id === "activePrinters" ? t("nav.printers", "Printers") : stat.title}
+              {stat.title}
             </span>
             <span className={`mt-1 block text-3xl font-semibold tabular-nums tracking-tight ${dashboardOverviewStyles.primary}`}>{setupDataAvailable ? stat.value : "—"}</span>
             <span className={`mt-1 block text-xs ${dashboardOverviewStyles.muted}`}>{stat.subtitle}</span>
@@ -515,84 +507,66 @@ export default function DashboardPage({
 
       {showRequiredSetup ? onboardingChecklist : null}
 
-      <section className="mt-6" aria-labelledby="dashboard-printers-title">
-        <div className={`mb-3 ${dashboardOverviewStyles.between}`}>
-          <h2 id="dashboard-printers-title" className={dashboardOverviewStyles.heading}>{t("nav.printers", "Printers")}</h2>
-          <button type="button" onClick={() => onOpenPrinters?.()} className={`rounded ${dashboardOverviewStyles.action}`}>
-            {t("dashboard.printerOpen", "Open printers")} <span aria-hidden="true">→</span>
-          </button>
-        </div>
-        {!printerOverviewAvailable ? (
-          <p className={`surface-subtle px-4 py-4 text-sm ${dashboardOverviewStyles.muted}`}>{overviewDetailsUnavailable}</p>
-        ) : printerOverview.length > 0 ? (
-          <DashboardPrinterOverview
-            printers={printerOverview}
-            bambuLiveIntegrations={liveConfigByPrinter}
-            resolvedTheme={resolvedTheme}
-            syncSource={syncSource}
-            onOpenPrinters={onOpenPrinters}
-            onOpenBambuLiveSettings={onOpenBambuLiveSettings}
-          />
-        ) : (
-          <p className={`surface-subtle px-4 py-4 text-sm ${dashboardOverviewStyles.muted}`}>{t("dashboard.noPrintersConfigured", "No printers configured")}</p>
-        )}
-      </section>
-
-      <div className={`mt-6 grid min-w-0 gap-4 ${lowStockPreview.length > 0 || !lowStockPreviewAvailable ? "xl:grid-cols-2" : ""}`}>
-        {!lowStockPreviewAvailable ? (
-          <section className={dashboardOverviewStyles.card}>
-            <h2 className={dashboardOverviewStyles.heading}>{t("dashboard.lowStock", "Low Stock")}</h2>
-            <p className={`mt-2 text-sm ${dashboardOverviewStyles.muted}`}>{overviewDetailsUnavailable}</p>
-            <button type="button" onClick={() => onOpenLowStock?.()} className="mt-3 rounded text-xs font-semibold text-sky-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400 dark:text-sky-300">{t("dashboard.openLowStockInventory", "Open low-stock inventory")}</button>
-          </section>
-        ) : null}
-        <DashboardStockOverview items={lowStockPreview} onOpenLowStock={onOpenLowStock} />
-        <ActivityTimeline items={activity} />
+      <div className="mt-5 grid min-w-0 items-start gap-4 lg:grid-cols-[minmax(0,1.45fr)_minmax(0,1fr)]" data-testid="dashboard-balanced-primary">
+        <section className="min-w-0" aria-labelledby="dashboard-printers-title">
+          <div className={`mb-3 ${dashboardOverviewStyles.between}`}>
+            <h2 id="dashboard-printers-title" className={dashboardOverviewStyles.heading}>{t("nav.printers", "Printers")}</h2>
+            <button type="button" onClick={() => onOpenPrinters?.()} className={`rounded ${dashboardOverviewStyles.action}`}>
+              {t("dashboard.printerOpen", "Open printers")} <span aria-hidden="true">→</span>
+            </button>
+          </div>
+          {!printerOverviewAvailable ? (
+            <p className={`surface-subtle px-4 py-4 text-sm ${dashboardOverviewStyles.muted}`}>{overviewDetailsUnavailable}</p>
+          ) : printerOverview.length > 0 ? (
+            <DashboardPrinterOverview
+              printers={printerOverview}
+              bambuLiveIntegrations={liveConfigByPrinter}
+              resolvedTheme={resolvedTheme}
+              syncSource={syncSource}
+              onOpenBambuLiveSettings={onOpenBambuLiveSettings}
+              stacked
+            />
+          ) : (
+            <p className={`surface-subtle px-4 py-4 text-sm ${dashboardOverviewStyles.muted}`}>{t("dashboard.noPrintersConfigured", "No printers configured")}</p>
+          )}
+        </section>
+        <DashboardStockOverview items={lowStockPreview} available={lowStockPreviewAvailable} onOpenLowStock={onOpenLowStock}>
+          {lowStockActionItems.length > 0 || actionError || actionMessage ? (
+            <DashboardLowStockPanel
+              embedded
+              busyIds={actionBusyIds}
+              error={actionError}
+              hiddenProductKeys={hiddenLowStockProductKeys}
+              items={lowStockActionItems}
+              message={actionMessage}
+              onHideLowStock={handleHideLowStock}
+              onOpenLowStock={() => onOpenLowStock?.()}
+              onQueueLowStock={(item) => void handleQueueLowStock(item)}
+              onRestoreLowStock={handleRestoreLowStock}
+            />
+          ) : null}
+        </DashboardStockOverview>
       </div>
 
-      {lowStockActionItems.length > 0 || actionError || actionMessage ? (
-        <div className="mt-4">
-          <DashboardLowStockPanel
-            busyIds={actionBusyIds}
-            error={actionError}
-            hiddenProductKeys={hiddenLowStockProductKeys}
-            items={lowStockActionItems}
-            message={actionMessage}
-            onHideLowStock={handleHideLowStock}
-            onOpenLowStock={() => onOpenLowStock?.()}
-            onQueueLowStock={(item) => void handleQueueLowStock(item)}
-            onRestoreLowStock={handleRestoreLowStock}
+      <div className="mt-4 grid min-w-0 items-start gap-4 lg:grid-cols-[minmax(0,1.45fr)_minmax(0,1fr)]" data-testid="dashboard-balanced-secondary">
+        <Suspense fallback={<p role="status" className={`surface-subtle p-4 text-sm ${dashboardOverviewStyles.muted}`}>{t("common.loading", "Loading...")}</p>}>
+          <DashboardConsumptionPanel
+            consumptionPanelRef={consumptionPanelRef}
+            onOpenStatistics={() => onNavigate?.("statistics")}
+            onReady={handleConsumptionReady}
+            usageAvailable={displayedUsageAvailable}
+            usageMonths={displayedUsageMonths}
+            usageTotal12m={displayedUsageTotal12m}
           />
-        </div>
-      ) : null}
+        </Suspense>
+        <Suspense fallback={null}>
+          <ActivityTimeline items={activity} onOpenLoans={() => onNavigate?.("loans")} />
+        </Suspense>
+      </div>
 
-      <details
-        className="mt-6 rounded-xl border border-slate-200 dark:border-slate-700"
-        open={desktopVisualQaScenario === "dashboard-consumption" ? true : undefined}
-        onToggle={(event) => { if (event.currentTarget.open) setLibraryDetailsRequested(true); }}
-      >
-        <summary className="cursor-pointer rounded-xl px-4 py-4 text-sm font-semibold text-slate-700 outline-none focus-visible:ring-2 focus-visible:ring-sky-400 dark:text-slate-200">
-          {t("dashboard.libraryDetails", "Setup and library details")}
-        </summary>
-        {libraryDetailsRequested ? (
-          <Suspense fallback={<p role="status" className={`px-4 pb-4 text-sm ${dashboardOverviewStyles.muted}`}>{t("common.loading", "Loading...")}</p>}>
-            <DashboardLibraryDetails
-              consumptionPanelRef={consumptionPanelRef}
-              goalMetrics={goalMetrics}
-              health={health}
-              lowStock={ownershipLowStock}
-              onAddFirstSpool={onAddFirstSpool}
-              onOpenStatistics={() => onNavigate?.("statistics")}
-              onReady={handleLibraryDetailsReady}
-              onHand={ownershipOnHand}
-              onboardingChecklist={!showRequiredSetup ? onboardingChecklist : null}
-              usageAvailable={displayedUsageAvailable}
-              usageMonths={displayedUsageMonths}
-              usageTotal12m={displayedUsageTotal12m}
-            />
-          </Suspense>
-        ) : null}
-      </details>
+      <OwnershipSnapshotPanel onHand={ownershipOnHand} loadedSlots={goalMetrics.loadedSlots} onOrder={health.metrics.find((metric) => metric.id === "onOrder")?.value ?? "—"} locale={locale} t={t} />
+      {showOnboarding && !showRequiredSetup ? onboardingChecklist : null}
+
     </div>
   );
 }

@@ -6,7 +6,7 @@ const source = readFileSync(
   new URL("./dashboard.tsx", import.meta.url),
   "utf8",
 );
-const libraryDetailsSource = readFileSync(new URL("./dashboard_library_details.tsx", import.meta.url), "utf8");
+const libraryDetailsSource = readFileSync(new URL("./dashboard_consumption_panel.tsx", import.meta.url), "utf8");
 const actionPanelSource = readFileSync(
   new URL("../components/dashboard_action_panel.tsx", import.meta.url),
   "utf8",
@@ -56,7 +56,7 @@ test("Dashboard keeps three compact headline values above printer and stock deta
 });
 
 test("empty dashboard action opens the real add-spool workflow", () => {
-  assert.match(source, /onAddFirstSpool=\{onAddFirstSpool\}/);
+  assert.match(source, /onAddSpool=\{\(\) => onAddFirstSpool\?\.\(\)\}/);
   assert.match(appSource, /kind: "ADD_SPOOL"/);
   assert.match(inventorySource, /navigationIntent\.kind === "ADD_SPOOL"/);
   assert.match(inventorySource, /openAddModal\(\)/);
@@ -92,16 +92,17 @@ test("annual consumption visual QA scrolls the real populated panel into view", 
     /DESKTOP_VISUAL_QA_DASHBOARD_CONSUMPTION_READINESS_TOKEN/,
   );
   assert.match(source, /signalDesktopVisualQaReadiness/);
-  assert.match(source, /!libraryDetailsReady/);
+  assert.match(source, /!consumptionReady/);
   assert.match(libraryDetailsSource, /data-testid="dashboard-consumption-panel"/);
   assert.match(libraryDetailsSource, /useEffect\(\(\) => \{ onReady\(\); \}/);
 });
 
-test("secondary library details load on disclosure and remain mounted after their first request", () => {
-  assert.match(source, /lazy\(\(\) => import\("\.\/dashboard_library_details"\)\)/);
-  assert.match(source, /if \(event\.currentTarget\.open\) setLibraryDetailsRequested\(true\)/);
-  assert.match(source, /libraryDetailsRequested \? \(/);
-  assert.doesNotMatch(source, /setLibraryDetailsRequested\(false\)/);
+test("balanced content keeps annual consumption visible and removes retired health and goal panels", () => {
+  assert.match(source, /DashboardConsumptionPanel/);
+  assert.match(source, /dashboard-balanced-primary/);
+  assert.match(source, /dashboard-balanced-secondary/);
+  assert.doesNotMatch(source, /setLibraryDetailsRequested|dashboard\.libraryDetails/);
+  assert.doesNotMatch(libraryDetailsSource, /InventoryHealthPanel|BadgePanel|OwnershipSnapshotPanel/);
   assert.match(source, /showRequiredSetup \? onboardingChecklist : null/);
 });
 

@@ -183,6 +183,13 @@ export const nbDictionary: DictionaryNode = {
       settings: "Innstillinger",
     },
     dashboard: {
+      printerUsageSummary: "{count, plural, one {# jobb} other {# jobber}} · {grams} brukt",
+      spoolsOnHand: "Ruller på lager",
+      outboundLoans: "Ruller utlånt",
+      outboundLoansSubtitle: "Aktive utlån",
+      usageLast30Days: "Forbruk siste 30 dager",
+      noLowStock: "Ingen ruller med lav beholdning.",
+
       "overviewDetailsUnavailable": "Detaljer er ikke tilgjengelige i dette øyeblikksbildet. Oppdater for å hente dem.",
       "libraryDetails": "Oppsett og bibliotekdetaljer",
       "showOlderActivity": "Vis eldre aktivitet",

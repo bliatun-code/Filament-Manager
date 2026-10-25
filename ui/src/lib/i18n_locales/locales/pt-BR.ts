@@ -58,6 +58,13 @@ export const ptBRDictionary: DictionaryNode = {
     optional: "Opcional",
   },
   dashboard: {
+      "spoolsOnHand": "Carretéis em estoque",
+      "outboundLoans": "Carretéis emprestados",
+      "outboundLoansSubtitle": "Empréstimos de saída ativos",
+      "usageLast30Days": "Consumo dos últimos 30 dias",
+      "noLowStock": "Nenhum carretel com estoque baixo.",
+      "printerUsageSummary": "{count, plural, one {# trabalho} other {# trabalhos}} · {grams} usados",
+
     "overviewDetailsUnavailable": "Os detalhes não estão disponíveis neste retrato. Atualize para carregá-los.",
     "libraryDetails": "Configuração e detalhes da biblioteca",
     "showOlderActivity": "Mostrar atividade anterior",
