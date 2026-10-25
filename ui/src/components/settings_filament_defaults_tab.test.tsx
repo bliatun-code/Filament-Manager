@@ -129,12 +129,13 @@ function renderTab({
   );
 }
 
-test("filament defaults tab combines currency, low stock and collapsed price groups", () => {
+test("filament defaults keeps currency and thresholds available with a single price-group workspace", () => {
   const html = renderTab();
 
   assert.match(html, /Default purchase currency/);
   assert.match(html, /min-w-0 space-y-4/);
-  assert.match(html, /lg:col-span-2/);
+  assert.match(html, /settings-filament-workspace/);
+  assert.match(html, /settings-filament-editor/);
   assert.match(html, /value="NOK"/);
   assert.match(html, /Low-stock thresholds/);
   assert.match(html, /Filament group prices/);

@@ -51,7 +51,7 @@ test("settings navigation uses a vertical sidebar with a compact narrow layout",
 test("compact settings tabs keep two columns at laptop widths", () => {
   assert.equal(
     settingsRouteOutletGridClass("FILAMENT_DEFAULTS"),
-    "mt-4 grid min-w-0 grid-cols-1 gap-6 lg:grid-cols-[minmax(0,2fr)_minmax(0,3fr)]",
+    "grid min-w-0 grid-cols-1",
   );
   assert.equal(
     settingsRouteOutletGridClass("GENERAL"),
