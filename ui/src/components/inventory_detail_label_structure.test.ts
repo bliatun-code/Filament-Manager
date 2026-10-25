@@ -16,7 +16,7 @@ function readComponentSource(fileName: string): string {
   return readFileSync(new URL(`./${fileName}`, import.meta.url), "utf8");
 }
 
-test("inventory detail labels use shared detail typography classes", () => {
+test("inventory detail uses shared controls and balanced section headings", () => {
   const detailPanelClasses = readComponentSource("inventory_detail_panel_class.ts");
   const catalogMetadataPanel = readComponentSource("inventory_catalog_metadata_panel.tsx");
   const detailModal = readComponentSource("inventory_spool_detail_modal.tsx");
@@ -68,8 +68,8 @@ test("inventory detail labels use shared detail typography classes", () => {
     /type="color"(?:(?!\/>)[\s\S])*?className="[^"]*(?:border-slate|bg-white)/,
   );
   assert.match(catalogMetadataPanel, /inventorySwatchInsetStyle/);
-  assert.match(detailModal, /inventoryDetailEyebrowClassName/);
-  assert.match(detailModal, /inventorySwatchPanelStyle/);
+  assert.match(detailModal, /inventory-balanced-section/);
+  assert.doesNotMatch(detailModal, /inventorySwatchPanelStyle/);
   assert.match(maintenancePanels, /inventoryDetailEyebrowClassName/);
   assert.match(maintenancePanels, /inventoryDetailDangerActionButtonClassName/);
   assert.match(maintenancePanels, /inventoryDetailFormControlClassName/);

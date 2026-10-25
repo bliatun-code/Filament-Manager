@@ -382,6 +382,17 @@ export const ptBRDictionary: DictionaryNode = {
       "Os padrões de filamento salvos não são mais válidos. Recarregue-os e revise-os.",
   },
   inventory: {
+    "detailWeight": "Peso",
+    "detailPlacementOwnership": "Localização e propriedade",
+    "detailIdentityLabel": "Identidade e etiqueta",
+    "detailMorePurchase": "Mais detalhes da compra",
+    "detailUsageHistory": "Consumo e histórico",
+    "detailUpdateWeight": "Atualizar peso",
+    "detailShowUsageHistory": "Mostrar gráfico e histórico",
+    "detailSaveTareFirst": "Salve o peso alterado do rolo vazio antes de atualizar o peso total medido.",
+    "detailAdvancedActions": "Ações avançadas",
+    "detailOpenPrinters": "Abrir impressoras",
+
     "labelPreviewFailed": "Não foi possível preparar a prévia da etiqueta. Tente novamente.",
     "labelRetryPreview": "Tentar prévia novamente",
     "labelOpenSavedFile": "Abrir arquivo salvo",

@@ -301,6 +301,17 @@ export const nlNLDictionary: DictionaryNode = {
     "filamentStandardsInvalid": "De opgeslagen filamentstandaarden zijn niet meer geldig. Laad ze opnieuw en controleer ze."
   },
   "inventory": {
+    "detailWeight": "Gewicht",
+    "detailPlacementOwnership": "Locatie en eigendom",
+    "detailIdentityLabel": "Identiteit en etiket",
+    "detailMorePurchase": "Meer aankoopdetails",
+    "detailUsageHistory": "Verbruik en geschiedenis",
+    "detailUpdateWeight": "Gewicht bijwerken",
+    "detailShowUsageHistory": "Grafiek en geschiedenis tonen",
+    "detailSaveTareFirst": "Sla het gewijzigde lege spoelgewicht op voordat u het gemeten totaalgewicht bijwerkt.",
+    "detailAdvancedActions": "Geavanceerde acties",
+    "detailOpenPrinters": "Printers openen",
+
     "labelPreviewFailed": "De etiketvoorvertoning kon niet worden gemaakt. Probeer het opnieuw.",
     "labelRetryPreview": "Voorvertoning opnieuw proberen",
     "labelOpenSavedFile": "Opgeslagen bestand openen",

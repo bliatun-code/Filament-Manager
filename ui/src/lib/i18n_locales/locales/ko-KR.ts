@@ -305,6 +305,17 @@ export const koKRDictionary: DictionaryNode = {
     "badgeNoPrinterSlots": "아직 구성된 프린터 슬롯이 없습니다."
   },
   "inventory": {
+    "detailWeight": "무게",
+    "detailPlacementOwnership": "위치 및 소유권",
+    "detailIdentityLabel": "식별 정보 및 라벨",
+    "detailMorePurchase": "추가 구매 정보",
+    "detailUsageHistory": "사용량 및 기록",
+    "detailUpdateWeight": "무게 업데이트",
+    "detailShowUsageHistory": "차트 및 기록 표시",
+    "detailSaveTareFirst": "측정한 총무게를 업데이트하기 전에 변경한 빈 스풀 무게를 저장하세요.",
+    "detailAdvancedActions": "고급 작업",
+    "detailOpenPrinters": "프린터 열기",
+
     "labelPreviewFailed": "라벨 미리보기를 준비하지 못했습니다. 다시 시도하세요.",
     "labelRetryPreview": "미리보기 다시 시도",
     "labelOpenSavedFile": "저장된 파일 열기",

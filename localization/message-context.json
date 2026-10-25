@@ -1083,6 +1083,66 @@
       "key": "settings.noMatchingSwatches",
       "meaning": "Empty search results among missing color samples. Other missing samples may still exist outside the current search and vendor filter.",
       "screenshot": "docs/screenshots/settings-catalog.jpg"
+    },
+    {
+      "surface": "desktop",
+      "key": "inventory.detailWeight",
+      "meaning": "Heading for the selected inventory roll weight editor. Measured total includes empty-spool tare; remaining filament excludes tare.",
+      "screenshot": "docs/screenshots/inventory.jpg"
+    },
+    {
+      "surface": "desktop",
+      "key": "inventory.detailPlacementOwnership",
+      "meaning": "Selected roll properties, including its home storage location and whether it is owned or borrowed in. Loaded printer placement is managed on the Printers page.",
+      "screenshot": "docs/screenshots/inventory.jpg"
+    },
+    {
+      "surface": "desktop",
+      "key": "inventory.detailIdentityLabel",
+      "meaning": "Entry points for QR labels, RFID identity and locked shared catalog data. Not a new identity or authentication feature.",
+      "screenshot": "docs/screenshots/inventory.jpg"
+    },
+    {
+      "surface": "desktop",
+      "key": "inventory.detailMorePurchase",
+      "meaning": "Disclosure containing batch code, supplier reference and protection of an individual roll price from group updates. It does not hide purchase price from reports.",
+      "screenshot": "docs/screenshots/inventory.jpg"
+    },
+    {
+      "surface": "desktop",
+      "key": "inventory.detailUsageHistory",
+      "meaning": "Disclosure containing the selected roll consumption chart and chronological events. Opening it makes the existing history controls available.",
+      "screenshot": "docs/screenshots/inventory.jpg"
+    },
+    {
+      "surface": "desktop",
+      "key": "inventory.detailUpdateWeight",
+      "meaning": "Saves measured total roll weight through the existing guarded weight action; this is separate from saving other roll properties.",
+      "screenshot": "docs/screenshots/inventory.jpg"
+    },
+    {
+      "surface": "desktop",
+      "key": "inventory.detailShowUsageHistory",
+      "meaning": "Opens the consumption chart and event history within the current roll dialog.",
+      "screenshot": "docs/screenshots/inventory.jpg"
+    },
+    {
+      "surface": "desktop",
+      "key": "inventory.detailSaveTareFirst",
+      "meaning": "The empty-spool tare draft differs from the saved tare. Save roll properties first, then update measured total weight using the saved tare. Do not imply that measured total is filament-only weight.",
+      "screenshot": "docs/screenshots/inventory.jpg"
+    },
+    {
+      "surface": "desktop",
+      "key": "inventory.detailAdvancedActions",
+      "meaning": "Collapsed group for lost, empty, restore, delete and permanent purge actions. Existing confirmations and permissions remain required.",
+      "screenshot": "docs/screenshots/inventory.jpg"
+    },
+    {
+      "surface": "desktop",
+      "key": "inventory.detailOpenPrinters",
+      "meaning": "Navigates from an already assigned roll to the Printers page. Existing unsaved-roll navigation confirmation still applies.",
+      "screenshot": "docs/screenshots/inventory.jpg"
     }
   ],
   "groups": [

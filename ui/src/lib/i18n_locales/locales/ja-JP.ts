@@ -305,6 +305,17 @@ export const jaJPDictionary: DictionaryNode = {
     "badgeNoPrinterSlots": "プリンター slots がまだ構成されていません。"
   },
   "inventory": {
+    "detailWeight": "重量",
+    "detailPlacementOwnership": "場所と所有者",
+    "detailIdentityLabel": "識別情報とラベル",
+    "detailMorePurchase": "その他の購入情報",
+    "detailUsageHistory": "使用量と履歴",
+    "detailUpdateWeight": "重量を更新",
+    "detailShowUsageHistory": "グラフと履歴を表示",
+    "detailSaveTareFirst": "測定した総重量を更新する前に、変更した空スプール重量を保存してください。",
+    "detailAdvancedActions": "詳細操作",
+    "detailOpenPrinters": "プリンターを開く",
+
     "labelPreviewFailed": "ラベルのプレビューを準備できませんでした。もう一度お試しください。",
     "labelRetryPreview": "プレビューを再試行",
     "labelOpenSavedFile": "保存したファイルを開く",

@@ -1,4 +1,4 @@
-import { useId } from "react";
+import { useId, type ReactNode } from "react";
 
 import {
   updatePurchasePriceDraft,
@@ -11,6 +11,8 @@ import { formInputChromeClassName } from "./form_control_class";
 
 export type PurchaseReceiptMetadataFieldsProps = {
   copy: PurchaseReceiptMetadataFieldsCopy;
+  className?: string;
+  renderAdditionalFields?: (fields: ReactNode) => ReactNode;
   defaultCurrency?: string | null;
   disabled?: boolean;
   draft: PurchaseReceiptMetadataDraft;
@@ -27,6 +29,8 @@ function describedBy(...ids: Array<string | null>): string | undefined {
 
 export function PurchaseReceiptMetadataFields({
   copy,
+  className,
+  renderAdditionalFields,
   defaultCurrency = null,
   disabled = false,
   draft,
@@ -69,9 +73,49 @@ export function PurchaseReceiptMetadataFields({
     );
   }
 
+  const advancedFields = (<>
+        <label className="block min-w-0">
+          <span className="text-xs font-semibold text-slate-700 dark:text-slate-200">
+            {copy.batchCodeLabel}
+            <span className="ml-1 font-normal text-slate-500 dark:text-slate-400">
+              {copy.optional}
+            </span>
+          </span>
+          <input
+            type="text"
+            name="batch_code"
+            value={draft.batchCode}
+            onChange={(event) => updateField("batchCode", event.target.value)}
+            className={`mt-1.5 w-full ${formInputChromeClassName}`}
+            aria-invalid={Boolean(errors.batchCode)}
+            aria-describedby={describedBy(errorId("batchCode"))}
+          />
+          {errorMessage("batchCode")}
+        </label>
+
+        <label className="block min-w-0 sm:col-span-2">
+          <span className="text-xs font-semibold text-slate-700 dark:text-slate-200">
+            {copy.supplierReferenceLabel}
+            <span className="ml-1 font-normal text-slate-500 dark:text-slate-400">
+              {copy.optional}
+            </span>
+          </span>
+          <input
+            type="text"
+            name="supplier_reference"
+            value={draft.supplierReference}
+            onChange={(event) => updateField("supplierReference", event.target.value)}
+            className={`mt-1.5 w-full ${formInputChromeClassName}`}
+            aria-invalid={Boolean(errors.supplierReference)}
+            aria-describedby={describedBy(errorId("supplierReference"))}
+          />
+          {errorMessage("supplierReference")}
+        </label>
+  </>);
+
   return (
     <fieldset
-      className="app-modal-inset rounded-2xl border p-4"
+      className={className ?? "app-modal-inset rounded-2xl border p-4"}
       aria-describedby={summaryId}
       disabled={disabled}
     >
@@ -166,43 +210,8 @@ export function PurchaseReceiptMetadataFields({
           {errorMessage("purchaseDate")}
         </label>
 
-        <label className="block min-w-0">
-          <span className="text-xs font-semibold text-slate-700 dark:text-slate-200">
-            {copy.batchCodeLabel}
-            <span className="ml-1 font-normal text-slate-500 dark:text-slate-400">
-              {copy.optional}
-            </span>
-          </span>
-          <input
-            type="text"
-            name="batch_code"
-            value={draft.batchCode}
-            onChange={(event) => updateField("batchCode", event.target.value)}
-            className={`mt-1.5 w-full ${formInputChromeClassName}`}
-            aria-invalid={Boolean(errors.batchCode)}
-            aria-describedby={describedBy(errorId("batchCode"))}
-          />
-          {errorMessage("batchCode")}
-        </label>
+        {renderAdditionalFields ? renderAdditionalFields(advancedFields) : advancedFields}
 
-        <label className="block min-w-0 sm:col-span-2">
-          <span className="text-xs font-semibold text-slate-700 dark:text-slate-200">
-            {copy.supplierReferenceLabel}
-            <span className="ml-1 font-normal text-slate-500 dark:text-slate-400">
-              {copy.optional}
-            </span>
-          </span>
-          <input
-            type="text"
-            name="supplier_reference"
-            value={draft.supplierReference}
-            onChange={(event) => updateField("supplierReference", event.target.value)}
-            className={`mt-1.5 w-full ${formInputChromeClassName}`}
-            aria-invalid={Boolean(errors.supplierReference)}
-            aria-describedby={describedBy(errorId("supplierReference"))}
-          />
-          {errorMessage("supplierReference")}
-        </label>
       </div>
     </fieldset>
   );

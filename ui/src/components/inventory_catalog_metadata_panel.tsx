@@ -28,6 +28,7 @@ type InventoryCatalogMetadataPanelProps = {
   onToggleEditUnlocked: () => void;
   resolvedTheme: ResolvedTheme;
   spoolHexColor?: string | null;
+  neutral?: boolean;
   vendor: string;
 };
 
@@ -47,6 +48,7 @@ export function InventoryCatalogMetadataPanel({
   onToggleEditUnlocked,
   resolvedTheme,
   spoolHexColor,
+  neutral = false,
   vendor,
 }: InventoryCatalogMetadataPanelProps) {
   const { t } = useI18n();
@@ -63,7 +65,7 @@ export function InventoryCatalogMetadataPanel({
   return (
     <InventoryDetailTintPanel
       className="p-4"
-      style={inventorySwatchInsetStyle(spoolHexColor, resolvedTheme)}
+      style={neutral ? undefined : inventorySwatchInsetStyle(spoolHexColor, resolvedTheme)}
     >
       <div className="flex items-center justify-between gap-2">
         <div>

@@ -784,6 +784,17 @@ export const daDKDictionary: DictionaryNode = {
     }
   },
   "inventory": {
+    "detailWeight": "Vægt",
+    "detailPlacementOwnership": "Placering og ejerskab",
+    "detailIdentityLabel": "Identitet og etiket",
+    "detailMorePurchase": "Flere købsdetaljer",
+    "detailUsageHistory": "Forbrug og historik",
+    "detailUpdateWeight": "Opdater vægt",
+    "detailShowUsageHistory": "Vis diagram og historik",
+    "detailSaveTareFirst": "Gem ændret tomvægt, før du opdaterer målt totalvægt.",
+    "detailAdvancedActions": "Avancerede handlinger",
+    "detailOpenPrinters": "Åbn printere",
+
     "labelPreviewFailed": "Kunne ikke klargøre etiketforhåndsvisningen. Prøv igen.",
     "labelRetryPreview": "Prøv forhåndsvisning igen",
     "labelOpenSavedFile": "Åbn gemt fil",

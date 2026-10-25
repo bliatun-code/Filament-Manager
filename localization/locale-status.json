@@ -4,6 +4,37 @@
   "minimumDistinctTranslationPercent": 95,
   "releaseQaAudits": [
     {
+      "sourceFingerprint": "sha256:a0b73dd6ca41773e0dc403adaf33c841a5891fd6a03fffc71831c3c0a0e5aa5f",
+      "catalogSetFingerprint": "sha256:9be33b3e7b51f6c0522cd9b9b6187307f116312ca228140c628ca48017176e42",
+      "runtimeContractFingerprint": "sha256:6da02cf630aa26f06ae08d75e0a97cfe9b7ad7c2bc3c589f322186661916c4ee",
+      "verifiedAt": "2026-10-25",
+      "artifactQa": "passed",
+      "runtimeQa": "passed",
+      "locales": [
+        "cs-CZ",
+        "da-DK",
+        "de",
+        "en",
+        "es",
+        "fi-FI",
+        "fr",
+        "hu-HU",
+        "it-IT",
+        "ja-JP",
+        "ko-KR",
+        "nb",
+        "nl-NL",
+        "pl-PL",
+        "pt-BR",
+        "ru-RU",
+        "sv-SE",
+        "tr-TR",
+        "uk-UA",
+        "zh-CN",
+        "zh-TW"
+      ]
+    },
+    {
       "sourceFingerprint": "sha256:8cb1a70035918cf8a5de096df3f1c6b410a46efdcdd4951605d8a467427570da",
       "catalogSetFingerprint": "sha256:b1c261ce12b5761ea909e7034d6cc33f569c6bac11e903317d9593561e75f998",
       "runtimeContractFingerprint": "sha256:6da02cf630aa26f06ae08d75e0a97cfe9b7ad7c2bc3c589f322186661916c4ee",

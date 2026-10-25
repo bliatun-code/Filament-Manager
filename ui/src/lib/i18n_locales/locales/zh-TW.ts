@@ -305,6 +305,17 @@ export const zhTWDictionary: DictionaryNode = {
     "badgeNoPrinterSlots": "尚未配置印表機插槽。"
   },
   "inventory": {
+    "detailWeight": "重量",
+    "detailPlacementOwnership": "位置與所有權",
+    "detailIdentityLabel": "識別資訊與標籤",
+    "detailMorePurchase": "更多購買詳情",
+    "detailUsageHistory": "用量與歷史",
+    "detailUpdateWeight": "更新重量",
+    "detailShowUsageHistory": "顯示圖表與歷史",
+    "detailSaveTareFirst": "更新測量總重前，請先儲存變更後的空料盤重量。",
+    "detailAdvancedActions": "進階操作",
+    "detailOpenPrinters": "開啟印表機",
+
     "labelPreviewFailed": "無法準備標籤預覽。請重試。",
     "labelRetryPreview": "重試預覽",
     "labelOpenSavedFile": "開啟已儲存的檔案",

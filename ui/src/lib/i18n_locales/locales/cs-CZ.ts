@@ -301,6 +301,17 @@ export const csCZDictionary: DictionaryNode = {
     "filamentStandardsInvalid": "Uložené standardy filamentu již nejsou platné. Načtěte je znovu a zkontrolujte."
   },
   "inventory": {
+    "detailWeight": "Hmotnost",
+    "detailPlacementOwnership": "Umístění a vlastnictví",
+    "detailIdentityLabel": "Identita a štítek",
+    "detailMorePurchase": "Další podrobnosti nákupu",
+    "detailUsageHistory": "Spotřeba a historie",
+    "detailUpdateWeight": "Aktualizovat hmotnost",
+    "detailShowUsageHistory": "Zobrazit graf a historii",
+    "detailSaveTareFirst": "Před aktualizací naměřené celkové hmotnosti uložte změněnou hmotnost prázdné cívky.",
+    "detailAdvancedActions": "Pokročilé akce",
+    "detailOpenPrinters": "Otevřít tiskárny",
+
     "labelPreviewFailed": "Náhled štítku se nepodařilo připravit. Zkuste to znovu.",
     "labelRetryPreview": "Zkusit náhled znovu",
     "labelOpenSavedFile": "Otevřít uložený soubor",

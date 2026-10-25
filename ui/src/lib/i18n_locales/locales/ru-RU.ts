@@ -784,6 +784,17 @@ export const ruRUDictionary: DictionaryNode = {
     }
   },
   "inventory": {
+    "detailWeight": "Вес",
+    "detailPlacementOwnership": "Расположение и владение",
+    "detailIdentityLabel": "Идентификация и этикетка",
+    "detailMorePurchase": "Подробнее о покупке",
+    "detailUsageHistory": "Расход и история",
+    "detailUpdateWeight": "Обновить вес",
+    "detailShowUsageHistory": "Показать график и историю",
+    "detailSaveTareFirst": "Сохраните изменённый вес пустой катушки перед обновлением измеренного общего веса.",
+    "detailAdvancedActions": "Дополнительные действия",
+    "detailOpenPrinters": "Открыть принтеры",
+
     "labelPreviewFailed": "Не удалось подготовить предварительный просмотр этикетки. Попробуйте ещё раз.",
     "labelRetryPreview": "Повторить предпросмотр",
     "labelOpenSavedFile": "Открыть сохранённый файл",

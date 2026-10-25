@@ -301,6 +301,17 @@ export const trTRDictionary: DictionaryNode = {
     "unauthorized": "Kimlik doğrulama gerekli."
   },
   "inventory": {
+    "detailWeight": "Ağırlık",
+    "detailPlacementOwnership": "Konum ve sahiplik",
+    "detailIdentityLabel": "Kimlik ve etiket",
+    "detailMorePurchase": "Diğer satın alma ayrıntıları",
+    "detailUsageHistory": "Tüketim ve geçmiş",
+    "detailUpdateWeight": "Ağırlığı güncelle",
+    "detailShowUsageHistory": "Grafiği ve geçmişi göster",
+    "detailSaveTareFirst": "Ölçülen toplam ağırlığı güncellemeden önce değiştirilen boş makara ağırlığını kaydedin.",
+    "detailAdvancedActions": "Gelişmiş işlemler",
+    "detailOpenPrinters": "Yazıcıları aç",
+
     "labelPreviewFailed": "Etiket önizlemesi hazırlanamadı. Yeniden deneyin.",
     "labelRetryPreview": "Önizlemeyi yeniden dene",
     "labelOpenSavedFile": "Kaydedilen dosyayı aç",

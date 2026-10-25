@@ -301,6 +301,17 @@ export const plPLDictionary: DictionaryNode = {
     "filamentStandardsInvalid": "Zapisane standardy filamentu są już nieaktualne. Wczytaj je ponownie i sprawdź."
   },
   "inventory": {
+    "detailWeight": "Waga",
+    "detailPlacementOwnership": "Lokalizacja i własność",
+    "detailIdentityLabel": "Tożsamość i etykieta",
+    "detailMorePurchase": "Więcej szczegółów zakupu",
+    "detailUsageHistory": "Zużycie i historia",
+    "detailUpdateWeight": "Zaktualizuj wagę",
+    "detailShowUsageHistory": "Pokaż wykres i historię",
+    "detailSaveTareFirst": "Zapisz zmienioną wagę pustej szpuli przed aktualizacją zmierzonej wagi całkowitej.",
+    "detailAdvancedActions": "Zaawansowane działania",
+    "detailOpenPrinters": "Otwórz drukarki",
+
     "labelPreviewFailed": "Nie udało się przygotować podglądu etykiety. Spróbuj ponownie.",
     "labelRetryPreview": "Ponów podgląd",
     "labelOpenSavedFile": "Otwórz zapisany plik",

@@ -348,6 +348,17 @@ export const itITDictionary: DictionaryNode = {
     unauthorized: "È richiesta l'autenticazione.",
   },
   inventory: {
+    "detailWeight": "Peso",
+    "detailPlacementOwnership": "Posizione e proprietà",
+    "detailIdentityLabel": "Identità ed etichetta",
+    "detailMorePurchase": "Altri dettagli d’acquisto",
+    "detailUsageHistory": "Consumo e cronologia",
+    "detailUpdateWeight": "Aggiorna peso",
+    "detailShowUsageHistory": "Mostra grafico e cronologia",
+    "detailSaveTareFirst": "Salva il peso modificato della bobina vuota prima di aggiornare il peso totale misurato.",
+    "detailAdvancedActions": "Azioni avanzate",
+    "detailOpenPrinters": "Apri stampanti",
+
     "labelPreviewFailed": "Impossibile preparare l’anteprima dell’etichetta. Riprova.",
     "labelRetryPreview": "Riprova anteprima",
     "labelOpenSavedFile": "Apri file salvato",

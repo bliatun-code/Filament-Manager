@@ -369,6 +369,17 @@ export const nbDictionary: DictionaryNode = {
       badgeNoPrinterSlots: "Ingen printerspor konfigurert ennå.",
     },
     inventory: {
+      "detailWeight": "Vekt",
+      "detailPlacementOwnership": "Plassering og eierskap",
+      "detailIdentityLabel": "Identitet og etikett",
+      "detailMorePurchase": "Flere kjøpsdetaljer",
+      "detailUsageHistory": "Bruk og historikk",
+      "detailUpdateWeight": "Oppdater vekt",
+      "detailShowUsageHistory": "Vis diagram og historikk",
+      "detailSaveTareFirst": "Lagre endret tomvekt før du oppdaterer målt totalvekt.",
+      "detailAdvancedActions": "Avanserte handlinger",
+      "detailOpenPrinters": "Åpne printere",
+
       "labelPreviewFailed": "Kunne ikke klargjøre etikettforhåndsvisningen. Prøv igjen.",
       "labelRetryPreview": "Prøv forhåndsvisning igjen",
       "labelOpenSavedFile": "Åpne lagret fil",

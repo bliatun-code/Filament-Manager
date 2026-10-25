@@ -368,6 +368,17 @@ export const enDictionary: DictionaryNode = {
       badgeNoPrinterSlots: "No printer slots configured yet.",
     },
     inventory: {
+      "detailWeight": "Weight",
+      "detailPlacementOwnership": "Placement and ownership",
+      "detailIdentityLabel": "Identity and label",
+      "detailMorePurchase": "More purchase details",
+      "detailUsageHistory": "Usage and history",
+      "detailUpdateWeight": "Update weight",
+      "detailShowUsageHistory": "Show chart and history",
+      "detailSaveTareFirst": "Save changes to empty spool weight before updating measured total.",
+      "detailAdvancedActions": "Advanced actions",
+      "detailOpenPrinters": "Open printers",
+
       "labelPreviewFailed": "Could not prepare the label preview. Try again.",
       "labelRetryPreview": "Try preview again",
       "labelOpenSavedFile": "Open saved file",

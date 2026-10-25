@@ -784,6 +784,17 @@ export const svSEDictionary: DictionaryNode = {
     }
   },
   "inventory": {
+    "detailWeight": "Vikt",
+    "detailPlacementOwnership": "Placering och ägarskap",
+    "detailIdentityLabel": "Identitet och etikett",
+    "detailMorePurchase": "Fler inköpsdetaljer",
+    "detailUsageHistory": "Förbrukning och historik",
+    "detailUpdateWeight": "Uppdatera vikt",
+    "detailShowUsageHistory": "Visa diagram och historik",
+    "detailSaveTareFirst": "Spara ändrad tomvikt innan du uppdaterar uppmätt totalvikt.",
+    "detailAdvancedActions": "Avancerade åtgärder",
+    "detailOpenPrinters": "Öppna skrivare",
+
     "labelPreviewFailed": "Det gick inte att förbereda etikettförhandsvisningen. Försök igen.",
     "labelRetryPreview": "Försök förhandsvisa igen",
     "labelOpenSavedFile": "Öppna sparad fil",

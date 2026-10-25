@@ -10,7 +10,6 @@ import {
 } from "react";
 import { InventoryPageWorkspace } from "../components/inventory_page_workspace";
 import { InventoryLocationDatalist } from "../components/inventory_location_datalist";
-import { InventoryLoadSpoolModal } from "../components/inventory_load_spool_modal";
 import type { InventoryWorkspaceView } from "../components/inventory_workspace_navigation";
 import { InventoryRfidCaptureModal } from "../components/inventory_rfid_capture_modal";
 import { InventoryLabelSheetModal } from "../components/inventory_label_sheet_modal";
@@ -74,6 +73,10 @@ import {
 } from "../lib/use_inventory_unsaved_changes_guard";
 import { isTauri } from "../lib/tauri_client";
 
+const InventoryLoadSpoolModal = lazy(() =>
+  import("../components/inventory_load_spool_modal").then(module => ({ default: module.InventoryLoadSpoolModal })),
+);
+
 const InventorySpoolDetailModal = lazy(() =>
   import("../components/inventory_spool_detail_modal").then((module) => ({
     default: module.InventorySpoolDetailModal,
@@ -81,12 +84,14 @@ const InventorySpoolDetailModal = lazy(() =>
 );
 
 type InventoryPageProps = {
+  onOpenPrinters?: () => void;
   navigationIntent?: InventoryNavigationIntent;
   onConsumeNavigationIntent?: () => void;
   onNavigationGuardChange?: (guard: InventoryNavigationGuard | null) => void;
 };
 
 export default function InventoryPage({
+  onOpenPrinters,
   navigationIntent = null,
   onConsumeNavigationIntent,
   onNavigationGuardChange,
@@ -1251,6 +1256,7 @@ export default function InventoryPage({
         onLoanCreated={handleLoanCreated}
       />
 
+      {showLoadSpoolModal ? <Suspense fallback={null}>
       <InventoryLoadSpoolModal
         busy={manageBusy}
         error={loadSpoolError}
@@ -1261,6 +1267,7 @@ export default function InventoryPage({
         slots={availableLoadSlots}
         spool={selectedSpool}
       />
+      </Suspense> : null}
 
       <InventoryLabelSheetModal {...inventoryLabelSheetModalProps} />
 
@@ -1325,6 +1332,7 @@ export default function InventoryPage({
             onClose={closeSelectedSpoolDetailModal}
             onConfirmDiscard={confirmSelectedSpoolDiscard}
             onDelete={() => { clearWeightError(); clearStatusError(); void handleDeleteSelected(); }}
+            onOpenPrinters={onOpenPrinters}
             onLoadInPrinter={openLoadSpoolModal}
             onLoanOut={() => openLoanTrackingModal(selectedSpool)}
             onMarkEmpty={() => { clearWeightError(); void handleMarkEmpty(); }}

@@ -3,6 +3,9 @@ import { inventoryDetailCompactActionButtonClassName } from "./inventory_detail_
 
 type InventorySpoolDetailContextActionsProps = {
   loadDisabled: boolean;
+  assigned?: boolean;
+  openPrintersDisabled?: boolean;
+  onOpenPrinters?: () => void;
   loanDisabled: boolean;
   onLoadInPrinter: () => void;
   onLoanOut: () => void;
@@ -12,6 +15,9 @@ type InventorySpoolDetailContextActionsProps = {
 
 export function InventorySpoolDetailContextActions({
   loadDisabled,
+  assigned = false,
+  openPrintersDisabled = false,
+  onOpenPrinters,
   loanDisabled,
   onLoadInPrinter,
   onLoanOut,
@@ -26,9 +32,6 @@ export function InventorySpoolDetailContextActions({
         role="toolbar"
         aria-label={t("inventory.selectedRollActions", "Selected roll actions")}
       >
-        <span className="mr-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400">
-          {t("inventory.nextStep", "Next step")}
-        </span>
         <button
           type="button"
           className={inventoryDetailCompactActionButtonClassName}
@@ -40,10 +43,10 @@ export function InventorySpoolDetailContextActions({
         <button
           type="button"
           className={inventoryDetailCompactActionButtonClassName}
-          disabled={loadDisabled}
-          onClick={onLoadInPrinter}
+          disabled={assigned && onOpenPrinters ? openPrintersDisabled : loadDisabled}
+          onClick={assigned && onOpenPrinters ? onOpenPrinters : onLoadInPrinter}
         >
-          {t("inventory.loadInPrinter", "Load in printer")}
+          {assigned && onOpenPrinters ? t("inventory.detailOpenPrinters", "Open printers") : t("inventory.loadInPrinter", "Load in printer")}
         </button>
         <button
           type="button"

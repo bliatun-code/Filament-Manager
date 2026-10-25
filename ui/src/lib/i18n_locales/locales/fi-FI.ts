@@ -305,6 +305,17 @@ export const fiFIDictionary: DictionaryNode = {
     "badgeNoPrinterSlots": "Tulostinpaikkoja ei ole vielä määritetty."
   },
   "inventory": {
+    "detailWeight": "Paino",
+    "detailPlacementOwnership": "Sijainti ja omistus",
+    "detailIdentityLabel": "Tunniste ja etiketti",
+    "detailMorePurchase": "Lisää ostotietoja",
+    "detailUsageHistory": "Kulutus ja historia",
+    "detailUpdateWeight": "Päivitä paino",
+    "detailShowUsageHistory": "Näytä kaavio ja historia",
+    "detailSaveTareFirst": "Tallenna muutettu tyhjän kelan paino ennen mitatun kokonaispainon päivittämistä.",
+    "detailAdvancedActions": "Lisätoiminnot",
+    "detailOpenPrinters": "Avaa tulostimet",
+
     "labelPreviewFailed": "Tarran esikatselua ei voitu valmistella. Yritä uudelleen.",
     "labelRetryPreview": "Yritä esikatselua uudelleen",
     "labelOpenSavedFile": "Avaa tallennettu tiedosto",

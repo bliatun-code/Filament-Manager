@@ -379,6 +379,17 @@ export const frDictionary: DictionaryNode = {
     badgeNoPrinterSlots: "Aucun emplacement d’imprimante configuré pour le moment.",
   },
   inventory: {
+    "detailWeight": "Poids",
+    "detailPlacementOwnership": "Emplacement et propriété",
+    "detailIdentityLabel": "Identité et étiquette",
+    "detailMorePurchase": "Plus de détails d’achat",
+    "detailUsageHistory": "Consommation et historique",
+    "detailUpdateWeight": "Actualiser le poids",
+    "detailShowUsageHistory": "Afficher le graphique et l’historique",
+    "detailSaveTareFirst": "Enregistrez le poids à vide modifié avant de mettre à jour le poids total mesuré.",
+    "detailAdvancedActions": "Actions avancées",
+    "detailOpenPrinters": "Ouvrir les imprimantes",
+
     "labelPreviewFailed": "Impossible de préparer l’aperçu de l’étiquette. Réessayez.",
     "labelRetryPreview": "Réessayer l’aperçu",
     "labelOpenSavedFile": "Ouvrir le fichier enregistré",

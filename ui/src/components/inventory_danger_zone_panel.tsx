@@ -1,4 +1,4 @@
-import { useEffect, useState, type SyntheticEvent } from "react";
+import { useEffect, useState, type ReactNode, type SyntheticEvent } from "react";
 import { useI18n } from "../lib/i18n";
 import type { SpoolStatus } from "../lib/inventory_list_model";
 import {
@@ -12,6 +12,8 @@ type TranslateFn = (key: string, fallback?: string) => string;
 type InventoryDangerZonePanelProps = {
   confirmDelete: boolean;
   confirmPurge: boolean;
+  heading?: string;
+  leadingContent?: ReactNode;
   manageBusy: boolean;
   loanedOut?: boolean;
   onCancelConfirmation: () => void;
@@ -124,6 +126,8 @@ export type InventoryDangerZonePanelViewProps = {
   confirmDelete: boolean;
   confirmMarkEmpty: boolean;
   confirmPurge: boolean;
+  heading?: string;
+  leadingContent?: ReactNode;
   disabled: boolean;
   onCancel: () => void;
   onDelete: () => void;
@@ -137,6 +141,8 @@ export type InventoryDangerZonePanelViewProps = {
 };
 
 export function InventoryDangerZonePanelView({
+  heading,
+  leadingContent,
   blockedReason,
   cancelDisabled,
   confirmDelete,
@@ -174,7 +180,7 @@ export function InventoryDangerZonePanelView({
       >
         <span>
           <span className="block text-xs font-semibold uppercase tracking-[0.2em] text-rose-600 dark:text-rose-300">
-            {t("inventory.dangerZone", "Danger zone")}
+            {heading ?? t("inventory.dangerZone", "Danger zone")}
           </span>
           <span
             id="inventory-danger-zone-hint"
@@ -198,6 +204,7 @@ export function InventoryDangerZonePanelView({
         id="inventory-danger-zone-actions"
         className="grid grid-cols-1 gap-3 border-t border-rose-200/80 px-5 pb-5 pt-4 dark:border-rose-500/30"
       >
+        {leadingContent}
         {blockedReason ? (
           <div className="text-xs leading-5 text-slate-600 dark:text-slate-300" role="note">
             {blockedReason}
@@ -314,6 +321,8 @@ export function InventoryDangerZonePanelView({
 }
 
 export function InventoryDangerZonePanel({
+  heading,
+  leadingContent,
   confirmDelete,
   confirmPurge,
   manageBusy,
@@ -358,6 +367,8 @@ export function InventoryDangerZonePanel({
 
   return (
     <InventoryDangerZonePanelView
+      heading={heading}
+      leadingContent={leadingContent}
       blockedReason={
         loanedOut
           ? t(

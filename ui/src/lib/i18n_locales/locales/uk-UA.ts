@@ -305,6 +305,17 @@ export const ukUADictionary: DictionaryNode = {
     "badgeNoPrinterSlots": "Ще не налаштовано жодного слота для принтера."
   },
   "inventory": {
+    "detailWeight": "Вага",
+    "detailPlacementOwnership": "Розташування та власність",
+    "detailIdentityLabel": "Ідентифікація та етикетка",
+    "detailMorePurchase": "Додаткові відомості про купівлю",
+    "detailUsageHistory": "Витрати та історія",
+    "detailUpdateWeight": "Оновити вагу",
+    "detailShowUsageHistory": "Показати графік та історію",
+    "detailSaveTareFirst": "Збережіть змінену вагу порожньої котушки перед оновленням виміряної загальної ваги.",
+    "detailAdvancedActions": "Додаткові дії",
+    "detailOpenPrinters": "Відкрити принтери",
+
     "labelPreviewFailed": "Не вдалося підготувати попередній перегляд етикетки. Спробуйте ще раз.",
     "labelRetryPreview": "Повторити попередній перегляд",
     "labelOpenSavedFile": "Відкрити збережений файл",

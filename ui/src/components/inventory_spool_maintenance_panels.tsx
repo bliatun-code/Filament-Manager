@@ -16,12 +16,14 @@ import { inventorySwatchPanelStyle } from "../lib/inventory_swatch_style";
 import type { ResolvedTheme } from "../lib/theme_mode";
 
 type SpoolMaintenancePanelBaseProps = {
+  neutral?: boolean;
   disabled: boolean;
   resolvedTheme: ResolvedTheme;
   spoolHexColor?: string | null;
 };
 
 type InventorySpoolTarePanelProps = SpoolMaintenancePanelBaseProps & {
+  compact?: boolean;
   onChange: (value: string) => void;
   onSave: () => void;
   showSaveAction?: boolean;
@@ -44,6 +46,7 @@ type InventorySpoolLostStatusPanelProps = SpoolMaintenancePanelBaseProps & {
 };
 
 type InventorySpoolOwnershipPanelProps = SpoolMaintenancePanelBaseProps & {
+  compact?: boolean;
   contactValue: string;
   noteValue: string;
   loanedOut?: boolean;
@@ -58,10 +61,12 @@ type InventorySpoolOwnershipPanelProps = SpoolMaintenancePanelBaseProps & {
 };
 
 export function InventorySpoolTarePanel({
+  compact = false,
   disabled,
   onChange,
   onSave,
   resolvedTheme,
+  neutral = false,
   showSaveAction = true,
   spoolHexColor,
   value,
@@ -73,13 +78,13 @@ export function InventorySpoolTarePanel({
 
   return (
     <div
-      className={inventoryDetailPanelClassName}
-      style={inventorySwatchPanelStyle(spoolHexColor, resolvedTheme)}
+      className={compact ? "inventory-balanced-tare" : inventoryDetailPanelClassName}
+      style={neutral ? undefined : inventorySwatchPanelStyle(spoolHexColor, resolvedTheme)}
     >
       <label htmlFor={inputId} className={inventoryDetailEyebrowClassName}>
         {t("inventory.emptySpoolWeight", "Empty spool weight (g)")}
       </label>
-      <div id={helpId} className="mt-2 text-xs text-slate-500 dark:text-slate-400">
+      <div id={helpId} className={compact ? "sr-only" : "mt-2 text-xs text-slate-500 dark:text-slate-400"}>
         {t(
           "inventory.emptySpoolWeightHelp",
           "Used to subtract spool tare from measured total so remaining filament stays accurate.",
@@ -93,7 +98,7 @@ export function InventorySpoolTarePanel({
           step={1}
           value={value}
           onChange={(event) => onChange(event.target.value)}
-          className={`w-28 ${inventoryDetailFormControlClassName}`}
+          className={`${compact ? "w-full" : "w-28"} ${inventoryDetailFormControlClassName}`}
           disabled={disabled}
           aria-describedby={helpId}
         />
@@ -119,6 +124,7 @@ export function InventorySpoolHomeLocationPanel({
   onChange,
   onSave,
   resolvedTheme,
+  neutral = false,
   showSaveAction = true,
   spoolHexColor,
   value,
@@ -131,7 +137,7 @@ export function InventorySpoolHomeLocationPanel({
   return (
     <div
       className={inventoryDetailPanelClassName}
-      style={inventorySwatchPanelStyle(spoolHexColor, resolvedTheme)}
+      style={neutral ? undefined : inventorySwatchPanelStyle(spoolHexColor, resolvedTheme)}
     >
       <label htmlFor={inputId} className={inventoryDetailEyebrowClassName}>
         {t("inventory.editHomeLocation", "Home location")}
@@ -179,6 +185,7 @@ export function InventorySpoolHomeLocationPanel({
 }
 
 export function InventorySpoolOwnershipPanel({
+  compact = false,
   contactValue,
   disabled,
   loanedOut = false,
@@ -190,6 +197,7 @@ export function InventorySpoolOwnershipPanel({
   onSave,
   ownerNameValue,
   resolvedTheme,
+  neutral = false,
   showSaveAction = true,
   spoolHexColor,
   typeValue,
@@ -207,7 +215,7 @@ export function InventorySpoolOwnershipPanel({
   return (
     <div
       className={inventoryDetailPanelClassName}
-      style={inventorySwatchPanelStyle(spoolHexColor, resolvedTheme)}
+      style={neutral ? undefined : inventorySwatchPanelStyle(spoolHexColor, resolvedTheme)}
     >
       <fieldset
         className="min-w-0 border-0 p-0"
@@ -216,7 +224,10 @@ export function InventorySpoolOwnershipPanel({
         <legend className={inventoryDetailEyebrowClassName}>
           {t("inventory.editOwnership", "Ownership")}
         </legend>
-        <SegmentedChoiceRow
+        {compact ? <select className={`mt-2 w-full ${inventoryDetailFormControlClassName}`} aria-label={t("inventory.ownershipType", "Ownership type")} value={typeValue} disabled={disabled} onChange={event => onChangeType(event.target.value as OwnershipType)}>
+          <option value="OWNED">{t("inventory.ownedByUs", "Owned")}</option>
+          <option value="BORROWED_IN">{t("inventory.borrowedIn", "Borrowed in")}</option>
+        </select> : <SegmentedChoiceRow
           className="mt-3"
           groupClassName="w-full"
           label={t("inventory.ownershipType", "Ownership type")}
@@ -234,7 +245,7 @@ export function InventorySpoolOwnershipPanel({
               label: t("inventory.borrowedIn", "Borrowed in"),
             },
           ]}
-        />
+        />}
         {borrowed ? (
           <div className="mt-3 space-y-2.5">
             <label htmlFor={ownerNameId} className="block">
@@ -282,7 +293,7 @@ export function InventorySpoolOwnershipPanel({
         ) : !loanedOut ? (
           <div
             id={ownedHelpId}
-            className="mt-2 text-xs leading-relaxed text-slate-500 dark:text-slate-400"
+            className={compact ? "sr-only" : "mt-2 text-xs leading-relaxed text-slate-500 dark:text-slate-400"}
           >
             {t(
               "inventory.ownedOwnershipHelp",
@@ -321,6 +332,7 @@ export function InventorySpoolLostStatusPanel({
   loanedOut = false,
   onToggle,
   resolvedTheme,
+  neutral = false,
   spoolHexColor,
   status,
 }: InventorySpoolLostStatusPanelProps) {
@@ -331,7 +343,7 @@ export function InventorySpoolLostStatusPanel({
   return (
     <div
       className={inventoryDetailPanelClassName}
-      style={inventorySwatchPanelStyle(spoolHexColor, resolvedTheme)}
+      style={neutral ? undefined : inventorySwatchPanelStyle(spoolHexColor, resolvedTheme)}
     >
       <div className={inventoryDetailEyebrowClassName}>
         {t("inventory.lostStatus", "Lost status")}

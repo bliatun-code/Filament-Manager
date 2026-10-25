@@ -386,6 +386,17 @@ export const esDictionary: DictionaryNode = {
     legacyLowStockFallback: "Valor alternativo de 200 g para hosts antiguos",
   },
   inventory: {
+    "detailWeight": "Peso",
+    "detailPlacementOwnership": "Ubicación y propiedad",
+    "detailIdentityLabel": "Identidad y etiqueta",
+    "detailMorePurchase": "Más detalles de compra",
+    "detailUsageHistory": "Consumo e historial",
+    "detailUpdateWeight": "Actualizar peso",
+    "detailShowUsageHistory": "Mostrar gráfico e historial",
+    "detailSaveTareFirst": "Guarda el cambio de peso de la bobina vacía antes de actualizar el peso total medido.",
+    "detailAdvancedActions": "Acciones avanzadas",
+    "detailOpenPrinters": "Abrir impresoras",
+
     "labelPreviewFailed": "No se pudo preparar la vista previa de la etiqueta. Inténtalo de nuevo.",
     "labelRetryPreview": "Reintentar vista previa",
     "labelOpenSavedFile": "Abrir archivo guardado",

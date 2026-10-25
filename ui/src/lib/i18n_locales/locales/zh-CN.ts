@@ -305,6 +305,17 @@ export const zhCNDictionary: DictionaryNode = {
     "badgeNoPrinterSlots": "尚未配置打印机 slots。"
   },
   "inventory": {
+    "detailWeight": "重量",
+    "detailPlacementOwnership": "位置与所有权",
+    "detailIdentityLabel": "身份与标签",
+    "detailMorePurchase": "更多购买详情",
+    "detailUsageHistory": "用量与历史",
+    "detailUpdateWeight": "更新重量",
+    "detailShowUsageHistory": "显示图表与历史",
+    "detailSaveTareFirst": "更新测量总重前，请先保存更改后的空料盘重量。",
+    "detailAdvancedActions": "高级操作",
+    "detailOpenPrinters": "打开打印机",
+
     "labelPreviewFailed": "无法准备标签预览。请重试。",
     "labelRetryPreview": "重试预览",
     "labelOpenSavedFile": "打开已保存的文件",

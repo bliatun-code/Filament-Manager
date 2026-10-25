@@ -330,6 +330,7 @@ export default function App() {
       case "inventory":
         return (
           <InventoryPage
+            onOpenPrinters={() => navigateToPage("printers")}
             navigationIntent={inventoryNavigationIntent}
             onConsumeNavigationIntent={() => setInventoryNavigationIntent(null)}
             onNavigationGuardChange={handleInventoryNavigationGuardChange}
@@ -369,6 +370,7 @@ export default function App() {
       default:
         return (
           <InventoryPage
+            onOpenPrinters={() => navigateToPage("printers")}
             navigationIntent={inventoryNavigationIntent}
             onConsumeNavigationIntent={() => setInventoryNavigationIntent(null)}
             onNavigationGuardChange={handleInventoryNavigationGuardChange}

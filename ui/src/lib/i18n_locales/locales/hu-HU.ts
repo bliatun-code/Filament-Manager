@@ -784,6 +784,17 @@ export const huHUDictionary: DictionaryNode = {
     }
   },
   "inventory": {
+    "detailWeight": "Tömeg",
+    "detailPlacementOwnership": "Hely és tulajdon",
+    "detailIdentityLabel": "Azonosító és címke",
+    "detailMorePurchase": "További vásárlási adatok",
+    "detailUsageHistory": "Fogyasztás és előzmények",
+    "detailUpdateWeight": "Tömeg frissítése",
+    "detailShowUsageHistory": "Diagram és előzmények megjelenítése",
+    "detailSaveTareFirst": "A mért össztömeg frissítése előtt mentse az üres tekercs módosított tömegét.",
+    "detailAdvancedActions": "Speciális műveletek",
+    "detailOpenPrinters": "Nyomtatók megnyitása",
+
     "labelPreviewFailed": "Nem sikerült elkészíteni a címke előnézetét. Próbálja újra.",
     "labelRetryPreview": "Előnézet újrapróbálása",
     "labelOpenSavedFile": "Mentett fájl megnyitása",

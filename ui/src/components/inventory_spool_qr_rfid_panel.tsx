@@ -48,6 +48,8 @@ type InventorySpoolQrRfidPanelProps = {
   spool: InventorySpool;
   supportsRfidCapture: boolean;
   target: string | null;
+  showRfidControls?: boolean;
+  compact?: boolean;
 };
 
 const qrRfidInfoBoxClassName =
@@ -74,6 +76,8 @@ export function InventorySpoolQrRfidPanel({
   spool,
   supportsRfidCapture,
   target,
+  showRfidControls = true,
+  compact = false,
 }: InventorySpoolQrRfidPanelProps) {
   const { t } = useI18n();
   const [labelPanelOpen, setLabelPanelOpen] = useState(initialLabelPanelOpen);
@@ -332,11 +336,7 @@ export function InventorySpoolQrRfidPanel({
     }
   };
 
-  return (
-    <InventoryDetailTintPanel
-      className="p-4"
-      style={inventorySwatchInsetStyle(spoolHexColor, resolvedTheme)}
-    >
+  const qrContent = (<>
       <div className={inventoryDetailEyebrowClassName}>
         {t("inventory.qrLabel", "QR")}
       </div>
@@ -401,6 +401,18 @@ export function InventorySpoolQrRfidPanel({
           "Need labels for several rolls? Choose “Select multiple” in Inventory, or create a label sheet for all stock from the header.",
         )}
       </div>
+
+  </>);
+
+  return (
+    <InventoryDetailTintPanel
+      className={compact ? "inventory-balanced-qr" : "p-4"}
+      style={compact ? undefined : inventorySwatchInsetStyle(spoolHexColor, resolvedTheme)}
+    >
+      {compact ? <details className="inventory-balanced-disclosure">
+        <summary className="app-control-focus">{t("inventory.qrLabel", "QR")} · {t("inventory.printLabelAction", "Print label")}</summary>
+        <div className="pt-3">{qrContent}</div>
+      </details> : qrContent}
       {labelPanelOpen ? (
         <AppModal
           zIndex={80}
@@ -594,7 +606,7 @@ export function InventorySpoolQrRfidPanel({
           </div>
         </AppModal>
       ) : null}
-      <div className="mt-2">
+      {showRfidControls ? <><div className="mt-2">
         <button
           type="button"
           className={inventoryDetailActionButtonClassName}
@@ -615,6 +627,7 @@ export function InventorySpoolQrRfidPanel({
               "RFID capture needs a printer with Live Bambu status enabled and at least one AMS slot available.",
             )}
       </div>
+      </> : null}
     </InventoryDetailTintPanel>
   );
 }

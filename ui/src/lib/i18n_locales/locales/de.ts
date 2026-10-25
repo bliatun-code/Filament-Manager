@@ -375,6 +375,17 @@ export const deDictionary: DictionaryNode = {
     badgeNoPrinterSlots: "Noch keine Druckerplätze konfiguriert.",
   },
   inventory: {
+    "detailWeight": "Gewicht",
+    "detailPlacementOwnership": "Standort und Eigentum",
+    "detailIdentityLabel": "Identität und Etikett",
+    "detailMorePurchase": "Weitere Kaufdetails",
+    "detailUsageHistory": "Verbrauch und Verlauf",
+    "detailUpdateWeight": "Gewicht aktualisieren",
+    "detailShowUsageHistory": "Diagramm und Verlauf anzeigen",
+    "detailSaveTareFirst": "Speichern Sie das geänderte Leergewicht, bevor Sie das gemessene Gesamtgewicht aktualisieren.",
+    "detailAdvancedActions": "Erweiterte Aktionen",
+    "detailOpenPrinters": "Drucker öffnen",
+
     "labelPreviewFailed": "Die Etikettenvorschau konnte nicht erstellt werden. Versuchen Sie es erneut.",
     "labelRetryPreview": "Vorschau erneut versuchen",
     "labelOpenSavedFile": "Gespeicherte Datei öffnen",
