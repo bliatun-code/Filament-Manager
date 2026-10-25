@@ -368,6 +368,8 @@ export const enDictionary: DictionaryNode = {
       badgeNoPrinterSlots: "No printer slots configured yet.",
     },
     inventory: {
+      loansTab: "Loans & borrowed-in",
+      labelsAction: "Labels",
       "detailWeight": "Weight",
       "detailPlacementOwnership": "Placement and ownership",
       "detailIdentityLabel": "Identity and label",
@@ -1196,6 +1198,7 @@ export const enDictionary: DictionaryNode = {
       },
     },
     loans: {
+      person: "Person",
       clientReadOnlyBanner:
         "This device is linked as a client. Loan changes stay on the host for now.",
       clientReadOnlyAction:

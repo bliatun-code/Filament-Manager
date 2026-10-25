@@ -47,7 +47,6 @@ const hostCatalogBatchSource = readFileSync(
 const pageModules = [
   "dashboard",
   "inventory",
-  "loans",
   "printers",
   "settings",
   "statistics",
@@ -84,6 +83,8 @@ test("cold startup and first navigation keep every page behind a lazy chunk", ()
       `${page} must not move into the cold-start chunk`,
     );
   }
+  const inventorySource = readFileSync(new URL("./inventory.tsx", import.meta.url), "utf8");
+  assert.match(inventorySource, /const LoansPage = lazy\(\(\) => import\("\.\/loans"\)\)/);
   const navigationStart = appSource.indexOf("const navigateToPage =");
   const settingsNavigationStart = appSource.indexOf(
     "const openSettingsTab =",
@@ -97,7 +98,7 @@ test("cold startup and first navigation keep every page behind a lazy chunk", ()
   );
   assert.match(
     navigation,
-    /startTransition\(\(\) => \{[\s\S]*setActivePage\(page\);[\s\S]*\}\);/,
+    /startTransition\(\(\) => \{[\s\S]*setActivePage\(targetPage\);[\s\S]*\}\);/,
   );
   assert.doesNotMatch(navigation, /\bsetTimeout\s*\(/);
   assert.doesNotMatch(navigation, /\b(?:sleep|delay|wait)\s*\(/i);

@@ -98,3 +98,7 @@ test("formatPlacementLabel prefers explicit slot labels from printer context", (
     "Kitchen printer · Slot 2",
   );
 });
+
+test("legacy outbound-loan placements localize the label while preserving the person's name", () => {
+ assert.equal(formatPlacementLabel((key,fallback)=>key==="dashboard.loanedTo"?"Utlånt til":fallback??key,"Loaned to: Håkon"),"Utlånt til: Håkon");
+});

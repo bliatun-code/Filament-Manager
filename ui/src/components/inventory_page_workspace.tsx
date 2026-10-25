@@ -1,5 +1,5 @@
 import { clientPairingActionHint } from "../lib/error_text";
-import { lazy, Suspense, useState, type ComponentProps } from "react";
+import { lazy, Suspense, useState, type ComponentProps, type ReactNode } from "react";
 import { AppModal } from "./app_modal";
 import { FeedbackBanner } from "./feedback_banner";
 import type { InventoryAddModalProps } from "./inventory_add_modal";
@@ -8,7 +8,7 @@ import {
   InventoryHeaderActions,
   InventoryStockFilters,
 } from "./inventory_controls_panel";
-import { InventorySpoolCollection } from "./inventory_spool_collection";
+import type { InventorySpoolCollection as InventorySpoolCollectionType } from "./inventory_spool_collection";
 import type { InventoryBulkActionsPanelViewProps } from "./inventory_bulk_actions_panel";
 import { InventoryLocationManagementPanel } from "./inventory_location_management_panel";
 import {
@@ -34,6 +34,8 @@ const InventoryBulkActionsPanelView = lazy(async () => {
   const module = await import("./inventory_bulk_actions_panel");
   return { default: module.InventoryBulkActionsPanelView };
 });
+
+const InventorySpoolCollection = lazy(() => import("./inventory_spool_collection").then(module => ({ default: module.InventorySpoolCollection })));
 
 const InventoryAddModalView = lazy(async () => {
   const module = await import("./inventory_add_modal");
@@ -86,6 +88,8 @@ function InventoryAddModalBoundary({
 
 type InventoryPageWorkspaceProps = {
   activeView: InventoryWorkspaceView;
+  loansPanel?: ReactNode;
+  totalLoanCount?: number;
   addModalActive: boolean;
   addModalProps: InventoryAddModalProps;
   bulkActionsProps: InventoryBulkActionsPanelViewProps;
@@ -101,7 +105,7 @@ type InventoryPageWorkspaceProps = {
   clientInventoryUpdatedAt: string | null;
   clientReadOnly: boolean;
   collectionProps: Omit<
-    ComponentProps<typeof InventorySpoolCollection>,
+    ComponentProps<typeof InventorySpoolCollectionType>,
     | "addSpoolDisabled"
     | "onAddSpool"
     | "onResetFilters"
@@ -133,6 +137,8 @@ type InventoryPageWorkspaceProps = {
 
 export function InventoryPageWorkspace({
   activeView,
+  loansPanel,
+  totalLoanCount = 0,
   addModalActive,
   addModalProps,
   bulkActionsProps,
@@ -182,11 +188,7 @@ export function InventoryPageWorkspace({
       <div className="page-header">
         <div className="page-header-copy">
           <h1 className="page-title">
-            {activeView === "PURCHASES"
-              ? t("inventory.wishlistOrders", "Wishlist & orders")
-              : activeView === "LOCATIONS"
-                ? t("inventory.locationsTitle", "Locations")
-              : t("inventory.title", "Spools")}
+            {t("nav.inventory", "Inventory")}
           </h1>
           <div className="page-subtitle max-w-2xl">
             {activeView === "PURCHASES"
@@ -218,6 +220,7 @@ export function InventoryPageWorkspace({
           {...controlsProps}
           navigation={<InventoryWorkspaceNavigation
             activeView={activeView}
+            loanCount={totalLoanCount}
             inventoryCount={totalInventoryCount}
             locationCount={totalLocationCount}
             onViewChange={onActiveViewChange}
@@ -229,9 +232,10 @@ export function InventoryPageWorkspace({
           onBulkSelectionActiveChange={bulkSelectionTriggerProps.onActiveChange}
         />
       ) : (
-        <div className="mt-4">
+        <div>
           <InventoryWorkspaceNavigation
             activeView={activeView}
+            loanCount={totalLoanCount}
             inventoryCount={totalInventoryCount}
             locationCount={totalLocationCount}
             onViewChange={onActiveViewChange}
@@ -240,6 +244,7 @@ export function InventoryPageWorkspace({
         </div>
       )}
 
+      {activeView !== "LOANS" ? <>
       {error && !addModalActive ? (
         <FeedbackBanner tone="danger" className="mt-4">
           {error}
@@ -294,7 +299,9 @@ export function InventoryPageWorkspace({
         />
       ) : null}
 
-      <div className={activeView === "STOCK" ? "mt-4" : "mt-8"}>
+      </> : null}
+
+      <div className="mt-4">
         <div
           id="inventory-stock-panel"
           role="region"
@@ -315,16 +322,19 @@ export function InventoryPageWorkspace({
               </Suspense>
             ) : null}
             <div className={bulkActionsProps.active ? "mt-4" : undefined}>
-              <InventorySpoolCollection
+              <Suspense fallback={<div role="status">{t("inventory.loading", "Loading spools...")}</div>}><InventorySpoolCollection
                 {...collectionProps}
                 addSpoolDisabled={headerActionsProps.primaryActionsDisabled}
                 onAddSpool={headerActionsProps.onAddSpool}
                 onResetFilters={controlsProps.onResetFilters}
                 totalSpoolCount={totalInventoryCount}
-              />
+              /></Suspense>
             </div>
             </>
           ) : null}
+        </div>
+        <div id="inventory-loans-panel" role="region" aria-labelledby="inventory-loans-tab" hidden={activeView !== "LOANS"}>
+          {activeView === "LOANS" ? loansPanel : null}
         </div>
         <div
           id="inventory-purchases-panel"

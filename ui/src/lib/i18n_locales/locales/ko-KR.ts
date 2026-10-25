@@ -305,6 +305,8 @@ export const koKRDictionary: DictionaryNode = {
     "badgeNoPrinterSlots": "아직 구성된 프린터 슬롯이 없습니다."
   },
   "inventory": {
+    labelsAction: "라벨",
+    loansTab: "빌려준 필라멘트 및 빌린 필라멘트",
     "detailWeight": "무게",
     "detailPlacementOwnership": "위치 및 소유권",
     "detailIdentityLabel": "식별 정보 및 라벨",
@@ -1016,6 +1018,7 @@ export const koKRDictionary: DictionaryNode = {
     }
   },
   "loans": {
+    person: "대상자",
     "clientReadOnlyBanner": "이 기기는 클라이언트로 연결되어 있습니다. 대출 변경 사항은 현재 host에 유지됩니다.",
     "clientReadOnlyAction": "이 장치는 클라이언트로 연결되어 있습니다. 대출 변경에는 host를 사용하세요.",
     "clientReadOnlyBannerPaired": "이 장치는 클라이언트로 연결되어 있습니다. 반품 및 반납은 host로 보낼 수 있으며, 새로운 대출 생성은 계속 유지됩니다.",

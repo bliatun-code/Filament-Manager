@@ -47,7 +47,7 @@ test("reduced-motion preference shortens non-essential motion globally", () => {
 test("compact desktop navigation keeps the active destination in view", () => {
   assert.match(appSource, /min-\[900px\]:block/);
   assert.match(appSource, /const activeNavButtonRef = useRef<HTMLButtonElement \| null>\(null\)/);
-  assert.match(appSource, /ref=\{activePage === page\.key \? activeNavButtonRef : undefined\}/);
+  assert.match(appSource, /ref=\{\(activePage === "loans" \? "inventory" : activePage\) === page\.key \? activeNavButtonRef : undefined\}/);
   assert.match(appSource, /activeNavButtonRef\.current\?\.scrollIntoView/);
   assert.match(appSource, /inline: "nearest"/);
 });

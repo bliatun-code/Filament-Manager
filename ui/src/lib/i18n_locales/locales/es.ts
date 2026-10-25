@@ -386,6 +386,8 @@ export const esDictionary: DictionaryNode = {
     legacyLowStockFallback: "Valor alternativo de 200 g para hosts antiguos",
   },
   inventory: {
+    labelsAction: "Etiquetas",
+    loansTab: "Préstamos y material prestado",
     "detailWeight": "Peso",
     "detailPlacementOwnership": "Ubicación y propiedad",
     "detailIdentityLabel": "Identidad y etiqueta",
@@ -1255,6 +1257,7 @@ export const esDictionary: DictionaryNode = {
     },
   },
   loans: {
+    person: "Persona",
     subtitle: "Gestiona préstamos activos, bobinas de terceros y devoluciones.",
     exportCsv: "Exportar préstamos a CSV",
     activeLoans: "Préstamos activos",

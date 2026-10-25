@@ -305,6 +305,8 @@ export const ukUADictionary: DictionaryNode = {
     "badgeNoPrinterSlots": "Ще не налаштовано жодного слота для принтера."
   },
   "inventory": {
+    labelsAction: "Етикетки",
+    loansTab: "Видані та позичені котушки",
     "detailWeight": "Вага",
     "detailPlacementOwnership": "Розташування та власність",
     "detailIdentityLabel": "Ідентифікація та етикетка",
@@ -1016,6 +1018,7 @@ export const ukUADictionary: DictionaryNode = {
     }
   },
   "loans": {
+    person: "Особа",
     "clientReadOnlyBanner": "Цей пристрій підключено як клієнт. Зміни позики поки що залишаються на host.",
     "clientReadOnlyAction": "Цей пристрій підключається як клієнт. Використовуйте host для змін позики.",
     "clientReadOnlyBannerPaired": "Цей пристрій підключається як клієнт. Повернення та повернення можна надсилати на host, тоді як створення нової позики залишається там.",

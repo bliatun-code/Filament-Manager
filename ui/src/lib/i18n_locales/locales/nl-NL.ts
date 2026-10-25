@@ -301,6 +301,8 @@ export const nlNLDictionary: DictionaryNode = {
     "filamentStandardsInvalid": "De opgeslagen filamentstandaarden zijn niet meer geldig. Laad ze opnieuw en controleer ze."
   },
   "inventory": {
+    labelsAction: "Etiketten",
+    loansTab: "Uitgeleend en geleend",
     "detailWeight": "Gewicht",
     "detailPlacementOwnership": "Locatie en eigendom",
     "detailIdentityLabel": "Identiteit en etiket",
@@ -948,6 +950,7 @@ export const nlNLDictionary: DictionaryNode = {
     "workspace": "Werkruimte"
   },
   "loans": {
+    person: "Persoon",
     "activeBorrowedIn": "Actief ingeleend",
     "activeLoans": "Actieve leningen",
     "activeRecords": "Actieve records",

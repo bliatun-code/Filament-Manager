@@ -369,6 +369,8 @@ export const nbDictionary: DictionaryNode = {
       badgeNoPrinterSlots: "Ingen printerspor konfigurert ennå.",
     },
     inventory: {
+      loansTab: "Utlån og innlån",
+      labelsAction: "Etiketter",
       "detailWeight": "Vekt",
       "detailPlacementOwnership": "Plassering og eierskap",
       "detailIdentityLabel": "Identitet og etikett",
@@ -1201,6 +1203,7 @@ export const nbDictionary: DictionaryNode = {
       },
     },
     loans: {
+      person: "Person",
       clientReadOnlyBanner:
         "Denne enheten er koblet til som klient. Utlånsendringer håndteres foreløpig på verten.",
       clientReadOnlyAction:

@@ -348,6 +348,8 @@ export const itITDictionary: DictionaryNode = {
     unauthorized: "È richiesta l'autenticazione.",
   },
   inventory: {
+    labelsAction: "Etichette",
+    loansTab: "Prestiti in uscita e in entrata",
     "detailWeight": "Peso",
     "detailPlacementOwnership": "Posizione e proprietà",
     "detailIdentityLabel": "Identità ed etichetta",
@@ -1158,6 +1160,7 @@ export const itITDictionary: DictionaryNode = {
     workspace: "Spazio di lavoro",
   },
   loans: {
+    person: "Persona",
     activeBorrowedIn: "Ricevute attive",
     activeLoans: "Prestiti attivi",
     activeRecords: "Record attivi",

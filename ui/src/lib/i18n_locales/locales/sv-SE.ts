@@ -208,6 +208,7 @@ export const svSEDictionary: DictionaryNode = {
     }
   },
   "loans": {
+    person: "Person",
     "clientHostUnavailable": "Värdanslutningsdetaljer saknas för den här klientenheten.",
     "clientReadOnlyHost": "Värd",
     "clientReadOnlyUpdated": "Uppdaterad",
@@ -784,6 +785,8 @@ export const svSEDictionary: DictionaryNode = {
     }
   },
   "inventory": {
+    labelsAction: "Etiketter",
+    loansTab: "Utlåning och inlåning",
     "detailWeight": "Vikt",
     "detailPlacementOwnership": "Placering och ägarskap",
     "detailIdentityLabel": "Identitet och etikett",

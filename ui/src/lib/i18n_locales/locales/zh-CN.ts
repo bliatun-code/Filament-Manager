@@ -305,6 +305,8 @@ export const zhCNDictionary: DictionaryNode = {
     "badgeNoPrinterSlots": "尚未配置打印机 slots。"
   },
   "inventory": {
+    labelsAction: "标签",
+    loansTab: "借出与借入",
     "detailWeight": "重量",
     "detailPlacementOwnership": "位置与所有权",
     "detailIdentityLabel": "身份与标签",
@@ -1016,6 +1018,7 @@ export const zhCNDictionary: DictionaryNode = {
     }
   },
   "loans": {
+    person: "人员",
     "clientReadOnlyBanner": "该设备作为客户端链接。贷款变更目前保留在 host 上。",
     "clientReadOnlyAction": "该设备作为客户端连接。使用 host 进行贷款变更。",
     "clientReadOnlyBannerPaired": "该设备作为客户端连接。退货和返还可以发送到 host，而新的贷款创建仍保留在那里。",

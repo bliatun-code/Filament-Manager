@@ -28,8 +28,8 @@ const WCAG_TAGS = Object.freeze([
 
 export const DATA_BACKED_ACCESSIBILITY_PAGES = Object.freeze([
   Object.freeze({ evidenceKey: "dashboard", heading: "Dashboard", label: "Dashboard" }),
-  Object.freeze({ evidenceKey: "inventory", heading: "Spools", label: "Inventory" }),
-  Object.freeze({ evidenceKey: "loans", heading: "Loans", label: "Loans" }),
+  Object.freeze({ evidenceKey: "inventory", heading: "Inventory", label: "Inventory" }),
+  Object.freeze({ evidenceKey: "loans", heading: "Inventory", label: "Loans" }),
   Object.freeze({ evidenceKey: "printers", heading: "Printers", label: "Printers" }),
   Object.freeze({ evidenceKey: "statistics", heading: "Statistics", label: "Statistics" }),
   Object.freeze({ evidenceKey: "settings", heading: "Settings", label: "Settings" }),
@@ -242,7 +242,9 @@ export async function runDataBackedAccessibilityAnalysis(options) {
       const scans = [];
       for (const [index, spec] of DATA_BACKED_ACCESSIBILITY_PAGES.entries()) {
         activePageLabel = spec.label;
-        if (index > 0) {
+        if (spec.evidenceKey === "loans") {
+          await page.locator("#inventory-loans-tab").click();
+        } else if (index > 0) {
           await page
             .getByRole("navigation", { name: "Navigation", exact: true })
             .getByRole("button", { exact: true, name: spec.label })

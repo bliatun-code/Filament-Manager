@@ -375,6 +375,8 @@ export const deDictionary: DictionaryNode = {
     badgeNoPrinterSlots: "Noch keine Druckerplätze konfiguriert.",
   },
   inventory: {
+    labelsAction: "Etiketten",
+    loansTab: "Ausleihen und Entleihen",
     "detailWeight": "Gewicht",
     "detailPlacementOwnership": "Standort und Eigentum",
     "detailIdentityLabel": "Identität und Etikett",
@@ -1180,6 +1182,7 @@ export const deDictionary: DictionaryNode = {
     },
   },
   loans: {
+    person: "Person",
     subtitle: "Aktive Ausleihen, geliehene Rollen und Rückgaben verwalten.",
     activeLoans: "Aktive Ausleihen",
     activeBorrowedIn: "Aktiv geliehen",

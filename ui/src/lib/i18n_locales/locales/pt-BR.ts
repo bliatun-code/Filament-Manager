@@ -382,6 +382,8 @@ export const ptBRDictionary: DictionaryNode = {
       "Os padrões de filamento salvos não são mais válidos. Recarregue-os e revise-os.",
   },
   inventory: {
+    labelsAction: "Etiquetas",
+    loansTab: "Emprestados e tomados emprestados",
     "detailWeight": "Peso",
     "detailPlacementOwnership": "Localização e propriedade",
     "detailIdentityLabel": "Identidade e etiqueta",
@@ -1201,6 +1203,7 @@ export const ptBRDictionary: DictionaryNode = {
     workspace: "Espaço de trabalho",
   },
   loans: {
+    person: "Pessoa",
     activeBorrowedIn: "Recebidas ativas",
     activeLoans: "Empréstimos ativos",
     activeRecords: "Registros ativos",

@@ -305,6 +305,8 @@ export const fiFIDictionary: DictionaryNode = {
     "badgeNoPrinterSlots": "Tulostinpaikkoja ei ole vielä määritetty."
   },
   "inventory": {
+    labelsAction: "Etiketit",
+    loansTab: "Lainatut ja lainaksi otetut",
     "detailWeight": "Paino",
     "detailPlacementOwnership": "Sijainti ja omistus",
     "detailIdentityLabel": "Tunniste ja etiketti",
@@ -1016,6 +1018,7 @@ export const fiFIDictionary: DictionaryNode = {
     }
   },
   "loans": {
+    person: "Henkilö",
     "clientReadOnlyBanner": "Tämä laite on linkitetty asiakkaaksi. Lainamuutokset pysyvät isännässä toistaiseksi.",
     "clientReadOnlyAction": "Tämä laite on yhdistetty asiakkaana. Käytä arvoja lainan muokkauksiin.",
     "clientReadOnlyBannerPaired": "Tämä laite on yhdistetty asiakkaana. Palautukset ja käsipalautukset voidaan lähettää isännöitsijälle, kun taas uusien lainojen luominen pysähtyy siihen.",

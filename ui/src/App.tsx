@@ -12,6 +12,7 @@ import {
   APP_PAGE_LABEL_FALLBACKS,
   APP_PAGE_ORDER,
   resolveInitialPageFromSearch,
+  resolveAppNavigationDestination,
   type InventoryNavigationIntent,
   type PageKey,
 } from "./lib/app_navigation_model";
@@ -51,7 +52,6 @@ import brandIconLight from "./assets/logo_variants/logo-v3-10-light-static.svg";
 
 const DashboardPage = lazy(() => import("./pages/dashboard"));
 const InventoryPage = lazy(() => import("./pages/inventory"));
-const LoansPage = lazy(() => import("./pages/loans"));
 const PrintersPage = lazy(() => import("./pages/printers"));
 const SettingsPage = lazy(() => import("./pages/settings"));
 const StatisticsPage = lazy(() => import("./pages/statistics"));
@@ -218,7 +218,7 @@ export default function App() {
 
   const pages = useMemo(
     () =>
-      APP_PAGE_ORDER.map((key) => ({
+      APP_PAGE_ORDER.filter(key => key !== "loans").map((key) => ({
         key,
         label: t(`nav.${key}`, APP_PAGE_LABEL_FALLBACKS[key]),
       })),
@@ -226,7 +226,7 @@ export default function App() {
   );
 
   useEffect(() => {
-    const currentPage = pages.find((page) => page.key === activePage);
+    const currentPage = pages.find((page) => page.key === (activePage === "loans" ? "inventory" : activePage));
     const title = currentPage?.label ?? t("app.title", "Filament Manager");
     void setWindowTitle(title);
   }, [activePage, pages, t]);
@@ -240,22 +240,23 @@ export default function App() {
     });
   }, [activePage]);
 
-  const activePageLabel = pages.find((page) => page.key === activePage)?.label ?? t("app.title", "Filament Manager");
+  const activePageLabel = pages.find((page) => page.key === (activePage === "loans" ? "inventory" : activePage))?.label ?? t("app.title", "Filament Manager");
   const availableUpdate =
     appUpdate.showUpdateNotification && appUpdate.state.status === "SUCCESS"
       ? appUpdate.state.result
       : null;
 
   const navigateToPage = (page: PageKey, nextInventoryIntent: InventoryNavigationIntent = null) => {
+    const { page: targetPage, inventoryIntent: targetIntent } = resolveAppNavigationDestination(page, nextInventoryIntent);
     const completeNavigation = () => {
       startTransition(() => {
-        setInventoryNavigationIntent(nextInventoryIntent);
+        setInventoryNavigationIntent(targetIntent);
         if (page !== "settings") {
           setSettingsInitialTab(null);
           setSettingsInitialPrinterId(null);
           setSettingsFilamentDefaultsFocusTarget(null);
         }
-        setActivePage(page);
+        setActivePage(targetPage);
       });
     };
     if (
@@ -337,7 +338,8 @@ export default function App() {
           />
         );
       case "loans":
-        return <LoansPage />;
+        return <InventoryPage initialWorkspaceView="LOANS" onOpenPrinters={() => navigateToPage("printers")}
+          onNavigationGuardChange={handleInventoryNavigationGuardChange} />;
       case "printers":
         return <PrintersPage />;
       case "statistics":
@@ -402,14 +404,14 @@ export default function App() {
             {pages.map((page) => (
               <button
                 key={page.key}
-                ref={activePage === page.key ? activeNavButtonRef : undefined}
+                ref={(activePage === "loans" ? "inventory" : activePage) === page.key ? activeNavButtonRef : undefined}
                 type="button"
-                aria-current={activePage === page.key ? "page" : undefined}
+                aria-current={(activePage === "loans" ? "inventory" : activePage) === page.key ? "page" : undefined}
                 onClick={() => {
                   navigateToPage(page.key);
                 }}
                 className={`app-nav-button ${
-                  activePage === page.key ? "app-nav-button-active" : "app-nav-button-idle"
+                  (activePage === "loans" ? "inventory" : activePage) === page.key ? "app-nav-button-active" : "app-nav-button-idle"
                 }`}
               >
                 {page.label}

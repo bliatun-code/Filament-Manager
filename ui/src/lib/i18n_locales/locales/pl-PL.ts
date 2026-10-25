@@ -301,6 +301,8 @@ export const plPLDictionary: DictionaryNode = {
     "filamentStandardsInvalid": "Zapisane standardy filamentu są już nieaktualne. Wczytaj je ponownie i sprawdź."
   },
   "inventory": {
+    labelsAction: "Etykiety",
+    loansTab: "Wypożyczone i pożyczone",
     "detailWeight": "Waga",
     "detailPlacementOwnership": "Lokalizacja i własność",
     "detailIdentityLabel": "Tożsamość i etykieta",
@@ -948,6 +950,7 @@ export const plPLDictionary: DictionaryNode = {
     "labelSheetInventoryHint": "Potrzebujesz etykiet dla kilku szpul? Wybierz „Wybierz wiele” w magazynie albo utwórz arkusz etykiet dla całego magazynu z poziomu nagłówka."
   },
   "loans": {
+    person: "Osoba",
     "activeBorrowedIn": "Aktywny zapożyczony",
     "activeLoans": "Aktywne pożyczki",
     "activeRecords": "Aktywne rekordy",

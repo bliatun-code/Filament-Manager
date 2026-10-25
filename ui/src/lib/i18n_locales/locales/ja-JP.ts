@@ -305,6 +305,8 @@ export const jaJPDictionary: DictionaryNode = {
     "badgeNoPrinterSlots": "プリンター slots がまだ構成されていません。"
   },
   "inventory": {
+    labelsAction: "ラベル",
+    loansTab: "貸出・借入",
     "detailWeight": "重量",
     "detailPlacementOwnership": "場所と所有者",
     "detailIdentityLabel": "識別情報とラベル",
@@ -1016,6 +1018,7 @@ export const jaJPDictionary: DictionaryNode = {
     }
   },
   "loans": {
+    person: "相手",
     "clientReadOnlyBanner": "このデバイスはクライアントとしてリンクされています。ローンの変更は今のところ host に残ります。",
     "clientReadOnlyAction": "このデバイスはクライアントとして接続されています。ローンの変更には host を使用します。",
     "clientReadOnlyBannerPaired": "このデバイスはクライアントとして接続されています。返品と返金は host に送信できますが、新しいローンの作成はそこに残ります。",

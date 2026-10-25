@@ -539,9 +539,10 @@ export function desktopVisualQaExpectedWindowTitles(scenario, locale) {
     return [];
   }
   const normalizedLocale = normalizeVisualQaLocale(locale);
+  const page = definition.page === "loans" ? "inventory" : definition.page;
   const title =
-    DESKTOP_VISUAL_QA_PAGE_TITLES[normalizedLocale]?.[definition.page] ??
-    DESKTOP_VISUAL_QA_PAGE_TITLES[DEFAULT_LOCALE]?.[definition.page];
+    DESKTOP_VISUAL_QA_PAGE_TITLES[normalizedLocale]?.[page] ??
+    DESKTOP_VISUAL_QA_PAGE_TITLES[DEFAULT_LOCALE]?.[page];
   return title ? [title] : [];
 }
 

@@ -715,6 +715,37 @@
         "da-DK",
         "fi-FI"
       ]
+    },
+    {
+      "sourceFingerprint": "sha256:b79014cf59cc663dc7aa546cd5aede025f05d1084a04866154d1087cd3412caa",
+      "catalogSetFingerprint": "sha256:15ea009435967fe64e773f948edc7bd1245bfea77a0929190668e10c020ecbf6",
+      "runtimeContractFingerprint": "sha256:6da02cf630aa26f06ae08d75e0a97cfe9b7ad7c2bc3c589f322186661916c4ee",
+      "verifiedAt": "2026-10-25",
+      "artifactQa": "passed",
+      "runtimeQa": "passed",
+      "locales": [
+        "cs-CZ",
+        "da-DK",
+        "de",
+        "en",
+        "es",
+        "fi-FI",
+        "fr",
+        "hu-HU",
+        "it-IT",
+        "ja-JP",
+        "ko-KR",
+        "nb",
+        "nl-NL",
+        "pl-PL",
+        "pt-BR",
+        "ru-RU",
+        "sv-SE",
+        "tr-TR",
+        "uk-UA",
+        "zh-CN",
+        "zh-TW"
+      ]
     }
   ],
   "locales": {

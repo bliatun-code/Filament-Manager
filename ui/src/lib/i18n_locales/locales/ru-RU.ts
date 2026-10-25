@@ -392,6 +392,7 @@ export const ruRUDictionary: DictionaryNode = {
     "valueCostReasonCalculationInvalid": "Не удалось рассчитать стоимость"
   },
   "loans": {
+    person: "Человек",
     "clientHostUnavailable": "Для этого клиентского устройства отсутствуют сведения о подключении к хосту.",
     "clientReadOnlyHost": "Хозяин",
     "clientReadOnlyUpdated": "Обновлено",
@@ -784,6 +785,8 @@ export const ruRUDictionary: DictionaryNode = {
     }
   },
   "inventory": {
+    labelsAction: "Этикетки",
+    loansTab: "Выданные и взятые катушки",
     "detailWeight": "Вес",
     "detailPlacementOwnership": "Расположение и владение",
     "detailIdentityLabel": "Идентификация и этикетка",

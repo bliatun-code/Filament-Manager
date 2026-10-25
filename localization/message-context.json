@@ -1143,6 +1143,24 @@
       "key": "inventory.detailOpenPrinters",
       "meaning": "Navigates from an already assigned roll to the Printers page. Existing unsaved-roll navigation confirmation still applies.",
       "screenshot": "docs/screenshots/inventory.jpg"
+    },
+    {
+      "surface": "desktop",
+      "key": "inventory.loansTab",
+      "meaning": "Inventory workspace tab containing outbound loans to other people AND rolls borrowed from others; includes active records and completed history. The badge is active loan records, not people.",
+      "screenshot": "docs/screenshots/inventory.jpg"
+    },
+    {
+      "surface": "desktop",
+      "key": "inventory.labelsAction",
+      "meaning": "Short inventory toolbar action opening the existing printable label sheet for the entire inventory; individual labels remain in roll properties.",
+      "screenshot": "docs/screenshots/inventory.jpg"
+    },
+    {
+      "surface": "desktop",
+      "key": "loans.person",
+      "meaning": "Loan table column for the other person: the borrower for an outbound loan, or the owner for a borrowed-in roll. Use a neutral person label covering both directions.",
+      "screenshot": "docs/screenshots/loans.jpg"
     }
   ],
   "groups": [

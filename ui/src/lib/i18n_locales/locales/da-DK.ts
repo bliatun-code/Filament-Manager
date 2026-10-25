@@ -208,6 +208,7 @@ export const daDKDictionary: DictionaryNode = {
     }
   },
   "loans": {
+    person: "Person",
     "clientHostUnavailable": "Værtsforbindelsesoplysninger mangler for denne klientenhed.",
     "clientReadOnlyHost": "vært",
     "clientReadOnlyUpdated": "Opdateret",
@@ -784,6 +785,8 @@ export const daDKDictionary: DictionaryNode = {
     }
   },
   "inventory": {
+    labelsAction: "Etiketter",
+    loansTab: "Udlån og indlån",
     "detailWeight": "Vægt",
     "detailPlacementOwnership": "Placering og ejerskab",
     "detailIdentityLabel": "Identitet og etiket",

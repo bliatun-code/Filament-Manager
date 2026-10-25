@@ -301,6 +301,8 @@ export const trTRDictionary: DictionaryNode = {
     "unauthorized": "Kimlik doğrulama gerekli."
   },
   "inventory": {
+    labelsAction: "Etiketler",
+    loansTab: "Ödünç verilen ve alınan",
     "detailWeight": "Ağırlık",
     "detailPlacementOwnership": "Konum ve sahiplik",
     "detailIdentityLabel": "Kimlik ve etiket",
@@ -948,6 +950,7 @@ export const trTRDictionary: DictionaryNode = {
     "workspace": "Çalışma alanı"
   },
   "loans": {
+    person: "Kişi",
     "activeBorrowedIn": "Aktif ödünç alınan",
     "activeLoans": "Aktif krediler",
     "activeRecords": "Aktif kayıtlar",

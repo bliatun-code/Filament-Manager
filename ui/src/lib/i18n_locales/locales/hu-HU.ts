@@ -369,6 +369,7 @@ export const huHUDictionary: DictionaryNode = {
     "legacyLowStockFallback": "200 g-os tartalékérték régebbi gazdagéphez"
   },
   "loans": {
+    person: "Személy",
     "clientReadOnlyHost": "Házigazda",
     "clientReadOnlyLive": "Élő házigazda-kölcsönök megjelenítése.",
     "clientReadOnlyUpdated": "Frissítve",
@@ -784,6 +785,8 @@ export const huHUDictionary: DictionaryNode = {
     }
   },
   "inventory": {
+    labelsAction: "Címkék",
+    loansTab: "Kölcsönadott és kölcsönvett",
     "detailWeight": "Tömeg",
     "detailPlacementOwnership": "Hely és tulajdon",
     "detailIdentityLabel": "Azonosító és címke",

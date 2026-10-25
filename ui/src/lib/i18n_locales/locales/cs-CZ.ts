@@ -301,6 +301,8 @@ export const csCZDictionary: DictionaryNode = {
     "filamentStandardsInvalid": "Uložené standardy filamentu již nejsou platné. Načtěte je znovu a zkontrolujte."
   },
   "inventory": {
+    labelsAction: "Štítky",
+    loansTab: "Výpůjčky a zápůjčky",
     "detailWeight": "Hmotnost",
     "detailPlacementOwnership": "Umístění a vlastnictví",
     "detailIdentityLabel": "Identita a štítek",
@@ -948,6 +950,7 @@ export const csCZDictionary: DictionaryNode = {
     "labelSheetInventoryHint": "Potřebujete štítky pro více cívek? Ve skladu zvolte „Vybrat více“ nebo v záhlaví vytvořte arch štítků pro celý sklad."
   },
   "loans": {
+    person: "Osoba",
     "activeBorrowedIn": "Aktivní zapůjčené",
     "activeLoans": "Aktivní půjčky",
     "activeRecords": "Aktivní záznamy",

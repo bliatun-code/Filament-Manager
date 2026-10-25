@@ -379,6 +379,8 @@ export const frDictionary: DictionaryNode = {
     badgeNoPrinterSlots: "Aucun emplacement d’imprimante configuré pour le moment.",
   },
   inventory: {
+    labelsAction: "Étiquettes",
+    loansTab: "Prêts et emprunts",
     "detailWeight": "Poids",
     "detailPlacementOwnership": "Emplacement et propriété",
     "detailIdentityLabel": "Identité et étiquette",
@@ -1205,6 +1207,7 @@ export const frDictionary: DictionaryNode = {
     },
   },
   loans: {
+    person: "Personne",
     subtitle: "Gérez les prêts actifs, les bobines empruntées et les retours.",
     activeLoans: "Prêts actifs",
     activeBorrowedIn: "Emprunts actifs",

@@ -305,6 +305,8 @@ export const zhTWDictionary: DictionaryNode = {
     "badgeNoPrinterSlots": "尚未配置印表機插槽。"
   },
   "inventory": {
+    labelsAction: "標籤",
+    loansTab: "借出與借入",
     "detailWeight": "重量",
     "detailPlacementOwnership": "位置與所有權",
     "detailIdentityLabel": "識別資訊與標籤",
@@ -1016,6 +1018,7 @@ export const zhTWDictionary: DictionaryNode = {
     }
   },
   "loans": {
+    person: "人員",
     "clientReadOnlyBanner": "該裝置作為客戶端連結。貸款變更目前保留在 host 上。",
     "clientReadOnlyAction": "該裝置作為客戶端連線。使用 host 進行貸款變更。",
     "clientReadOnlyBannerPaired": "該裝置作為客戶端連線。退貨和返還可以傳送到 host，而新的貸款建立仍保留在那裡。",

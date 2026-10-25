@@ -2445,7 +2445,7 @@ test("desktop screenshot gate maps scenario aliases to localized window titles",
   );
   assert.deepEqual(
     desktopVisualQaExpectedWindowTitles("return-inbound-loan", "ru-RU"),
-    ["Выдачи"],
+    ["Инвентарь"],
   );
   assert.deepEqual(
     desktopVisualQaExpectedWindowTitles("wishlist-orders", "hu-HU"),
