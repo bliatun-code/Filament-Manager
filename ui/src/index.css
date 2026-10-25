@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@import "./pages/settings_catalog_balanced.css";
 @import "./components/settings_printers_balanced.css";
 @import "./pages/settings_library_balanced.css";
 @import "./components/settings_filament_defaults_tab.css";

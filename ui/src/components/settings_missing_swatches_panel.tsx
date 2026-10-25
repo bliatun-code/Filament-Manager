@@ -24,6 +24,7 @@ import { InventorySwatchChip } from "./inventory_swatch_chip";
 import type { I18nContextValue } from "../lib/i18n";
 
 type SettingsMissingSwatchesPanelProps = {
+  compact?: boolean;
   busy: boolean;
   catalogRowsAvailable: boolean;
   catalogRowsUnavailable: boolean;
@@ -47,6 +48,7 @@ type SettingsMissingSwatchesPanelProps = {
 };
 
 export function SettingsMissingSwatchesPanel({
+  compact = false,
   busy,
   catalogRowsAvailable,
   catalogRowsUnavailable,
@@ -72,14 +74,14 @@ export function SettingsMissingSwatchesPanel({
   const mutationDisabled = disabled || !catalogRowsAvailable;
 
   return (
-    <SettingsSectionPanel className="mt-6">
+    <SettingsSectionPanel className="settings-catalog-swatches mt-6">
       <SettingsSectionHeader
         eyebrow={t("settings.swatchQuality", "Swatch quality")}
         description={t(
           "settings.swatchQualityHelp",
           "Review missing swatches here, then save manual fixes or fill the visible list in bulk.",
         )}
-        status={
+        status={compact ? undefined :
           <div className={inlineStatusSignalClass(catalogRowsAvailable && missingSwatchCount > 0 ? "warning" : "neutral", "text-sm")}>
             {t("settings.missingSwatches", "Missing swatches")}: {catalogRowsAvailable ? missingSwatchCount : "—"}
           </div>
@@ -195,7 +197,7 @@ export function SettingsMissingSwatchesPanel({
             role="region"
             aria-label={t("settings.missingSwatches", "Missing swatches")}
             tabIndex={0}
-            className="mt-4 max-h-[460px] space-y-3 overflow-auto pr-1 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-500"
+            className="settings-swatch-review-list mt-4 max-h-[460px] space-y-3 overflow-auto pr-1 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-500"
           >
             {visibleMissingSwatchMasters.map((master, index) => {
               const draftHex = swatchDraftById[master.id] ?? suggestHexFromColor(master);
