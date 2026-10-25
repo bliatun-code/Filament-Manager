@@ -4,7 +4,7 @@ export function settingsRouteOutletGridClass(activeTab: SettingsTabKey): string 
   if (activeTab === "FILAMENT_DEFAULTS") {
     return "grid min-w-0 grid-cols-1";
   }
-  if (activeTab === "GENERAL") {
+  if (activeTab === "GENERAL" || activeTab === "LIBRARY") {
     return "grid min-w-0 grid-cols-1";
   }
   return "mt-4 grid min-w-0 grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)]";
@@ -13,6 +13,6 @@ export function settingsRouteOutletGridClass(activeTab: SettingsTabKey): string 
 export function settingsRouteOutletFallbackSpanClass(
   activeTab: SettingsTabKey,
 ): string {
-  if (activeTab === "GENERAL" || activeTab === "FILAMENT_DEFAULTS") return "";
+  if (activeTab === "GENERAL" || activeTab === "FILAMENT_DEFAULTS" || activeTab === "LIBRARY") return "";
   return "xl:col-span-2";
 }

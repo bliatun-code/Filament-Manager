@@ -51,10 +51,13 @@ export function SettingsLibraryRolePanel({
 }: SettingsLibraryRolePanelProps) {
   return (
     <>
-      <div className="space-y-2">
-        <div className={settingsGroupLabelClass}>
-          {t("settings.libraryRoleLabel", "Library role")}
-        </div>
+      <div className="settings-library-role-heading">
+        <h3 className={settingsGroupLabelClass}>{t("settings.libraryRoleLabel", "Library role")}</h3>
+        <span className="font-medium">{librarySyncRoleOptions.find((option) => option.mode === librarySyncModeDraft)?.label}</span>
+      </div>
+      <details className="settings-library-role-editor">
+        <summary className="app-control-focus">{t("common.show", "Show")}</summary>
+        <div className="mt-3 space-y-3">
         <div
           role="group"
           aria-label={t("settings.libraryRoleLabel", "Library role")}
@@ -82,7 +85,8 @@ export function SettingsLibraryRolePanel({
             "Role changes open a guided flow. Nothing is saved until you confirm.",
           )}
         </div>
-      </div>
+        </div>
+      </details>
 
       {librarySyncModeDraft === "HOST" ? null : (
         <div className={settingsInfoPanelClass}>

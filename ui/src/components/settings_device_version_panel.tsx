@@ -44,12 +44,12 @@ export function SettingsDeviceVersionPanel({
       <h3 id="settings-device-versions-title" className="font-semibold text-slate-900 dark:text-slate-100">
         {t("settings.deviceVersionsTitle", "App versions")}
       </h3>
-      <div className="mt-3 grid gap-3 sm:grid-cols-2">
+      <div className="settings-device-version-list mt-3 grid gap-3 sm:grid-cols-2">
         {[
           { id: "local", label: t("settings.thisDevice", "This device"), version: versions.local.version, status: versions.local.relation },
           { id: "host", label: versions.host.name || t("settings.librarySyncCurrentHost", "Current host"), version: versions.host.version, status: versions.host.relation },
         ].map((device) => (
-          <div key={device.id} className={settingsCompactInfoPanelClass} data-device-version={device.id}>
+          <div key={device.id} className={`settings-device-version-row ${settingsCompactInfoPanelClass}`} data-device-version={device.id}>
             <div className="break-words text-xs text-slate-600 dark:text-slate-300">{device.label}</div>
             <p className="mt-1 text-lg font-semibold tabular-nums text-slate-900 dark:text-slate-100">{device.version ? `v${device.version}` : "—"}</p>
             <p className={`mt-1 text-xs ${device.status === "update" ? "font-semibold text-amber-800 dark:text-amber-200" : "text-slate-500 dark:text-slate-400"}`}>{relationLabel(device.status)}</p>
