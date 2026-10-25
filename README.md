@@ -60,9 +60,9 @@ Start with the user guide for product behavior and workflows:
 
 Release notes:
 
+- [v0.34.0](docs/releases/RELEASE_NOTES_v0.34.0.md)
 - [v0.33.0](docs/releases/RELEASE_NOTES_v0.33.0.md)
 - [v0.32.1](docs/releases/RELEASE_NOTES_v0.32.1.md)
-- [v0.32.0](docs/releases/RELEASE_NOTES_v0.32.0.md)
 
 The repository keeps the three most recent release-note files. Older notes
 remain available in the [v0.31.0 source snapshot](https://github.com/bliatun-code/Filament-Manager/tree/v0.31.0),
@@ -89,13 +89,15 @@ and published release tags are retained.
   single-material printers.
 - Compact printer cards that keep assigned filament swatches and material names
   visible while detailed slots are collapsed.
-- Dashboard puts inventory totals, the last 30 days of usage, printer summaries,
-  low-stock rolls and recent activity first. Printer brand accents and filament
-  colors stay vivid; live status is shown only from fresh, trusted local data.
-  **Setup and library details** holds ownership, health, goals and the separate
-  rolling twelve-month consumption chart. Its local calendar months run oldest
-  to newest, keep zero-use months visible, and total recorded printer-linked
-  jobs and Bambu Live usage from the same twelve buckets.
+- Dashboard leads with on-hand spools, outbound loans and the last 30 days of
+  usage. Printer summaries and low-stock rolls share the first row; annual
+  consumption and recent loan activity remain visible below. Purchase
+  suggestions start collapsed. Progress goals and the inventory-health score
+  are removed. Printer brand accents and filament colors stay vivid; live
+  status uses fresh, trusted data, including Host-provided data on Clients.
+  The consumption chart's local calendar months run oldest to newest, keep
+  zero-use months visible, and total recorded printer-linked jobs and Bambu
+  Live usage from the same twelve buckets.
 - Dashboard follow-up separates important overdue-loan, incoming-order, and
   trust work from quieter optional low-stock suggestions. Suggestions can be
   collapsed or hidden locally without changing inventory data.
@@ -449,7 +451,7 @@ download and checksum flow.
 ## Release Status
 
 - Latest release page: https://github.com/bliatun-code/Filament-Manager/releases/latest
-- Current version: `0.33.0`
+- Current version: `0.34.0`
 - Version source of truth must stay aligned across:
   - `package.json`
   - `package-lock.json`
