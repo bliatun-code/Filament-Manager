@@ -86,7 +86,7 @@ export function SettingsBambuLiveObservedDetailsPanel({
   const captureDescriptionIds = `${captureStatusId} ${captureHintId}`;
 
   return (
-    <div className="mt-3 rounded-lg border border-slate-200 bg-slate-50 p-3 text-xs text-slate-700 dark:border-slate-700 dark:bg-slate-900/60 dark:text-slate-200">
+    <div className="settings-printer-observed-panel text-xs text-slate-700 dark:text-slate-200">
       {observedState ? (
         <div className="space-y-3">
           <div>
@@ -174,6 +174,8 @@ export function SettingsBambuLiveObservedDetailsPanel({
             )}
             trays={diagnosticTrayCards}
           />
+          <details className="settings-printer-technical">
+            <summary className="app-control-focus">{t("settings.bambuLiveDiagnostics", "Diagnostics")}</summary>
           <div className="rounded-lg border border-slate-200 bg-white px-3 py-3 dark:border-slate-700 dark:bg-slate-950/50">
             <div className={settingsSectionLabelClass}>
               {t("settings.bambuLiveDiagnostics", "Diagnostics")}
@@ -234,6 +236,7 @@ export function SettingsBambuLiveObservedDetailsPanel({
               rawPayload={observedState.raw_payload_json}
             />
           </div>
+          </details>
         </div>
       ) : (
         <div className="space-y-2">

@@ -150,7 +150,7 @@ export function SettingsPrinterCard({
 
   return (
     <div
-      className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 dark:border-slate-700 dark:bg-slate-900/50"
+      className="settings-printer-balanced-card rounded-lg border border-slate-200 bg-slate-50 dark:border-slate-700 dark:bg-slate-900/50"
       style={printerBrandSurfaceStyle(printer.model, "compact", resolvedTheme)}
     >
       <SettingsPrinterCardHeader

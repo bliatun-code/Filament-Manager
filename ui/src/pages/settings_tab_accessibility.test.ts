@@ -57,10 +57,7 @@ test("compact settings tabs keep two columns at laptop widths", () => {
     settingsRouteOutletGridClass("GENERAL"),
     "grid min-w-0 grid-cols-1",
   );
-  assert.match(
-    settingsRouteOutletGridClass("PRINTERS"),
-    /xl:grid-cols-\[minmax\(0,1\.2fr\)_minmax\(0,1fr\)\]/,
-  );
+  assert.equal(settingsRouteOutletGridClass("PRINTERS"), "grid min-w-0 grid-cols-1");
 });
 
 test("settings tab keyboard navigation wraps and supports Home and End", () => {

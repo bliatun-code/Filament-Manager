@@ -44,7 +44,7 @@ export function SettingsPrinterCardHeader({
   const { t } = useI18n();
 
   return (
-    <div className="flex flex-wrap items-center justify-between gap-2">
+    <div className="settings-printer-balanced-header">
       <div className="flex min-w-0 flex-1 items-center gap-3">
         <PrinterModelPreview
           model={printer.model}
@@ -52,37 +52,12 @@ export function SettingsPrinterCardHeader({
           compact
         />
         <div className="min-w-0 break-words text-sm text-slate-700 dark:text-slate-200">
-          <span className="font-semibold text-slate-900 dark:text-slate-50">
-            {printer.name}
-          </span>{" "}
-          {hasLiveIntegration ? (
-            <span
-              className={inlineStatusSignalClass(
-                liveStatusTone,
-                "text-[11px]",
-              )}
-            >
-              {t("settings.bambuLiveBadge", "Live")}
-            </span>
-          ) : null}{" "}
-          · {printer.model} · {describePrinterCapability(t, printer.model, hasMultiMaterial)} ·{" "}
-          {configuredSetup}
+          <h3 className="text-base font-semibold text-slate-900 dark:text-slate-50">{printer.name}</h3>
+          <p className="mt-1 text-xs text-slate-600 dark:text-slate-300">{printer.model} · {hasMultiMaterial ? `${describePrinterCapability(t, printer.model, hasMultiMaterial)} · ` : ""}{configuredSetup}</p>
+          {hasLiveIntegration ? <span className={inlineStatusSignalClass(liveStatusTone, "mt-2 text-xs")}>{t("settings.bambuLiveBadge", "Live")}</span> : null}
         </div>
       </div>
       <div className="flex flex-wrap items-center justify-end gap-2">
-        {hasLiveIntegration && !isEditing ? (
-          <SettingsPrinterObservedDetailsToggle
-            controlsId={observedDetailsId}
-            disabled={!tauri || busy || actionsLocked}
-            expanded={isExpanded}
-            hideLabel={t("settings.hideObservedDetails", "Hide observed details")}
-            onToggle={onToggleDetails}
-            showLabel={t(
-              "settings.showObservedDetails",
-              "Show observed details & capture",
-            )}
-          />
-        ) : null}
         {!isEditing ? (
           <>
             <button
@@ -107,6 +82,21 @@ export function SettingsPrinterCardHeader({
                 : t("common.remove", "Remove")}
             </button>
           </>
+        ) : null}
+      </div>
+      <div className="settings-printer-observed-toggle">
+        {hasLiveIntegration && !isEditing ? (
+          <SettingsPrinterObservedDetailsToggle
+            controlsId={observedDetailsId}
+            disabled={!tauri || busy || actionsLocked}
+            expanded={isExpanded}
+            hideLabel={t("settings.hideObservedDetails", "Hide observed details")}
+            onToggle={onToggleDetails}
+            showLabel={t(
+              "settings.showObservedDetails",
+              "Show observed details & capture",
+            )}
+          />
         ) : null}
       </div>
     </div>
