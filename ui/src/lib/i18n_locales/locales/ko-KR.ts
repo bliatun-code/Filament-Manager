@@ -1439,6 +1439,17 @@ export const koKRDictionary: DictionaryNode = {
     }
   },
   "settings": {
+    themeGraySoft: "회색 · 부드러운",
+    themeGrayDeep: "회색 · 깊은",
+    themeBlueNight: "파랑 · 밤",
+    themeLightClean: "밝음 · 깔끔한",
+    searchPrinterModels: "프린터 모델 검색",
+    printerBrand: "제조업체",
+    customPrinterModel: "사용자 지정 모델명",
+    printerModelsAll: "모두",
+    printerModelsOther: "기타",
+    printerModelsNoResults: "결과 없음",
+
     "noMatchingSwatches": "검색과 일치하는 누락된 색상 샘플이 없습니다.",
     "autoSaveHint": "이 페이지의 변경 사항은 자동으로 저장됩니다.",
     "changeLibraryRole": "라이브러리 역할 변경",

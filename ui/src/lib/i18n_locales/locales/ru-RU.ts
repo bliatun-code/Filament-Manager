@@ -1439,6 +1439,17 @@ export const ruRUDictionary: DictionaryNode = {
     }
   },
   "settings": {
+    themeGraySoft: "Серый · Мягкий",
+    themeGrayDeep: "Серый · Глубокий",
+    themeBlueNight: "Синий · Ночь",
+    themeLightClean: "Светлый · Чистый",
+    searchPrinterModels: "Поиск моделей принтеров",
+    printerBrand: "Производитель",
+    customPrinterModel: "Своё название модели",
+    printerModelsAll: "Все",
+    printerModelsOther: "Другие",
+    printerModelsNoResults: "Ничего не найдено",
+
     "noMatchingSwatches": "По этому запросу нет отсутствующих образцов цвета.",
     "autoSaveHint": "Изменения на этой странице сохраняются автоматически.",
     "changeLibraryRole": "Изменить роль библиотеки",

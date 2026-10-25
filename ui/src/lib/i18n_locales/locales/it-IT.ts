@@ -1469,6 +1469,17 @@ export const itITDictionary: DictionaryNode = {
     withToolheads: "Testa multiutensile",
   },
   settings: {
+    themeGraySoft: "Grigio · Morbido",
+    themeGrayDeep: "Grigio · Profondo",
+    themeBlueNight: "Blu · Notte",
+    themeLightClean: "Chiaro · Pulito",
+    searchPrinterModels: "Cerca modelli di stampante",
+    printerBrand: "Produttore",
+    customPrinterModel: "Nome modello personalizzato",
+    printerModelsAll: "Tutti",
+    printerModelsOther: "Altri",
+    printerModelsNoResults: "Nessun risultato",
+
     "noMatchingSwatches": "Nessun campione di colore mancante corrisponde alla ricerca.",
     "autoSaveHint": "Le modifiche in questa pagina vengono salvate automaticamente.",
     "changeLibraryRole": "Cambia ruolo della libreria",

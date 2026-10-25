@@ -30,19 +30,19 @@ test("buildSettingsThemeSelectionMessage formats the localized selected mode", (
 test("settingsThemeModeLabel uses translated standard and brand theme labels", () => {
   const translated = {
     "settings.auto": "Automatisk",
-    "settings.bambuTheme": "Bambu",
-    "settings.dark": "Mørk",
-    "settings.light": "Lys",
-    "settings.prusaTheme": "Prusa",
+    "settings.themeGrayDeep": "Grå · Dyp",
+    "settings.themeGraySoft": "Grå · Myk",
+    "settings.themeLightClean": "Lys · Ren",
+    "settings.themeBlueNight": "Blå · Natt",
   } as const;
   const t = (key: string, fallback = "") =>
     translated[key as keyof typeof translated] ?? fallback;
 
   assert.equal(settingsThemeModeLabel("auto", t), "Automatisk");
-  assert.equal(settingsThemeModeLabel("light", t), "Lys");
-  assert.equal(settingsThemeModeLabel("dark", t), "Mørk");
-  assert.equal(settingsThemeModeLabel("bambu", t), "Bambu");
-  assert.equal(settingsThemeModeLabel("prusa", t), "Prusa");
+  assert.equal(settingsThemeModeLabel("light", t), "Lys · Ren");
+  assert.equal(settingsThemeModeLabel("dark", t), "Grå · Myk");
+  assert.equal(settingsThemeModeLabel("dark-deep", t), "Grå · Dyp");
+  assert.equal(settingsThemeModeLabel("blue", t), "Blå · Natt");
 });
 
 function dictionaryTranslator(locale: Locale, dictionary: DictionaryNode) {

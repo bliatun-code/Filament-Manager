@@ -1439,6 +1439,17 @@ export const jaJPDictionary: DictionaryNode = {
     }
   },
   "settings": {
+    themeGraySoft: "グレー · ソフト",
+    themeGrayDeep: "グレー · ディープ",
+    themeBlueNight: "ブルー · ナイト",
+    themeLightClean: "ライト · クリーン",
+    searchPrinterModels: "プリンターモデルを検索",
+    printerBrand: "メーカー",
+    customPrinterModel: "カスタムモデル名",
+    printerModelsAll: "すべて",
+    printerModelsOther: "その他",
+    printerModelsNoResults: "結果なし",
+
     "noMatchingSwatches": "検索条件に一致する未設定の色見本はありません。",
     "autoSaveHint": "このページの変更は自動的に保存されます。",
     "changeLibraryRole": "ライブラリの役割を変更",

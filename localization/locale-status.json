@@ -777,6 +777,37 @@
         "zh-CN",
         "zh-TW"
       ]
+    },
+    {
+      "sourceFingerprint": "sha256:604701efaf8923dc62a5502a243c1fac22795ff59b168b85edaf6bd5b4f4134f",
+      "catalogSetFingerprint": "sha256:f916ca14b34179b75854b397cb492306a20e6498481c87a40509c16a9be78a96",
+      "runtimeContractFingerprint": "sha256:6da02cf630aa26f06ae08d75e0a97cfe9b7ad7c2bc3c589f322186661916c4ee",
+      "verifiedAt": "2026-10-25",
+      "artifactQa": "passed",
+      "runtimeQa": "passed",
+      "locales": [
+        "cs-CZ",
+        "da-DK",
+        "de",
+        "en",
+        "es",
+        "fi-FI",
+        "fr",
+        "hu-HU",
+        "it-IT",
+        "ja-JP",
+        "ko-KR",
+        "nb",
+        "nl-NL",
+        "pl-PL",
+        "pt-BR",
+        "ru-RU",
+        "sv-SE",
+        "tr-TR",
+        "uk-UA",
+        "zh-CN",
+        "zh-TW"
+      ]
     }
   ],
   "locales": {

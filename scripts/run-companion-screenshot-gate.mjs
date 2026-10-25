@@ -93,17 +93,17 @@ export function normalizeCompanionScreenshotTheme(value) {
   }
   if (!requested) {
     throw new Error(
-      'Companion screenshot theme is required. Use "light", "dark", "auto", "bambu", or "prusa".',
+      'Companion screenshot theme is required. Use "light", "dark", "auto", "dark-deep", or "blue".',
     );
   }
   throw new Error(
-    `Unknown Companion screenshot theme "${value}". Use "light", "dark", "auto", "bambu", or "prusa".`,
+    `Unknown Companion screenshot theme "${value}". Use "light", "dark", "auto", "dark-deep", or "blue".`,
   );
 }
 
 export function companionScreenshotColorScheme(themeMode) {
   const normalized = normalizeCompanionScreenshotTheme(themeMode);
-  if (normalized === "bambu" || normalized === "prusa") {
+  if (normalized === "dark-deep" || normalized === "blue") {
     // Brand themes are intentionally dark regardless of the device preference.
     // Exercise them against a light OS in visual QA so accidental reliance on a
     // prefers-color-scheme: dark rule cannot pass unnoticed.

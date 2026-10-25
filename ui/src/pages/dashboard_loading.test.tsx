@@ -6,7 +6,7 @@ import { registerHooks } from "node:module";
 
 registerHooks({
   load(url, context, nextLoad) {
-    if (url.endsWith(".svg")) return { format: "module", shortCircuit: true, source: `export default ${JSON.stringify(url)};` };
+    if ((url.endsWith(".svg") || url.endsWith(".png"))) return { format: "module", shortCircuit: true, source: `export default ${JSON.stringify(url)};` };
     return nextLoad(url, context);
   },
 });

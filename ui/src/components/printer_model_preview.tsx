@@ -1,6 +1,7 @@
 import printerBase from "../assets/printer_base.svg";
 import printerWithAms from "../assets/printer_with_ams.svg";
 import { useI18n } from "../lib/i18n";
+import { printerImageUrl } from "../lib/printer_images";
 
 type PrinterModelPreviewProps = {
   model: string;
@@ -14,10 +15,11 @@ export function PrinterModelPreview({
   compact = false,
 }: PrinterModelPreviewProps) {
   const { t } = useI18n();
-  const src = hasMultiMaterial ? printerWithAms : printerBase;
+  const officialImage = printerImageUrl(model, hasMultiMaterial);
+  const src = officialImage ?? (hasMultiMaterial ? printerWithAms : printerBase);
   const heightClass = compact ? "h-14" : "h-20";
   return (
-    <div className="rounded-lg border border-slate-200 bg-slate-50 px-2 py-1 dark:border-slate-700 dark:bg-slate-900/60">
+    <div className={`printer-model-preview ${officialImage ? "printer-model-preview-official" : ""}`}>
       <img
         src={src}
         alt={
@@ -26,6 +28,8 @@ export function PrinterModelPreview({
             : t("printers.previewSingleMaterial", "{model} single-material", { model })
         }
         className={`${heightClass} w-auto object-contain`}
+        loading="lazy"
+        decoding="async"
       />
     </div>
   );

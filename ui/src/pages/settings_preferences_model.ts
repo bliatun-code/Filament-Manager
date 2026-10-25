@@ -23,10 +23,10 @@ export function buildSettingsThemeSelectionMessage(
 export function settingsThemeModeLabel(mode: ThemeMode, t: TranslateFn): string {
   const labels: Record<ThemeMode, [string, string]> = {
     auto: ["settings.auto", "Auto (system)"],
-    light: ["settings.light", "Light"],
-    dark: ["settings.dark", "Dark"],
-    bambu: ["settings.bambuTheme", "Bambu"],
-    prusa: ["settings.prusaTheme", "Prusa"],
+    light: ["settings.themeLightClean", "Light · Clean"],
+    dark: ["settings.themeGraySoft", "Gray · Soft"],
+    "dark-deep": ["settings.themeGrayDeep", "Gray · Deep"],
+    blue: ["settings.themeBlueNight", "Blue · Night"],
   };
   const [key, fallback] = labels[mode];
   return t(key, fallback);

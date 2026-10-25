@@ -1663,6 +1663,17 @@ export const deDictionary: DictionaryNode = {
     },
   },
   settings: {
+    themeGraySoft: "Grau · Sanft",
+    themeGrayDeep: "Grau · Tief",
+    themeBlueNight: "Blau · Nacht",
+    themeLightClean: "Hell · Klar",
+    searchPrinterModels: "Druckermodelle suchen",
+    printerBrand: "Hersteller",
+    customPrinterModel: "Eigener Modellname",
+    printerModelsAll: "Alle",
+    printerModelsOther: "Andere",
+    printerModelsNoResults: "Keine Treffer",
+
     "noMatchingSwatches": "Keine fehlenden Farbmuster entsprechen dieser Suche.",
     "autoSaveHint": "Änderungen auf dieser Seite werden automatisch gespeichert.",
     "changeLibraryRole": "Bibliotheksrolle ändern",

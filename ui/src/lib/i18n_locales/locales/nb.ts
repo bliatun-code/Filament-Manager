@@ -1688,6 +1688,17 @@ export const nbDictionary: DictionaryNode = {
       },
     },
     settings: {
+    themeGraySoft: "Grå · Myk",
+    themeGrayDeep: "Grå · Dyp",
+    themeBlueNight: "Blå · Natt",
+    themeLightClean: "Lys · Ren",
+    searchPrinterModels: "Søk etter printermodell",
+    printerBrand: "Produsent",
+    customPrinterModel: "Egendefinert modellnavn",
+    printerModelsAll: "Alle",
+    printerModelsOther: "Andre",
+    printerModelsNoResults: "Ingen treff",
+
       "noMatchingSwatches": "Ingen manglende fargeprøver samsvarer med søket.",
       "autoSaveHint": "Endringer på denne siden lagres automatisk.",
       "changeLibraryRole": "Endre bibliotekrolle",

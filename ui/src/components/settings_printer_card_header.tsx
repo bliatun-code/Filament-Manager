@@ -1,3 +1,4 @@
+import { Pencil, Trash2 } from "lucide-react";
 import { describePrinterCapability } from "../lib/printer_profiles";
 import type { PrinterRow } from "../lib/tauri_client";
 import { inlineStatusSignalClass, type SemanticChipTone } from "../lib/chip_styles";
@@ -70,7 +71,7 @@ export function SettingsPrinterCardHeader({
               onClick={onToggleEdit}
               disabled={!tauri || busy || actionsLocked}
             >
-              {t("settings.reconfigure", "Reconfigure")}
+              <Pencil size={14} strokeWidth={1.7} aria-hidden="true" /> {t("settings.reconfigure", "Reconfigure")}
             </button>
             <button
               type="button"
@@ -81,6 +82,7 @@ export function SettingsPrinterCardHeader({
               onClick={onRemove}
               disabled={!tauri || busy || actionsLocked}
             >
+              <Trash2 size={14} strokeWidth={1.7} aria-hidden="true" />
               {confirmDelete
                 ? t("settings.confirmRemove", "Confirm remove")
                 : t("common.remove", "Remove")}

@@ -1185,6 +1185,90 @@
       "meaning": "Explains a tie-breaker only: a positive remaining weight below the initial weight ranks before a full roll when material/color scores are equal. It does not claim the packaging is open or choose automatically.",
       "screenshot": "docs/screenshots/printers.jpg",
       "key": "printers.startedCandidatesFirst"
+    },
+    {
+      "surface": "desktop",
+      "key": "settings.themeGraySoft",
+      "meaning": "Name of the default neutral dark appearance. Soft describes the gentler contrast; it is not a filament color or material finish. Preserve the centered dot separator.",
+      "screenshot": "docs/screenshots/settings-general.jpg"
+    },
+    {
+      "surface": "companion",
+      "key": "settings.themeGraySoft",
+      "meaning": "Name of the default neutral dark appearance. Soft describes the gentler contrast; it is not a filament color or material finish. Preserve the centered dot separator.",
+      "screenshot": "docs/screenshots/settings-general.jpg"
+    },
+    {
+      "surface": "desktop",
+      "key": "settings.themeGrayDeep",
+      "meaning": "Name of the darker neutral appearance. Deep describes the darker background; it is not a filament color. Preserve the centered dot separator.",
+      "screenshot": "docs/screenshots/settings-general.jpg"
+    },
+    {
+      "surface": "companion",
+      "key": "settings.themeGrayDeep",
+      "meaning": "Name of the darker neutral appearance. Deep describes the darker background; it is not a filament color. Preserve the centered dot separator.",
+      "screenshot": "docs/screenshots/settings-general.jpg"
+    },
+    {
+      "surface": "desktop",
+      "key": "settings.themeBlueNight",
+      "meaning": "Name of the optional blue dark appearance. Night describes the dark interface. Preserve the centered dot separator.",
+      "screenshot": "docs/screenshots/settings-general.jpg"
+    },
+    {
+      "surface": "companion",
+      "key": "settings.themeBlueNight",
+      "meaning": "Name of the optional blue dark appearance. Night describes the dark interface. Preserve the centered dot separator.",
+      "screenshot": "docs/screenshots/settings-general.jpg"
+    },
+    {
+      "surface": "desktop",
+      "key": "settings.themeLightClean",
+      "meaning": "Name of the neutral light appearance. Clean describes the uncluttered visual style. Preserve the centered dot separator.",
+      "screenshot": "docs/screenshots/settings-general.jpg"
+    },
+    {
+      "surface": "companion",
+      "key": "settings.themeLightClean",
+      "meaning": "Name of the neutral light appearance. Clean describes the uncluttered visual style. Preserve the centered dot separator.",
+      "screenshot": "docs/screenshots/settings-general.jpg"
+    },
+    {
+      "surface": "desktop",
+      "key": "settings.searchPrinterModels",
+      "meaning": "Search the model catalog by manufacturer or model name before configuring a printer. This does not search inventory or discover devices on the network.",
+      "screenshot": "docs/screenshots/add-printer.jpg"
+    },
+    {
+      "surface": "desktop",
+      "key": "settings.printerBrand",
+      "meaning": "Manufacturer filter for the printer model catalog, not filament brand or theme color.",
+      "screenshot": "docs/screenshots/add-printer.jpg"
+    },
+    {
+      "surface": "desktop",
+      "key": "settings.customPrinterModel",
+      "meaning": "Editable model name for a printer not represented in the bundled catalog. Changing it edits the draft and does not discover or create a printer.",
+      "screenshot": "docs/screenshots/add-printer.jpg"
+    },
+    {
+      "surface": "desktop",
+      "key": "settings.printerModelsAll",
+      "meaning": "Show models from every manufacturer in the printer model picker.",
+      "screenshot": "docs/screenshots/add-printer.jpg"
+    },
+    {
+      "surface": "desktop",
+      "key": "settings.printerModelsOther",
+      "meaning": "Show printer models from manufacturers other than Bambu Lab and Prusa in the model picker.",
+      "screenshot": "docs/screenshots/add-printer.jpg"
+    },
+    {
+      "surface": "desktop",
+      "key": "settings.printerModelsNoResults",
+      "meaning": "Empty filtered printer model list. Change the model search or manufacturer filter; this does not mean no printers are configured.",
+      "screenshot": "docs/screenshots/add-printer.jpg"
     }
   ],
   "groups": [

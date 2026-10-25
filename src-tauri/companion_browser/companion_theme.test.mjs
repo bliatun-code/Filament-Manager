@@ -193,14 +193,14 @@ test("auto and light keep their existing base modes while exposing resolved them
 test("brand themes use a dark base while preserving the selected theme identity", () => {
   assert.deepEqual(
     COMPANION_THEME_OPTIONS.map(({ id }) => id),
-    ["auto", "light", "dark", "bambu", "prusa"],
+    ["auto", "dark", "dark-deep", "blue", "light"],
   );
-  assert.equal(normalizeThemeMode(" Bambu "), "bambu");
-  assert.equal(normalizeThemeMode("prusa"), "prusa");
-  assert.equal(companionThemeBaseMode("bambu"), "dark");
+  assert.equal(normalizeThemeMode(" dark-deep "), "dark-deep");
+  assert.equal(normalizeThemeMode("blue"), "blue");
+  assert.equal(companionThemeBaseMode("dark-deep"), "dark");
   assert.equal(companionThemeBaseMode("light"), "light");
   assert.equal(
-    resolveCompanionTheme("prusa", {
+    resolveCompanionTheme("blue", {
       matchMedia() {
         return { matches: false };
       },
@@ -208,7 +208,7 @@ test("brand themes use a dark base while preserving the selected theme identity"
     "dark",
   );
 
-  for (const theme of ["bambu", "prusa"]) {
+  for (const theme of ["dark-deep", "blue"]) {
     const root = {
       dataset: {},
       style: {
@@ -251,10 +251,10 @@ test("readStoredCompanionThemeMode falls back to auto", () => {
   assert.equal(
     readStoredCompanionThemeMode("theme-key", {
       getItem() {
-        return "bambu";
+        return "dark-deep";
       },
     }),
-    "bambu",
+    "dark-deep",
   );
   assert.equal(
     readStoredCompanionThemeMode("theme-key", {
@@ -274,19 +274,19 @@ test("persistCompanionThemeMode stores normalized standard and brand themes", ()
     },
   };
 
-  assert.equal(persistCompanionThemeMode("theme-key", " PRUSA ", storage), "prusa");
+  assert.equal(persistCompanionThemeMode("theme-key", " BLUE ", storage), "blue");
   assert.equal(persistCompanionThemeMode("theme-key", "unknown", storage), "auto");
   assert.deepEqual(values, [
-    ["theme-key", "prusa"],
+    ["theme-key", "blue"],
     ["theme-key", "auto"],
   ]);
   assert.equal(
-    persistCompanionThemeMode("theme-key", "bambu", {
+    persistCompanionThemeMode("theme-key", "dark-deep", {
       setItem() {
         throw new Error("storage denied");
       },
     }),
-    "bambu",
+    "dark-deep",
   );
 });
 
@@ -372,4 +372,9 @@ test("composite filament samples preserve every color with desktop-compatible st
   for (const raw of ["multi(#fff,red)", "gradient(#fff)", "url(https://example.com)"]) {
     assert.equal(swatchCssBackground(raw), "#CBD5E1");
   }
+});
+
+test("retired companion themes migrate to gray soft", () => {
+  assert.equal(normalizeThemeMode("bambu"), "dark");
+  assert.equal(normalizeThemeMode("prusa"), "dark");
 });

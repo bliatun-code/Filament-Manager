@@ -1703,6 +1703,17 @@ export const frDictionary: DictionaryNode = {
     },
   },
   settings: {
+    themeGraySoft: "Gris · Doux",
+    themeGrayDeep: "Gris · Profond",
+    themeBlueNight: "Bleu · Nuit",
+    themeLightClean: "Clair · Pur",
+    searchPrinterModels: "Rechercher un modèle",
+    printerBrand: "Fabricant",
+    customPrinterModel: "Nom de modèle personnalisé",
+    printerModelsAll: "Tous",
+    printerModelsOther: "Autres",
+    printerModelsNoResults: "Aucun résultat",
+
     "noMatchingSwatches": "Aucun échantillon de couleur manquant ne correspond à cette recherche.",
     "autoSaveHint": "Les modifications de cette page sont enregistrées automatiquement.",
     "changeLibraryRole": "Modifier le rôle de la bibliothèque",

@@ -1195,6 +1195,17 @@ export const nlNLDictionary: DictionaryNode = {
     "withToolheads": "Multitoolkop"
   },
   "settings": {
+    themeGraySoft: "Grijs · Zacht",
+    themeGrayDeep: "Grijs · Diep",
+    themeBlueNight: "Blauw · Nacht",
+    themeLightClean: "Licht · Helder",
+    searchPrinterModels: "Printermodellen zoeken",
+    printerBrand: "Fabrikant",
+    customPrinterModel: "Eigen modelnaam",
+    printerModelsAll: "Alle",
+    printerModelsOther: "Andere",
+    printerModelsNoResults: "Geen resultaten",
+
     "noMatchingSwatches": "Geen ontbrekende kleurstalen komen overeen met deze zoekopdracht.",
     "autoSaveHint": "Wijzigingen op deze pagina worden automatisch opgeslagen.",
     "changeLibraryRole": "Bibliotheekrol wijzigen",

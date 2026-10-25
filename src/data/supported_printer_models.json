@@ -78,6 +78,38 @@
     "profile": "prusa_mmu"
   },
   {
+    "model": "Prusa CORE One L",
+    "profile": "prusa_single"
+  },
+  {
+    "model": "Prusa CORE One L+",
+    "profile": "prusa_single"
+  },
+  {
+    "model": "Prusa CORE One+ (Gen 2)",
+    "profile": "prusa_mmu"
+  },
+  {
+    "model": "Prusa XL+",
+    "profile": "prusa_xl"
+  },
+  {
+    "model": "Prusa CORE One+ (Gen 2) INDX (4 tools)",
+    "profile": "prusa_indx_4"
+  },
+  {
+    "model": "Prusa CORE One+ (Gen 2) INDX (8 tools)",
+    "profile": "prusa_indx_8"
+  },
+  {
+    "model": "Prusa CORE One L+ INDX (4 tools)",
+    "profile": "prusa_indx_4"
+  },
+  {
+    "model": "Prusa CORE One L+ INDX (8 tools)",
+    "profile": "prusa_indx_8"
+  },
+  {
     "model": "Prusa XL",
     "profile": "prusa_xl"
   },

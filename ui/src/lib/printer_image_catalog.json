@@ -1,0 +1,108 @@
+{
+  "Bambu Lab X1 Carbon": {
+    "single": "bambu-x1-carbon.png"
+  },
+  "Bambu Lab X1": {
+    "single": "bambu-x1.png"
+  },
+  "Bambu Lab X1E": {
+    "single": "bambu-x1e.png"
+  },
+  "Bambu Lab P1S": {
+    "single": "bambu-p1s.png"
+  },
+  "Bambu Lab P1P": {
+    "single": "bambu-p1p.png"
+  },
+  "Bambu Lab A1": {
+    "single": "bambu-a1.png"
+  },
+  "Bambu Lab A1 mini": {
+    "single": "bambu-a1-mini.png"
+  },
+  "Bambu Lab A2L": {
+    "single": "bambu-a2l.png"
+  },
+  "Bambu Lab H2D": {
+    "single": "bambu-h2d.png"
+  },
+  "Bambu Lab H2D Pro": {
+    "single": "bambu-h2d-pro.png"
+  },
+  "Bambu Lab H2S": {
+    "single": "bambu-h2s.png"
+  },
+  "Bambu Lab H2C": {
+    "single": "bambu-h2c.png"
+  },
+  "Bambu Lab P2S": {
+    "single": "bambu-p2s.png"
+  },
+  "Bambu Lab X2D": {
+    "single": "bambu-x2d.png"
+  },
+  "Prusa CORE One": {
+    "single": "prusa-coreone.png",
+    "multi": "prusa-coreonemmu3.png"
+  },
+  "Prusa CORE One+": {
+    "single": "prusa-coreone.png",
+    "multi": "prusa-coreonemmu3.png"
+  },
+  "Prusa CORE One+ (Gen 2)": {
+    "single": "prusa-coreone.png",
+    "multi": "prusa-coreonemmu3.png"
+  },
+  "Prusa CORE One L": {
+    "single": "prusa-coreonel.png"
+  },
+  "Prusa CORE One L+": {
+    "single": "prusa-coreonel.png"
+  },
+  "Prusa MK4S": {
+    "single": "prusa-mk4s.png",
+    "multi": "prusa-mk4smmu3.png"
+  },
+  "Prusa MK3.9S": {
+    "single": "prusa-mk4s.png",
+    "multi": "prusa-mk4smmu3.png"
+  },
+  "Prusa MK4": {
+    "single": "prusa-mk4.png",
+    "multi": "prusa-mk4ismmu3.png"
+  },
+  "Prusa MK3.9": {
+    "single": "prusa-mk39is.png",
+    "multi": "prusa-mk3.9mmu3.png"
+  },
+  "Prusa MK3.5": {
+    "single": "prusa-mk35.png",
+    "multi": "prusa-mk3.5mmu3.png"
+  },
+  "Prusa MK3.5S": {
+    "single": "prusa-mk35.png",
+    "multi": "prusa-mk3.5mmu3.png"
+  },
+  "Prusa MINI+": {
+    "single": "prusa-mini.png"
+  },
+  "Prusa i3 MK3S+": {
+    "single": "prusa-mk3s.png",
+    "multi": "prusa-mk3smmu3.png"
+  },
+  "Prusa XL": {
+    "single": "prusa-xl5.png"
+  },
+  "Prusa XL+": {
+    "single": "prusa-xl5.png"
+  },
+  "Prusa XL (Five Toolhead)": {
+    "single": "prusa-xl5.png"
+  },
+  "Prusa XL (Single Toolhead)": {
+    "single": "prusa-xl.png"
+  },
+  "Prusa XL (Dual Toolhead)": {
+    "single": "prusa-xl2.png"
+  }
+}

@@ -1,10 +1,16 @@
+import { I18nContext } from "../lib/i18n";
 import assert from "node:assert/strict";
 import test from "node:test";
 import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 
 import { resolvePrinterModelProfile } from "../lib/printer_profiles";
-import { SettingsPrinterEditForm } from "./settings_printer_edit_form";
+import { registerHooks } from "node:module";
+registerHooks({ load(url, context, nextLoad) {
+  if (/\.(svg|png)$/.test(url)) return { format: "module", shortCircuit: true, source: `export default ${JSON.stringify(url)};` };
+  return nextLoad(url, context);
+} });
+const { SettingsPrinterEditForm } = await import("./settings_printer_edit_form");
 
 (globalThis as typeof globalThis & { React: typeof React }).React = React;
 
@@ -32,7 +38,7 @@ function renderEditForm(
   } = {},
 ) {
   return renderToStaticMarkup(
-    <SettingsPrinterEditForm
+    <I18nContext.Provider value={{locale:"en",setLocale:()=>{},t:(_key,fallback="")=>fallback}}><SettingsPrinterEditForm
       bambuLiveAccessCode={security.accessCode ?? ""}
       bambuLiveAccessCodeAction={security.accessCodeAction ?? "KEEP"}
       bambuLiveAccessCodeConfigured={security.accessCodeConfigured ?? true}
@@ -87,7 +93,7 @@ function renderEditForm(
       onSave={() => {}}
       onSlotsPerUnitChange={() => {}}
       onUnitsChange={() => {}}
-    />,
+    /></I18nContext.Provider>,
   );
 }
 
@@ -111,7 +117,7 @@ test("printer edit fields have permanent labels and matching ids", () => {
     assert.match(html, new RegExp(`id="${id}"`));
   }
 
-  assert.match(html, />Printer model<\/span>/);
+  assert.match(html, />Printer model<\/label>/);
   assert.match(html, />Printer name<\/span>/);
   assert.match(html, />AMS units<\/span>/);
   assert.match(html, />Slots per AMS<\/span>/);
@@ -195,7 +201,7 @@ test("printer edit uses native required fields and keeps save after live configu
   assert.ok(liveFieldsetEnd >= 0);
   assert.ok(saveButton > liveFieldsetEnd);
   assert.match(html, /<button type="submit"[^>]*>Save changes<\/button>/);
-  assert.match(html, /<input[^>]*required=""[^>]*id="settings-printer-printer_x2f_42-model"|id="settings-printer-printer_x2f_42-model"[^>]*required=""/);
+  assert.match(html, /<button[^>]*id="settings-printer-printer_x2f_42-model"[^>]*aria-expanded="false"/);
   assert.match(html, /autoComplete="new-password"|autocomplete="new-password"/);
   assert.match(html, />Unsaved changes<\/span>/);
 });

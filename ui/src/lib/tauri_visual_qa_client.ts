@@ -9,7 +9,7 @@ export async function signalDesktopVisualQaReadiness(token: string): Promise<voi
 }
 
 export async function signalDesktopVisualQaTheme(
-  selectedTheme: "bambu" | "prusa",
+  selectedTheme: "dark-deep" | "blue",
   resolvedTheme: "dark",
   accent: string,
 ): Promise<void> {

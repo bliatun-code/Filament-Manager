@@ -1439,6 +1439,17 @@ export const daDKDictionary: DictionaryNode = {
     }
   },
   "settings": {
+    themeGraySoft: "Grå · Blød",
+    themeGrayDeep: "Grå · Dyb",
+    themeBlueNight: "Blå · Nat",
+    themeLightClean: "Lys · Ren",
+    searchPrinterModels: "Søg efter printermodeller",
+    printerBrand: "Producent",
+    customPrinterModel: "Brugerdefineret modelnavn",
+    printerModelsAll: "Alle",
+    printerModelsOther: "Andre",
+    printerModelsNoResults: "Ingen resultater",
+
     "noMatchingSwatches": "Ingen manglende farveprøver matcher søgningen.",
     "autoSaveHint": "Ændringer på denne side gemmes automatisk.",
     "changeLibraryRole": "Skift biblioteksrolle",

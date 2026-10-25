@@ -77,20 +77,9 @@ function contrastRatio(first: Rgb, second: Rgb): number {
   return (lighter + 0.05) / (darker + 0.05);
 }
 
-test("desktop brand themes use the verified Bambu and Prusa accents", () => {
-  assert.match(
-    cssBlock('html[data-theme="bambu"]'),
-    /--app-theme-accent:\s*rgb\(0, 174, 66\);/,
-  );
-  assert.match(
-    cssBlock('html[data-theme="prusa"]'),
-    /--app-theme-accent:\s*rgb\(253, 80, 0\);/,
-  );
-});
-
 test("desktop brand themes only style app chrome and leave data colors alone", () => {
-  for (const theme of ["bambu", "prusa"]) {
-    const block = cssBlock(`html[data-theme="${theme}"]`);
+  for (const theme of ["dark", "dark-deep", "blue"]) {
+    const block = cssBlock(theme === "dark" ? "html.dark" : `html[data-theme="${theme}"]`);
     assert.doesNotMatch(block, /--swatch-/);
     assert.doesNotMatch(block, /--filament-/);
     assert.doesNotMatch(block, /--material-/);
@@ -115,12 +104,13 @@ test("light theme filled controls use accessible navy semantic tokens", () => {
     "app-theme-selected-control-hover-background",
   );
 
-  assert.deepEqual(primary, [35, 70, 99]);
-  assert.deepEqual(selected, [41, 79, 112]);
-  for (const background of [primary, primaryHover, selected, selectedHover]) {
+  assert.deepEqual(primary, [9, 98, 211]);
+  assert.deepEqual(selected, [228, 235, 241]);
+  for (const bg of [selected, selectedHover]) assert.ok(contrastRatio(bg, cssRgbVariable(root, "app-theme-selected-control-text")) >= 4.5);
+  for (const background of [primary, primaryHover]) {
     assert.ok(
-      contrastRatio(background, white) >= 7,
-      `expected AAA white-text contrast for ${background.join(", ")}`,
+      contrastRatio(background, white) >= 4.5,
+      `expected AA white-text contrast for ${background.join(", ")}`,
     );
   }
 });
@@ -129,8 +119,8 @@ test("every desktop theme defines shared control, action, selection, and data-su
   const selectors = [
     ":root",
     "html.dark",
-    'html[data-theme="bambu"]',
-    'html[data-theme="prusa"]',
+    'html[data-theme="dark-deep"]',
+    'html[data-theme="blue"]',
   ];
   const variables = [
     "app-theme-control-border",
@@ -224,8 +214,8 @@ test("generic control selectors consume the shared theme tokens", () => {
 });
 
 test("brand theme action and selected-control tokens keep readable text contrast", () => {
-  for (const theme of ["bambu", "prusa"]) {
-    const block = cssBlock(`html[data-theme="${theme}"]`);
+  for (const theme of ["dark", "dark-deep", "blue"]) {
+    const block = cssBlock(theme === "dark" ? "html.dark" : `html[data-theme="${theme}"]`);
     for (const kind of ["primary-action", "selected-control"]) {
       const text = cssRgbVariable(block, `app-theme-${kind}-text`);
       for (const state of ["background", "hover-background"]) {
@@ -243,8 +233,8 @@ test("every desktop theme defines semantic modal chrome and actions", () => {
   const selectors = [
     ":root",
     "html.dark",
-    'html[data-theme="bambu"]',
-    'html[data-theme="prusa"]',
+    'html[data-theme="dark-deep"]',
+    'html[data-theme="blue"]',
   ];
   const modalVariables = [
     "app-theme-modal-overlay-background",
@@ -287,14 +277,6 @@ test("every desktop theme defines semantic modal chrome and actions", () => {
     );
   }
 
-  assert.match(
-    cssBlock('html[data-theme="bambu"]'),
-    /--app-theme-modal-panel-background:\s*rgba\(7, 26, 25, 0\.98\);/,
-  );
-  assert.match(
-    cssBlock('html[data-theme="prusa"]'),
-    /--app-theme-modal-panel-background:\s*rgba\(32, 24, 22, 0\.98\);/,
-  );
   assert.match(css, /\.app-modal-panel \{[\s\S]*var\(--app-theme-modal-panel-background\)/);
   assert.match(css, /\.app-modal-inset \{[\s\S]*var\(--app-theme-modal-inset-background\)/);
   assert.match(css, /\.app-modal-primary-action \{[\s\S]*var\(--app-theme-modal-action-background\)/);

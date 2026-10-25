@@ -13,6 +13,11 @@ enum PrinterProfileKey {
     BambuMulti,
     BambuA1,
     PrusaMmu,
+    PrusaSingle,
+    #[serde(rename = "prusa_indx_4")]
+    PrusaIndx4,
+    #[serde(rename = "prusa_indx_8")]
+    PrusaIndx8,
     PrusaMini,
     PrusaXl,
     PrusaXlSingle,
@@ -27,6 +32,9 @@ impl PrinterProfileKey {
             Self::BambuMulti => "bambu_multi",
             Self::BambuA1 => "bambu_a1",
             Self::PrusaMmu => "prusa_mmu",
+            Self::PrusaSingle => "prusa_single",
+            Self::PrusaIndx4 => "prusa_indx_4",
+            Self::PrusaIndx8 => "prusa_indx_8",
             Self::PrusaMini => "prusa_mini",
             Self::PrusaXl => "prusa_xl",
             Self::PrusaXlSingle => "prusa_xl_single",

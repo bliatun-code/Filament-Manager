@@ -1,10 +1,9 @@
-.printers-balanced-page { --printer-surface:#fff; --printer-line:#d3dbe2; --printer-muted:#526172; --printer-text:#182431; --printer-subtle:#f3f6f8; --printer-warning:#875600; }
-.dark .printers-balanced-page { --printer-surface:#1b252d; --printer-line:#33404a; --printer-muted:#b5c0cb; --printer-text:#f1f4f7; --printer-subtle:#202e38; --printer-warning:#f2c36b; }
+.printers-balanced-page { --printer-surface:var(--app-theme-data-card-base); --printer-line:var(--app-theme-subtle-border); --printer-muted:var(--app-theme-control-placeholder); --printer-text:var(--app-theme-control-text); --printer-hover:var(--app-theme-control-hover-background); --printer-subtle:var(--app-theme-subtle-background); --printer-warning:var(--app-status-warning); }
 .printers-balanced-page .page-title { font-size:1.4rem; line-height:1.4; }
 .printers-balanced-page .page-subtitle { display:none; }
 .printers-balanced-page .page-header { align-items:center; gap:1rem; }
 .printers-balanced-page .page-header-actions { margin:0; }
-.printers-balanced-page .app-primary-action { background:#0968dc; border-color:#378af2; color:#fff; }
+.printers-balanced-page .app-primary-action { background:var(--app-theme-primary-action-background); border-color:var(--app-theme-primary-action-border); color:var(--app-theme-primary-action-text); }
 .printers-balanced-page .printer-balanced-card { padding:1rem; border:1px solid var(--printer-line); background:var(--printer-surface); border-radius:.6rem; color:var(--printer-text); box-shadow:none; }
 .printers-balanced-page .printer-balanced-header { display:grid; grid-template-columns:minmax(0,1fr) auto; gap:.3rem 1rem; align-items:center; }
 .printers-balanced-page .printer-balanced-identity { display:flex; gap:.85rem; align-items:center; min-width:0; }

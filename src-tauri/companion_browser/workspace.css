@@ -2257,14 +2257,12 @@
   }
 }
 
-/* Brand chrome shares semantic surface and selection tokens with the shell. */
-:root[data-theme="bambu"] .phone-bottom-nav,
-:root[data-theme="prusa"] .phone-bottom-nav {
+/* Navigation follows the same semantic palette as every theme surface. */
+:root .phone-bottom-nav {
   background: var(--surface-strong);
   border-color: var(--border-strong);
 }
-:root[data-theme="bambu"] .phone-nav-button[data-active="true"],
-:root[data-theme="prusa"] .phone-nav-button[data-active="true"] {
+:root .phone-nav-button[data-active="true"] {
   background: var(--accent-soft);
   color: var(--text);
   box-shadow: inset 0 0 0 1px var(--border-strong);

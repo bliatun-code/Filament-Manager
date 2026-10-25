@@ -1195,6 +1195,17 @@ export const csCZDictionary: DictionaryNode = {
     "withToolheads": "Vícenástrojová hlava"
   },
   "settings": {
+    themeGraySoft: "Šedá · Jemná",
+    themeGrayDeep: "Šedá · Hluboká",
+    themeBlueNight: "Modrá · Noční",
+    themeLightClean: "Světlá · Čistá",
+    searchPrinterModels: "Hledat modely tiskáren",
+    printerBrand: "Výrobce",
+    customPrinterModel: "Vlastní název modelu",
+    printerModelsAll: "Vše",
+    printerModelsOther: "Ostatní",
+    printerModelsNoResults: "Žádné výsledky",
+
     "noMatchingSwatches": "Vyhledávání neodpovídají žádné chybějící vzorky barev.",
     "autoSaveHint": "Změny na této stránce se ukládají automaticky.",
     "changeLibraryRole": "Změnit roli knihovny",

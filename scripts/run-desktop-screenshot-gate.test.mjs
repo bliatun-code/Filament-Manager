@@ -1961,8 +1961,8 @@ test("desktop screenshot gate normalizes supported theme overrides", () => {
   assert.equal(normalizeDesktopVisualQaTheme("light"), "light");
   assert.equal(normalizeDesktopVisualQaTheme(" DARK "), "dark");
   assert.equal(normalizeDesktopVisualQaTheme("Auto"), "auto");
-  assert.equal(normalizeDesktopVisualQaTheme("Bambu"), "bambu");
-  assert.equal(normalizeDesktopVisualQaTheme(" PRUSA "), "prusa");
+  assert.equal(normalizeDesktopVisualQaTheme("dark-deep"), "dark-deep");
+  assert.equal(normalizeDesktopVisualQaTheme(" BLUE "), "blue");
   assert.throws(() => normalizeDesktopVisualQaTheme(""), /theme is required/);
   assert.throws(
     () => normalizeDesktopVisualQaTheme("sepia"),
@@ -2348,18 +2348,18 @@ test("desktop brand theme evidence requires the selected theme, dark resolution,
     "FILAMENT_MANAGER_VISUAL_QA_THEME:",
   );
   const bambuOutput =
-    "building\nFILAMENT_MANAGER_VISUAL_QA_THEME:bambu:dark:#00AE42\nrunning\n";
+    "building\nFILAMENT_MANAGER_VISUAL_QA_THEME:dark-deep:dark:#60AEFF\nrunning\n";
   assert.deepEqual(parseDesktopVisualQaThemeEvidence(bambuOutput), {
-    accent: "#00AE42",
+    accent: "#60AEFF",
     resolvedTheme: "dark",
-    selectedTheme: "bambu",
+    selectedTheme: "dark-deep",
   });
-  assert.equal(desktopVisualQaThemeEvidenceMatches(bambuOutput, "bambu"), true);
-  assert.equal(desktopVisualQaThemeEvidenceMatches(bambuOutput, "prusa"), false);
+  assert.equal(desktopVisualQaThemeEvidenceMatches(bambuOutput, "dark-deep"), true);
+  assert.equal(desktopVisualQaThemeEvidenceMatches(bambuOutput, "blue"), false);
   assert.equal(
     desktopVisualQaThemeEvidenceMatches(
-      "FILAMENT_MANAGER_VISUAL_QA_THEME:bambu:dark:#FD5000\n",
-      "bambu",
+      "FILAMENT_MANAGER_VISUAL_QA_THEME:dark-deep:dark:#FF0000\n",
+      "dark-deep",
     ),
     false,
   );
@@ -2371,11 +2371,11 @@ test("desktop brand theme evidence requires the selected theme, dark resolution,
       intervalMs: 10,
       nowFn: clock.now,
       readOutput: () => output,
-      themeMode: "prusa",
+      themeMode: "blue",
       timeoutMs: 30,
       waitFn: async (intervalMs) => {
         await clock.wait(intervalMs);
-        output += "FILAMENT_MANAGER_VISUAL_QA_THEME:prusa:dark:#FD5000\n";
+        output += "FILAMENT_MANAGER_VISUAL_QA_THEME:blue:dark:#60AEFF\n";
       },
     }),
     true,
@@ -2787,8 +2787,8 @@ test("desktop screenshot theme validation uses modal-tolerant light and dark bou
     ),
     [],
   );
-  for (const brandTheme of ["bambu", "prusa"]) {
-    const accent = brandTheme === "bambu" ? "#00AE42" : "#FD5000";
+  for (const brandTheme of ["dark-deep", "blue"]) {
+    const accent = brandTheme === "dark-deep" ? "#60AEFF" : "#60AEFF";
     assert.deepEqual(
       validateDesktopScreenshotTheme(
         createMetric({
@@ -2822,16 +2822,16 @@ test("desktop screenshot theme validation uses modal-tolerant light and dark bou
   const evidenceErrors = validateDesktopScreenshotTheme(
     createMetric({
       themeEvidence: {
-        accent: "#FD5000",
+        accent: "#FF0000",
         resolvedTheme: "light",
         selectedTheme: "dark",
       },
     }),
-    "bambu",
+    "dark-deep",
   );
-  assert.ok(evidenceErrors.some((error) => error.includes("selected theme dark instead of bambu")));
+  assert.ok(evidenceErrors.some((error) => error.includes("selected theme dark instead of dark-deep")));
   assert.ok(evidenceErrors.some((error) => error.includes("resolved theme light instead of dark")));
-  assert.ok(evidenceErrors.some((error) => error.includes("instead of #00AE42")));
+  assert.ok(evidenceErrors.some((error) => error.includes("instead of #60AEFF")));
 });
 
 test("desktop screenshot metric validation accepts retina desktop captures", () => {

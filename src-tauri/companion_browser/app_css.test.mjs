@@ -139,12 +139,12 @@ test("brand surfaces keep AA text contrast without replacing filament colors", (
   const css = readCssBundle();
   const themes = [
     {
-      selector: ':root[data-theme="bambu"]',
-      accent: "#00ae42",
+      selector: ':root[data-theme="dark-deep"]',
+      accent: "#0962d3",
     },
     {
-      selector: ':root[data-theme="prusa"]',
-      accent: "#fd5000",
+      selector: ':root[data-theme="blue"]',
+      accent: "#0962d3",
     },
   ];
 

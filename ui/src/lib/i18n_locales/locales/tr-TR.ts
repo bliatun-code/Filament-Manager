@@ -1195,6 +1195,17 @@ export const trTRDictionary: DictionaryNode = {
     "withToolheads": "Çoklu takım başlığı"
   },
   "settings": {
+    themeGraySoft: "Gri · Yumuşak",
+    themeGrayDeep: "Gri · Derin",
+    themeBlueNight: "Mavi · Gece",
+    themeLightClean: "Açık · Sade",
+    searchPrinterModels: "Yazıcı modellerini ara",
+    printerBrand: "Üretici",
+    customPrinterModel: "Özel model adı",
+    printerModelsAll: "Tümü",
+    printerModelsOther: "Diğer",
+    printerModelsNoResults: "Sonuç yok",
+
     "noMatchingSwatches": "Bu aramayla eşleşen eksik renk örneği yok.",
     "autoSaveHint": "Bu sayfadaki değişiklikler otomatik kaydedilir.",
     "changeLibraryRole": "Kitaplık rolünü değiştir",

@@ -175,7 +175,7 @@ export default function App() {
         import.meta.env.DEV &&
         typeof window !== "undefined" &&
         desktopVisualQaInitialPage(window.location.search) &&
-        (themeMode === "bambu" || themeMode === "prusa")
+        (themeMode === "dark-deep" || themeMode === "blue")
       ) {
         const accent = getComputedStyle(document.documentElement)
           .getPropertyValue("--app-theme-accent")

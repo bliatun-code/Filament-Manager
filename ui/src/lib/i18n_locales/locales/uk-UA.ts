@@ -1439,6 +1439,17 @@ export const ukUADictionary: DictionaryNode = {
     }
   },
   "settings": {
+    themeGraySoft: "Сірий · М’який",
+    themeGrayDeep: "Сірий · Глибокий",
+    themeBlueNight: "Синій · Ніч",
+    themeLightClean: "Світлий · Чистий",
+    searchPrinterModels: "Пошук моделей принтерів",
+    printerBrand: "Виробник",
+    customPrinterModel: "Власна назва моделі",
+    printerModelsAll: "Усі",
+    printerModelsOther: "Інші",
+    printerModelsNoResults: "Нічого не знайдено",
+
     "noMatchingSwatches": "За цим запитом немає відсутніх зразків кольору.",
     "autoSaveHint": "Зміни на цій сторінці зберігаються автоматично.",
     "changeLibraryRole": "Змінити роль бібліотеки",

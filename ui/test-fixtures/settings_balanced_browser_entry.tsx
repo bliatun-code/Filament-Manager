@@ -6,7 +6,7 @@ import { SettingsPageLayout } from "../src/pages/settings_page_layout";
 import { I18nProvider } from "../src/lib/i18n_provider";
 import { loadLocaleDictionary, useI18n, type Locale } from "../src/lib/i18n";
 import { AppUpdateContext } from "../src/lib/app_update_context";
-import { initThemeMode, setThemeMode, type ThemeMode } from "../src/lib/theme_mode";
+import { initThemeMode, getThemeMode, setThemeMode, type ThemeMode } from "../src/lib/theme_mode";
 import { useSettingsPageTabs } from "../src/pages/use_settings_page_tabs";
 import type { SettingsTabKey } from "../src/pages/settings_page_model";
 import "../src/index.css";
@@ -16,7 +16,7 @@ function Preview() {
   const {locale, setLocale, t} = useI18n();
   const [activeTab, setActiveTab] = useState<SettingsTabKey>("GENERAL");
   const {settingsTabButtons} = useSettingsPageTabs(activeTab,t);
-  const [theme, updateTheme] = useState<ThemeMode>(document.documentElement.classList.contains("dark") ? "dark" : "light");
+  const [theme, updateTheme] = useState<ThemeMode>(getThemeMode());
   const [automatic, setAutomatic] = useState(true);
   const [lifecycle, setLifecycle] = useState({continue_in_background:true,launch_at_login:true,launch_at_login_available:true,tray_available:true});
   const general = <AppUpdateContext.Provider value={{automaticChecksEnabled:automatic,setAutomaticChecksEnabled:setAutomatic,state:{status:"IDLE"},checkManually:async()=>null,dismissAvailableUpdate:noop,showUpdateNotification:false}}><SettingsGeneralTab

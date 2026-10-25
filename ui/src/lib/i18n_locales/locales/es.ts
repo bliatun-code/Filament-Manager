@@ -1758,6 +1758,17 @@ export const esDictionary: DictionaryNode = {
     },
   },
   settings: {
+    themeGraySoft: "Gris · Suave",
+    themeGrayDeep: "Gris · Profundo",
+    themeBlueNight: "Azul · Noche",
+    themeLightClean: "Claro · Limpio",
+    searchPrinterModels: "Buscar modelos de impresora",
+    printerBrand: "Fabricante",
+    customPrinterModel: "Nombre de modelo personalizado",
+    printerModelsAll: "Todos",
+    printerModelsOther: "Otros",
+    printerModelsNoResults: "Sin resultados",
+
     "noMatchingSwatches": "Ninguna muestra de color faltante coincide con esta búsqueda.",
     "autoSaveHint": "Los cambios de esta página se guardan automáticamente.",
     "changeLibraryRole": "Cambiar el rol de la biblioteca",

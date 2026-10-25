@@ -1439,6 +1439,17 @@ export const zhTWDictionary: DictionaryNode = {
     }
   },
   "settings": {
+    themeGraySoft: "灰色 · 柔和",
+    themeGrayDeep: "灰色 · 深邃",
+    themeBlueNight: "藍色 · 夜幕",
+    themeLightClean: "淺色 · 清爽",
+    searchPrinterModels: "搜尋印表機型號",
+    printerBrand: "製造商",
+    customPrinterModel: "自訂型號名稱",
+    printerModelsAll: "全部",
+    printerModelsOther: "其他",
+    printerModelsNoResults: "沒有結果",
+
     "noMatchingSwatches": "沒有符合此搜尋條件的缺失色樣。",
     "autoSaveHint": "此頁面上的變更會自動儲存。",
     "changeLibraryRole": "變更資料庫角色",

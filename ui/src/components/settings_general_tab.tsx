@@ -1,3 +1,5 @@
+import { Monitor, Sun, Moon, Check } from "lucide-react";
+import { THEME_MODES } from "../lib/theme_mode";
 import { settingsThemeModeLabel } from "../pages/settings_preferences_model";
 import type { Locale } from "../lib/i18n";
 import { SELECTABLE_LOCALES } from "../../../src-tauri/companion_browser/supported_locales.js";
@@ -21,7 +23,6 @@ import { useAppUpdateContext } from "../lib/app_update_context";
 import { openExternalUrl } from "../lib/tauri_maintenance_client";
 import type { DesktopLifecycleSettings } from "../lib/tauri_maintenance_client";
 import {
-  chipButtonClass,
   settingsActionButtonClass,
   settingsFormControlClass,
   settingsSectionLabelClass,
@@ -119,56 +120,22 @@ export function SettingsGeneralTab({
             role="group"
             aria-label={t("settings.appearance", "Appearance")}
           >
-            <div className="contents">
-              {(["auto", "light", "dark"] as const).map((mode) => (
-                <button
-                  key={mode}
-                  type="button"
-                  aria-pressed={themeMode === mode}
+            {THEME_MODES.map((mode) => {
+              const Icon = mode === "auto" ? Monitor : mode === "light" ? Sun : Moon;
+              return (
+                <button key={mode} type="button" aria-pressed={themeMode === mode}
                   onClick={() => onThemeSelection(mode)}
-                  className={chipButtonClass(themeMode === mode)}
-                >
-                  {settingsThemeModeLabel(mode, t)}
+                  className={`settings-theme-choice app-control-focus ${themeMode === mode ? "is-selected" : ""}`}>
+                  <span className={`settings-theme-preview settings-theme-preview-${mode}`} aria-hidden="true">
+                    <span /><span /><span />
+                  </span>
+                  <span className="settings-theme-choice-label"><Icon size={16} aria-hidden="true" />
+                    {settingsThemeModeLabel(mode, t)}
+                    {themeMode === mode ? <Check size={15} aria-hidden="true" /> : null}
+                  </span>
                 </button>
-              ))}
-            </div>
-
-            <div className="contents">
-              {(["bambu", "prusa"] as const).map((mode) => {
-                const bambu = mode === "bambu";
-                const label = bambu
-                  ? t("settings.bambuTheme", "Bambu")
-                  : t("settings.prusaTheme", "Prusa");
-                const help = bambu
-                  ? t(
-                      "settings.bambuThemeHelp",
-                      "A playful dark theme inspired by Bambu green.",
-                    )
-                  : t(
-                      "settings.prusaThemeHelp",
-                      "A colorful dark theme inspired by Prusa orange.",
-                    );
-                return (
-                  <button
-                    key={mode}
-                    type="button"
-                    aria-pressed={themeMode === mode}
-                    onClick={() => onThemeSelection(mode)}
-                    className={`theme-brand-choice theme-brand-choice-${mode} ${
-                      themeMode === mode ? "theme-brand-choice-active" : ""
-                    }`}
-                  >
-                    <span className="theme-brand-choice-swatch" aria-hidden="true" />
-                    <span className="min-w-0 text-left">
-                      <span className="block text-sm font-semibold">{label}</span>
-                      <span className="sr-only">
-                        {help}
-                      </span>
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
+              );
+            })}
           </div>
         </div>
         <div className="settings-language-row">

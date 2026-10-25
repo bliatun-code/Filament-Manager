@@ -1682,6 +1682,17 @@ export const enDictionary: DictionaryNode = {
       },
     },
     settings: {
+    themeGraySoft: "Gray · Soft",
+    themeGrayDeep: "Gray · Deep",
+    themeBlueNight: "Blue · Night",
+    themeLightClean: "Light · Clean",
+    searchPrinterModels: "Search printer models",
+    printerBrand: "Manufacturer",
+    customPrinterModel: "Custom model name",
+    printerModelsAll: "All",
+    printerModelsOther: "Other",
+    printerModelsNoResults: "No results",
+
       "noMatchingSwatches": "No missing color samples match this search.",
       "autoSaveHint": "Changes on this page are saved automatically.",
       "changeLibraryRole": "Change library role",

@@ -728,8 +728,8 @@ fn normalize_visual_qa_theme(value: &str) -> Option<&'static str> {
         "light" => Some("light"),
         "dark" => Some("dark"),
         "auto" => Some("auto"),
-        "bambu" => Some("bambu"),
-        "prusa" => Some("prusa"),
+        "dark-deep" => Some("dark-deep"),
+        "blue" => Some("blue"),
         _ => None,
     }
 }

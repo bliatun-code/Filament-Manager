@@ -1439,6 +1439,17 @@ export const svSEDictionary: DictionaryNode = {
     }
   },
   "settings": {
+    themeGraySoft: "Grå · Mjuk",
+    themeGrayDeep: "Grå · Djup",
+    themeBlueNight: "Blå · Natt",
+    themeLightClean: "Ljus · Ren",
+    searchPrinterModels: "Sök skrivarmodeller",
+    printerBrand: "Tillverkare",
+    customPrinterModel: "Eget modellnamn",
+    printerModelsAll: "Alla",
+    printerModelsOther: "Andra",
+    printerModelsNoResults: "Inga träffar",
+
     "noMatchingSwatches": "Inga saknade färgprover matchar sökningen.",
     "autoSaveHint": "Ändringar på den här sidan sparas automatiskt.",
     "changeLibraryRole": "Ändra biblioteksroll",

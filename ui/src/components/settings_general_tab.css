@@ -28,3 +28,19 @@
 .settings-preference-row > input[type="checkbox"]:focus-visible { outline:2px solid var(--app-theme-focus-outline); outline-offset:3px; }
 .settings-preference-row > input[type="checkbox"]:disabled { opacity:.45; }
 @media(prefers-reduced-motion:reduce) { .settings-preference-row > input[type="checkbox"], .settings-preference-row > input[type="checkbox"]::before { transition:none; } }
+.settings-theme-choices { display:grid; grid-template-columns:repeat(auto-fit,minmax(8.5rem,1fr)); gap:.75rem; }
+.settings-theme-choice { padding:.4rem; border:1px solid var(--app-theme-subtle-border); border-radius:.55rem; background:var(--app-theme-subtle-background); color:var(--app-theme-control-text); text-align:start; }
+.settings-theme-choice.is-selected { border-color:var(--app-theme-accent); box-shadow:0 0 0 1px var(--app-theme-accent); }
+.settings-theme-preview { height:3.5rem; border-radius:.25rem; display:grid; grid-template-columns:1fr 1fr; gap:.3rem; padding:.5rem; background:#222d35; }
+.settings-theme-preview > span { background:#34444f; border:1px solid #526777; border-radius:.15rem; }
+.settings-theme-preview > span:first-child { grid-column:1/-1; height:.4rem; background:#526777; }
+.settings-theme-preview-dark-deep { background:#12191e; }
+.settings-theme-preview-dark-deep > span { background:#1b252d; border-color:#425665; }
+.settings-theme-preview-blue { background:#0e1728; }
+.settings-theme-preview-blue > span { background:#243d5c; border-color:#476584; }
+.settings-theme-preview-light { background:#f5f7f9; }
+.settings-theme-preview-light > span { background:#fff; border-color:#a8b6c3; }
+.settings-theme-preview-auto { background:linear-gradient(110deg,#222d35 50%,#f5f7f9 50%); }
+.settings-theme-preview-auto > span { background:linear-gradient(110deg,#34444f 50%,#fff 50%); }
+.settings-theme-choice-label { display:flex; align-items:center; gap:.375rem; padding:.6rem .2rem .2rem; font-size:.75rem; font-weight:500; }
+.settings-theme-choice-label > svg:last-child:not(:first-child) { margin-inline-start:auto; color:var(--app-theme-accent); }

@@ -1439,6 +1439,17 @@ export const fiFIDictionary: DictionaryNode = {
     }
   },
   "settings": {
+    themeGraySoft: "Harmaa · Pehmeä",
+    themeGrayDeep: "Harmaa · Syvä",
+    themeBlueNight: "Sininen · Yö",
+    themeLightClean: "Vaalea · Selkeä",
+    searchPrinterModels: "Hae tulostinmalleja",
+    printerBrand: "Valmistaja",
+    customPrinterModel: "Oma mallinimi",
+    printerModelsAll: "Kaikki",
+    printerModelsOther: "Muut",
+    printerModelsNoResults: "Ei tuloksia",
+
     "noMatchingSwatches": "Hakua vastaavia puuttuvia värinäytteitä ei löytynyt.",
     "autoSaveHint": "Tämän sivun muutokset tallennetaan automaattisesti.",
     "changeLibraryRole": "Vaihda kirjaston roolia",

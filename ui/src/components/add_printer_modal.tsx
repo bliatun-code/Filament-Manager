@@ -1,3 +1,4 @@
+import { PrinterModelPicker } from "./printer_model_picker";
 import { useEffect, useState } from "react";
 import type { PrinterFormCapacity } from "../lib/printer_form_model";
 import type { BambuTlsTrustAction } from "../lib/tauri_client";
@@ -133,25 +134,11 @@ export function AddPrinterModal({
           </div>
           {step === "PRINTER" ? (
             <div className="surface-card space-y-4">
-              <ModalFormField
-                label={t("settings.selectPrinterModel", "Select printer model")}
-              >
-                <select
-                  value={newPrinterModel}
-                  onChange={(event) => onSelectPrinterModel(event.target.value)}
-                  className={modalFormInputClassName}
-                  disabled={!tauri || busy || printerModels.length === 0}
-                >
-                  <option value="">
-                    {t("settings.selectPrinterModel", "Select printer model")}
-                  </option>
-                  {printerModels.map((model) => (
-                    <option key={model} value={model}>
-                      {model}
-                    </option>
-                  ))}
-                </select>
-              </ModalFormField>
+              <div className="space-y-1">
+                <div className="text-xs font-medium text-slate-600 dark:text-slate-300">{t("settings.selectPrinterModel", "Select printer model")}</div>
+                <PrinterModelPicker value={newPrinterModel} onChange={onSelectPrinterModel}
+                  models={printerModels} disabled={!tauri || busy || printerModels.length === 0} />
+              </div>
 
               <ModalFormField label={t("settings.printerName", "Printer name")}>
                 <input

@@ -55,7 +55,7 @@ test("printer edit form uses shared settings form controls", () => {
   );
   assert.match(source, /FeedbackBanner/);
   assert.match(source, /tone="warning" compact/);
-  assert.match(source, /htmlFor=\{modelInputId\}/);
+  assert.match(source, /<PrinterModelPicker id=\{modelInputId\}/);
   assert.match(source, /id=\{modelInputId\}/);
   assert.match(source, /aria-describedby=\{configurationHintId\}/);
   assert.match(source, /htmlFor=\{liveHostInputId\}/);

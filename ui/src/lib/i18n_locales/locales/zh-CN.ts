@@ -1439,6 +1439,17 @@ export const zhCNDictionary: DictionaryNode = {
     }
   },
   "settings": {
+    themeGraySoft: "灰色 · 柔和",
+    themeGrayDeep: "灰色 · 深邃",
+    themeBlueNight: "蓝色 · 夜幕",
+    themeLightClean: "浅色 · 清爽",
+    searchPrinterModels: "搜索打印机型号",
+    printerBrand: "制造商",
+    customPrinterModel: "自定义型号名称",
+    printerModelsAll: "全部",
+    printerModelsOther: "其他",
+    printerModelsNoResults: "无结果",
+
     "noMatchingSwatches": "没有符合此搜索条件的缺失色样。",
     "autoSaveHint": "此页面上的更改会自动保存。",
     "changeLibraryRole": "更改库角色",

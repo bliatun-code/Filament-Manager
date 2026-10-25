@@ -1508,6 +1508,17 @@ export const ptBRDictionary: DictionaryNode = {
     withToolheads: "Multi-ferramenta",
   },
   settings: {
+    themeGraySoft: "Cinza · Suave",
+    themeGrayDeep: "Cinza · Profundo",
+    themeBlueNight: "Azul · Noite",
+    themeLightClean: "Claro · Limpo",
+    searchPrinterModels: "Buscar modelos de impressora",
+    printerBrand: "Fabricante",
+    customPrinterModel: "Nome de modelo personalizado",
+    printerModelsAll: "Todos",
+    printerModelsOther: "Outros",
+    printerModelsNoResults: "Nenhum resultado",
+
     "noMatchingSwatches": "Nenhuma amostra de cor ausente corresponde à busca.",
     "autoSaveHint": "As alterações nesta página são salvas automaticamente.",
     "changeLibraryRole": "Alterar função da biblioteca",

@@ -1195,6 +1195,17 @@ export const plPLDictionary: DictionaryNode = {
     "withToolheads": "Głowica wielofunkcyjna"
   },
   "settings": {
+    themeGraySoft: "Szary · Łagodny",
+    themeGrayDeep: "Szary · Głęboki",
+    themeBlueNight: "Niebieski · Noc",
+    themeLightClean: "Jasny · Czysty",
+    searchPrinterModels: "Szukaj modeli drukarek",
+    printerBrand: "Producent",
+    customPrinterModel: "Własna nazwa modelu",
+    printerModelsAll: "Wszystkie",
+    printerModelsOther: "Inne",
+    printerModelsNoResults: "Brak wyników",
+
     "noMatchingSwatches": "Żadna brakująca próbka koloru nie pasuje do wyszukiwania.",
     "autoSaveHint": "Zmiany na tej stronie są zapisywane automatycznie.",
     "changeLibraryRole": "Zmień rolę biblioteki",

@@ -1439,6 +1439,17 @@ export const huHUDictionary: DictionaryNode = {
     }
   },
   "settings": {
+    themeGraySoft: "Szürke · Lágy",
+    themeGrayDeep: "Szürke · Mély",
+    themeBlueNight: "Kék · Éjszaka",
+    themeLightClean: "Világos · Tiszta",
+    searchPrinterModels: "Nyomtatómodellek keresése",
+    printerBrand: "Gyártó",
+    customPrinterModel: "Egyéni modellnév",
+    printerModelsAll: "Összes",
+    printerModelsOther: "Egyéb",
+    printerModelsNoResults: "Nincs találat",
+
     "noMatchingSwatches": "Nincs a keresésnek megfelelő hiányzó színminta.",
     "autoSaveHint": "Az ezen az oldalon végzett módosítások automatikusan mentődnek.",
     "changeLibraryRole": "Könyvtárszerep módosítása",
