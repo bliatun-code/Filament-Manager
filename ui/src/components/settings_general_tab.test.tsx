@@ -307,7 +307,7 @@ test("SettingsGeneralTab disables close-to-tray when the tray is unavailable", (
     },
   });
   const backgroundStart = html.indexOf('id="settings-background-operation"');
-  const backgroundEnd = html.indexOf("Program", backgroundStart);
+  const backgroundEnd = html.indexOf('id="settings-update-check"', backgroundStart);
   const backgroundHtml = html.slice(backgroundStart, backgroundEnd);
   const checkboxes = backgroundHtml.match(/<input[^>]*type="checkbox"[^>]*>/g) ?? [];
 
@@ -332,7 +332,7 @@ test("SettingsGeneralTab isolates unavailable launch-at-login state", () => {
     },
   });
   const backgroundStart = html.indexOf('id="settings-background-operation"');
-  const backgroundEnd = html.indexOf("Program", backgroundStart);
+  const backgroundEnd = html.indexOf('id="settings-update-check"', backgroundStart);
   const backgroundHtml = html.slice(backgroundStart, backgroundEnd);
   const checkboxes = backgroundHtml.match(/<input[^>]*type="checkbox"[^>]*>/g) ?? [];
 

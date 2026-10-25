@@ -22,10 +22,10 @@ export function resolveSettingsTabNavigationIndex(
   if (key === "End") {
     return tabCount - 1;
   }
-  if (key === "ArrowRight") {
+  if (key === "ArrowRight" || key === "ArrowDown") {
     return (currentIndex + 1) % tabCount;
   }
-  if (key === "ArrowLeft") {
+  if (key === "ArrowLeft" || key === "ArrowUp") {
     return (currentIndex - 1 + tabCount) % tabCount;
   }
   return null;

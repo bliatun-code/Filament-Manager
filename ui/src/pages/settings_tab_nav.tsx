@@ -1,6 +1,5 @@
 import type { KeyboardEvent } from "react";
 import type { SettingsTabKey } from "./settings_page_model";
-import { tabButtonClass } from "../lib/settings_ui_classes";
 import {
   resolveSettingsTabNavigationIndex,
   settingsTabId,
@@ -33,12 +32,12 @@ export function SettingsTabNav({ label, onTabChange, tabs }: SettingsTabNavProps
   };
 
   return (
-    <div className="mt-6 rounded-lg border border-slate-300/50 bg-white/44 p-1.5 dark:border-slate-700/70 dark:bg-slate-950/24">
+    <div className="settings-balanced-sidebar">
       <div
-        className="grid grid-cols-2 gap-1.5 sm:grid-cols-3 min-[1050px]:grid-cols-6"
+        className="settings-balanced-tabs"
         role="tablist"
         aria-label={label}
-        aria-orientation="horizontal"
+        aria-orientation="vertical"
       >
         {tabs.map((tab, index) => (
           <button
@@ -51,7 +50,7 @@ export function SettingsTabNav({ label, onTabChange, tabs }: SettingsTabNavProps
             tabIndex={tab.active ? 0 : -1}
             onClick={() => onTabChange(tab.id)}
             onKeyDown={(event) => handleTabKeyDown(event, index)}
-            className={`${tabButtonClass(tab.active)} min-w-0 w-full`}
+            className={`settings-balanced-tab app-control-focus ${tab.active ? "settings-balanced-tab-active" : ""}`}
           >
             {tab.label}
           </button>

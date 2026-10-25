@@ -26,7 +26,15 @@ import {
   settingsFormControlClass,
   settingsSectionLabelClass,
 } from "../lib/settings_ui_classes";
-import { SettingsSurfaceCard } from "./settings_ui";
+import type { ReactNode } from "react";
+
+function GeneralSection({ children, eyebrow, description }: {children: ReactNode; eyebrow?: ReactNode; description?: ReactNode}) {
+  return <section className="settings-general-section">
+    {eyebrow ? <h3>{eyebrow}</h3> : null}
+    {description ? <p className="settings-general-hint">{description}</p> : null}
+    {children}
+  </section>;
+}
 
 type TranslateFn = (key: string, fallback: string, params?: MessageParams) => string;
 
@@ -99,19 +107,18 @@ export function SettingsGeneralTab({
   );
 
   return (
-    <>
-      <SettingsSurfaceCard
-        className="min-w-0 space-y-4 self-start"
+    <div className="settings-general-balanced">
+      <GeneralSection
         eyebrow={t("settings.appearance", "Appearance")}
         description={t("settings.autoHint", "Auto follows your system light/dark preference.")}
       >
         <div className="min-w-0">
           <div
-            className="space-y-3"
+            className="settings-theme-choices"
             role="group"
             aria-label={t("settings.appearance", "Appearance")}
           >
-            <div className="flex flex-wrap gap-2">
+            <div className="contents">
               {(["auto", "light", "dark"] as const).map((mode) => (
                 <button
                   key={mode}
@@ -125,7 +132,7 @@ export function SettingsGeneralTab({
               ))}
             </div>
 
-            <div className="grid gap-2 sm:grid-cols-2">
+            <div className="contents">
               {(["bambu", "prusa"] as const).map((mode) => {
                 const bambu = mode === "bambu";
                 const label = bambu
@@ -153,7 +160,7 @@ export function SettingsGeneralTab({
                     <span className="theme-brand-choice-swatch" aria-hidden="true" />
                     <span className="min-w-0 text-left">
                       <span className="block text-sm font-semibold">{label}</span>
-                      <span className="mt-0.5 block text-xs font-normal leading-5 opacity-80">
+                      <span className="sr-only">
                         {help}
                       </span>
                     </span>
@@ -163,9 +170,9 @@ export function SettingsGeneralTab({
             </div>
           </div>
         </div>
-        <div className="border-t border-slate-200 pt-4 dark:border-slate-700">
+        <div className="settings-language-row">
           <div className={settingsSectionLabelClass}>{t("settings.language", "Language")}</div>
-          <p className="mt-1 mb-3 text-xs leading-5 text-slate-600 dark:text-slate-300">
+          <p className="sr-only">
             {t("settings.languageHint", "Choose app language. More sections will be localized incrementally.")}
           </p>
           <div className="min-w-0">
@@ -186,12 +193,11 @@ export function SettingsGeneralTab({
             </label>
           </div>
         </div>
-      </SettingsSurfaceCard>
+      </GeneralSection>
 
       {tauri ? (
-        <SettingsSurfaceCard
-          className="min-w-0 space-y-4 self-start"
-          eyebrow={t("settings.backgroundOperation", "Background operation")}
+        <GeneralSection
+            eyebrow={t("settings.backgroundOperation", "Background operation")}
           description={t(
             "settings.backgroundOperationHint",
             "Keep Companion, host access and Bambu usage monitoring available when the main window is closed.",
@@ -238,7 +244,7 @@ export function SettingsGeneralTab({
                     )}
                   </p>
                 ) : null}
-                <label className="surface-subtle flex items-start gap-2 px-3 py-2 text-sm font-medium text-slate-700 dark:text-slate-200">
+                <label className="settings-preference-row">
                   <input
                     className="mt-0.5"
                     type="checkbox"
@@ -269,7 +275,7 @@ export function SettingsGeneralTab({
                     </span>
                   </span>
                 </label>
-                <label className="surface-subtle flex items-start gap-2 px-3 py-2 text-sm font-medium text-slate-700 dark:text-slate-200">
+                <label className="settings-preference-row">
                   <input
                     className="mt-0.5"
                     type="checkbox"
@@ -348,65 +354,15 @@ export function SettingsGeneralTab({
               </p>
             ) : null}
           </div>
-        </SettingsSurfaceCard>
+        </GeneralSection>
       ) : null}
 
-      <SettingsSurfaceCard className="min-w-0 space-y-4 self-start" eyebrow={t("settings.program", "Program")}>
-        <div className="grid gap-3 sm:grid-cols-2">
-          <div className="surface-subtle px-4 py-3">
-            <div className={settingsSectionLabelClass}>
-              {t("settings.version", "Version")}
-            </div>
-            <div className="mt-1 text-sm font-semibold text-slate-900 dark:text-slate-100">
-              {displayVersion}
-            </div>
-          </div>
-          <div className="surface-subtle px-4 py-3">
-            <div className={settingsSectionLabelClass}>
-              {t("settings.license", "License")}
-            </div>
-            <div className="mt-1 text-sm font-semibold text-slate-900 dark:text-slate-100">
-              {APP_LICENSE_ID}
-            </div>
-          </div>
-        </div>
-        <div className="text-sm leading-6 text-slate-600 dark:text-slate-300">
-          {t(
-            "settings.licenseHelp",
-            "Filament Manager is open source. Modified distributed versions, and modified versions used over a network, must make their corresponding source available under the same license.",
-          )}
-        </div>
-        <div className="flex flex-wrap gap-2">
-          <VersionedAppLink url={sourceUrl}>
-            {t("settings.sourceCode", "Source code")}
-          </VersionedAppLink>
-          <button
-            type="button"
-            onClick={() => {
-              void openExternalUrl(licenseUrl);
-            }}
-            className={settingsActionButtonClass()}
-            title={APP_LICENSE_NAME}
-          >
-            {t("settings.viewLicense", "View license")}
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              void openExternalUrl(noticeUrl);
-            }}
-            className={settingsActionButtonClass()}
-          >
-            {t("settings.viewNotices", "Notices")}
-          </button>
-        </div>
+      <GeneralSection eyebrow={t("settings.updates", "Updates")}>
         <div
           id="settings-update-check"
-          className="border-t border-slate-200/80 pt-4 dark:border-slate-700/80"
+          className="settings-update-check"
         >
-          <div className={settingsSectionLabelClass}>
-            {t("settings.updates", "Updates")}
-          </div>
+
           <p
             id="settings-update-check-hint"
             className="mt-2 text-xs leading-5 text-slate-500 dark:text-slate-400"
@@ -416,7 +372,7 @@ export function SettingsGeneralTab({
               "Checks GitHub automatically at most once per day when enabled. Download and installation remain manual.",
             )}
           </p>
-          <label className="surface-subtle mt-3 flex items-center gap-2 px-3 py-2 text-sm font-medium text-slate-700 dark:text-slate-200">
+          <label className="settings-preference-row settings-update-preference">
             <input
               type="checkbox"
               checked={updateCheck.automaticChecksEnabled}
@@ -428,7 +384,8 @@ export function SettingsGeneralTab({
             />
             {t("settings.automaticUpdateChecks", "Check automatically")}
           </label>
-          <div className="mt-3 flex flex-wrap items-center gap-2">
+          <div className="settings-version-row">
+            <span className="text-sm text-slate-600 dark:text-slate-300">{t("settings.version", "Version")} <strong className="ml-2 font-medium text-slate-900 dark:text-slate-100">{displayVersion}</strong></span>
             <button
               type="button"
               onClick={() => void updateCheck.checkManually()}
@@ -461,10 +418,9 @@ export function SettingsGeneralTab({
             {updateMessage}
           </div>
         </div>
-      </SettingsSurfaceCard>
+      </GeneralSection>
 
-      <SettingsSurfaceCard
-        className="min-w-0 space-y-4 self-start"
+      <GeneralSection
         eyebrow={t("settings.help", "Help")}
         description={t(
           "settings.helpHint",
@@ -487,8 +443,61 @@ export function SettingsGeneralTab({
             {t("settings.userManual", "User manual")}
           </VersionedAppLink>
         </div>
-      </SettingsSurfaceCard>
+        <details className="settings-program-details">
+          <summary>{t("settings.program", "Program")} <span>{displayVersion} · {APP_LICENSE_ID}</span></summary>
+          <div className="mt-4 space-y-4">
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div className="surface-subtle px-4 py-3">
+                <div className={settingsSectionLabelClass}>
+                  {t("settings.version", "Version")}
+                </div>
+                <div className="mt-1 text-sm font-semibold text-slate-900 dark:text-slate-100">
+                  {displayVersion}
+                </div>
+              </div>
+              <div className="surface-subtle px-4 py-3">
+                <div className={settingsSectionLabelClass}>
+                  {t("settings.license", "License")}
+                </div>
+                <div className="mt-1 text-sm font-semibold text-slate-900 dark:text-slate-100">
+                  {APP_LICENSE_ID}
+                </div>
+              </div>
+            </div>
+            <div className="text-sm leading-6 text-slate-600 dark:text-slate-300">
+              {t(
+                "settings.licenseHelp",
+                "Filament Manager is open source. Modified distributed versions, and modified versions used over a network, must make their corresponding source available under the same license.",
+              )}
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <VersionedAppLink url={sourceUrl}>
+                {t("settings.sourceCode", "Source code")}
+              </VersionedAppLink>
+              <button
+                type="button"
+                onClick={() => {
+                  void openExternalUrl(licenseUrl);
+                }}
+                className={settingsActionButtonClass()}
+                title={APP_LICENSE_NAME}
+              >
+                {t("settings.viewLicense", "View license")}
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  void openExternalUrl(noticeUrl);
+                }}
+                className={settingsActionButtonClass()}
+              >
+                {t("settings.viewNotices", "Notices")}
+              </button>
+            </div>
+          </div>
+        </details>
+      </GeneralSection>
 
-    </>
+    </div>
   );
 }

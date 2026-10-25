@@ -1,4 +1,6 @@
 @import "tailwindcss";
+@import "./components/settings_general_tab.css";
+@import "./pages/settings_page_layout.css";
 
 @custom-variant dark (&:where(.dark, .dark *));
 
