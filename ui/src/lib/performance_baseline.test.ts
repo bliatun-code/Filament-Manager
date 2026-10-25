@@ -247,6 +247,7 @@ for (const scenario of [
       snapshot: deferred<LibrarySyncRemoteSnapshot>(),
       spools: deferred<SpoolWithMasterRow[]>(),
       printers: deferred<PrinterOverviewRow[]>(),
+      printerSettings: deferred<PrinterSettingsSnapshot>(),
       loans: deferred<SpoolLoanDetailsRow[]>(),
       wishlist: deferred<WishlistItemRow[]>(),
     };
@@ -279,6 +280,10 @@ for (const scenario of [
           started.push("spools");
           return requests.spools.promise;
         },
+        fetchHostPrinterSettings: () => {
+          started.push("printer-settings");
+          return requests.printerSettings.promise;
+        },
         fetchHostPrinterOverview: () => {
           started.push("printers");
           return requests.printers.promise;
@@ -306,6 +311,7 @@ for (const scenario of [
 
     assert.deepEqual(started.sort(), [
       "loans",
+      "printer-settings",
       "printers",
       "snapshot",
       "spools",
@@ -319,12 +325,13 @@ for (const scenario of [
       const result = await resultPromise;
       assert.equal(result.syncSource, "client-cached");
       assert.equal(result.revisionPollComplete, false);
-      assert.equal(errors.length, 5);
+      assert.equal(errors.length, 6);
       return;
     }
 
     requests.spools.resolve([]);
     requests.printers.resolve([]);
+    requests.printerSettings.resolve({ active_printer_id: null, printers: [], printer_models: [], bambu_live_integrations: [] });
     requests.loans.resolve([]);
     requests.wishlist.resolve([]);
     await flushPromiseContinuations();
