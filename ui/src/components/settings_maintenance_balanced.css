@@ -1,0 +1,24 @@
+.settings-maintenance-balanced { min-width:0; padding:0; background:transparent; border:0; box-shadow:none; }
+.settings-maintenance-balanced .settings-maintenance-backup, .settings-maintenance-balanced .settings-maintenance-diagnostics { padding:0; border:0; background:transparent; box-shadow:none; border-radius:0; }
+.settings-maintenance-backup > div:first-child { padding:0 0 1.25rem; }
+.settings-maintenance-backup > div:first-child > .grid { display:block; }
+.settings-maintenance-counts { display:flex; flex-wrap:wrap; gap:.75rem 1.5rem; color:var(--app-theme-control-placeholder); font-size:.75rem; }
+.settings-maintenance-backup-body { display:grid; gap:1.5rem; padding:1.25rem 0; }
+.settings-maintenance-backup-body > div { border:0; padding:0; background:transparent; box-shadow:none; }
+.settings-maintenance-backup-body > div + div { border-top:1px solid var(--app-theme-subtle-border); padding-top:1.5rem; }
+.settings-maintenance-backup-body .section-eyebrow { font-size:.875rem; letter-spacing:normal; text-transform:none; }
+.settings-maintenance-diagnostics > div:first-child { padding:1.5rem 0 1rem; border-top:1px solid var(--app-theme-subtle-border); }
+.settings-maintenance-diagnostics > div:nth-child(2) { padding:1rem 0; }
+.settings-diagnostics-summary { display:flex; flex-wrap:wrap; gap:1rem 2rem; font-size:.875rem; }
+.settings-diagnostics-summary > div { display:flex; flex-wrap:wrap; gap:.5rem; }
+.settings-diagnostics-summary dt { color:var(--app-theme-control-placeholder); }
+.settings-diagnostics-summary dd { font-weight:500; }
+.settings-diagnostics-technical > summary { width:fit-content; margin-bottom:1rem; font-size:.875rem; cursor:pointer; }
+.settings-diagnostics-technical > .group { margin-top:1rem; }
+.settings-maintenance-reset { margin-top:1.25rem; padding-top:1.25rem; border-top:1px solid var(--app-theme-subtle-border); }
+.settings-maintenance-reset > summary { font-size:.875rem; font-weight:600; cursor:pointer; }
+.settings-maintenance-reset-warning { display:block; margin:.5rem 0 0 1rem; font-size:.75rem; font-weight:400; color:var(--app-theme-control-placeholder); }
+.settings-maintenance-reset > .grid { grid-template-columns:1fr; }
+.settings-maintenance-reset .mt-3.w-full { width:auto; }
+.settings-maintenance-backup-body > div { border-radius:0; }
+.settings-maintenance-backup-body .border-dashed { background:transparent; border:0; padding:.375rem 0; box-shadow:none; }
