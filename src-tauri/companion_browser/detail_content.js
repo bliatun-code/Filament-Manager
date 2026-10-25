@@ -1,3 +1,4 @@
+import { renderFilamentSpool } from "./companion_visuals.js";
 import { t } from "./companion_i18n.js";
 import {
   isBorrowedInOwnership,
@@ -114,6 +115,7 @@ export function renderSelectedSpoolDetailBody(options) {
               ? `<div class="info-card detail-feedback-card detail-feedback-success">${escapeHtml(detailFeedback)}</div>`
               : ""
           }
+          <div class="detail-physical-spool">${renderFilamentSpool(detailSwatch)}</div>
           <div class="detail-summary-stats">
             <div class="detail-summary-stat">
               <div class="muted">${escapeHtml(t(locale, "detail.started", "Started"))}</div>

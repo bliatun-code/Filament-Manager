@@ -207,7 +207,7 @@ test("printer workspace keeps a gray slot tint while its weight action stays vis
     }),
   });
   const updateButton = html.match(
-    /<button[^>]*data-action="start-printer-weight-update"[^>]*data-printer-task-mode="update"[^>]*>Update weight<\/button>/,
+    /<button[^>]*data-action="start-printer-weight-update"[^>]*data-printer-task-mode="update"[^>]*>[\s\S]*?Update weight<\/button>/,
   )?.[0];
 
   assert.match(html, /slot-card slot-card-loaded swatch-surface swatch-card-surface/);
@@ -365,7 +365,7 @@ test("printer workspace does not show stale job timing when only a loaded slot r
   });
 
   assert.match(html, /printer-live-strip/);
-  assert.match(html, /Active/);
+  assert.match(html, /Live/);
   assert.match(html, /44 °C/);
   assert.doesNotMatch(html, /Printing/);
   assert.doesNotMatch(html, /41%/);

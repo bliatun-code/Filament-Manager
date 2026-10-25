@@ -231,7 +231,8 @@
         "noMatch": "No local spools matched the current search.",
         "hiddenSelectedTitle": "Selected spool hidden",
         "hiddenSelectedBody": "{title} stays selected for detail, slots, and loans.",
-        "clearSearch": "Clear search"
+        "clearSearch": "Clear search",
+        "searchShortPlaceholder": "Search inventory"
       },
       "loans": {
         "title": "Loans",
@@ -884,7 +885,8 @@
         "noMatch": "Ingen lokale filamenter matchet dette søket.",
         "hiddenSelectedTitle": "Valgt spole er skjult",
         "hiddenSelectedBody": "{title} forblir valgt for detaljer, printerspor og utlån.",
-        "clearSearch": "Tøm søk"
+        "clearSearch": "Tøm søk",
+        "searchShortPlaceholder": "Søk i lageret"
       },
       "loans": {
         "title": "Utlån",
@@ -1537,7 +1539,8 @@
         "noMatch": "Keine lokalen Rollen entsprechen der aktuellen Suche.",
         "hiddenSelectedTitle": "Ausgewählte Rolle ausgeblendet",
         "hiddenSelectedBody": "{title} bleibt für Details, Plätze und Ausleihen ausgewählt.",
-        "clearSearch": "Suche löschen"
+        "clearSearch": "Suche löschen",
+        "searchShortPlaceholder": "Bestand durchsuchen"
       },
       "loans": {
         "title": "Ausleihen",
@@ -2190,7 +2193,8 @@
         "noMatch": "Aucune bobine locale ne correspond à la recherche.",
         "hiddenSelectedTitle": "Bobine sélectionnée masquée",
         "hiddenSelectedBody": "{title} reste sélectionnée pour les détails, les emplacements et les prêts.",
-        "clearSearch": "Effacer la recherche"
+        "clearSearch": "Effacer la recherche",
+        "searchShortPlaceholder": "Rechercher dans le stock"
       },
       "loans": {
         "title": "Prêts",
@@ -2809,7 +2813,8 @@
         "hiddenSelectedBody": "{title} sigue seleccionada para detalles, ranuras y préstamos.",
         "clearSearch": "Borrar búsqueda",
         "optionalDetailsBorrowedMeta": "Contacto del propietario, proveedor, muestra, ubicación, nota",
-        "registerBorrowedInHelp": "Registre este bobina como prestado mientras mantiene el mismo flujo de catálogo y lista de deseos que en el escritorio."
+        "registerBorrowedInHelp": "Registre este bobina como prestado mientras mantiene el mismo flujo de catálogo y lista de deseos que en el escritorio.",
+        "searchShortPlaceholder": "Buscar en el inventario"
       },
       "loans": {
         "title": "Préstamos",
@@ -3884,7 +3889,8 @@
         "vendorPlaceholder": "Bambu, eSUN, genérico...",
         "wishlist": "Lista de desejos",
         "wishlistQueue": "Lista de desejos/fila de pedidos",
-        "wishlistQueueHelp": "Mova itens entre lista de desejos, pedidos e recebidos ou armazene-os diretamente agora."
+        "wishlistQueueHelp": "Mova itens entre lista de desejos, pedidos e recebidos ou armazene-os diretamente agora.",
+        "searchShortPlaceholder": "Pesquisar no estoque"
       },
       "trustedLan": {
         "awaiting": "Aguardando um link de emparelhamento de LAN confiável.",
@@ -4537,7 +4543,8 @@
         "vendorPlaceholder": "Bambu, eSUN, Generico...",
         "wishlist": "Lista dei desideri",
         "wishlistQueue": "Lista dei desideri/coda degli ordini",
-        "wishlistQueueHelp": "Sposta gli articoli tra la lista dei desideri, in ordine e ricevuti oppure immagazzinali direttamente adesso."
+        "wishlistQueueHelp": "Sposta gli articoli tra la lista dei desideri, in ordine e ricevuti oppure immagazzinali direttamente adesso.",
+        "searchShortPlaceholder": "Cerca nell’inventario"
       },
       "trustedLan": {
         "awaiting": "In attesa di un collegamento di accoppiamento LAN attendibile.",
@@ -5190,7 +5197,8 @@
         "vendorPlaceholder": "Bambu, eSUN, ogólne...",
         "wishlist": "Lista życzeń",
         "wishlistQueue": "Lista życzeń / kolejka zamówień",
-        "wishlistQueueHelp": "Przenoś produkty pomiędzy listą życzeń, zamówionymi i otrzymanymi lub przechowuj je bezpośrednio w magazynie."
+        "wishlistQueueHelp": "Przenoś produkty pomiędzy listą życzeń, zamówionymi i otrzymanymi lub przechowuj je bezpośrednio w magazynie.",
+        "searchShortPlaceholder": "Szukaj w magazynie"
       },
       "trustedLan": {
         "awaiting": "Oczekiwanie na łącze parujące z zaufaną siecią LAN.",
@@ -5843,7 +5851,8 @@
         "vendorPlaceholder": "Bambu, eSUN, Generiek...",
         "wishlist": "Verlanglijst",
         "wishlistQueue": "Verlanglijst / bestelwachtrij",
-        "wishlistQueueHelp": "Verplaats artikelen tussen verlanglijst, in bestelling en ontvangen, of sla ze nu direct op."
+        "wishlistQueueHelp": "Verplaats artikelen tussen verlanglijst, in bestelling en ontvangen, of sla ze nu direct op.",
+        "searchShortPlaceholder": "Zoek in voorraad"
       },
       "trustedLan": {
         "awaiting": "Wachten op een vertrouwde LAN-koppelingslink.",
@@ -6496,7 +6505,8 @@
         "vendorPlaceholder": "Bambu, eSUN, Obecný...",
         "wishlist": "Seznam přání",
         "wishlistQueue": "Seznam přání / fronta objednávek",
-        "wishlistQueueHelp": "Přesouvejte položky mezi seznamem přání, na objednávku a přijatými, nebo je rovnou skladujte."
+        "wishlistQueueHelp": "Přesouvejte položky mezi seznamem přání, na objednávku a přijatými, nebo je rovnou skladujte.",
+        "searchShortPlaceholder": "Hledat ve skladu"
       },
       "trustedLan": {
         "awaiting": "Čeká se na spojení s důvěryhodnou sítí LAN.",
@@ -7149,7 +7159,8 @@
         "vendorPlaceholder": "Bambu、eSUN易生、通用...",
         "wishlist": "愿望清单",
         "wishlistQueue": "愿望清单/订单队列",
-        "wishlistQueueHelp": "在心愿单、已订购和已收到商品之间移动商品，或者立即直接入库。"
+        "wishlistQueueHelp": "在心愿单、已订购和已收到商品之间移动商品，或者立即直接入库。",
+        "searchShortPlaceholder": "搜索库存"
       },
       "trustedLan": {
         "awaiting": "等待可信 LAN 配对链接。",
@@ -7802,7 +7813,8 @@
         "vendorPlaceholder": "Bambu、eSUN、汎用...",
         "wishlist": "ウィッシュリスト",
         "wishlistQueue": "ウィッシュリスト/注文キュー",
-        "wishlistQueueHelp": "アイテムをウィッシュリスト、注文中、入荷済みの間で移動したり、今すぐ在庫に追加したりできます。"
+        "wishlistQueueHelp": "アイテムをウィッシュリスト、注文中、入荷済みの間で移動したり、今すぐ在庫に追加したりできます。",
+        "searchShortPlaceholder": "在庫を検索"
       },
       "trustedLan": {
         "awaiting": "トラステッド LAN ペアリング リンクを待機しています。",
@@ -8455,7 +8467,8 @@
         "vendorPlaceholder": "Bambu, eSUN, 일반...",
         "wishlist": "위시리스트",
         "wishlistQueue": "위시리스트/주문 대기열",
-        "wishlistQueueHelp": "위시리스트, 주문 중, 수령 간 항목을 이동하거나 지금 바로 재고를 확보하세요."
+        "wishlistQueueHelp": "위시리스트, 주문 중, 수령 간 항목을 이동하거나 지금 바로 재고를 확보하세요.",
+        "searchShortPlaceholder": "재고 검색"
       },
       "trustedLan": {
         "awaiting": "신뢰할 수 있는 LAN 페어링 링크를 기다리는 중입니다.",
@@ -9108,7 +9121,8 @@
         "vendorPlaceholder": "Bambu、eSUN易生、通用...",
         "wishlist": "願望清單",
         "wishlistQueue": "願望清單/訂單佇列",
-        "wishlistQueueHelp": "在願望清單、已訂購和已收到商品之間移動商品，或立即直接入庫。"
+        "wishlistQueueHelp": "在願望清單、已訂購和已收到商品之間移動商品，或立即直接入庫。",
+        "searchShortPlaceholder": "搜尋庫存"
       },
       "trustedLan": {
         "awaiting": "等待可信 LAN 配對連結。",
@@ -9761,7 +9775,8 @@
         "vendorPlaceholder": "Bambu, eSUN, Genel...",
         "wishlist": "İstek listesi",
         "wishlistQueue": "İstek listesi / sipariş kuyruğu",
-        "wishlistQueueHelp": "Öğeleri istek listesi, sipariş üzerine ve alınanlar arasında taşıyın veya doğrudan şimdi stoklayın."
+        "wishlistQueueHelp": "Öğeleri istek listesi, sipariş üzerine ve alınanlar arasında taşıyın veya doğrudan şimdi stoklayın.",
+        "searchShortPlaceholder": "Stokta ara"
       },
       "trustedLan": {
         "awaiting": "Güvenilir LAN eşleştirme bağlantısı bekleniyor.",
@@ -10414,7 +10429,8 @@
         "vendorPlaceholder": "Bambu, eSUN, загальний...",
         "wishlist": "Бажання",
         "wishlistQueue": "Бажання",
-        "wishlistQueueHelp": "Черга замовлень"
+        "wishlistQueueHelp": "Черга замовлень",
+        "searchShortPlaceholder": "Пошук у запасах"
       },
       "trustedLan": {
         "awaiting": "Очікування зв’язку з довіреною локальною мережею.",
@@ -10858,7 +10874,8 @@
         "hiddenSelectedBody": "{title} остается выбранным для просмотра деталей, слотов и кредитов.",
         "wishlistQueueHelp": "Перемещайте товары между списком желаний, заказанными и полученными или храните их прямо сейчас.",
         "registerBorrowedInHelp": "Зарегистрируйте эту катушку как заимствованную, сохранив при этом тот же каталог и список желаний, что и на настольном компьютере.",
-        "addToWishlistHelp": "Используйте тот же выбор, чтобы сохранить список желаний и отслеживание заказов в оболочке браузера."
+        "addToWishlistHelp": "Используйте тот же выбор, чтобы сохранить список желаний и отслеживание заказов в оболочке браузера.",
+        "searchShortPlaceholder": "Поиск в запасах"
       },
       "detail": {
         "spoolHeading": "катушка",
@@ -11488,7 +11505,8 @@
         "noMatch": "Egyetlen helyi sor sem felel meg az aktuális keresésnek.",
         "noWishlistMatch": "Egyetlen kívánságlista elem sem felel meg ennek a szűrőnek.",
         "stockNow": "Raktáron most",
-        "hiddenSelectedBody": "A {title} kiválasztva marad a részletek, a résidők és a kölcsönök tekintetében."
+        "hiddenSelectedBody": "A {title} kiválasztva marad a részletek, a résidők és a kölcsönök tekintetében.",
+        "searchShortPlaceholder": "Keresés a készletben"
       },
       "loans": {
         "title": "Kölcsönök",
@@ -12164,7 +12182,8 @@
         "notePlaceholder": "Returtidpunkt eller annat sammanhang",
         "noWishlistMatch": "Inga objekt på önskelistan matchar detta filter.",
         "stockNow": "Lager nu",
-        "hiddenSelectedBody": "{title} förblir utvald för detaljer, slots och lån."
+        "hiddenSelectedBody": "{title} förblir utvald för detaljer, slots och lån.",
+        "searchShortPlaceholder": "Sök i lagret"
       },
       "detail": {
         "spoolHeading": "Spole",
@@ -12817,7 +12836,8 @@
         "notePlaceholder": "Returtid eller anden sammenhæng",
         "noWishlistMatch": "Ingen ønskelisteelementer matcher dette filter.",
         "stockNow": "Lager nu",
-        "hiddenSelectedBody": "{title} forbliver fremhævet for detaljer, slots og lån."
+        "hiddenSelectedBody": "{title} forbliver fremhævet for detaljer, slots og lån.",
+        "searchShortPlaceholder": "Søg på lageret"
       },
       "detail": {
         "spoolHeading": "Spole",
@@ -13470,7 +13490,8 @@
         "notePlaceholder": "Paluuaika tai muu konteksti",
         "noWishlistMatch": "Yksikään toivelista ei vastaa tätä suodatinta.",
         "stockNow": "Varastossa nyt",
-        "hiddenSelectedBody": "{title} pysyy esillä yksityiskohtien, lähtö- ja lainojen osalta."
+        "hiddenSelectedBody": "{title} pysyy esillä yksityiskohtien, lähtö- ja lainojen osalta.",
+        "searchShortPlaceholder": "Hae varastosta"
       },
       "detail": {
         "spoolHeading": "Kela",

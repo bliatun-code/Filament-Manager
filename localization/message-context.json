@@ -1269,6 +1269,12 @@
       "key": "settings.printerModelsNoResults",
       "meaning": "Empty filtered printer model list. Change the model search or manufacturer filter; this does not mean no printers are configured.",
       "screenshot": "docs/screenshots/add-printer.jpg"
+    },
+    {
+      "surface": "companion",
+      "key": "storage.searchShortPlaceholder",
+      "meaning": "Short inventory search placeholder in the compact toolbar, especially on narrow phones. Searches filament, colour, owner and placement; the longer associated accessible label explains the fields. Keep short enough to fit a 320 px viewport.",
+      "screenshot": "docs/screenshots/companion-phone-inventory.jpg"
     }
   ],
   "groups": [

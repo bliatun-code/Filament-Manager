@@ -1,0 +1,11 @@
+[
+  {
+    "file": "bambu-p1s-companion-cutout.png",
+    "derived_from": "bambu-p1s.png",
+    "original_provenance": "sources.json",
+    "license": "AGPL-3.0",
+    "processing": "Built-in image_gen background extraction, 2026-10-25. AI-processed illustration derived from the official thumbnail; not an untouched official photograph. Original retained.",
+    "sha256": "388535ec5eb223b77620031394c5715aee35fdd140572203d74bdc3a929e8409",
+    "prompt": "Use case: background-extraction. Edit target: the attached official Bambu Lab P1S printer thumbnail. Remove ONLY the light gray background and its outer border. Preserve the printer itself, its exact perspective, proportions, dark gray finish, door, buttons, panels and details. This is a faithful cutout, not a redesign or new printer. Output a genuinely transparent PNG with clean alpha edges. Crop closely around the full printer, keeping the entire printer visible with about 3 percent transparent margin. No ground shadow, no white or gray rectangle, no added text or elements."
+  }
+]

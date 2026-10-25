@@ -65,14 +65,14 @@ test("storage shell keeps search and primary actions close to the spool list", (
   assert.doesNotMatch(html, />Lend spool</);
   assert.match(html, /data-action="select-spool"/);
   assert.doesNotMatch(html, /Selected spool/);
-  assert.match(html, /Browse inventory and open the spool you need\./);
+  assert.doesNotMatch(html, /Browse inventory and open the spool you need\./);
 });
 
-test("storage and catalog search fields keep visible associated labels", () => {
+test("storage keeps its associated search label without repeating the visible placeholder", () => {
   const shellHtml = renderShell();
   assert.match(
     shellHtml,
-    /<label class="search-field toolbar-search" for="companion-inventory-search">[\s\S]*?<span class="search-field-label">Search filament, color, owner, or placement<\/span>[\s\S]*?<input[\s\S]*?id="companion-inventory-search"[\s\S]*?name="inventory-search"[\s\S]*?type="search"/,
+    /<label class="search-field toolbar-search" for="companion-inventory-search">[\s\S]*?<span class="search-field-label visually-hidden">Search filament, color, owner, or placement<\/span>[\s\S]*?<input[\s\S]*?id="companion-inventory-search"[\s\S]*?name="inventory-search"[\s\S]*?type="search"/,
   );
 
   const state = createInitialCompanionState();

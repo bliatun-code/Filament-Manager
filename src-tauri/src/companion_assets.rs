@@ -125,6 +125,83 @@ static CACHED_COMPANION_ASSETS: OnceLock<HashMap<&'static str, CachedCompanionAs
 
 const COMPANION_BROWSER_BASE_ASSETS: &[(&str, CompanionBrowserAsset)] = &[
     (
+        "printer-image-derivatives.json",
+        CompanionBrowserAsset {
+            content_type: "text/plain; charset=utf-8",
+            content: include_str!("../../ui/src/assets/printers/companion-derivatives.json"),
+        },
+    ),
+    (
+        "printer-image-sources.json",
+        CompanionBrowserAsset {
+            content_type: "text/plain; charset=utf-8",
+            content: include_str!("../../ui/src/assets/printers/sources.json"),
+        },
+    ),
+    (
+        "PrusaSlicer-LICENSE.txt",
+        CompanionBrowserAsset {
+            content_type: "text/plain; charset=utf-8",
+            content: include_str!("../../ui/src/assets/printers/PrusaSlicer-LICENSE.txt"),
+        },
+    ),
+    (
+        "BambuStudio-LICENSE.txt",
+        CompanionBrowserAsset {
+            content_type: "text/plain; charset=utf-8",
+            content: include_str!("../../ui/src/assets/printers/BambuStudio-LICENSE.txt"),
+        },
+    ),
+    (
+        "lucide-LICENSE.txt",
+        CompanionBrowserAsset {
+            content_type: "text/plain; charset=utf-8",
+            content: include_str!("../../ui/src/assets/licenses/lucide-LICENSE.txt"),
+        },
+    ),
+    (
+        "balanced.css",
+        CompanionBrowserAsset {
+            content_type: "text/css; charset=utf-8",
+            content: include_str!("../companion_browser/balanced.css"),
+        },
+    ),
+    (
+        "printer_image_catalog.js",
+        CompanionBrowserAsset {
+            content_type: "application/javascript; charset=utf-8",
+            content: include_str!("../companion_browser/printer_image_catalog.js"),
+        },
+    ),
+    (
+        "filament_spool_visual.js",
+        CompanionBrowserAsset {
+            content_type: "application/javascript; charset=utf-8",
+            content: include_str!("../companion_browser/filament_spool_visual.js"),
+        },
+    ),
+    (
+        "filament_spool_geometry.js",
+        CompanionBrowserAsset {
+            content_type: "application/javascript; charset=utf-8",
+            content: include_str!("../companion_browser/filament_spool_geometry.js"),
+        },
+    ),
+    (
+        "companion_icons.js",
+        CompanionBrowserAsset {
+            content_type: "application/javascript; charset=utf-8",
+            content: include_str!("../companion_browser/companion_icons.js"),
+        },
+    ),
+    (
+        "companion_visuals.js",
+        CompanionBrowserAsset {
+            content_type: "application/javascript; charset=utf-8",
+            content: include_str!("../companion_browser/companion_visuals.js"),
+        },
+    ),
+    (
         "app.js",
         CompanionBrowserAsset {
             content_type: "application/javascript; charset=utf-8",
@@ -486,6 +563,232 @@ fn build_cached_companion_assets() -> HashMap<&'static str, CachedCompanionAsset
     }
     for (path, asset) in [
         (
+            "bambu-a1-mini.png",
+            CompanionBinaryAsset {
+                content_type: "image/png",
+                content: include_bytes!("../../ui/src/assets/printers/bambu-a1-mini.png"),
+            },
+        ),
+        (
+            "bambu-a1.png",
+            CompanionBinaryAsset {
+                content_type: "image/png",
+                content: include_bytes!("../../ui/src/assets/printers/bambu-a1.png"),
+            },
+        ),
+        (
+            "bambu-a2l.png",
+            CompanionBinaryAsset {
+                content_type: "image/png",
+                content: include_bytes!("../../ui/src/assets/printers/bambu-a2l.png"),
+            },
+        ),
+        (
+            "bambu-h2c.png",
+            CompanionBinaryAsset {
+                content_type: "image/png",
+                content: include_bytes!("../../ui/src/assets/printers/bambu-h2c.png"),
+            },
+        ),
+        (
+            "bambu-h2d-pro.png",
+            CompanionBinaryAsset {
+                content_type: "image/png",
+                content: include_bytes!("../../ui/src/assets/printers/bambu-h2d-pro.png"),
+            },
+        ),
+        (
+            "bambu-h2d.png",
+            CompanionBinaryAsset {
+                content_type: "image/png",
+                content: include_bytes!("../../ui/src/assets/printers/bambu-h2d.png"),
+            },
+        ),
+        (
+            "bambu-h2s.png",
+            CompanionBinaryAsset {
+                content_type: "image/png",
+                content: include_bytes!("../../ui/src/assets/printers/bambu-h2s.png"),
+            },
+        ),
+        (
+            "bambu-p1p.png",
+            CompanionBinaryAsset {
+                content_type: "image/png",
+                content: include_bytes!("../../ui/src/assets/printers/bambu-p1p.png"),
+            },
+        ),
+        (
+            "bambu-p1s-companion-cutout.png",
+            CompanionBinaryAsset {
+                content_type: "image/png",
+                content: include_bytes!(
+                    "../../ui/src/assets/printers/bambu-p1s-companion-cutout.png"
+                ),
+            },
+        ),
+        (
+            "bambu-p1s.png",
+            CompanionBinaryAsset {
+                content_type: "image/png",
+                content: include_bytes!("../../ui/src/assets/printers/bambu-p1s.png"),
+            },
+        ),
+        (
+            "bambu-p2s.png",
+            CompanionBinaryAsset {
+                content_type: "image/png",
+                content: include_bytes!("../../ui/src/assets/printers/bambu-p2s.png"),
+            },
+        ),
+        (
+            "bambu-x1-carbon.png",
+            CompanionBinaryAsset {
+                content_type: "image/png",
+                content: include_bytes!("../../ui/src/assets/printers/bambu-x1-carbon.png"),
+            },
+        ),
+        (
+            "bambu-x1.png",
+            CompanionBinaryAsset {
+                content_type: "image/png",
+                content: include_bytes!("../../ui/src/assets/printers/bambu-x1.png"),
+            },
+        ),
+        (
+            "bambu-x1e.png",
+            CompanionBinaryAsset {
+                content_type: "image/png",
+                content: include_bytes!("../../ui/src/assets/printers/bambu-x1e.png"),
+            },
+        ),
+        (
+            "bambu-x2d.png",
+            CompanionBinaryAsset {
+                content_type: "image/png",
+                content: include_bytes!("../../ui/src/assets/printers/bambu-x2d.png"),
+            },
+        ),
+        (
+            "prusa-coreone.png",
+            CompanionBinaryAsset {
+                content_type: "image/png",
+                content: include_bytes!("../../ui/src/assets/printers/prusa-coreone.png"),
+            },
+        ),
+        (
+            "prusa-coreonel.png",
+            CompanionBinaryAsset {
+                content_type: "image/png",
+                content: include_bytes!("../../ui/src/assets/printers/prusa-coreonel.png"),
+            },
+        ),
+        (
+            "prusa-coreonemmu3.png",
+            CompanionBinaryAsset {
+                content_type: "image/png",
+                content: include_bytes!("../../ui/src/assets/printers/prusa-coreonemmu3.png"),
+            },
+        ),
+        (
+            "prusa-mini.png",
+            CompanionBinaryAsset {
+                content_type: "image/png",
+                content: include_bytes!("../../ui/src/assets/printers/prusa-mini.png"),
+            },
+        ),
+        (
+            "prusa-mk3.5mmu3.png",
+            CompanionBinaryAsset {
+                content_type: "image/png",
+                content: include_bytes!("../../ui/src/assets/printers/prusa-mk3.5mmu3.png"),
+            },
+        ),
+        (
+            "prusa-mk3.9mmu3.png",
+            CompanionBinaryAsset {
+                content_type: "image/png",
+                content: include_bytes!("../../ui/src/assets/printers/prusa-mk3.9mmu3.png"),
+            },
+        ),
+        (
+            "prusa-mk35.png",
+            CompanionBinaryAsset {
+                content_type: "image/png",
+                content: include_bytes!("../../ui/src/assets/printers/prusa-mk35.png"),
+            },
+        ),
+        (
+            "prusa-mk39is.png",
+            CompanionBinaryAsset {
+                content_type: "image/png",
+                content: include_bytes!("../../ui/src/assets/printers/prusa-mk39is.png"),
+            },
+        ),
+        (
+            "prusa-mk3s.png",
+            CompanionBinaryAsset {
+                content_type: "image/png",
+                content: include_bytes!("../../ui/src/assets/printers/prusa-mk3s.png"),
+            },
+        ),
+        (
+            "prusa-mk3smmu3.png",
+            CompanionBinaryAsset {
+                content_type: "image/png",
+                content: include_bytes!("../../ui/src/assets/printers/prusa-mk3smmu3.png"),
+            },
+        ),
+        (
+            "prusa-mk4.png",
+            CompanionBinaryAsset {
+                content_type: "image/png",
+                content: include_bytes!("../../ui/src/assets/printers/prusa-mk4.png"),
+            },
+        ),
+        (
+            "prusa-mk4ismmu3.png",
+            CompanionBinaryAsset {
+                content_type: "image/png",
+                content: include_bytes!("../../ui/src/assets/printers/prusa-mk4ismmu3.png"),
+            },
+        ),
+        (
+            "prusa-mk4s.png",
+            CompanionBinaryAsset {
+                content_type: "image/png",
+                content: include_bytes!("../../ui/src/assets/printers/prusa-mk4s.png"),
+            },
+        ),
+        (
+            "prusa-mk4smmu3.png",
+            CompanionBinaryAsset {
+                content_type: "image/png",
+                content: include_bytes!("../../ui/src/assets/printers/prusa-mk4smmu3.png"),
+            },
+        ),
+        (
+            "prusa-xl.png",
+            CompanionBinaryAsset {
+                content_type: "image/png",
+                content: include_bytes!("../../ui/src/assets/printers/prusa-xl.png"),
+            },
+        ),
+        (
+            "prusa-xl2.png",
+            CompanionBinaryAsset {
+                content_type: "image/png",
+                content: include_bytes!("../../ui/src/assets/printers/prusa-xl2.png"),
+            },
+        ),
+        (
+            "prusa-xl5.png",
+            CompanionBinaryAsset {
+                content_type: "image/png",
+                content: include_bytes!("../../ui/src/assets/printers/prusa-xl5.png"),
+            },
+        ),
+        (
             "icon-light.png",
             CompanionBinaryAsset {
                 content_type: "image/png",
@@ -551,6 +854,27 @@ fn weak_etag(content: &[u8]) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn every_catalog_printer_image_is_bundled_with_valid_png_bytes() {
+        let catalog: serde_json::Value =
+            serde_json::from_str(include_str!("../../ui/src/lib/printer_image_catalog.json"))
+                .expect("valid shared printer image catalog");
+        for entry in catalog.as_object().expect("catalog object").values() {
+            for filename in entry.as_object().expect("model variants").values() {
+                let filename = filename.as_str().expect("image filename");
+                let image = cached_companion_browser_asset(filename)
+                    .unwrap_or_else(|| panic!("missing bundled printer artwork: {filename}"));
+                assert_eq!(image.content_type, "image/png");
+                assert!(image.content.starts_with(b"\x89PNG\r\n\x1a\n"));
+            }
+        }
+        assert!(cached_companion_browser_asset("../icons/icon.png").is_none());
+        let cutout = cached_companion_browser_asset("bambu-p1s-companion-cutout.png")
+            .expect("bundled Companion cutout");
+        assert_eq!(cutout.content_type, "image/png");
+        assert!(cutout.content.starts_with(b"\x89PNG\r\n\x1a\n"));
+    }
 
     #[test]
     fn caches_stable_asset_validators_and_compressed_text() {
