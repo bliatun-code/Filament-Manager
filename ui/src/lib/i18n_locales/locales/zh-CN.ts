@@ -1101,6 +1101,11 @@ export const zhCNDictionary: DictionaryNode = {
     }
   },
   "printers": {
+      replaceRoll: "更换料盘",
+      selectRoll: "选择料盘",
+      linkObserved: "关联检测到的料盘",
+      startedCandidatesFirst: "匹配程度相同时，部分使用过的料盘排在满盘之前。关联前请确认料盘。",
+
     "subtitle": "管理 slots 和打印机链接材料的使用。",
     "desktopOnly": "打印机概述可在 desktop 应用程序版本中找到。",
     "clientReadOnlyBanner": "该设备作为客户端链接。打印机分配更改目前保留在 host 上。",

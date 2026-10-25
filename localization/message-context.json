@@ -1161,6 +1161,30 @@
       "key": "loans.person",
       "meaning": "Loan table column for the other person: the borrower for an outbound loan, or the owner for a borrowed-in roll. Use a neutral person label covering both directions.",
       "screenshot": "docs/screenshots/loans.jpg"
+    },
+    {
+      "surface": "desktop",
+      "meaning": "Compact printer-slot action that opens the existing roll picker. Replacing an occupied slot requires an outgoing measured weight before the atomic slot operation. The incoming roll keeps its stored weight.",
+      "screenshot": "docs/screenshots/printers.jpg",
+      "key": "printers.replaceRoll"
+    },
+    {
+      "surface": "desktop",
+      "meaning": "Choose this inventory roll explicitly. An empty destination loads immediately with stored weight. Replacing an occupied slot opens outgoing-weight confirmation; it does not save RFID on third-party rolls.",
+      "screenshot": "docs/screenshots/printers.jpg",
+      "key": "printers.selectRoll"
+    },
+    {
+      "surface": "desktop",
+      "meaning": "Disclosure for linking the observed AMS material to a physical inventory roll. Supports exact RFID, unknown Bambu RFID and material/color candidates without RFID; a single eligible material/color candidate can be placed automatically in an empty slot without saving an RFID tag.",
+      "screenshot": "docs/screenshots/printers.jpg",
+      "key": "printers.linkObserved"
+    },
+    {
+      "surface": "desktop",
+      "meaning": "Explains a tie-breaker only: a positive remaining weight below the initial weight ranks before a full roll when material/color scores are equal. It does not claim the packaging is open or choose automatically.",
+      "screenshot": "docs/screenshots/printers.jpg",
+      "key": "printers.startedCandidatesFirst"
     }
   ],
   "groups": [

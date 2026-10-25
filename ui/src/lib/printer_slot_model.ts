@@ -344,7 +344,7 @@ export function buildIncomingWeightPrompt(
     targetColorName: row.master.color_name,
     targetHexColor: row.master.hex_color,
     requiresOutgoingWeight: Boolean(slot.spool_id && slot.spool_id !== row.spool.id),
-    requiresIncomingWeight: true,
+    requiresIncomingWeight: slot.spool_id === row.spool.id,
     updatesCurrentRollWeight: slot.spool_id === row.spool.id,
     currentMaterial: slot.spool_material,
     currentFilamentName: slot.spool_filament_name,

@@ -1680,12 +1680,10 @@ impl InventoryEngine {
                 })?),
                 None => None,
             };
-            // Loading from inventory does not represent a new measurement. It may
-            // preserve weight only when the destination is still empty.
-            let loading_without_measurement = actual_current_spool_id.is_none()
-                && target_spool_id.is_some()
-                && input.incoming_measured_total_g.is_none()
-                && input.outgoing_measured_total_g.is_none();
+            // Loading a different roll may preserve its stored weight. The outgoing
+            // measurement remains mandatory for every occupied-slot replacement.
+            let loading_without_measurement =
+                target_spool_id.is_some() && input.incoming_measured_total_g.is_none();
             let incoming_total_g = match target_spool_id.as_deref() {
                 Some(_) if loading_without_measurement => None,
                 Some(_) => Some(input.incoming_measured_total_g.ok_or_else(|| {

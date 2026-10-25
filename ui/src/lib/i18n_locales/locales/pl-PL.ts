@@ -1041,6 +1041,11 @@ export const plPLDictionary: DictionaryNode = {
     "statistics": "Statystyki"
   },
   "printers": {
+      replaceRoll: "Wymień szpulę",
+      selectRoll: "Wybierz szpulę",
+      linkObserved: "Powiąż wykrytą szpulę",
+      startedCandidatesFirst: "Przy takim samym dopasowaniu częściowo zużyte szpule są wyświetlane przed pełnymi. Potwierdź szpulę przed powiązaniem.",
+
     "addBorrowedCatalogRollAndSaveRfid": "Dodaj zapożyczone + zapisz RFID",
     "addCatalogRollAndSaveRfid": "Dodaj + zapisz RFID",
     "amsSlot": "Gniazdo AMS",

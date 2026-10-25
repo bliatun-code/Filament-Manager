@@ -1101,6 +1101,11 @@ export const zhTWDictionary: DictionaryNode = {
     }
   },
   "printers": {
+      replaceRoll: "更換料盤",
+      selectRoll: "選擇料盤",
+      linkObserved: "關聯偵測到的料盤",
+      startedCandidatesFirst: "匹配程度相同時，部分使用過的料盤排在滿盤之前。關聯前請確認料盤。",
+
     "subtitle": "管理插槽和印表機連結材料的使用。",
     "desktopOnly": "印表機概述可在 desktop 應用程式版本中找到。",
     "clientReadOnlyBanner": "該裝置作為客戶端連結。印表機分配變更目前保留在 host 上。",

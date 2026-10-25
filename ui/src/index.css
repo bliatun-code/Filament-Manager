@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@import "./components/printers_balanced.css";
 @import "./components/inventory_balanced.css";
 @import "./components/inventory_spool_detail_balanced.css";
 @import "./components/settings_maintenance_balanced.css";

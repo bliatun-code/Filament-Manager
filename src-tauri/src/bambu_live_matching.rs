@@ -219,7 +219,34 @@ fn live_preset_signal_note(tray: &BambuLiveObservedTrayRow) -> Option<String> {
     ))
 }
 
-fn find_inventory_candidates<'a>(
+pub(crate) fn live_material_families_match(left: Option<&str>, right: &str) -> bool {
+    fn family(value: &str) -> String {
+        let normalized: String = value
+            .chars()
+            .filter(|c| c.is_ascii_alphanumeric())
+            .flat_map(char::to_lowercase)
+            .collect();
+        [
+            "pla", "petg", "abs", "asa", "tpu", "pc", "pa", "cpe", "hips", "pva", "pet", "pp",
+            "pom", "support",
+        ]
+        .into_iter()
+        .find(|token| normalized.starts_with(token))
+        .or_else(|| {
+            [
+                "pla", "petg", "abs", "asa", "tpu", "pc", "pa", "cpe", "hips", "pva", "pet", "pp",
+                "pom", "support",
+            ]
+            .into_iter()
+            .find(|token| normalized.contains(token))
+        })
+        .map(str::to_string)
+        .unwrap_or(normalized)
+    }
+    left.is_some_and(|left| !family(left).is_empty() && family(left) == family(right))
+}
+
+pub(crate) fn find_inventory_candidates<'a>(
     tray: &BambuLiveObservedTrayRow,
     all_spools: &'a [SpoolWithMasterRow],
     require_missing_rfid_tag: bool,
@@ -242,7 +269,7 @@ fn find_inventory_candidates<'a>(
                 return false;
             }
             let material_match =
-                eq_ignore_case(tray.filament_type.as_deref(), Some(&row.master.material));
+                live_material_families_match(tray.filament_type.as_deref(), &row.master.material);
             let observed_name = tray
                 .filament_name
                 .as_deref()

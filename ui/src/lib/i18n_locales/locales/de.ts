@@ -1270,6 +1270,11 @@ export const deDictionary: DictionaryNode = {
     },
   },
   printers: {
+      replaceRoll: "Rolle wechseln",
+      selectRoll: "Rolle auswählen",
+      linkObserved: "Beobachtete Rolle zuordnen",
+      startedCandidatesFirst: "Bei gleich guten Treffern werden angebrochene Rollen vor vollen angezeigt. Bestätigen Sie die Rolle vor der Zuordnung.",
+
     desktopOnly: "Die Druckerübersicht ist in der Desktop-App verfügbar.",
     clientReadOnlyBanner:
       "Dieses Gerät ist als Client verknüpft. Änderungen an Druckerzuweisungen bleiben vorerst auf dem Host.",

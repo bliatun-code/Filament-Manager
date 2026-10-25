@@ -1307,6 +1307,11 @@ export const ptBRDictionary: DictionaryNode = {
     statistics: "Estatísticas",
   },
   printers: {
+      replaceRoll: "Trocar rolo",
+      selectRoll: "Selecionar rolo",
+      linkObserved: "Vincular rolo detectado",
+      startedCandidatesFirst: "Entre correspondências iguais, os rolos parcialmente usados aparecem antes dos cheios. Confirme o rolo antes de vinculá-lo.",
+
     addBorrowedCatalogRollAndSaveRfid: "Adicionar empréstimo + salvar RFID",
     addCatalogRollAndSaveRfid: "Adicionar + salvar RFID",
     amsSlot: "AMS Slot",

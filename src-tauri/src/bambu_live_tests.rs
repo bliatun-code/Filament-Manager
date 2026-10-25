@@ -7842,3 +7842,296 @@ fn live_slot_four_delta_recovery_keeps_identity_safety_guards() {
         assert_eq!(slot.spool_id, None, "Unsafe recovery: {case}");
     }
 }
+
+#[test]
+fn live_updates_preserve_unweighed_third_party_rolls_until_measured_unload() {
+    for (vendor, tag) in [
+        ("eSUN", None),
+        ("eSUN", Some("custom-tag")),
+        ("Bambu", None),
+    ] {
+        for signal in ["empty", "unknown", "colour", "exact"] {
+            let path = temp_db_path(&format!(
+                "unweighed-{vendor}-{signal}-{}",
+                tag.unwrap_or("none")
+            ));
+            {
+                let db = FilamentDatabase::open(&path).unwrap();
+                db.apply_schema().unwrap();
+                db.upsert_printer_with_ams("printer_1", "Bambu Lab P1S", "Brutus", 1, 1)
+                    .unwrap();
+                let master = db
+                    .upsert_manual_master(ManualMasterInput {
+                        material: "PLA",
+                        filament_name: "Basic",
+                        color_name: "Red",
+                        hex_color: Some("#FF0000"),
+                        product_url: None,
+                        vendor: Some(vendor),
+                        default_weight: Some(1000),
+                    })
+                    .unwrap();
+                let mut outgoing = make_inventory_spool("outgoing", tag).spool;
+                outgoing.master_id = master.clone();
+                outgoing.remaining_g = Some(824);
+                db.insert_spool(&outgoing).unwrap();
+                let mut incoming = make_inventory_spool("incoming", Some("incoming-rfid")).spool;
+                incoming.master_id = master;
+                db.insert_spool(&incoming).unwrap();
+                db.assign_spool_to_ams_slot(
+                    "printer_1",
+                    "printer_1_ams_1_slot_1",
+                    Some("outgoing"),
+                    None,
+                    None,
+                    false,
+                )
+                .unwrap();
+                let now = super::now_iso_string();
+                let mut observed = super::default_offline_state();
+                observed.online = true;
+                observed.mqtt_connected = true;
+                observed.last_seen_at = Some(now.clone());
+                let mut tray = make_tray();
+                tray.loaded = signal != "empty";
+                tray.last_identity_seen_at = Some(now.clone());
+                tray.last_empty_seen_at = Some(now);
+                tray.empty_observation_count = Some(1);
+                tray.tray_uuid = match signal {
+                    "exact" => Some("incoming-rfid".into()),
+                    "unknown" => Some("unknown-rfid".into()),
+                    _ => None,
+                };
+                tray.observed_rfid_tag = tray.tray_uuid.clone();
+                tray.filament_type = Some("PLA".into());
+                tray.color_hex = Some("#00FF00".into());
+                observed.trays = vec![tray];
+                crate::bambu_live_sync::enrich_with_match_status(&db, "printer_1", observed)
+                    .unwrap();
+                let current = db.list_printer_overview().unwrap();
+                let slot = current[0]
+                    .slots
+                    .iter()
+                    .find(|s| s.slot_index == 1 && !s.ams_id.ends_with("_ext"))
+                    .unwrap();
+                assert_eq!(
+                    slot.spool_id.as_deref(),
+                    Some("outgoing"),
+                    "{vendor} {signal}"
+                );
+                assert_eq!(
+                    db.get_spool_by_id("outgoing").unwrap().unwrap().remaining_g,
+                    Some(824)
+                );
+            }
+            let _ = std::fs::remove_file(path);
+        }
+    }
+}
+
+#[test]
+fn live_single_candidate_loads_only_empty_slots_and_preserves_stored_weight() {
+    for scenario in [
+        "single",
+        "multiple",
+        "stale",
+        "reading",
+        "absent",
+        "wrong_colour",
+        "wrong_material",
+        "assigned_elsewhere",
+        "cleared",
+        "rollback",
+    ] {
+        let path = temp_db_path(&format!("auto-candidate-{scenario}"));
+        {
+            let db = FilamentDatabase::open(&path).unwrap();
+            db.apply_schema().unwrap();
+            db.upsert_printer_with_ams("printer_1", "Bambu Lab P1S", "Brutus", 1, 2)
+                .unwrap();
+            let master = db
+                .upsert_manual_master(ManualMasterInput {
+                    material: "PLA+",
+                    filament_name: "PLA+HS",
+                    color_name: "Black",
+                    hex_color: Some("#161616"),
+                    product_url: None,
+                    vendor: Some("eSUN"),
+                    default_weight: Some(1000),
+                })
+                .unwrap();
+            let mut spool = make_inventory_spool("candidate", None).spool;
+            spool.master_id = master;
+            spool.current_weight_g = Some(824);
+            spool.remaining_g = Some(824);
+            db.insert_spool(&spool).unwrap();
+            if scenario == "multiple" {
+                spool.id = "second".into();
+                db.insert_spool(&spool).unwrap();
+            }
+            if scenario == "assigned_elsewhere" {
+                db.assign_spool_to_ams_slot(
+                    "printer_1",
+                    "printer_1_ams_1_slot_2",
+                    Some("candidate"),
+                    None,
+                    None,
+                    false,
+                )
+                .unwrap();
+            }
+            let mut observed = super::default_offline_state();
+            observed.online = true;
+            observed.mqtt_connected = true;
+            let now = super::now_iso_string();
+            observed.last_seen_at = Some(now.clone());
+            let mut tray = make_tray();
+            tray.filament_type = Some("PLA".into());
+            tray.filament_name = Some("eSUN PLA+HS".into());
+            tray.color_hex = Some("#161616".into());
+            tray.tray_uuid = None;
+            tray.observed_rfid_tag = None;
+            tray.last_identity_seen_at = Some(now.clone());
+            tray.remaining_grams = Some(100); // A preset/metadata hint is never a weight measurement.
+            match scenario {
+                "stale" => tray.last_identity_seen_at = Some("2000-01-01T00:00:00Z".into()),
+                "reading" => observed.ams_reading_bits = Some("1".into()),
+                "absent" => {
+                    tray.loaded = false;
+                    tray.empty_observation_count = Some(1);
+                    tray.last_empty_seen_at = Some(now.clone());
+                }
+                "wrong_colour" => tray.color_hex = Some("#FF0000".into()),
+                "wrong_material" => tray.filament_type = Some("PETG".into()),
+                "cleared" => {
+                    db.connection().execute("UPDATE ams_slots SET live_cache_cleared_at = ?1 WHERE id = 'printer_1_ams_1_slot_1'",[&now]).unwrap();
+                }
+                "rollback" => {
+                    db.connection().execute_batch("CREATE TRIGGER fail_auto_load BEFORE INSERT ON printer_live_events WHEN NEW.event_type = 'LIVE_AUTO_SLOT_METADATA_MATCHED' BEGIN SELECT RAISE(ABORT, 'forced auto load failure'); END;").unwrap();
+                }
+                _ => {}
+            }
+            observed.trays = vec![tray];
+            let result = crate::bambu_live_sync::enrich_with_match_status(
+                &db,
+                "printer_1",
+                observed.clone(),
+            );
+            if scenario == "rollback" {
+                assert!(result.is_err());
+            } else {
+                result.unwrap();
+            }
+            let overview = db.get_printer_overview("printer_1").unwrap().unwrap();
+            let slot = overview
+                .slots
+                .iter()
+                .find(|s| s.slot_id == "printer_1_ams_1_slot_1")
+                .unwrap();
+            assert_eq!(
+                slot.spool_id.as_deref(),
+                if scenario == "single" {
+                    Some("candidate")
+                } else {
+                    None
+                },
+                "{scenario}"
+            );
+            assert_eq!(
+                db.get_spool_by_id("candidate")
+                    .unwrap()
+                    .unwrap()
+                    .remaining_g,
+                Some(824),
+                "{scenario}"
+            );
+            let readings: i64 = db
+                .connection()
+                .query_row("SELECT COUNT(*) FROM weight_readings", [], |r| r.get(0))
+                .unwrap();
+            assert_eq!(readings, 0, "{scenario}");
+            if scenario == "single" {
+                crate::bambu_live_sync::enrich_with_match_status(&db, "printer_1", observed)
+                    .unwrap();
+                let count:i64=db.connection().query_row("SELECT COUNT(*) FROM printer_live_events WHERE event_type='LIVE_AUTO_SLOT_METADATA_MATCHED'",[],|r|r.get(0)).unwrap();
+                assert_eq!(count, 1, "repeat polls do not place the same roll twice");
+            }
+        }
+        let _ = std::fs::remove_file(path);
+    }
+}
+
+#[test]
+fn live_registered_bambu_rolls_can_be_removed_and_replaced_automatically() {
+    for replacement in [false, true] {
+        let path = temp_db_path("bambu-rfid-auto-replacement");
+        {
+            let db = FilamentDatabase::open(&path).unwrap();
+            db.apply_schema().unwrap();
+            db.upsert_printer_with_ams("printer_1", "Bambu Lab P1S", "Brutus", 1, 1)
+                .unwrap();
+            let master = db
+                .upsert_manual_master(ManualMasterInput {
+                    material: "PLA",
+                    filament_name: "Basic",
+                    color_name: "Red",
+                    hex_color: Some("#FF0000"),
+                    product_url: None,
+                    vendor: Some("Bambu Lab"),
+                    default_weight: Some(1000),
+                })
+                .unwrap();
+            for (id, tag) in [("outgoing", "old-rfid"), ("incoming", "new-rfid")] {
+                let mut spool = make_inventory_spool(id, Some(tag)).spool;
+                spool.master_id = master.clone();
+                db.insert_spool(&spool).unwrap();
+            }
+            db.assign_spool_to_ams_slot(
+                "printer_1",
+                "printer_1_ams_1_slot_1",
+                Some("outgoing"),
+                None,
+                None,
+                false,
+            )
+            .unwrap();
+            let now = super::now_iso_string();
+            let mut observed = super::default_offline_state();
+            observed.online = true;
+            observed.mqtt_connected = true;
+            observed.last_seen_at = Some(now.clone());
+            let mut tray = make_tray();
+            tray.loaded = replacement;
+            tray.chip_id = None;
+            tray.last_identity_seen_at = Some(now.clone());
+            tray.last_empty_seen_at = if replacement { None } else { Some(now) };
+            tray.empty_observation_count = Some(if replacement { 0 } else { 1 });
+            tray.tray_uuid = if replacement {
+                Some("new-rfid".into())
+            } else {
+                None
+            };
+            tray.observed_rfid_tag = tray.tray_uuid.clone();
+            tray.remaining_grams = if replacement { Some(950) } else { None };
+            observed.trays = vec![tray];
+            crate::bambu_live_sync::enrich_with_match_status(&db, "printer_1", observed).unwrap();
+            let overview = db.get_printer_overview("printer_1").unwrap().unwrap();
+            let slot = overview
+                .slots
+                .iter()
+                .find(|s| s.slot_id == "printer_1_ams_1_slot_1")
+                .unwrap();
+            assert_eq!(
+                slot.spool_id.as_deref(),
+                if replacement { Some("incoming") } else { None }
+            );
+            if replacement {
+                assert_eq!(
+                    db.get_spool_by_id("incoming").unwrap().unwrap().remaining_g,
+                    Some(950)
+                );
+            }
+        }
+        let _ = std::fs::remove_file(path);
+    }
+}

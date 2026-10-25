@@ -1041,6 +1041,11 @@ export const trTRDictionary: DictionaryNode = {
     "statistics": "İstatistikler"
   },
   "printers": {
+      replaceRoll: "Makarayı değiştir",
+      selectRoll: "Makara seç",
+      linkObserved: "Algılanan makarayı eşleştir",
+      startedCandidatesFirst: "Eşit eşleşmelerde kısmen kullanılmış makaralar dolu makaralardan önce gösterilir. Eşleştirmeden önce makarayı doğrulayın.",
+
     "addBorrowedCatalogRollAndSaveRfid": "Ödünç alınanları ekle + kaydet RFID",
     "addCatalogRollAndSaveRfid": "Ekle + kaydet RFID",
     "amsSlot": "AMS Yuvası",

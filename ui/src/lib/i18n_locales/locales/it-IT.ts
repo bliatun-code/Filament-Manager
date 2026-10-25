@@ -1266,6 +1266,11 @@ export const itITDictionary: DictionaryNode = {
     statistics: "Statistiche",
   },
   printers: {
+      replaceRoll: "Cambia bobina",
+      selectRoll: "Scegli bobina",
+      linkObserved: "Collega bobina rilevata",
+      startedCandidatesFirst: "A parità di corrispondenza, le bobine parzialmente usate precedono quelle piene. Conferma la bobina prima di collegarla.",
+
     addBorrowedCatalogRollAndSaveRfid:
       "Aggiungi preso in prestito + salva RFID",
     addCatalogRollAndSaveRfid: "Aggiungi + salva RFID",

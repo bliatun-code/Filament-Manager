@@ -1296,6 +1296,11 @@ export const nbDictionary: DictionaryNode = {
       },
     },
     printers: {
+      replaceRoll: "Bytt rull",
+      selectRoll: "Velg rull",
+      linkObserved: "Koble observert rull",
+      startedCandidatesFirst: "Blant like gode treff vises påbegynte ruller før fulle ruller. Bekreft riktig rull før kobling.",
+
       subtitle: "Administrer spor og printerkoblet materialforbruk.",
       desktopOnly: "Printeroversikt er kun tilgjengelig i desktop-appen.",
       clientReadOnlyBanner:

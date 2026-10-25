@@ -1041,6 +1041,11 @@ export const csCZDictionary: DictionaryNode = {
     "statistics": "Statistiky"
   },
   "printers": {
+      replaceRoll: "Vyměnit cívku",
+      selectRoll: "Vybrat cívku",
+      linkObserved: "Přiřadit zjištěnou cívku",
+      startedCandidatesFirst: "Při stejné shodě se částečně spotřebované cívky zobrazují před plnými. Před přiřazením cívku potvrďte.",
+
     "addBorrowedCatalogRollAndSaveRfid": "Přidat vypůjčené + uložit RFID",
     "addCatalogRollAndSaveRfid": "Přidat + uložit RFID",
     "amsSlot": "Pozice AMS",

@@ -1041,6 +1041,11 @@ export const nlNLDictionary: DictionaryNode = {
     "statistics": "Statistieken"
   },
   "printers": {
+      replaceRoll: "Rol vervangen",
+      selectRoll: "Rol kiezen",
+      linkObserved: "Waargenomen rol koppelen",
+      startedCandidatesFirst: "Bij even goede overeenkomsten verschijnen gebruikte rollen vóór volle rollen. Bevestig de rol voordat je deze koppelt.",
+
     "addBorrowedCatalogRollAndSaveRfid": "Ingeleend toevoegen + RFID opslaan",
     "addCatalogRollAndSaveRfid": "RFID toevoegen en opslaan",
     "amsSlot": "AMS Slot",

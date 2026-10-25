@@ -651,7 +651,7 @@ export default function PrintersPage() {
   ]);
 
   return (
-    <div className="page-shell">
+    <div className="page-shell printers-balanced-page">
       <div className="page-header min-[900px]:flex-row min-[900px]:items-start min-[900px]:justify-between min-[900px]:gap-8">
         <div className="page-header-copy">
           <h1 className="page-title">{t("nav.printers", "Printers")}</h1>
@@ -764,7 +764,7 @@ export default function PrintersPage() {
           <PrinterOverviewCard
             key={printer.printer.id}
             printer={printer}
-            defaultSlotsExpanded={printers.length === 1}
+            defaultSlotsExpanded={true}
             busy={busy}
             tauri={tauri}
             clientReadOnly={clientReadOnly}

@@ -1353,6 +1353,11 @@ export const esDictionary: DictionaryNode = {
     },
   },
   printers: {
+      replaceRoll: "Cambiar bobina",
+      selectRoll: "Elegir bobina",
+      linkObserved: "Vincular bobina detectada",
+      startedCandidatesFirst: "A igual coincidencia, las bobinas parcialmente usadas aparecen antes que las llenas. Confirma la bobina antes de vincularla.",
+
     subtitle: "Gestiona ranuras y consumo de material vinculado a impresoras.",
     desktopOnly:
       "La vista de impresoras está disponible en la aplicación de escritorio.",

@@ -47,6 +47,7 @@ function slotOptionButtonClassName(selected: boolean, selectedExtraClassName = "
 }
 
 type PrinterSlotPickerProps = {
+  compact?: boolean;
   printerId: string;
   slot: PrinterAmsSlotRow;
   slotLabel: string;
@@ -71,6 +72,7 @@ type PrinterSlotPickerProps = {
 };
 
 export function PrinterSlotPicker({
+  compact = false,
   printerId,
   slot,
   slotLabel,
@@ -197,7 +199,7 @@ export function PrinterSlotPicker({
   }, [isDropdownOpen]);
 
   return (
-    <div className="relative mt-2" data-slot-dropdown={slot.slot_id}>
+    <div className={`relative ${compact ? "printer-compact-picker" : "mt-2"}`} data-slot-dropdown={slot.slot_id}>
       <button
         ref={selectorButtonRef}
         type="button"
@@ -226,7 +228,7 @@ export function PrinterSlotPicker({
         disabled={!tauri || busy}
         style={renderedSlotSelectorStyle}
       >
-        <span className="flex min-w-0 items-center gap-2">
+        {compact ? <span>{slot.spool_id ? t("printers.replaceRoll", "Replace roll") : t("printers.selectRoll", "Select roll")}</span> : <span className="flex min-w-0 items-center gap-2">
           <InventorySwatchChip
             className="h-4.5 w-4.5 rounded"
             swatchColor={slotSwatchHex}
@@ -249,6 +251,7 @@ export function PrinterSlotPicker({
             </span>
           </span>
         </span>
+        }
         <span className="text-xs text-slate-500 dark:text-slate-400">▾</span>
       </button>
 
@@ -258,7 +261,7 @@ export function PrinterSlotPicker({
           id={popupId}
           role="dialog"
           aria-label={`${t("printers.availableRollsForSlot", "Available rolls for")} ${slotLabel}`}
-          className={`absolute left-0 right-0 z-30 max-h-[22rem] overflow-hidden rounded-xl border border-slate-200 bg-white p-3 shadow-xl shadow-slate-300/20 dark:border-slate-600 dark:bg-slate-900 dark:shadow-black/30 ${
+          className={`absolute ${compact ? "printer-compact-popup" : "left-0 right-0"} z-30 max-h-[22rem] overflow-hidden rounded-xl border border-slate-200 bg-white p-3 shadow-xl shadow-slate-300/20 dark:border-slate-600 dark:bg-slate-900 dark:shadow-black/30 ${
             dropdownPlacement === "above" ? "bottom-full mb-2" : "top-full mt-2"
           }`}
         >

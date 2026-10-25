@@ -636,6 +636,11 @@ export const huHUDictionary: DictionaryNode = {
     }
   },
   "printers": {
+      replaceRoll: "Tekercs cseréje",
+      selectRoll: "Tekercs kiválasztása",
+      linkObserved: "Észlelt tekercs hozzárendelése",
+      startedCandidatesFirst: "Azonos egyezésnél a részben használt tekercsek a teliek előtt jelennek meg. Hozzárendelés előtt erősítse meg a tekercset.",
+
     "clientReadOnlyHost": "Házigazda",
     "clientReadOnlyAction": "Ez az eszköz kliensként csatlakozik. A nyomtató módosításához használja a gazdagépet.",
     "clientReadOnlyCached": "A gazdagép nem elérhető. Az utolsó gyorsítótárban lévő nyomtató pillanatkép megjelenítése.",

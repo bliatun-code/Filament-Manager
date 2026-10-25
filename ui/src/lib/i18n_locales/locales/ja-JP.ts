@@ -1101,6 +1101,11 @@ export const jaJPDictionary: DictionaryNode = {
     }
   },
   "printers": {
+      replaceRoll: "スプールを交換",
+      selectRoll: "スプールを選択",
+      linkObserved: "検出したスプールを関連付け",
+      startedCandidatesFirst: "一致度が同じ場合、使用途中のスプールを満量のスプールより先に表示します。関連付ける前にスプールを確認してください。",
+
     "subtitle": "slots とプリンターにリンクされたマテリアルの使用を管理します。",
     "desktopOnly": "プリンターの概要は、desktop アプリ ビルドで利用できます。",
     "clientReadOnlyBanner": "このデバイスはクライアントとしてリンクされています。プリンター割り当ての変更は、今のところ host に残ります。",

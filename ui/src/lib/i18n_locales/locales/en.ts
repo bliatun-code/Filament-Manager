@@ -1291,6 +1291,11 @@ export const enDictionary: DictionaryNode = {
       },
     },
     printers: {
+      replaceRoll: "Replace roll",
+      selectRoll: "Select roll",
+      linkObserved: "Link observed roll",
+      startedCandidatesFirst: "Among equally good matches, partly used rolls appear before full rolls. Confirm the roll before linking.",
+
       subtitle: "Manage slots and printer-linked material use.",
       desktopOnly: "Printer overview is available in the desktop app build.",
       clientReadOnlyBanner:

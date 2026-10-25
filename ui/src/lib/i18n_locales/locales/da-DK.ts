@@ -636,6 +636,11 @@ export const daDKDictionary: DictionaryNode = {
     "legacyLowStockFallback": "Reserveværdi på 200 g for ældre vært"
   },
   "printers": {
+      replaceRoll: "Skift rulle",
+      selectRoll: "Vælg rulle",
+      linkObserved: "Tilknyt observeret rulle",
+      startedCandidatesFirst: "Ved lige gode match vises påbegyndte ruller før fulde. Bekræft rullen før tilknytning.",
+
     "clientHostUnavailable": "Værtsforbindelsesoplysninger mangler for denne klientenhed.",
     "clientReadOnlyHost": "vært",
     "subtitle": "Administrer pladser og printertilknyttet materialeforbrug.",

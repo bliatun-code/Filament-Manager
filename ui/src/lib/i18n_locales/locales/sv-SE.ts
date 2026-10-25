@@ -636,6 +636,11 @@ export const svSEDictionary: DictionaryNode = {
     "legacyLowStockFallback": "Reservvärde på 200 g för äldre värd"
   },
   "printers": {
+      replaceRoll: "Byt rulle",
+      selectRoll: "Välj rulle",
+      linkObserved: "Koppla observerad rulle",
+      startedCandidatesFirst: "Vid lika bra träffar visas påbörjade rullar före fulla. Bekräfta rullen innan den kopplas.",
+
     "clientHostUnavailable": "Värdanslutningsdetaljer saknas för den här klientenheten.",
     "clientReadOnlyHost": "Värd",
     "subtitle": "Hantera platser och skrivarlänkad materialanvändning.",

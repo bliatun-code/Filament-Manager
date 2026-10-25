@@ -1299,6 +1299,11 @@ export const frDictionary: DictionaryNode = {
     },
   },
   printers: {
+      replaceRoll: "Changer de bobine",
+      selectRoll: "Choisir une bobine",
+      linkObserved: "Associer la bobine détectée",
+      startedCandidatesFirst: "À correspondance égale, les bobines entamées précèdent les bobines pleines. Confirmez la bobine avant de l’associer.",
+
     subtitle: "Gérez les emplacements de matériau et la consommation liée aux imprimantes.",
     noPrinters: "Aucune imprimante configurée. Ajoutez d’abord une imprimante.",
     configuredPrinters: "Imprimantes configurées",

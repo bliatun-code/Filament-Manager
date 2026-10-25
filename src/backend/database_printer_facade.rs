@@ -88,6 +88,38 @@ impl FilamentDatabase {
         )
     }
 
+    /// Atomically resolve an observed candidate and assign it only to an empty
+    /// destination. Candidate resolution runs in the same write snapshot.
+    pub fn assign_observed_spool_to_empty_slot(
+        &self,
+        printer_id: &str,
+        slot_id: &str,
+        select: impl FnOnce(
+            &Self,
+            &super::database_printer_models::PrinterAmsSlotRow,
+        ) -> InventoryResult<Option<String>>,
+    ) -> InventoryResult<Option<String>> {
+        self.with_inventory_transaction(|conn| {
+            let overview = self.get_printer_overview(printer_id)?;
+            let Some(slot) = overview.as_ref().and_then(|row| row.slots.iter().find(|slot| slot.slot_id == slot_id)) else { return Ok(None) };
+            if slot.spool_id.is_some() { return Ok(None); }
+            let Some(spool_id) = select(self, slot)? else { return Ok(None) };
+            let Some(row) = self.get_spool_with_master_by_id(&spool_id)? else { return Ok(None) };
+            if super::inventory_domain::SpoolStatus::from_raw(Some(&row.spool.status)) != super::inventory_domain::SpoolStatus::InStock {
+                return Ok(None);
+            }
+            let assigned: bool = conn.query_row("SELECT EXISTS(SELECT 1 FROM ams_slots WHERE spool_id = ?1)", [&spool_id], |row| row.get(0))?;
+            if assigned { return Ok(None); }
+            super::database_printer_slot_assignment::assign_spool_to_ams_slot_in_transaction(
+                conn, printer_id, slot_id, Some(&spool_id), None, None, false,
+            )?;
+            self.insert_printer_live_event(printer_id, "LIVE_AUTO_SLOT_METADATA_MATCHED", &serde_json::json!({
+                "slot_id": slot_id, "spool_id": spool_id, "reason": "single_inventory_candidate", "weight_preserved": true,
+            }))?;
+            Ok(Some(spool_id))
+        })
+    }
+
     pub fn insert_print_job(
         &self,
         printer_id: &str,

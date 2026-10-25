@@ -1101,6 +1101,11 @@ export const koKRDictionary: DictionaryNode = {
     }
   },
   "printers": {
+      replaceRoll: "스풀 교체",
+      selectRoll: "스풀 선택",
+      linkObserved: "감지된 스풀 연결",
+      startedCandidatesFirst: "일치도가 같으면 일부 사용한 스풀이 가득 찬 스풀보다 먼저 표시됩니다. 연결 전에 스풀을 확인하세요.",
+
     "subtitle": "슬롯 및 프린터 연결 자료 사용을 관리합니다.",
     "desktopOnly": "프린터 개요는 desktop 앱 빌드에서 사용할 수 있습니다.",
     "clientReadOnlyBanner": "이 기기는 클라이언트로 연결되어 있습니다. 프린터 할당 변경 사항은 현재 host에 유지됩니다.",

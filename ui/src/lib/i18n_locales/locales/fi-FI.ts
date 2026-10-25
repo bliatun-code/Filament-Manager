@@ -1101,6 +1101,11 @@ export const fiFIDictionary: DictionaryNode = {
     }
   },
   "printers": {
+      replaceRoll: "Vaihda kela",
+      selectRoll: "Valitse kela",
+      linkObserved: "Yhdistä havaittu kela",
+      startedCandidatesFirst: "Yhtä hyvistä osumista osittain käytetyt kelat näytetään ennen täysiä. Vahvista kela ennen yhdistämistä.",
+
     "subtitle": "Hallitse paikkoja ja tulostimiin liittyvää materiaalinkulutusta.",
     "desktopOnly": "Tulostimen yleiskuvaus on saatavilla työpöytäsovelluksessa.",
     "clientReadOnlyBanner": "Tämä laite on linkitetty asiakkaaksi. Tulostinmäärityksiin tehdyt muutokset pysyvät isännässä toistaiseksi.",
