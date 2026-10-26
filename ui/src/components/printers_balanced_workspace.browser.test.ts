@@ -35,6 +35,9 @@ test("balanced printers show all slots, rank manual candidates and require measu
     await page.screenshot({path:resolve(out,`${locale}-${width}-${theme}.png`),fullPage:true});
     assert.deepEqual(errors,[]);
     testContext.diagnostic(`Printers: ${locale}, ${width}px, ${theme} passed`);
+   } catch (error) {
+    testContext.diagnostic(JSON.stringify({ workspace: "Printers", locale, width, theme, pageErrors: errors, body: await page.locator("body").innerText().catch(() => "unavailable") }));
+    throw error;
    } finally {await context.close();}
   }
   for(const mode of ["manual","replace"]) for(const client of [true,false]) {
