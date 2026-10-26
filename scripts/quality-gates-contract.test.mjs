@@ -8,12 +8,12 @@ const releaseWorkflow = readFileSync(
   ".github/workflows/release-build.yml",
   "utf8",
 );
-const qualityGates = readFileSync("docs/QUALITY_GATES.md", "utf8");
+const qualityGates = readFileSync("docs/development/QUALITY_GATES.md", "utf8");
 const performanceBaseline = readFileSync(
-  "docs/PERFORMANCE_BASELINE.md",
+  "docs/development/PERFORMANCE_BASELINE.md",
   "utf8",
 );
-const localizationWorkflow = readFileSync("docs/LOCALIZATION.md", "utf8");
+const localizationWorkflow = readFileSync("docs/development/LOCALIZATION.md", "utf8");
 const accessibilityGate = readFileSync(
   "scripts/run-data-backed-accessibility.mjs",
   "utf8",

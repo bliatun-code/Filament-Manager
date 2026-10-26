@@ -14,7 +14,7 @@ const issueConfig = readFileSync(
 );
 const contributing = readFileSync(new URL("../CONTRIBUTING.md", import.meta.url), "utf8");
 const localizationGuide = readFileSync(
-  new URL("../docs/LOCALIZATION.md", import.meta.url),
+  new URL("../docs/development/LOCALIZATION.md", import.meta.url),
   "utf8",
 );
 
