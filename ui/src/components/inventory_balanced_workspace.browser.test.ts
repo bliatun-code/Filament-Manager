@@ -9,7 +9,9 @@ import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
 import AxeBuilder from "@axe-core/playwright";
 
-test("balanced inventory preserves per-roll weights, filtering, selection and confirmed loan returns", {timeout:240_000}, async () => {
+// The complete 21-locale screenshot/axe matrix needs headroom on shared CI runners.
+// Individual interactions still fail within the eight-second page timeout below.
+test("balanced inventory preserves per-roll weights, filtering, selection and confirmed loan returns", {timeout:600_000}, async testContext => {
  const built=await build({root:fileURLToPath(new URL("../../",import.meta.url)),configFile:false,logLevel:"error",define:{"process.env.NODE_ENV":JSON.stringify("production")},plugins:[tailwindcss(),react()],build:{write:false,minify:false,cssCodeSplit:false,lib:{entry:fileURLToPath(new URL("../../test-fixtures/inventory_balanced_workspace_entry.tsx",import.meta.url)),formats:["iife"],name:"InventoryPreview"}}});
  const output=(Array.isArray(built)?built:[built]).flatMap(r=>r.output);
  const script=output.find(o=>o.type==="chunk"&&o.isEntry);assert.ok(script?.type==="chunk");
@@ -64,6 +66,7 @@ test("balanced inventory preserves per-roll weights, filtering, selection and co
      await page.screenshot({path:resolve(out,"en-return-confirmation.png"),fullPage:true});await dialog.getByRole("button",{name:"Close",exact:true}).first().click();assert.equal(await page.getByRole("dialog").count(),0);
     }
     assert.deepEqual(errors,[]);
+    testContext.diagnostic(`Inventory: ${locale}, ${width}px, ${theme} passed`);
    } finally {await context.close();}
   }
   const context=await browser.newContext({viewport:{width:1400,height:1000}});const page=await context.newPage();
