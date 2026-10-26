@@ -67,6 +67,9 @@ test("balanced inventory preserves per-roll weights, filtering, selection and co
     }
     assert.deepEqual(errors,[]);
     testContext.diagnostic(`Inventory: ${locale}, ${width}px, ${theme} passed`);
+   } catch (error) {
+    testContext.diagnostic(JSON.stringify({ workspace: "Inventory", locale, width, theme, pageErrors: errors, body: await page.locator("body").innerText().catch(() => "unavailable") }));
+    throw error;
    } finally {await context.close();}
   }
   const context=await browser.newContext({viewport:{width:1400,height:1000}});const page=await context.newPage();
