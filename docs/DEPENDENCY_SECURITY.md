@@ -69,6 +69,10 @@ next stable patch/toolchain update and the remaining compatibility constraints.
 The [October 13 review](DEPENDENCY_REVIEW_2026-10-13.md) records subsequent
 Tauri, npm, Cargo and action patches, unchanged major compatibility holds and
 the planned Node 26 LTS decision point.
+The [October 26 review](DEPENDENCY_REVIEW_2026-10-26.md) records the Brotli
+update and three newer Linux/BSD-only maintenance advisories (`zbus_names`,
+`zvariant`, `zvariant_derive`), pending the single-instance plugin’s migration
+to zbus 6.
 All remaining warnings stay visible in the scheduled report;
 only vulnerability advisories fail `cargo audit`. License violations always fail.
 
