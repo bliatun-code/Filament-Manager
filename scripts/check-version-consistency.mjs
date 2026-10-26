@@ -130,7 +130,13 @@ for (const [label, version] of documentationVersions) {
   }
 }
 
-if (!readme.includes("https://github.com/bliatun-code/Filament-Manager/releases/latest")) {
+const readmeLinkDestinations = Array.from(
+  readme.matchAll(/\]\(([^)\s]+)\)/g),
+  (match) => match[1],
+);
+if (!readmeLinkDestinations.some(
+  (destination) => destination === "https://github.com/bliatun-code/Filament-Manager/releases/latest",
+)) {
   mismatches.push("README latest-release download link is missing");
 }
 const expectedReleaseNotesLink = `- [${releaseTag}](${releaseNotesRelativePath})`;

@@ -83,6 +83,28 @@ test("rejects a missing latest-release download link", (t) => {
   assert.match(result.stderr, /README latest-release download link is missing/);
 });
 
+test("rejects lookalike download destinations and an unlinked URL", async (t) => {
+  for (const destination of [
+    "https://github.com/bliatun-code/Filament-Manager/releases/latest/other",
+    "https://example.invalid/https://github.com/bliatun-code/Filament-Manager/releases/latest",
+  ]) {
+    await t.test(destination, (t) => {
+      const result = runFixture(t, {
+        "README.md": `[Download latest release · v${version}](${destination})\n`,
+      });
+      assert.notEqual(result.status, 0);
+      assert.match(result.stderr, /README latest-release download link is missing/);
+    });
+  }
+  await t.test("plain text is not a download link", (t) => {
+    const result = runFixture(t, {
+      "README.md": `Download latest release · v${version}\nhttps://github.com/bliatun-code/Filament-Manager/releases/latest\n`,
+    });
+    assert.notEqual(result.status, 0);
+    assert.match(result.stderr, /README latest-release download link is missing/);
+  });
+});
+
 test("rejects a mismatched release notes heading", (t) => {
   const result = runFixture(t, {
     [`docs/releases/RELEASE_NOTES_${tag}.md`]: "# Filament Manager v0.22.1\n",
