@@ -887,7 +887,6 @@ export function SettingsFilamentDefaultsTab({
             {t("settings.filamentDefaultsCurrencyCode", "Three-letter currency code")}
             <input
               ref={currencyInputRef}
-              aria-describedby="settings-filament-default-currency-hint"
               autoCapitalize="characters"
               className={`${settingsFormControlClass} mt-1 uppercase`}
               disabled={disabled}
@@ -898,15 +897,6 @@ export function SettingsFilamentDefaultsTab({
               onChange={(event) => setDefaultCurrencyRaw(event.target.value.toLocaleUpperCase("en-US"))}
             />
           </label>
-          <p
-            id="settings-filament-default-currency-hint"
-            className="mt-2 text-xs leading-5 text-slate-500 dark:text-slate-400"
-          >
-            {t(
-              "settings.filamentDefaultsCurrencyCodeHint",
-              "For example NOK, EUR or USD. Saving this default never rewrites existing spool prices.",
-            )}
-          </p>
           {defaultCurrencyRaw && !normalizedDefaultCurrency ? (
             <p className="mt-2 text-xs text-rose-700 dark:text-rose-300" role="alert">
               {t(

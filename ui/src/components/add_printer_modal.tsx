@@ -145,7 +145,6 @@ export function AddPrinterModal({
                   type="text"
                   value={newPrinterName}
                   onChange={(event) => onPrinterNameChange(event.target.value)}
-                  placeholder={t("settings.printerName", "Printer name")}
                   className={modalFormInputClassName}
                   disabled={!tauri || busy}
                 />

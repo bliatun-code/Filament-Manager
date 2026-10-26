@@ -219,7 +219,7 @@ export function WishlistQueuePanel({
         />
         <div className="grid min-w-0 flex-1 grid-cols-[minmax(0,1fr)_auto] items-end gap-3 sm:max-w-sm">
           <label className="block min-w-0">
-            <span className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">
+            <span className="sr-only">
               {t("wishlist.searchQueueLabel", "Search purchase queue")}
             </span>
             <input
@@ -230,7 +230,7 @@ export function WishlistQueuePanel({
                 "wishlist.searchQueuePlaceholder",
                 "Search by name, color or vendor",
               )}
-              className={`mt-1.5 w-full ${formInputChromeClassName}`}
+              className={`w-full ${formInputChromeClassName}`}
             />
           </label>
           <span className="count-pill tabular-nums" aria-live="polite">

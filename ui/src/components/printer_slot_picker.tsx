@@ -265,10 +265,10 @@ export function PrinterSlotPicker({
             dropdownPlacement === "above" ? "bottom-full mb-2" : "top-full mt-2"
           }`}
         >
-          <div className="mb-2 flex items-center justify-between gap-3">
+          <div className="mb-2 flex items-center justify-end gap-3">
             <label
               htmlFor={searchInputId}
-              className="text-xs font-semibold text-slate-700 dark:text-slate-200"
+              className="sr-only"
             >
               {t("printers.searchAvailableRolls", "Search available rolls")}
             </label>

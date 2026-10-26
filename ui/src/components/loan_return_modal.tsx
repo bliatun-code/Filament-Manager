@@ -84,17 +84,6 @@ export function LoanReturnModal({
               ? t("loans.handBackDialogTitle", "Hand back borrowed-in spool")
               : t("loans.returnDialogTitle", "Return loaned roll")
           }
-          subtitle={
-            isInbound
-              ? t(
-                  "loans.handBackDialogSubtitle",
-                  "Weigh it back in, add a note if needed, then remove it from active inventory.",
-                )
-              : t(
-                  "loans.returnDialogSubtitle",
-                  "Weigh it back in and add a note if needed.",
-                )
-          }
           disabled={busy}
           onClose={onClose}
           closeLabel={t("common.close", "Close")}
@@ -220,7 +209,6 @@ export function LoanReturnModal({
             value={note}
             onChange={(event) => onNoteChange(event.target.value)}
             className={modalFormInputClassName}
-            placeholder={t("loans.returnNoteOptional", "Return note (optional)")}
           />
         </ModalFormField>
 

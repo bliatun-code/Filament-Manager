@@ -262,15 +262,12 @@ export function InventoryAddModal({
               : t("inventory.addFilament", "Add filament")
           }
           subtitle={
-            showCreatedSpool ? undefined : purpose === "PURCHASE"
+            !showCreatedSpool && purpose === "PURCHASE"
               ? t(
                   "inventory.wishlistQueueHelp",
                   "Keep planned purchases here, move them to on order, then stock them when they arrive.",
                 )
-              : t(
-                  "inventory.stockEntryHelp",
-                  "Choose a vendor flow, pick a filament, then confirm stock details below.",
-                )
+              : undefined
           }
           closeLabel={t("common.close", "Close")}
           onClose={onClose}

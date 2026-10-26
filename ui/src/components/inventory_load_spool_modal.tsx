@@ -71,12 +71,6 @@ function InventoryLoadSpoolSession({
             {t("inventory.error.loadInPrinterStale", "The selected printer slot is no longer available. Refresh and choose another slot.")}
           </ModalNotice>
         ) : null}
-        <ModalNotice tone="info">
-          {t(
-            "inventory.loadInPrinterHint",
-            "The selected roll is ready. Choose only the printer slot; no new roll search is needed.",
-          )}
-        </ModalNotice>
         {slots.length === 0 ? (
           <ModalNotice className="mt-4" tone="warning">
             {t("inventory.noAvailablePrinterSlots", "No empty printer slots are available.")}

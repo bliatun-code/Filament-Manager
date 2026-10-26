@@ -286,7 +286,7 @@ export function renderLoanPickerTaskSheetBody(options) {
   return `
     <div class="stack loan-picker-sheet">
       <label class="search-field" for="companion-loan-picker-search">
-        <span class="search-field-label">${escapeHtml(t(locale, "storage.catalogSearch", "Search material, filament, color, or vendor"))}</span>
+        <span class="search-field-label visually-hidden">${escapeHtml(t(locale, "storage.catalogSearch", "Search material, filament, color, or vendor"))}</span>
         <input id="companion-loan-picker-search" class="search-input" type="search" name="loan-picker-search" value="${escapeHtml(state.loanPickerSearch || "")}" placeholder="${escapeHtml(t(locale, "storage.searchPlaceholder", "Search filament, color, owner, or placement"))}" />
       </label>
       <p class="muted" role="status">${matchingSpools.length}/${loanSpoolOptions.length}</p>
@@ -615,7 +615,6 @@ export function renderLoansShell(options) {
       <div class="workflow-header">
         <div class="workflow-header-copy">
           <h2>${escapeHtml(t(locale, "loans.title", "Loans"))}</h2>
-          <p class="section-copy">${escapeHtml(t(locale, "loans.subtitle", "Track loans and finish returns."))}</p>
         </div>
 
       </div>
@@ -623,7 +622,7 @@ export function renderLoansShell(options) {
       <div class="workflow-toolbar">
         <div class="toolbar-row">
           <label class="search-field toolbar-search" for="companion-loan-search">
-            <span class="search-field-label">${escapeHtml(t(locale, "loans.searchPlaceholder", "Search borrower, note, filament, or reference"))}</span>
+            <span class="search-field-label visually-hidden">${escapeHtml(t(locale, "loans.searchPlaceholder", "Search borrower, note, filament, or reference"))}</span>
             <input
               id="companion-loan-search"
               class="search-input"

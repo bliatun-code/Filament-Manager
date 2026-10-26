@@ -161,3 +161,13 @@ body { background:linear-gradient(165deg,var(--bg-top),var(--bg-bottom)); }
   .printer-board-header { gap:.75rem; }
   .printer-board-header .companion-printer-image { width:4.5rem; height:5.5rem; }
 }
+
+/* Safari can focus-zoom small form text. Keep touch controls readable while
+   preserving browser pinch zoom and larger user-selected text sizes. */
+@media (max-width: 1199px), (pointer: coarse) {
+  :root input:not([type="checkbox"]):not([type="radio"]),
+  :root select,
+  :root textarea {
+    font-size: max(16px, 1rem);
+  }
+}

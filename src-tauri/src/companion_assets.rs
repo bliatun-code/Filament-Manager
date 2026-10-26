@@ -52,6 +52,8 @@ const COMPANION_BROWSER_MUTATION_HELPERS_JS: &str =
     include_str!("../companion_browser/companion_mutation_helpers.js");
 const COMPANION_BROWSER_MUTATIONS_JS: &str =
     include_str!("../companion_browser/companion_mutations.js");
+const COMPANION_BROWSER_OVERLAY_VIEWPORT_JS: &str =
+    include_str!("../companion_browser/companion_overlay_viewport.js");
 const COMPANION_BROWSER_OVERLAY_FOCUS_JS: &str =
     include_str!("../companion_browser/companion_overlay_focus.js");
 const COMPANION_BROWSER_PRINTER_MUTATIONS_JS: &str =
@@ -367,6 +369,13 @@ const COMPANION_BROWSER_BASE_ASSETS: &[(&str, CompanionBrowserAsset)] = &[
         CompanionBrowserAsset {
             content_type: "application/javascript; charset=utf-8",
             content: COMPANION_BROWSER_MUTATIONS_JS,
+        },
+    ),
+    (
+        "companion_overlay_viewport.js",
+        CompanionBrowserAsset {
+            content_type: "application/javascript; charset=utf-8",
+            content: COMPANION_BROWSER_OVERLAY_VIEWPORT_JS,
         },
     ),
     (
@@ -983,6 +992,18 @@ mod tests {
         assert!(workspace.content.starts_with(b"#app {"));
         assert!(workspace.gzip_content.is_some());
         assert_eq!(workspace.content_type, "text/css; charset=utf-8");
+
+        let viewport = cached_companion_browser_asset("companion_overlay_viewport.js")
+            .expect("overlay viewport module served to Companion browsers");
+        assert_eq!(
+            viewport.content_type,
+            "application/javascript; charset=utf-8"
+        );
+        assert_eq!(
+            viewport.content,
+            COMPANION_BROWSER_OVERLAY_VIEWPORT_JS.as_bytes()
+        );
+        assert!(viewport.gzip_content.is_some());
 
         let icon = cached_companion_browser_asset("icon-dark.png").expect("cached icon");
         assert!(icon.gzip_content.is_none());

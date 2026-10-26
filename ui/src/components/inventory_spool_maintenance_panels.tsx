@@ -140,7 +140,7 @@ export function InventorySpoolHomeLocationPanel({
       style={neutral ? undefined : inventorySwatchPanelStyle(spoolHexColor, resolvedTheme)}
     >
       <label htmlFor={inputId} className={inventoryDetailEyebrowClassName}>
-        {t("inventory.editHomeLocation", "Home location")}
+        {t("inventory.homeLocationOptional", "Home location (optional)")}
       </label>
       <div className="mt-3 flex items-center gap-3">
         <input
@@ -149,7 +149,6 @@ export function InventorySpoolHomeLocationPanel({
           list={INVENTORY_LOCATION_DATALIST_ID}
           value={value}
           onChange={(event) => onChange(event.target.value)}
-          placeholder={t("inventory.homeLocationOptional", "Home location (optional)")}
           className={`w-full ${inventoryDetailFormControlClassName}`}
           disabled={disabled}
           aria-describedby={assignedToPrinter || loanedOut ? helpId : undefined}
@@ -209,7 +208,6 @@ export function InventorySpoolOwnershipPanel({
   const ownerNameId = `${fieldIdPrefix}-owner-name`;
   const ownerContactId = `${fieldIdPrefix}-owner-contact`;
   const ownershipNoteId = `${fieldIdPrefix}-note`;
-  const ownedHelpId = `${fieldIdPrefix}-owned-help`;
   const loanedHelpId = `${fieldIdPrefix}-loaned-help`;
 
   return (
@@ -219,7 +217,7 @@ export function InventorySpoolOwnershipPanel({
     >
       <fieldset
         className="min-w-0 border-0 p-0"
-        aria-describedby={loanedOut ? loanedHelpId : borrowed ? undefined : ownedHelpId}
+        aria-describedby={loanedOut ? loanedHelpId : undefined}
       >
         <legend className={inventoryDetailEyebrowClassName}>
           {t("inventory.editOwnership", "Ownership")}
@@ -257,7 +255,6 @@ export function InventorySpoolOwnershipPanel({
                 type="text"
                 value={ownerNameValue}
                 onChange={(event) => onChangeName(event.target.value)}
-                placeholder={t("inventory.ownerNameRequired", "Owner name (required)")}
                 className={`mt-1.5 w-full ${inventoryDetailFormControlClassName}`}
                 disabled={disabled}
               />
@@ -271,7 +268,6 @@ export function InventorySpoolOwnershipPanel({
                 type="text"
                 value={contactValue}
                 onChange={(event) => onChangeContact(event.target.value)}
-                placeholder={t("inventory.ownerContactOptional", "Contact (optional)")}
                 className={`mt-1.5 w-full ${inventoryDetailFormControlClassName}`}
                 disabled={disabled}
               />
@@ -284,21 +280,10 @@ export function InventorySpoolOwnershipPanel({
                 id={ownershipNoteId}
                 value={noteValue}
                 onChange={(event) => onChangeNote(event.target.value)}
-                placeholder={t("inventory.ownershipNoteOptional", "Note (optional)")}
                 className={`mt-1.5 min-h-20 w-full resize-y ${inventoryDetailFormControlClassName}`}
                 disabled={disabled}
               />
             </label>
-          </div>
-        ) : !loanedOut ? (
-          <div
-            id={ownedHelpId}
-            className={compact ? "sr-only" : "mt-2 text-xs leading-relaxed text-slate-500 dark:text-slate-400"}
-          >
-            {t(
-              "inventory.ownedOwnershipHelp",
-              "Owned rolls stay in your inventory and can be loaned out later.",
-            )}
           </div>
         ) : null}
         {loanedOut ? (

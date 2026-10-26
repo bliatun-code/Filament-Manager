@@ -262,7 +262,7 @@ export function renderPrinterPickerTaskSheetBody(options) {
     <div class="stack printer-spool-picker printer-picker-sheet">
       <div class="meta-line">${escapeHtml(t(locale, "printers.readyToLoad", "{count} ready to load", { count: availableCount }))}</div>
       <label class="search-field" for="companion-printer-spool-search">
-        <span class="search-field-label">${escapeHtml(t(locale, "printers.pickerPlaceholder", "Search by material, color, vendor, or reference"))}</span>
+        <span class="search-field-label visually-hidden">${escapeHtml(t(locale, "printers.pickerPlaceholder", "Search by material, color, vendor, or reference"))}</span>
         <input
           id="companion-printer-spool-search"
           class="search-input"
