@@ -86,7 +86,7 @@ measurement records. No participant results or app-launch evidence were generate
    in each app before timing so update prompts do not interrupt the task.
    Separate databases do not reset the app's local UI preferences. Record
    \`preferences_verified\`.
-   Follow the native isolation procedure in \`docs/USABILITY_TEST_PROTOCOL.md\`
+   Follow the native isolation procedure in \`docs/development/USABILITY_TEST_PROTOCOL.md\`
    before launch. On macOS, build each pinned ref with a distinct compiled
    study-only app identifier and an incognito main webview, or use a VM for
    unchanged official binaries. Renaming the bundle is not sufficient.

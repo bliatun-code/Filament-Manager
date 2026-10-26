@@ -5,1276 +5,1276 @@
       "surface": "desktop",
       "key": "dashboard.spoolsOnHand",
       "meaning": "Headline count of physical rolls currently on hand, including rolls loaded in printers and rolls borrowed from others. Excludes rolls loaned out, empty or lost. Do not translate as total lifetime roll count.",
-      "screenshot": "docs/screenshots/dashboard.jpg"
+      "screenshot": "docs/images/v0.35.0/overview.png"
     },
     {
       "surface": "desktop",
       "key": "dashboard.outboundLoans",
       "meaning": "Headline count of physical rolls currently loaned out to other people. This is not stock borrowed from other people and not a count of borrowers.",
-      "screenshot": "docs/screenshots/dashboard.jpg"
+      "screenshot": "docs/images/v0.35.0/overview.png"
     },
     {
       "surface": "desktop",
       "key": "dashboard.outboundLoansSubtitle",
       "meaning": "Explains the outbound loan count. Only active, not yet returned loans to other people are included.",
-      "screenshot": "docs/screenshots/dashboard.jpg"
+      "screenshot": "docs/images/v0.35.0/overview.png"
     },
     {
       "surface": "desktop",
       "key": "dashboard.usageLast30Days",
       "meaning": "Measured filament consumption over the rolling last 30 days. This is not the current calendar month; the annual chart uses calendar-month buckets.",
-      "screenshot": "docs/screenshots/dashboard.jpg"
+      "screenshot": "docs/images/v0.35.0/overview.png"
     },
     {
       "surface": "desktop",
       "key": "dashboard.noLowStock",
       "meaning": "Empty low-stock list after a successful inventory read. Does not imply that inventory is empty and must not be used for an unavailable Host snapshot.",
-      "screenshot": "docs/screenshots/dashboard.jpg"
+      "screenshot": "docs/images/v0.35.0/overview.png"
     },
     {
       "surface": "desktop",
       "key": "dashboard.printerUsageSummary",
       "meaning": "Compact lifetime summary inside a printer card: count is the number of recorded printer jobs and grams is a preformatted consumed filament mass including unit. Preserve both parameters and locale-appropriate plural forms; this is not live print progress.",
-      "screenshot": "docs/screenshots/dashboard.jpg"
+      "screenshot": "docs/images/v0.35.0/overview.png"
     },
     {
       "surface": "desktop",
       "key": "settings.versionedHelpUnavailable",
       "meaning": "The installed application has not reported a stable release version, or reports a development or prerelease identifier. Source, product tour and manual actions stay disabled to avoid silently showing main-branch instructions for a different version. License and notices remain available.",
-      "screenshot": "docs/screenshots/settings-general.jpg"
+      "screenshot": "docs/images/v0.35.0/settings.png"
     },
     {
       "surface": "companion",
       "key": "errors.inventoryBulkReactivationRequiresWeight",
       "meaning": "The entire bulk status change was rejected because an empty roll has no positive measured filament weight. Weigh that roll before retrying the selection.",
-      "screenshot": "docs/screenshots/companion-phone-inventory.jpg"
+      "screenshot": "docs/images/v0.35.0/companion-mobile.png"
     },
     {
       "surface": "desktop",
       "key": "errors.inventoryBulkReactivationRequiresWeight",
       "meaning": "The entire bulk status change was rejected because an empty roll has no positive measured filament weight. Weigh that roll before retrying the selection.",
-      "screenshot": "docs/screenshots/inventory.jpg"
+      "screenshot": "docs/images/v0.35.0/inventory.png"
     },
     {
       "surface": "desktop",
       "key": "inventory.bulkMutationDone",
       "meaning": "Success receipt after a confirmed bulk write. Count is the number actually changed, excluding selected rolls that already had the target value. Use plain language, not database transaction terminology.",
-      "screenshot": "docs/screenshots/inventory.jpg"
+      "screenshot": "docs/images/v0.35.0/inventory.png"
     },
     {
       "surface": "desktop",
       "key": "inventory.bulkAtomicWarning",
       "meaning": "Before bulk confirmation: all requested changes are saved together or none are saved if one fails. Applies to both one and many changed rolls; counts are displayed separately.",
-      "screenshot": "docs/screenshots/inventory.jpg"
+      "screenshot": "docs/images/v0.35.0/inventory.png"
     },
     {
       "surface": "desktop",
       "key": "settings.importFileEmpty",
       "meaning": "This file is empty. Choose an export containing data.",
-      "screenshot": "docs/screenshots/settings-maintenance.jpg"
+      "screenshot": "docs/images/v0.35.0/settings.png"
     },
     {
       "surface": "desktop",
       "key": "settings.importJsonInvalid",
       "meaning": "The JSON file is damaged or incomplete. Export or download it again, then retry.",
-      "screenshot": "docs/screenshots/settings-maintenance.jpg"
+      "screenshot": "docs/images/v0.35.0/settings.png"
     },
     {
       "surface": "desktop",
       "key": "settings.importBackupUnsupported",
       "meaning": "This backup version is not supported. Update Filament Manager or choose a backup exported by this version.",
-      "screenshot": "docs/screenshots/settings-maintenance.jpg"
+      "screenshot": "docs/images/v0.35.0/settings.png"
     },
     {
       "surface": "desktop",
       "key": "settings.importBackupInvalid",
       "meaning": "This is not a complete Filament Manager backup. Choose a full backup JSON exported from Program maintenance.",
-      "screenshot": "docs/screenshots/settings-maintenance.jpg"
+      "screenshot": "docs/images/v0.35.0/settings.png"
     },
     {
       "surface": "desktop",
       "key": "settings.importInventoryInvalid",
       "meaning": "Invalid inventory data. Use an exported inventory CSV or JSON. Each row needs spool_id, material, filament_name and color_name; weights must be non-negative whole grams.",
-      "screenshot": "docs/screenshots/settings-maintenance.jpg"
+      "screenshot": "docs/images/v0.35.0/settings.png"
     },
     {
       "surface": "desktop",
       "key": "settings.importDataScopeHint",
       "meaning": "Inventory CSV/JSON creates or updates spools with matching IDs. A full backup replaces the library after confirmation. Export a full backup first to keep a recovery copy.",
-      "screenshot": "docs/screenshots/settings-maintenance.jpg"
+      "screenshot": "docs/images/v0.35.0/settings.png"
     },
     {
       "surface": "desktop",
       "key": "errors.hostUnavailable",
       "meaning": "The paired library Host cannot currently be reached. Saved pairing is distinct from live connectivity: no offline write is queued or reported saved. Ask the user to restore Host/network availability and refresh. Missing pairing uses a separate message.",
-      "screenshot": "docs/screenshots/settings-library-network.jpg"
+      "screenshot": "docs/images/v0.35.0/settings.png"
     },
     {
       "surface": "companion",
       "key": "settings.cachedData",
       "meaning": "Persistent warning after any overview request failed: previously loaded values may be stale. Refresh is the user action to retry; a reachable session does not guarantee fresh data.",
-      "screenshot": "docs/screenshots/companion-phone-settings.jpg"
+      "screenshot": "docs/images/v0.35.0/companion-mobile.png"
     },
     {
       "surface": "desktop",
       "key": "errors.inventoryWeightHostUnsupported",
       "meaning": "The library-owning Host computer must be updated before saving a measured total roll weight and any resulting usage or reactivation. No change has been sent. Update that Host before retrying.",
-      "screenshot": "docs/screenshots/filament-details.jpg"
+      "screenshot": "docs/images/v0.35.0/inventory.png"
     },
     {
       "surface": "companion",
       "key": "errors.inventoryWeightHostUnsupported",
       "meaning": "The library-owning Host computer must be updated before saving a measured total roll weight and any resulting usage or reactivation. No change has been sent. Update that Host before retrying.",
-      "screenshot": "docs/screenshots/filament-details.jpg"
+      "screenshot": "docs/images/v0.35.0/inventory.png"
     },
     {
       "surface": "companion",
       "key": "errors.inventoryStatusHostUnsupported",
       "meaning": "The shared library Host needs a Filament Manager update before a reviewed roll-status change can be sent. Host means the computer owning the library. No change was sent; the user should update that Host before retrying.",
-      "screenshot": "docs/screenshots/filament-details.jpg"
+      "screenshot": "docs/images/v0.35.0/inventory.png"
     },
     {
       "surface": "desktop",
       "key": "errors.inventoryStatusHostUnsupported",
       "meaning": "The shared library Host needs a Filament Manager update before a reviewed roll-status change can be sent. Host means the computer owning the library. No change was sent; the user should update that Host before retrying.",
-      "screenshot": "docs/screenshots/filament-details.jpg"
+      "screenshot": "docs/images/v0.35.0/inventory.png"
     },
     {
       "surface": "desktop",
       "key": "errors.printerSlotChanged",
       "meaning": "The physical roll assigned to this printer material slot changed after the user opened the operation dialog. The atomic operation was rejected; refresh the printer and choose the operation again using the current roll. Slot means an AMS, MMU, external-holder, or toolhead material position.",
-      "screenshot": "docs/screenshots/printer-slot-replacement.jpg"
+      "screenshot": "docs/images/v0.35.0/printers.png"
     },
     {
       "surface": "desktop",
       "key": "errors.printerSlotHostUnsupported",
       "meaning": "The remote library Host is too old to support an atomic printer slot operation. Update Filament Manager on the Host computer before retrying. No measured weight, usage, or slot assignment has been sent to that Host; Host is the computer owning the shared library.",
-      "screenshot": "docs/screenshots/printer-slot-replacement.jpg"
+      "screenshot": "docs/images/v0.35.0/printers.png"
     },
     {
       "surface": "companion",
       "key": "errors.printerSlotChanged",
       "meaning": "The physical roll assigned to this printer material slot changed after the user opened the operation dialog. The atomic operation was rejected; refresh the printer and choose the operation again using the current roll. Slot means an AMS, MMU, external-holder, or toolhead material position.",
-      "screenshot": "docs/screenshots/printer-slot-replacement.jpg"
+      "screenshot": "docs/images/v0.35.0/printers.png"
     },
     {
       "surface": "companion",
       "key": "errors.printerSlotHostUnsupported",
       "meaning": "The remote library Host is too old to support an atomic printer slot operation. Update Filament Manager on the Host computer before retrying. No measured weight, usage, or slot assignment has been sent to that Host; Host is the computer owning the shared library.",
-      "screenshot": "docs/screenshots/printer-slot-replacement.jpg"
+      "screenshot": "docs/images/v0.35.0/printers.png"
     },
     {
       "surface": "desktop",
       "key": "common.active",
       "meaning": "Generic enabled/current state, not a grammatical description of a person.",
-      "screenshot": "docs/screenshots/settings-library.jpg"
+      "screenshot": "docs/images/v0.35.0/settings.png"
     },
     {
       "surface": "desktop",
       "key": "errors.libraryRoleLoadFailed",
       "meaning": "Fail-closed page error shown when the desktop cannot determine whether this process owns the local library or must use a remote Host; local reads and writes stay blocked until retry succeeds.",
-      "screenshot": "docs/screenshots/settings-library.jpg"
+      "screenshot": "docs/images/v0.35.0/settings.png"
     },
     {
       "surface": "desktop",
       "key": "settings.backgroundOperation",
       "meaning": "Heading for keeping the desktop process active after its main window is hidden; this is not an operating-system service.",
-      "screenshot": "docs/screenshots/settings-general.jpg"
+      "screenshot": "docs/images/v0.35.0/settings.png"
     },
     {
       "surface": "desktop",
       "key": "settings.continueInBackground",
       "meaning": "Opt-in checkbox that changes a normal window close into hiding the window while the process continues.",
-      "screenshot": "docs/screenshots/settings-general.jpg"
+      "screenshot": "docs/images/v0.35.0/settings.png"
     },
     {
       "surface": "desktop",
       "key": "settings.launchAtLogin",
       "meaning": "Opt-in checkbox that starts the app hidden when the current operating-system user signs in.",
-      "screenshot": "docs/screenshots/settings-general.jpg"
+      "screenshot": "docs/images/v0.35.0/settings.png"
     },
     {
       "surface": "desktop",
       "key": "settings.backgroundTrayOpen",
       "meaning": "Native menu-bar or system-tray command that restores and focuses the Filament Manager window.",
-      "screenshot": "docs/screenshots/settings-general.jpg"
+      "screenshot": "docs/images/v0.35.0/settings.png"
     },
     {
       "surface": "desktop",
       "key": "settings.backgroundTrayQuit",
       "meaning": "Native menu-bar or system-tray command that fully stops Filament Manager; distinguish it from merely closing or hiding the window.",
-      "screenshot": "docs/screenshots/settings-general.jpg"
+      "screenshot": "docs/images/v0.35.0/settings.png"
     },
     {
       "surface": "desktop",
       "key": "settings.backgroundLaunchUnavailable",
       "meaning": "Warning shown when the operating system's launch-at-login or autostart state cannot be read for the current session; the separate close-to-tray preference remains available and independent.",
-      "screenshot": "docs/screenshots/settings-general.jpg"
+      "screenshot": "docs/images/v0.35.0/settings.png"
     },
     {
       "surface": "desktop",
       "key": "settings.backgroundMoveToApplicationsError",
       "meaning": "macOS guidance shown when launch at login cannot use an app running from a disk image or App Translocation path; Applications is the localized system Applications folder name.",
-      "screenshot": "docs/screenshots/settings-general.jpg"
+      "screenshot": "docs/images/v0.35.0/settings.png"
     },
     {
       "surface": "desktop",
       "key": "settings.backgroundMacosApprovalRequired",
       "meaning": "macOS requires the user to approve Filament Manager background activity before launch at login can be enabled. Direct the user to the localized System Settings > General > Login Items page and Background App Activity section, then ask them to retry. This concerns the operating system permission, not the close-to-tray preference.",
-      "screenshot": "docs/screenshots/settings-general.jpg"
+      "screenshot": "docs/images/v0.35.0/settings.png"
     },
     {
       "surface": "desktop",
       "key": "inventory.labelProfile.custom",
       "meaning": "Size-profile option that lets the user enter physical label dimensions; it does not customize the label content.",
-      "screenshot": "docs/screenshots/filament-label.jpg",
+      "screenshot": "docs/images/v0.35.0/inventory.png",
       "maxCharacters": 24
     },
     {
       "surface": "desktop",
       "key": "inventory.labelCustomWidth",
       "meaning": "Field label for the physical width of one custom filament label, entered in millimetres.",
-      "screenshot": "docs/screenshots/filament-label.jpg",
+      "screenshot": "docs/images/v0.35.0/inventory.png",
       "maxCharacters": 16
     },
     {
       "surface": "desktop",
       "key": "inventory.labelCustomHeight",
       "meaning": "Field label for the physical height of one custom filament label, entered in millimetres.",
-      "screenshot": "docs/screenshots/filament-label.jpg",
+      "screenshot": "docs/images/v0.35.0/inventory.png",
       "maxCharacters": 16
     },
     {
       "surface": "desktop",
       "key": "inventory.labelCustomSizeHint",
       "meaning": "Compact guidance identifying the required landscape format, supported width and height ranges, and 0.5 mm input increment for a custom label.",
-      "screenshot": "docs/screenshots/filament-label.jpg"
+      "screenshot": "docs/images/v0.35.0/inventory.png"
     },
     {
       "surface": "desktop",
       "key": "inventory.labelCustomSizeRangeError",
       "meaning": "Validation error when a custom dimension is not finite, falls outside the supported range, or does not use a 0.5 mm increment.",
-      "screenshot": "docs/screenshots/filament-label.jpg"
+      "screenshot": "docs/images/v0.35.0/inventory.png"
     },
     {
       "surface": "desktop",
       "key": "inventory.labelCustomSizeShapeError",
       "meaning": "Validation error enforcing a landscape label whose width is at least 20 mm greater than its height and at least 1.6 times its height.",
-      "screenshot": "docs/screenshots/filament-label.jpg"
+      "screenshot": "docs/images/v0.35.0/inventory.png"
     },
     {
       "surface": "desktop",
       "key": "inventory.statusEmpty",
       "meaning": "The physical spool has no usable filament remaining; it is not an empty printer slot.",
-      "screenshot": "docs/screenshots/filament-details.jpg"
+      "screenshot": "docs/images/v0.35.0/inventory.png"
     },
     {
       "surface": "desktop",
       "key": "inventory.statusLost",
       "meaning": "The user cannot currently locate the physical spool. It has not been deleted.",
-      "screenshot": "docs/screenshots/filament-details.jpg"
+      "screenshot": "docs/images/v0.35.0/inventory.png"
     },
     {
       "surface": "desktop",
       "key": "inventory.borrowedIn",
       "meaning": "A spool owned by someone else and temporarily held by the user; opposite of loaned out.",
-      "screenshot": "docs/screenshots/add-filament.jpg"
+      "screenshot": "docs/images/v0.35.0/inventory.png"
     },
     {
       "surface": "desktop",
       "key": "inventory.out",
       "meaning": "Compact table heading for filament weight when a spool was loaned out, measured in grams.",
-      "screenshot": "docs/screenshots/loan-out.jpg",
+      "screenshot": "docs/images/v0.35.0/inventory.png",
       "maxCharacters": 10
     },
     {
       "surface": "desktop",
       "key": "inventory.remaining",
       "meaning": "Estimated usable filament still wound on the spool, excluding the empty-spool weight.",
-      "screenshot": "docs/screenshots/filament-details.jpg"
+      "screenshot": "docs/images/v0.35.0/inventory.png"
     },
     {
       "surface": "desktop",
       "key": "inventory.emptySpoolWeight",
       "meaning": "Tare weight of the empty physical spool, subtracted from measured total weight.",
-      "screenshot": "docs/screenshots/filament-details.jpg"
+      "screenshot": "docs/images/v0.35.0/inventory.png"
     },
     {
       "surface": "desktop",
       "key": "loans.directionOutbound",
       "meaning": "A spool owned by the user that has been lent to another person.",
-      "screenshot": "docs/screenshots/loans.jpg"
+      "screenshot": "docs/images/v0.35.0/inventory.png"
     },
     {
       "surface": "desktop",
       "key": "loans.out",
       "meaning": "Compact loan-table heading for outgoing filament weight in grams.",
-      "screenshot": "docs/screenshots/loans.jpg",
+      "screenshot": "docs/images/v0.35.0/inventory.png",
       "maxCharacters": 10
     },
     {
       "surface": "desktop",
       "key": "printers.used",
       "meaning": "Total filament consumed by tracked jobs on this printer, not elapsed printer time.",
-      "screenshot": "docs/screenshots/printers.jpg",
+      "screenshot": "docs/images/v0.35.0/printers.png",
       "maxCharacters": 12
     },
     {
       "surface": "desktop",
       "key": "printers.slot",
       "meaning": "One material position in an AMS, MMU, external holder, or toolhead group.",
-      "screenshot": "docs/screenshots/printer-slot-assignment.jpg",
+      "screenshot": "docs/images/v0.35.0/printers.png",
       "maxCharacters": 14
     },
     {
       "surface": "desktop",
       "key": "printers.toolhead",
       "meaning": "A printer toolhead/extruder material position; do not translate as a hand tool.",
-      "screenshot": "docs/screenshots/printer-slot-assignment.jpg",
+      "screenshot": "docs/images/v0.35.0/printers.png",
       "maxCharacters": 18
     },
     {
       "surface": "desktop",
       "key": "printers.lastKnownLive",
       "meaning": "Label for the timestamp of the latest live telemetry update from the printer; live means real-time data, not a broadcast or a living object.",
-      "screenshot": "docs/screenshots/printer-ams-weight-estimate.jpg"
+      "screenshot": "docs/images/v0.35.0/printers.png"
     },
     {
       "surface": "desktop",
       "key": "printers.amsWeightEstimateHint",
       "meaning": "Explains that the displayed remaining-filament value comes from the AMS for the exact RFID-matched roll and is an estimate, not a physical scale measurement.",
-      "screenshot": "docs/screenshots/printer-ams-weight-estimate.jpg"
+      "screenshot": "docs/images/v0.35.0/printers.png"
     },
     {
       "surface": "desktop",
       "key": "printers.amsCalculatedTotal",
       "meaning": "Total physical roll weight calculated as estimated remaining filament plus the empty-spool tare weight.",
-      "screenshot": "docs/screenshots/printer-ams-weight-estimate.jpg"
+      "screenshot": "docs/images/v0.35.0/printers.png"
     },
     {
       "surface": "desktop",
       "key": "printers.useAmsWeightEstimate",
       "meaning": "Button that explicitly updates the matched inventory roll from the currently displayed AMS estimate; it does not merely refresh telemetry.",
-      "screenshot": "docs/screenshots/printer-ams-weight-estimate.jpg"
+      "screenshot": "docs/images/v0.35.0/printers.png"
     },
     {
       "surface": "desktop",
       "key": "printers.amsWeightAccepted",
       "meaning": "Success confirmation that the inventory roll weight was updated from the current AMS estimate.",
-      "screenshot": "docs/screenshots/printer-ams-weight-estimate.jpg"
+      "screenshot": "docs/images/v0.35.0/printers.png"
     },
     {
       "surface": "desktop",
       "key": "printers.error.amsWeightEstimateChanged",
       "meaning": "Error shown when the AMS estimate or exact RFID roll match changed before acceptance; the user must reopen the weight dialog and retry.",
-      "screenshot": "docs/screenshots/printer-ams-weight-estimate.jpg"
+      "screenshot": "docs/images/v0.35.0/printers.png"
     },
     {
       "surface": "desktop",
       "key": "settings.bambuLiveAmsWeightBasis",
       "meaning": "AMS-reported nominal filament weight that represents 100% and is used as the basis for calculating remaining grams; it excludes empty-spool tare weight.",
-      "screenshot": "docs/screenshots/printer-ams-weight-estimate.jpg"
+      "screenshot": "docs/images/v0.35.0/printers.png"
     },
     {
       "surface": "desktop",
       "key": "settings.bambuLiveAmsWeightEstimate",
       "meaning": "Estimated remaining filament reported by the AMS for a matched roll; this is not a price estimate or a physical scale measurement.",
-      "screenshot": "docs/screenshots/printer-ams-weight-estimate.jpg"
+      "screenshot": "docs/images/v0.35.0/printers.png"
     },
     {
       "surface": "desktop",
       "key": "settings.bambuDiscoveryAutoFilled",
       "meaning": "Success message shown only when one unambiguous discovery result fills an otherwise blank, unpaired Bambu Live draft with the printer IP address and serial number. It confirms that no access code was changed or sent, then directs the user to enter the access code and review the TLS identity before saving.",
-      "screenshot": "docs/screenshots/settings-printer-editor.jpg"
+      "screenshot": "docs/images/v0.35.0/settings.png"
     },
     {
       "surface": "desktop",
       "key": "settings.discoverCatalogMaterials",
       "meaning": "Button that performs a lightweight, read-only storefront discovery of available material types. It must not imply product import, a full vendor audit, or catalog lifecycle changes.",
-      "screenshot": "docs/screenshots/settings-catalog.jpg"
+      "screenshot": "docs/images/v0.35.0/settings.png"
     },
     {
       "surface": "desktop",
       "key": "settings.discoveringCatalogMaterials",
       "meaning": "Progress label while the lightweight, read-only material-type discovery is running.",
-      "screenshot": "docs/screenshots/settings-catalog.jpg"
+      "screenshot": "docs/images/v0.35.0/settings.png"
     },
     {
       "surface": "desktop",
       "key": "settings.availableCatalogMaterials",
       "meaning": "Heading for material types that the latest conclusive storefront discovery found available for a subsequent, separately selected refresh.",
-      "screenshot": "docs/screenshots/settings-catalog.jpg"
+      "screenshot": "docs/images/v0.35.0/settings.png"
     },
     {
       "surface": "desktop",
       "key": "settings.catalogDiscoveryHelp",
       "meaning": "Explains that discovery uses a small, read-only storefront request, imports nothing, and changes no catalog lifecycle state.",
-      "screenshot": "docs/screenshots/settings-catalog.jpg"
+      "screenshot": "docs/images/v0.35.0/settings.png"
     },
     {
       "surface": "desktop",
       "key": "settings.catalogDiscoveryEmpty",
       "meaning": "Empty state shown before this library has a successful material discovery. It invites the user to check the vendor source and does not describe a failed request.",
-      "screenshot": "docs/screenshots/settings-catalog.jpg"
+      "screenshot": "docs/images/v0.35.0/settings.png"
     },
     {
       "surface": "desktop",
       "key": "settings.catalogDiscoverySuccess",
       "meaning": "Successful discovery summary. {count} is the number of available material types and must remain unchanged.",
-      "screenshot": "docs/screenshots/settings-catalog.jpg"
+      "screenshot": "docs/images/v0.35.0/settings.png"
     },
     {
       "surface": "desktop",
       "key": "settings.selectOneMaterial",
       "meaning": "Validation guidance requiring exactly one material type for a catalog refresh, keeping network traffic intentionally bounded.",
-      "screenshot": "docs/screenshots/settings-catalog.jpg"
+      "screenshot": "docs/images/v0.35.0/settings.png"
     },
     {
       "surface": "desktop",
       "key": "settings.refreshSelectedMaterial",
       "meaning": "Button that refreshes exactly one selected material type. {material} is a vendor material name and must remain unchanged.",
-      "screenshot": "docs/screenshots/settings-catalog.jpg"
+      "screenshot": "docs/images/v0.35.0/settings.png"
     },
     {
       "surface": "desktop",
       "key": "settings.catalogAuditBambuFailed",
       "meaning": "Fail-closed Bambu storefront discovery error. No products or lifecycle states changed, and the previous available-material list was retained.",
-      "screenshot": "docs/screenshots/settings-catalog.jpg"
+      "screenshot": "docs/images/v0.35.0/settings.png"
     },
     {
       "surface": "desktop",
       "key": "settings.catalogAuditEsunFailed",
       "meaning": "Fail-closed eSUN storefront discovery error. No products or lifecycle states changed, and the previous available-material list was retained.",
-      "screenshot": "docs/screenshots/settings-catalog.jpg"
+      "screenshot": "docs/images/v0.35.0/settings.png"
     },
     {
       "surface": "desktop",
       "key": "settings.companionTitle",
       "meaning": "Filament Manager's trusted-LAN browser interface. Companion is a product feature name, not a person.",
-      "screenshot": "docs/screenshots/settings-library.jpg"
+      "screenshot": "docs/images/v0.35.0/settings.png"
     },
     {
       "surface": "companion",
       "key": "storage.borrowedInAction",
       "meaning": "Register stock owned by somebody else and currently held by the user.",
-      "screenshot": "docs/screenshots/companion-phone-add-spool.jpg"
+      "screenshot": "docs/images/v0.35.0/companion-mobile.png"
     },
     {
       "surface": "companion",
       "key": "loans.active",
       "meaning": "The outbound loan has not yet been returned.",
-      "screenshot": "docs/screenshots/companion-phone-lend-spool.jpg",
+      "screenshot": "docs/images/v0.35.0/companion-mobile.png",
       "maxCharacters": 14
     },
     {
       "surface": "companion",
       "key": "printers.empty",
       "meaning": "A printer material slot has no assigned spool; this is not the empty-spool inventory status.",
-      "screenshot": "docs/screenshots/companion-phone-printers.jpg",
+      "screenshot": "docs/images/v0.35.0/companion-tablet.png",
       "maxCharacters": 14
     },
     {
       "surface": "companion",
       "key": "printers.slot",
       "meaning": "One load position in an AMS, MMU, external holder, or toolhead group.",
-      "screenshot": "docs/screenshots/companion-phone-printers.jpg",
+      "screenshot": "docs/images/v0.35.0/companion-tablet.png",
       "maxCharacters": 14
     },
     {
       "surface": "companion",
       "key": "printers.toolhead",
       "meaning": "A printer toolhead/extruder material position; do not translate as a hand tool.",
-      "screenshot": "docs/screenshots/companion-phone-printers.jpg",
+      "screenshot": "docs/images/v0.35.0/companion-tablet.png",
       "maxCharacters": 18
     },
     {
       "surface": "companion",
       "key": "detail.loan",
       "meaning": "Heading for the current ownership/loan record associated with the selected spool.",
-      "screenshot": "docs/screenshots/companion-phone-detail.jpg",
+      "screenshot": "docs/images/v0.35.0/companion-mobile.png",
       "maxCharacters": 14
     },
     {
       "surface": "companion",
       "key": "detail.emptySpoolWeight",
       "meaning": "Tare weight of the empty physical spool, not zero remaining filament.",
-      "screenshot": "docs/screenshots/companion-phone-detail.jpg"
+      "screenshot": "docs/images/v0.35.0/companion-mobile.png"
     },
     {
       "surface": "companion",
       "key": "detail.usageSourceRfid",
       "meaning": "Usage/history source recorded from radio-frequency spool identity. Keep the acronym RFID.",
-      "screenshot": "docs/screenshots/companion-phone-detail.jpg",
+      "screenshot": "docs/images/v0.35.0/companion-mobile.png",
       "maxCharacters": 8
     },
     {
       "surface": "companion",
       "key": "detail.usageSourceAmsEstimate",
       "meaning": "Weight-history source shown after the user accepts an estimate from Bambu Lab's Automatic Material System. Keep the acronym AMS and do not imply a physical scale measurement.",
-      "screenshot": "docs/screenshots/companion-phone-detail.jpg"
+      "screenshot": "docs/images/v0.35.0/companion-mobile.png"
     },
     {
       "surface": "companion",
       "key": "errors.amsWeightEstimateChanged",
       "meaning": "Error shown when the AMS estimate or exact RFID roll match changed before acceptance; the user must reopen the weight dialog and retry.",
-      "screenshot": "docs/screenshots/companion-phone-detail.jpg"
+      "screenshot": "docs/images/v0.35.0/companion-mobile.png"
     },
     {
       "surface": "companion",
       "key": "printers.liveTelemetryAmsHumidityShort",
       "meaning": "Compact label for Bambu Lab's Automatic Material System. Keep the product acronym AMS.",
-      "screenshot": "docs/screenshots/companion-phone-printers.jpg",
+      "screenshot": "docs/images/v0.35.0/companion-tablet.png",
       "maxCharacters": 8
     },
     {
       "surface": "desktop",
       "key": "inventory.historyEvent.locationMerged",
       "meaning": "Roll-history event label recording that one user-managed storage location was merged into another.",
-      "screenshot": "docs/screenshots/filament-history.jpg"
+      "screenshot": "docs/images/v0.35.0/inventory.png"
     },
     {
       "surface": "desktop",
       "key": "inventory.historyEvent.locationMergedDetail",
       "meaning": "Roll-history explanation that this roll moved because two storage locations were merged; location names are user data and must not be translated.",
-      "screenshot": "docs/screenshots/filament-history.jpg"
+      "screenshot": "docs/images/v0.35.0/inventory.png"
     },
     {
       "surface": "desktop",
       "key": "errors.borrowedInCannotLend",
       "meaning": "Conflict shown when a roll owned by someone else is selected for the outgoing-loan workflow; the roll must instead use the borrowed-in return flow.",
-      "screenshot": "docs/screenshots/loans.jpg"
+      "screenshot": "docs/images/v0.35.0/inventory.png"
     },
     {
       "surface": "desktop",
       "key": "errors.inboundLoanRequired",
       "meaning": "Conflict shown when returning a borrowed-in roll that no longer has the matching active inbound-loan record.",
-      "screenshot": "docs/screenshots/return-inbound-loan.jpg"
+      "screenshot": "docs/images/v0.35.0/inventory.png"
     },
     {
       "surface": "companion",
       "key": "errors.borrowedInCannotLend",
       "meaning": "Browser Companion conflict shown when a roll owned by someone else is sent to the outgoing-loan flow.",
-      "screenshot": "docs/screenshots/companion-phone-lend-spool.jpg"
+      "screenshot": "docs/images/v0.35.0/companion-mobile.png"
     },
     {
       "surface": "companion",
       "key": "errors.inboundLoanRequired",
       "meaning": "Browser Companion conflict shown when a borrowed-in return has no matching active inbound-loan record.",
-      "screenshot": "docs/screenshots/companion-phone-lend-spool.jpg"
+      "screenshot": "docs/images/v0.35.0/companion-mobile.png"
     },
     {
       "surface": "desktop",
       "key": "wishlist.receiptComplete",
       "meaning": "Receipt of physical rolls from either a wishlist or an order. {count} is the received quantity, {item} is the filament title, and {remaining} is the unreceived quantity left on this queue entry. Zero means fully received. Do not translate substituted item names.",
-      "screenshot": "docs/screenshots/inventory.jpg"
+      "screenshot": "docs/images/v0.35.0/inventory.png"
     },
     {
       "surface": "desktop",
       "key": "errors.wishlistReceiptLocationHostUnsupported",
       "meaning": "The paired Host is too old to receive rolls and store a home location atomically. The Client rejects the request before changing inventory; upgrade the Host before retrying with a location.",
-      "screenshot": "docs/screenshots/inventory.jpg"
+      "screenshot": "docs/images/v0.35.0/inventory.png"
     },
     {
       "surface": "companion",
       "key": "errors.wishlistReceiptLocationHostUnsupported",
       "meaning": "Shared error for a Host that does not support receiving rolls with a home location in one operation. Upgrade is required before that operation; no partial receipt is performed.",
-      "screenshot": "docs/screenshots/companion-phone-inventory.jpg"
+      "screenshot": "docs/images/v0.35.0/companion-mobile.png"
     },
     {
       "surface": "desktop",
       "key": "inventory.openCreatedRoll",
       "meaning": "Primary action after one roll was successfully registered. Opens the details of that exact saved roll; does not register or physically open another roll.",
-      "screenshot": "docs/screenshots/usability-registration-success.png"
+      "screenshot": "docs/images/v0.35.0/inventory.png"
     },
     {
       "surface": "desktop",
       "key": "inventory.registerAnotherRoll",
       "meaning": "After successful single-roll registration, returns to the entry form to prepare another physical roll. This action alone does not save a roll. Existing filament selection is retained.",
-      "screenshot": "docs/screenshots/usability-registration-success.png"
+      "screenshot": "docs/images/v0.35.0/inventory.png"
     },
     {
       "surface": "desktop",
       "key": "inventory.bambuBatchSaving",
       "meaning": "Progress status for one atomic registration batch. Count is the number of physical filament rolls, including separate rolls with the same box code. Saving is not a confirmation of success.",
-      "screenshot": "docs/screenshots/usability-bambu-batch-success.png"
+      "screenshot": "docs/images/v0.35.0/inventory.png"
     },
     {
       "surface": "desktop",
       "key": "inventory.bambuBatchUncertain",
       "meaning": "The response was lost or could not be verified, so saving may already have happened. Continuing retains the exact batch ID and payload; the backend safely replays its durable receipt instead of creating duplicate rolls.",
-      "screenshot": "docs/screenshots/usability-bambu-batch-success.png"
+      "screenshot": "docs/images/v0.35.0/inventory.png"
     },
     {
       "surface": "desktop",
       "key": "inventory.bambuBatchRejected",
       "meaning": "Terminal rejection after the application has established that this request did not save any rolls. Editing prepares the captured draft again and does not itself write inventory.",
-      "screenshot": "docs/screenshots/usability-bambu-batch-success.png"
+      "screenshot": "docs/images/v0.35.0/inventory.png"
     },
     {
       "surface": "desktop",
       "key": "inventory.bambuBatchComplete",
       "meaning": "Confirmed atomic batch receipt. Count is the number of authoritative saved roll IDs; an inventory refresh failure does not invalidate this confirmation.",
-      "screenshot": "docs/screenshots/usability-bambu-batch-success.png"
+      "screenshot": "docs/images/v0.35.0/inventory.png"
     },
     {
       "surface": "desktop",
       "key": "inventory.bambuBatchContinue",
       "meaning": "Retry or recover this exact uncertain batch with the same durable request ID and payload. This is not a new batch or a retry of separate physical rolls.",
-      "screenshot": "docs/screenshots/usability-bambu-batch-success.png"
+      "screenshot": "docs/images/v0.35.0/inventory.png"
     },
     {
       "surface": "desktop",
       "key": "inventory.bambuBatchEdit",
       "meaning": "Return a rejected batch to its captured editable codes and catalog selections. This action does not save any roll.",
-      "screenshot": "docs/screenshots/usability-bambu-batch-success.png"
+      "screenshot": "docs/images/v0.35.0/inventory.png"
     },
     {
       "surface": "desktop",
       "key": "inventory.bambuBatchNew",
       "meaning": "After a confirmed batch, start an editable draft containing only previously unsubmitted review rows. This action does not save rolls and never silently reuses confirmed rows.",
-      "screenshot": "docs/screenshots/usability-bambu-batch-success.png"
+      "screenshot": "docs/images/v0.35.0/inventory.png"
     },
     {
       "surface": "desktop",
       "key": "inventory.bambuBatchRemaining",
       "meaning": "Count of original input rows not submitted because they still needed catalog review. These rows remain in the next draft; they are not a partial failure of the atomic write.",
-      "screenshot": "docs/screenshots/usability-bambu-batch-success.png"
+      "screenshot": "docs/images/v0.35.0/inventory.png"
     },
     {
       "surface": "desktop",
       "key": "errors.catalogSpoolBatchInvalid",
       "meaning": "The atomic batch was rejected without storing rolls. Filament selection, weight, ownership and storage location must be valid and the batch is limited to 100 physical rolls.",
-      "screenshot": "docs/screenshots/usability-bambu-batch-success.png"
+      "screenshot": "docs/images/v0.35.0/inventory.png"
     },
     {
       "surface": "desktop",
       "key": "errors.catalogSpoolBatchConflict",
       "meaning": "A durable batch request ID is already bound to different contents or a different library. The current submission is rejected; the earlier request may have stored rolls and inventory must be checked.",
-      "screenshot": "docs/screenshots/usability-bambu-batch-success.png"
+      "screenshot": "docs/images/v0.35.0/inventory.png"
     },
     {
       "surface": "desktop",
       "key": "errors.catalogSpoolBatchHostUnsupported",
       "meaning": "Compatibility guard rejected the operation before sending any rolls because the Host lacks the safe atomic batch API. Upgrade the Host before trying this operation.",
-      "screenshot": "docs/screenshots/usability-bambu-batch-success.png"
+      "screenshot": "docs/images/v0.35.0/inventory.png"
     },
     {
       "surface": "desktop",
       "key": "errors.catalogSpoolBatchStorageFailed",
       "meaning": "Local recovery metadata could not be persisted or read. Registration is paused because forgetting the prior batch identity could cause duplicate physical rolls. This message does not establish whether a prior request stored rolls.",
-      "screenshot": "docs/screenshots/usability-bambu-batch-success.png"
+      "screenshot": "docs/images/v0.35.0/inventory.png"
     },
     {
       "surface": "desktop",
       "key": "dashboard.libraryDetails",
       "meaning": "Disclosure for optional setup guidance, current ownership split, inventory health, goals and 12-month usage history. Required setup, pairing repairs, errors and current follow-up actions remain visible outside it.",
-      "screenshot": "docs/screenshots/dashboard.jpg"
+      "screenshot": "docs/images/v0.35.0/overview.png"
     },
     {
       "surface": "desktop",
       "key": "dashboard.showOlderActivity",
       "meaning": "Disclosure showing the remainder of the existing recent activity list. It does not fetch an unbounded historical log or change recorded activities.",
-      "screenshot": "docs/screenshots/dashboard.jpg"
+      "screenshot": "docs/images/v0.35.0/overview.png"
     },
     {
       "surface": "desktop",
       "key": "dashboard.followUpTitle",
       "meaning": "Heading for actionable dashboard information. Mandatory connection or loan actions remain separate from optional low-stock purchase suggestions; the heading does not imply every action is an error.",
-      "screenshot": "docs/screenshots/dashboard.jpg"
+      "screenshot": "docs/images/v0.35.0/overview.png"
     },
     {
       "surface": "desktop",
       "key": "dashboard.lowStockOverviewHint",
       "meaning": "Low-stock rolls are at or below the configured material-specific weight threshold, including equality. This is inventory state rather than a forecast or an automatic order.",
-      "screenshot": "docs/screenshots/dashboard.jpg"
+      "screenshot": "docs/images/v0.35.0/overview.png"
     },
     {
       "surface": "desktop",
       "key": "dashboard.printerManualSetup",
       "meaning": "A configured printer without enabled live monitoring. This is not a report of current printing or network availability; only saved assignments are shown.",
-      "screenshot": "docs/screenshots/dashboard.jpg"
+      "screenshot": "docs/images/v0.35.0/overview.png"
     },
     {
       "surface": "desktop",
       "key": "dashboard.printerLiveUnavailable",
       "meaning": "The dashboard could not obtain the live-state source needed to identify current printer activity. Saved assignments remain available and must not be presented as real-time telemetry.",
-      "screenshot": "docs/screenshots/dashboard.jpg"
+      "screenshot": "docs/images/v0.35.0/overview.png"
     },
     {
       "surface": "desktop",
       "key": "dashboard.printerSavedSetup",
       "meaning": "A client dashboard showing the Host-supplied saved printer configuration. A connected Host does not imply a current direct printer connection.",
-      "screenshot": "docs/screenshots/dashboard.jpg"
+      "screenshot": "docs/images/v0.35.0/overview.png"
     },
     {
       "surface": "desktop",
       "key": "dashboard.printerOffline",
       "meaning": "Live monitoring is enabled, but the printer connection is not currently available. Do not equate this with a missing printer configuration or a manual printer.",
-      "screenshot": "docs/screenshots/dashboard.jpg"
+      "screenshot": "docs/images/v0.35.0/overview.png"
     },
     {
       "surface": "desktop",
       "key": "dashboard.printerStale",
       "meaning": "A live printer sample is too old to represent current printer activity. Cached temperatures, job progress and remaining time are not presented as fresh.",
-      "screenshot": "docs/screenshots/dashboard.jpg"
+      "screenshot": "docs/images/v0.35.0/overview.png"
     },
     {
       "surface": "desktop",
       "key": "dashboard.printerTrustRequired",
       "meaning": "Live printer access needs review or confirmation in Bambu Live settings. This is a connection-trust action, not a report that the printer is printing.",
-      "screenshot": "docs/screenshots/dashboard.jpg"
+      "screenshot": "docs/images/v0.35.0/overview.png"
     },
     {
       "surface": "desktop",
       "key": "dashboard.printerLiveDisabled",
       "meaning": "Context explaining why only saved printer assignments are shown: live monitoring has not been enabled for this printer.",
-      "screenshot": "docs/screenshots/dashboard.jpg"
+      "screenshot": "docs/images/v0.35.0/overview.png"
     },
     {
       "surface": "desktop",
       "key": "dashboard.printerAssignedFilament",
       "meaning": "Saved roll-to-slot assignments in a printer. Assigned material is distinct from a verified actively extruding filament and does not imply a live connection.",
-      "screenshot": "docs/screenshots/dashboard.jpg"
+      "screenshot": "docs/images/v0.35.0/overview.png"
     },
     {
       "surface": "desktop",
       "key": "dashboard.printerNoAssignedFilament",
       "meaning": "No physical inventory rolls are assigned to this printer’s effective slots. This does not assert that its physical hardware is empty.",
-      "screenshot": "docs/screenshots/dashboard.jpg"
+      "screenshot": "docs/images/v0.35.0/overview.png"
     },
     {
       "surface": "desktop",
       "key": "dashboard.printerOpen",
       "meaning": "Button navigating from a dashboard printer overview to the existing Printers page. It does not open or modify a physical printer connection.",
-      "screenshot": "docs/screenshots/dashboard.jpg"
+      "screenshot": "docs/images/v0.35.0/overview.png"
     },
     {
       "surface": "desktop",
       "key": "dashboard.printerPrintProgress",
       "meaning": "Accessible label for a trusted, fresh live printer job progress bar. The percent is print progress, never inferred from saved remaining filament.",
-      "screenshot": "docs/screenshots/dashboard.jpg"
+      "screenshot": "docs/images/v0.35.0/overview.png"
     },
     {
       "surface": "desktop",
       "key": "dashboard.printerRemaining",
       "meaning": "Estimated remaining job time from fresh live printer telemetry. The {time} placeholder is already localized using the app’s established time formatter.",
-      "screenshot": "docs/screenshots/dashboard.jpg"
+      "screenshot": "docs/images/v0.35.0/overview.png"
     },
     {
       "surface": "desktop",
       "key": "statistics.analysisViews",
       "meaning": "Accessible group label for the Consumption, Inventory value and Printers view buttons. Switching views changes presentation only; the reporting-period selection is shared.",
-      "screenshot": "docs/screenshots/statistics.jpg"
+      "screenshot": "docs/images/v0.35.0/statistics.png"
     },
     {
       "surface": "desktop",
       "key": "statistics.viewConsumption",
       "meaning": "Statistics view button for recorded material consumption during the selected reporting period, with ownership and loan details available separately.",
-      "screenshot": "docs/screenshots/statistics.jpg"
+      "screenshot": "docs/images/v0.35.0/statistics.png"
     },
     {
       "surface": "desktop",
       "key": "statistics.viewValue",
       "meaning": "Statistics view button for current inventory value plus selected-period material cost. Multiple currencies and missing purchase data remain distinct.",
-      "screenshot": "docs/screenshots/statistics.jpg"
+      "screenshot": "docs/images/v0.35.0/statistics.png"
     },
     {
       "surface": "desktop",
       "key": "statistics.recordedMaterialConsumption",
       "meaning": "Headline material weight used in recorded printer-linked jobs and Bambu Live sessions during the selected reporting period. Missing period capability is unavailable, not zero.",
-      "screenshot": "docs/screenshots/statistics.jpg"
+      "screenshot": "docs/images/v0.35.0/statistics.png"
     },
     {
       "surface": "desktop",
       "key": "statistics.materialsUsed",
       "meaning": "Heading for material-family totals from recorded printer-linked consumption in the selected period. Summary rows can open the existing complete filament-consumption details.",
-      "screenshot": "docs/screenshots/statistics.jpg"
+      "screenshot": "docs/images/v0.35.0/statistics.png"
     },
     {
       "surface": "desktop",
       "key": "statistics.materialBreakdownHint",
       "meaning": "The material chart summarizes real selected-period consumption. Its bar segments preserve recorded filament colors; the chart does not invent a weekly time series or trend.",
-      "screenshot": "docs/screenshots/statistics.jpg"
+      "screenshot": "docs/images/v0.35.0/statistics.png"
     },
     {
       "surface": "desktop",
       "key": "statistics.noPeriodConsumption",
       "meaning": "A complete, available selected-period report contains no positive recorded material use. This message must not be used when Host data is missing or unsupported.",
-      "screenshot": "docs/screenshots/statistics.jpg"
+      "screenshot": "docs/images/v0.35.0/statistics.png"
     },
     {
       "surface": "desktop",
       "key": "statistics.consumptionDataDetails",
       "meaning": "Disclosure for the source and exclusions of selected-period recorded material consumption. This is not a settings or data-editing control.",
-      "screenshot": "docs/screenshots/statistics.jpg"
+      "screenshot": "docs/images/v0.35.0/statistics.png"
     },
     {
       "surface": "desktop",
       "key": "statistics.consumptionDataHint",
       "meaning": "Recorded printer-linked jobs and Bambu Live sessions are included. Stock adjustments and unrecorded prints are excluded. Owned and borrowed-in figures remain separate in ownership details.",
-      "screenshot": "docs/screenshots/statistics.jpg"
+      "screenshot": "docs/images/v0.35.0/statistics.png"
     },
     {
       "surface": "desktop",
       "key": "statistics.ownershipDetails",
       "meaning": "Disclosure for current owned and borrowed-in inventory counts plus selected-period recorded usage. Current stock and period consumption have different time scopes.",
-      "screenshot": "docs/screenshots/statistics.jpg"
+      "screenshot": "docs/images/v0.35.0/statistics.png"
     },
     {
       "surface": "desktop",
       "key": "statistics.loanUsageDetails",
       "meaning": "Disclosure for existing outgoing-loan and borrowed-in usage by person across recorded history. These loan reports are not filtered by the selected printer reporting period.",
-      "screenshot": "docs/screenshots/statistics.jpg"
+      "screenshot": "docs/images/v0.35.0/statistics.png"
     },
     {
       "surface": "desktop",
       "key": "statistics.showForecast",
       "meaning": "Disclosure showing an informational forecast based on current owned stock and the last 30 days of recorded owned use. The forecast does not follow the arbitrary selected reporting period or create orders.",
-      "screenshot": "docs/screenshots/statistics.jpg"
+      "screenshot": "docs/images/v0.35.0/statistics.png"
     },
     {
       "surface": "desktop",
       "key": "statistics.valueCostCalculationDetails",
       "meaning": "Disclosure for inventory-value calculation, missing-data reasons, currency-separated totals, coverage and trace records. Missing prices or weights are never treated as zero.",
-      "screenshot": "docs/screenshots/statistics.jpg"
+      "screenshot": "docs/images/v0.35.0/statistics.png"
     },
     {
       "surface": "desktop",
       "key": "statistics.materialCostDetails",
       "meaning": "Disclosure for the cost of recorded material use within the selected reporting period. Distinct from current remaining inventory value, with currency and ownership separation preserved.",
-      "screenshot": "docs/screenshots/statistics.jpg"
+      "screenshot": "docs/images/v0.35.0/statistics.png"
     },
     {
       "surface": "desktop",
       "key": "statistics.subtitle",
       "meaning": "Short purpose statement for Statistics: understand recorded use and plan stock. It does not promise unrecorded usage, automatic purchases or a guaranteed forecast.",
-      "screenshot": "docs/screenshots/statistics.jpg"
+      "screenshot": "docs/images/v0.35.0/statistics.png"
     },
     {
       "surface": "desktop",
       "key": "statistics.ownershipSnapshotHint",
       "meaning": "Clarifies distinct scopes after the layout is simplified: owned versus borrowed-in stock, inventory counts as a current snapshot, recorded usage as selected-period data.",
-      "screenshot": "docs/screenshots/statistics.jpg"
+      "screenshot": "docs/images/v0.35.0/statistics.png"
     },
     {
       "surface": "desktop",
       "key": "dashboard.overviewDetailsUnavailable",
       "meaning": "The current cached or Host snapshot does not contain the detailed printer overview or individual low-stock roll rows required by a dashboard section. Missing details are not a confirmed empty printer list or a zero-stock result. Refresh retrieves supported details from the active local or Host source; cached supported details can still be shown with their source warning.",
-      "screenshot": "docs/screenshots/dashboard.jpg"
+      "screenshot": "docs/images/v0.35.0/overview.png"
     },
     {
       "surface": "desktop",
       "key": "settings.deviceVersionsTitle",
       "meaning": "Heading for the app versions of this desktop and its configured library Host. Updating one device never installs an update on another device.",
-      "screenshot": "docs/screenshots/settings-library-network.jpg"
+      "screenshot": "docs/images/v0.35.0/settings.png"
     },
     {
       "surface": "desktop",
       "key": "settings.thisDevice",
       "meaning": "Label for the running local desktop app installation, whose version is read from the native application. Distinct from the library-owning Host in Client mode.",
-      "screenshot": "docs/screenshots/settings-library-network.jpg"
+      "screenshot": "docs/images/v0.35.0/settings.png"
     },
     {
       "surface": "desktop",
       "key": "settings.hostVersionChecked",
       "meaning": "Source label for an app version actually reported by the last successful check of the configured Host, bound to the exact Host URL, library and current target generation with verified pairing. A result from before an A-to-B-to-A target change is not current. This does not derive an app version from the API capability number.",
-      "screenshot": "docs/screenshots/settings-library-network.jpg"
+      "screenshot": "docs/images/v0.35.0/settings.png"
     },
     {
       "surface": "desktop",
       "key": "settings.hostVersionCached",
       "meaning": "Source label for the Host app version saved in a snapshot. A cached version is not a fresh statement about the installed version currently running on the Host.",
-      "screenshot": "docs/screenshots/settings-library-network.jpg"
+      "screenshot": "docs/images/v0.35.0/settings.png"
     },
     {
       "surface": "desktop",
       "key": "settings.hostVersionUnknown",
       "meaning": "The checked Host did not report an app-version string, for example because it runs an older protocol. Do not invent version zero, infer it from API version, or claim the latest version is installed.",
-      "screenshot": "docs/screenshots/settings-library-network.jpg"
+      "screenshot": "docs/images/v0.35.0/settings.png"
     },
     {
       "surface": "desktop",
       "key": "settings.deviceUpdateAvailable",
       "meaning": "The reported app version is older than the checked latest stable published release. Status does not install an update or trigger remote updates.",
-      "screenshot": "docs/screenshots/settings-library-network.jpg"
+      "screenshot": "docs/images/v0.35.0/settings.png"
     },
     {
       "surface": "desktop",
       "key": "settings.deviceVersionCurrent",
       "meaning": "The reported app version matches the latest stable published version from the update check. The cached Host-source label remains visible separately.",
-      "screenshot": "docs/screenshots/settings-library-network.jpg"
+      "screenshot": "docs/images/v0.35.0/settings.png"
     },
     {
       "surface": "desktop",
       "key": "settings.deviceVersionNewer",
       "meaning": "The reported app version compares newer than the latest stable published release. It is not presented as an update error or a suggestion to downgrade.",
-      "screenshot": "docs/screenshots/settings-library-network.jpg"
+      "screenshot": "docs/images/v0.35.0/settings.png"
     },
     {
       "surface": "desktop",
       "key": "settings.deviceUpdatesUnchecked",
       "meaning": "No usable latest published version is available from the current update-check result, so an up-to-date claim cannot be made.",
-      "screenshot": "docs/screenshots/settings-library-network.jpg"
+      "screenshot": "docs/images/v0.35.0/settings.png"
     },
     {
       "surface": "desktop",
       "key": "settings.hostCatalogRunsHere",
       "meaning": "In Client mode, vendor catalog discovery and material refresh execute on the library-owning Host. Updating only this desktop cannot deliver backend catalog fixes to that Host.",
-      "screenshot": "docs/screenshots/settings-library-network.jpg"
+      "screenshot": "docs/images/v0.35.0/settings.png"
     },
     {
       "surface": "desktop",
       "key": "settings.deviceVersionsIndependent",
       "meaning": "Clarifies installation scope: updating this local desktop does not also update the separate library Host.",
-      "screenshot": "docs/screenshots/settings-library-network.jpg"
+      "screenshot": "docs/images/v0.35.0/settings.png"
     },
     {
       "surface": "desktop",
       "key": "settings.hostVersionRefresh",
       "meaning": "A read-only action to verify the configured Host and refresh its reported app version. It neither updates the Host application nor starts a catalog refresh.",
-      "screenshot": "docs/screenshots/settings-library-network.jpg"
+      "screenshot": "docs/images/v0.35.0/settings.png"
     },
     {
       "surface": "desktop",
       "key": "settings.deviceLatestRelease",
       "meaning": "Displays the latest stable published app version from the existing update-check result. Keep the already formatted {version} placeholder unchanged.",
-      "screenshot": "docs/screenshots/settings-library-network.jpg"
+      "screenshot": "docs/images/v0.35.0/settings.png"
     },
     {
       "surface": "desktop",
       "key": "settings.hostVersionUnverified",
       "meaning": "Host app version is withheld until the configured Host is verified, to avoid attaching old or unverified metadata to the current Host target.",
-      "screenshot": "docs/screenshots/settings-library-network.jpg"
+      "screenshot": "docs/images/v0.35.0/settings.png"
     },
     {
       "surface": "desktop",
       "key": "settings.hostVersionCachedHint",
       "meaning": "Warns that the saved Host app version can be stale and offers a read-only Host status refresh to verify it.",
-      "screenshot": "docs/screenshots/settings-library-network.jpg"
+      "screenshot": "docs/images/v0.35.0/settings.png"
     },
     {
       "surface": "desktop",
       "key": "inventory.labelPreviewFailed",
       "meaning": "An individual roll label could not be rendered for preview. A manual retry rebuilds only the preview for the same current roll, target URL and label size; no file was saved or print job sent.",
-      "screenshot": "docs/screenshots/filament-details.jpg"
+      "screenshot": "docs/images/v0.35.0/inventory.png"
     },
     {
       "surface": "desktop",
       "key": "inventory.labelRetryPreview",
       "meaning": "Manual retry of the current label PNG preview after rendering failed. The retry does not save or print automatically.",
-      "screenshot": "docs/screenshots/filament-details.jpg"
+      "screenshot": "docs/images/v0.35.0/inventory.png"
     },
     {
       "surface": "desktop",
       "key": "inventory.labelOpenSavedFile",
       "meaning": "Opens the exact successfully saved current label file in the operating system default app. It is unavailable before successful save and does not print or accept an arbitrary path.",
-      "screenshot": "docs/screenshots/filament-details.jpg"
+      "screenshot": "docs/images/v0.35.0/inventory.png"
     },
     {
       "surface": "desktop",
       "key": "inventory.labelOpeningSavedFile",
       "meaning": "Busy state while asking the operating system to open the registered saved label file. It is not a physical print operation.",
-      "screenshot": "docs/screenshots/filament-details.jpg"
+      "screenshot": "docs/images/v0.35.0/inventory.png"
     },
     {
       "surface": "desktop",
       "key": "inventory.labelPrintActualSize",
       "meaning": "Instructions for printing an exported PNG label or PDF sheet at its designed physical dimensions: 100 percent or Actual size, no fit-to-page scaling, matching selected label or paper size. This is guidance, not evidence of a physical printer test.",
-      "screenshot": "docs/screenshots/filament-details.jpg"
+      "screenshot": "docs/images/v0.35.0/inventory.png"
     },
     {
       "surface": "desktop",
       "key": "settings.inventoryOverviewRetryPreview",
       "meaning": "Manual retry of the current A4 or US Letter label-sheet preview. It preserves current selections and does not save or print automatically.",
-      "screenshot": "docs/screenshots/settings-maintenance.jpg"
+      "screenshot": "docs/images/v0.35.0/settings.png"
     },
     {
       "surface": "desktop",
       "key": "errors.savedLabelFileUnavailable",
       "meaning": "The exact registered saved label file is missing or its verified contents changed. Open is rejected. Save the current label again before trying to open it; no arbitrary filesystem path is accepted.",
-      "screenshot": "docs/screenshots/filament-details.jpg"
+      "screenshot": "docs/images/v0.35.0/inventory.png"
     },
     {
       "surface": "desktop",
       "key": "errors.savedLabelFileOpenFailed",
       "meaning": "The operating system could not open a verified saved label file. The user can open the exported file from Downloads manually or save again. Do not expose raw filesystem paths or imply that a print job completed.",
-      "screenshot": "docs/screenshots/filament-details.jpg"
+      "screenshot": "docs/images/v0.35.0/inventory.png"
     },
     {
       "surface": "companion",
       "key": "errors.savedLabelFileUnavailable",
       "meaning": "Shared structured-error translation for a desktop label export/open operation. The exact registered saved label file is missing or its verified contents changed. Open is rejected. Save the current label again before trying to open it; no arbitrary filesystem path is accepted. This mapping does not add any browser API for opening host files.",
-      "screenshot": "docs/screenshots/filament-details.jpg"
+      "screenshot": "docs/images/v0.35.0/inventory.png"
     },
     {
       "surface": "companion",
       "key": "errors.savedLabelFileOpenFailed",
       "meaning": "Shared structured-error translation for a desktop label export/open operation. The operating system could not open a verified saved label file. The user can open the exported file from Downloads manually or save again. Do not expose raw filesystem paths or imply that a print job completed. This mapping does not add any browser API for opening host files.",
-      "screenshot": "docs/screenshots/filament-details.jpg"
+      "screenshot": "docs/images/v0.35.0/inventory.png"
     },
     {
       "surface": "desktop",
       "key": "settings.catalogRefreshStatusUncertain",
       "meaning": "The app could not confirm the catalog job status, so the job may still be running. Check the diagnostic refresh log and avoid starting another job until its state is known. This does not promise the catalog is unchanged or that retry is safe.",
-      "screenshot": "docs/screenshots/settings-catalog.jpg"
+      "screenshot": "docs/images/v0.35.0/settings.png"
     },
     {
       "surface": "desktop",
       "key": "settings.catalogRefreshFailedNextStep",
       "meaning": "A catalog refresh reached a failed terminal state. Ask the user to inspect the available refresh log before manually starting another guarded update; no automatic retry or unchanged-data guarantee is implied.",
-      "screenshot": "docs/screenshots/settings-catalog.jpg"
+      "screenshot": "docs/images/v0.35.0/settings.png"
     },
     {
       "surface": "desktop",
       "key": "settings.catalogRefreshInterruptedNextStep",
       "meaning": "A catalog refresh was interrupted. Its resulting catalog state must be checked along with the refresh log before the user starts again. Do not promise that no mutation occurred.",
-      "screenshot": "docs/screenshots/settings-catalog.jpg"
+      "screenshot": "docs/images/v0.35.0/settings.png"
     },
     {
       "surface": "desktop",
       "key": "settings.catalogAuditFailedNextStep",
       "meaning": "A read-only vendor material-discovery check failed. The user can inspect the refresh log and manually retry using the existing Discover available materials action. The translated action name should match settings.discoverCatalogMaterials.",
-      "screenshot": "docs/screenshots/settings-catalog.jpg"
+      "screenshot": "docs/images/v0.35.0/settings.png"
     },
     {
       "surface": "desktop",
       "key": "settings.catalogHostUnavailableNextStep",
       "meaning": "A Client could not obtain the Host catalog. The next step is to check the configured Host connection in the existing Library & web app settings tab before retrying. The translated tab name should match settings.tabLibrary.",
-      "screenshot": "docs/screenshots/settings-catalog.jpg"
+      "screenshot": "docs/images/v0.35.0/settings.png"
     },
     {
       "surface": "desktop",
       "key": "settings.autoSaveHint",
       "meaning": "General settings only: appearance, language, background operation and update preferences save immediately. This is not a promise of autosave for the rest of Settings.",
-      "screenshot": "docs/screenshots/settings-general.jpg"
+      "screenshot": "docs/images/v0.35.0/settings.png"
     },
     {
       "surface": "desktop",
       "key": "settings.changeLibraryRole",
       "meaning": "Disclosure that opens role-changing controls for Standalone, Host and Client. Role changes still require the existing confirmation flow.",
-      "screenshot": "docs/screenshots/settings-library-network.jpg"
+      "screenshot": "docs/images/v0.35.0/settings.png"
     },
     {
       "surface": "desktop",
       "key": "settings.localDiagnosticsScope",
       "meaning": "Labels the database health result as belonging to this device. On a Client it is the local database, not a health check of the paired Host database.",
-      "screenshot": "docs/screenshots/settings-maintenance.jpg"
+      "screenshot": "docs/images/v0.35.0/settings.png"
     },
     {
       "surface": "desktop",
       "key": "settings.unsavedChanges",
       "meaning": "A draft setting differs from its persisted value. Drafts remain available when switching Settings sidebar sections; this label does not mean a save failed.",
-      "screenshot": "docs/screenshots/settings-filament-defaults.jpg"
+      "screenshot": "docs/images/v0.35.0/settings.png"
     },
     {
       "surface": "desktop",
       "key": "settings.filamentDefaultsSaveGroupHint",
       "meaning": "Distinguishes saving a reusable filament group price standard from the separate explicit action that writes prices to selected existing inventory rolls.",
-      "screenshot": "docs/screenshots/settings-filament-defaults.jpg"
+      "screenshot": "docs/images/v0.35.0/settings.png"
     },
     {
       "surface": "desktop",
       "key": "settings.swatchSearch",
       "meaning": "Search field for missing catalog color samples. Matches vendor, material, filament name, color name or catalog ID; combines with the vendor filter. Bulk auto-fill targets all matched entries.",
-      "screenshot": "docs/screenshots/settings-catalog.jpg"
+      "screenshot": "docs/images/v0.35.0/settings.png"
     },
     {
       "surface": "desktop",
       "key": "settings.noMatchingSwatches",
       "meaning": "Empty search results among missing color samples. Other missing samples may still exist outside the current search and vendor filter.",
-      "screenshot": "docs/screenshots/settings-catalog.jpg"
+      "screenshot": "docs/images/v0.35.0/settings.png"
     },
     {
       "surface": "desktop",
       "key": "inventory.detailWeight",
       "meaning": "Heading for the selected inventory roll weight editor. Measured total includes empty-spool tare; remaining filament excludes tare.",
-      "screenshot": "docs/screenshots/inventory.jpg"
+      "screenshot": "docs/images/v0.35.0/inventory.png"
     },
     {
       "surface": "desktop",
       "key": "inventory.detailPlacementOwnership",
       "meaning": "Selected roll properties, including its home storage location and whether it is owned or borrowed in. Loaded printer placement is managed on the Printers page.",
-      "screenshot": "docs/screenshots/inventory.jpg"
+      "screenshot": "docs/images/v0.35.0/inventory.png"
     },
     {
       "surface": "desktop",
       "key": "inventory.detailIdentityLabel",
       "meaning": "Entry points for QR labels, RFID identity and locked shared catalog data. Not a new identity or authentication feature.",
-      "screenshot": "docs/screenshots/inventory.jpg"
+      "screenshot": "docs/images/v0.35.0/inventory.png"
     },
     {
       "surface": "desktop",
       "key": "inventory.detailMorePurchase",
       "meaning": "Disclosure containing batch code, supplier reference and protection of an individual roll price from group updates. It does not hide purchase price from reports.",
-      "screenshot": "docs/screenshots/inventory.jpg"
+      "screenshot": "docs/images/v0.35.0/inventory.png"
     },
     {
       "surface": "desktop",
       "key": "inventory.detailUsageHistory",
       "meaning": "Disclosure containing the selected roll consumption chart and chronological events. Opening it makes the existing history controls available.",
-      "screenshot": "docs/screenshots/inventory.jpg"
+      "screenshot": "docs/images/v0.35.0/inventory.png"
     },
     {
       "surface": "desktop",
       "key": "inventory.detailUpdateWeight",
       "meaning": "Saves measured total roll weight through the existing guarded weight action; this is separate from saving other roll properties.",
-      "screenshot": "docs/screenshots/inventory.jpg"
+      "screenshot": "docs/images/v0.35.0/inventory.png"
     },
     {
       "surface": "desktop",
       "key": "inventory.detailShowUsageHistory",
       "meaning": "Opens the consumption chart and event history within the current roll dialog.",
-      "screenshot": "docs/screenshots/inventory.jpg"
+      "screenshot": "docs/images/v0.35.0/inventory.png"
     },
     {
       "surface": "desktop",
       "key": "inventory.detailSaveTareFirst",
       "meaning": "The empty-spool tare draft differs from the saved tare. Save roll properties first, then update measured total weight using the saved tare. Do not imply that measured total is filament-only weight.",
-      "screenshot": "docs/screenshots/inventory.jpg"
+      "screenshot": "docs/images/v0.35.0/inventory.png"
     },
     {
       "surface": "desktop",
       "key": "inventory.detailAdvancedActions",
       "meaning": "Collapsed group for lost, empty, restore, delete and permanent purge actions. Existing confirmations and permissions remain required.",
-      "screenshot": "docs/screenshots/inventory.jpg"
+      "screenshot": "docs/images/v0.35.0/inventory.png"
     },
     {
       "surface": "desktop",
       "key": "inventory.detailOpenPrinters",
       "meaning": "Navigates from an already assigned roll to the Printers page. Existing unsaved-roll navigation confirmation still applies.",
-      "screenshot": "docs/screenshots/inventory.jpg"
+      "screenshot": "docs/images/v0.35.0/inventory.png"
     },
     {
       "surface": "desktop",
       "key": "inventory.loansTab",
       "meaning": "Inventory workspace tab containing outbound loans to other people AND rolls borrowed from others; includes active records and completed history. The badge is active loan records, not people.",
-      "screenshot": "docs/screenshots/inventory.jpg"
+      "screenshot": "docs/images/v0.35.0/inventory.png"
     },
     {
       "surface": "desktop",
       "key": "inventory.labelsAction",
       "meaning": "Short inventory toolbar action opening the existing printable label sheet for the entire inventory; individual labels remain in roll properties.",
-      "screenshot": "docs/screenshots/inventory.jpg"
+      "screenshot": "docs/images/v0.35.0/inventory.png"
     },
     {
       "surface": "desktop",
       "key": "loans.person",
       "meaning": "Loan table column for the other person: the borrower for an outbound loan, or the owner for a borrowed-in roll. Use a neutral person label covering both directions.",
-      "screenshot": "docs/screenshots/loans.jpg"
+      "screenshot": "docs/images/v0.35.0/inventory.png"
     },
     {
       "surface": "desktop",
       "meaning": "Compact printer-slot action that opens the existing roll picker. Replacing an occupied slot requires an outgoing measured weight before the atomic slot operation. The incoming roll keeps its stored weight.",
-      "screenshot": "docs/screenshots/printers.jpg",
+      "screenshot": "docs/images/v0.35.0/printers.png",
       "key": "printers.replaceRoll"
     },
     {
       "surface": "desktop",
       "meaning": "Choose this inventory roll explicitly. An empty destination loads immediately with stored weight. Replacing an occupied slot opens outgoing-weight confirmation; it does not save RFID on third-party rolls.",
-      "screenshot": "docs/screenshots/printers.jpg",
+      "screenshot": "docs/images/v0.35.0/printers.png",
       "key": "printers.selectRoll"
     },
     {
       "surface": "desktop",
       "meaning": "Disclosure for linking the observed AMS material to a physical inventory roll. Supports exact RFID, unknown Bambu RFID and material/color candidates without RFID; a single eligible material/color candidate can be placed automatically in an empty slot without saving an RFID tag.",
-      "screenshot": "docs/screenshots/printers.jpg",
+      "screenshot": "docs/images/v0.35.0/printers.png",
       "key": "printers.linkObserved"
     },
     {
       "surface": "desktop",
       "meaning": "Explains a tie-breaker only: a positive remaining weight below the initial weight ranks before a full roll when material/color scores are equal. It does not claim the packaging is open or choose automatically.",
-      "screenshot": "docs/screenshots/printers.jpg",
+      "screenshot": "docs/images/v0.35.0/printers.png",
       "key": "printers.startedCandidatesFirst"
     },
     {
       "surface": "desktop",
       "key": "settings.themeGraySoft",
       "meaning": "Name of the default neutral dark appearance. Soft describes the gentler contrast; it is not a filament color or material finish. Preserve the centered dot separator.",
-      "screenshot": "docs/screenshots/settings-general.jpg"
+      "screenshot": "docs/images/v0.35.0/settings.png"
     },
     {
       "surface": "companion",
       "key": "settings.themeGraySoft",
       "meaning": "Name of the default neutral dark appearance. Soft describes the gentler contrast; it is not a filament color or material finish. Preserve the centered dot separator.",
-      "screenshot": "docs/screenshots/settings-general.jpg"
+      "screenshot": "docs/images/v0.35.0/settings.png"
     },
     {
       "surface": "desktop",
       "key": "settings.themeGrayDeep",
       "meaning": "Name of the darker neutral appearance. Deep describes the darker background; it is not a filament color. Preserve the centered dot separator.",
-      "screenshot": "docs/screenshots/settings-general.jpg"
+      "screenshot": "docs/images/v0.35.0/settings.png"
     },
     {
       "surface": "companion",
       "key": "settings.themeGrayDeep",
       "meaning": "Name of the darker neutral appearance. Deep describes the darker background; it is not a filament color. Preserve the centered dot separator.",
-      "screenshot": "docs/screenshots/settings-general.jpg"
+      "screenshot": "docs/images/v0.35.0/settings.png"
     },
     {
       "surface": "desktop",
       "key": "settings.themeBlueNight",
       "meaning": "Name of the optional blue dark appearance. Night describes the dark interface. Preserve the centered dot separator.",
-      "screenshot": "docs/screenshots/settings-general.jpg"
+      "screenshot": "docs/images/v0.35.0/settings.png"
     },
     {
       "surface": "companion",
       "key": "settings.themeBlueNight",
       "meaning": "Name of the optional blue dark appearance. Night describes the dark interface. Preserve the centered dot separator.",
-      "screenshot": "docs/screenshots/settings-general.jpg"
+      "screenshot": "docs/images/v0.35.0/settings.png"
     },
     {
       "surface": "desktop",
       "key": "settings.themeLightClean",
       "meaning": "Name of the neutral light appearance. Clean describes the uncluttered visual style. Preserve the centered dot separator.",
-      "screenshot": "docs/screenshots/settings-general.jpg"
+      "screenshot": "docs/images/v0.35.0/settings.png"
     },
     {
       "surface": "companion",
       "key": "settings.themeLightClean",
       "meaning": "Name of the neutral light appearance. Clean describes the uncluttered visual style. Preserve the centered dot separator.",
-      "screenshot": "docs/screenshots/settings-general.jpg"
+      "screenshot": "docs/images/v0.35.0/settings.png"
     },
     {
       "surface": "desktop",
       "key": "settings.searchPrinterModels",
       "meaning": "Search the model catalog by manufacturer or model name before configuring a printer. This does not search inventory or discover devices on the network.",
-      "screenshot": "docs/screenshots/add-printer.jpg"
+      "screenshot": "docs/images/v0.35.0/printers.png"
     },
     {
       "surface": "desktop",
       "key": "settings.printerBrand",
       "meaning": "Manufacturer filter for the printer model catalog, not filament brand or theme color.",
-      "screenshot": "docs/screenshots/add-printer.jpg"
+      "screenshot": "docs/images/v0.35.0/printers.png"
     },
     {
       "surface": "desktop",
       "key": "settings.customPrinterModel",
       "meaning": "Editable model name for a printer not represented in the bundled catalog. Changing it edits the draft and does not discover or create a printer.",
-      "screenshot": "docs/screenshots/add-printer.jpg"
+      "screenshot": "docs/images/v0.35.0/printers.png"
     },
     {
       "surface": "desktop",
       "key": "settings.printerModelsAll",
       "meaning": "Show models from every manufacturer in the printer model picker.",
-      "screenshot": "docs/screenshots/add-printer.jpg"
+      "screenshot": "docs/images/v0.35.0/printers.png"
     },
     {
       "surface": "desktop",
       "key": "settings.printerModelsOther",
       "meaning": "Show printer models from manufacturers other than Bambu Lab and Prusa in the model picker.",
-      "screenshot": "docs/screenshots/add-printer.jpg"
+      "screenshot": "docs/images/v0.35.0/printers.png"
     },
     {
       "surface": "desktop",
       "key": "settings.printerModelsNoResults",
       "meaning": "Empty filtered printer model list. Change the model search or manufacturer filter; this does not mean no printers are configured.",
-      "screenshot": "docs/screenshots/add-printer.jpg"
+      "screenshot": "docs/images/v0.35.0/printers.png"
     },
     {
       "surface": "companion",
       "key": "storage.searchShortPlaceholder",
       "meaning": "Short inventory search placeholder in the compact toolbar, especially on narrow phones. Searches filament, colour, owner and placement; the longer associated accessible label explains the fields. Keep short enough to fit a 320 px viewport.",
-      "screenshot": "docs/screenshots/companion-phone-inventory.jpg"
+      "screenshot": "docs/images/v0.35.0/companion-mobile.png"
     }
   ],
   "groups": [
@@ -1282,463 +1282,463 @@
       "surface": "desktop",
       "keyPrefix": "errors.location",
       "meaning": "Errors for user-managed storage locations; references include rolls assigned there and nested child locations.",
-      "screenshot": "docs/screenshots/inventory.jpg"
+      "screenshot": "docs/images/v0.35.0/inventory.png"
     },
     {
       "surface": "desktop",
       "keyPrefix": "errors.loan",
       "meaning": "Loan validation and conflict errors, including contact details, expected-return dates, older Host capability failures, active or already returned loans, and direction mismatches.",
-      "screenshot": "docs/screenshots/loan-out.jpg"
+      "screenshot": "docs/images/v0.35.0/inventory.png"
     },
     {
       "surface": "desktop",
       "keyPrefix": "errors.purchaseMetadata",
       "meaning": "Capability error shown when purchase price and receipt metadata require a newer Host.",
-      "screenshot": "docs/screenshots/filament-details.jpg"
+      "screenshot": "docs/images/v0.35.0/inventory.png"
     },
     {
       "surface": "desktop",
       "keyPrefix": "errors.filamentStandards",
       "meaning": "Validation, stale-review and Host-capability errors for library-wide filament price standards.",
-      "screenshot": "docs/screenshots/settings-general.jpg"
+      "screenshot": "docs/images/v0.35.0/settings.png"
     },
     {
       "surface": "desktop",
       "keyPrefix": "dashboard.action",
       "meaning": "Dashboard action queue combining low stock, overdue loans, incoming orders and printer health; action does not always mean an error.",
-      "screenshot": "docs/screenshots/dashboard.jpg"
+      "screenshot": "docs/images/v0.35.0/overview.png"
     },
     {
       "surface": "desktop",
       "keyPrefix": "dashboard.lowStock",
       "meaning": "Optional low-stock purchase suggestions that users may hide without changing the underlying inventory threshold.",
-      "screenshot": "docs/screenshots/dashboard.jpg"
+      "screenshot": "docs/images/v0.35.0/overview.png"
     },
     {
       "surface": "desktop",
       "keyPrefix": "inventory.location",
       "meaning": "Create, rename, archive, restore, merge and delete user-managed storage locations; printer and loan locations are system-owned.",
-      "screenshot": "docs/screenshots/inventory.jpg"
+      "screenshot": "docs/images/v0.35.0/inventory.png"
     },
     {
       "surface": "desktop",
       "keyPrefix": "inventory.bulk",
       "meaning": "Multi-select inventory actions and their atomic review receipt; a roll can be selected yet blocked from the requested change.",
-      "screenshot": "docs/screenshots/inventory.jpg"
+      "screenshot": "docs/images/v0.35.0/inventory.png"
     },
     {
       "surface": "desktop",
       "keyPrefix": "inventory.purchase",
       "meaning": "Per-roll purchase price, currency and optional receipt metadata; price means unit price for one physical spool.",
-      "screenshot": "docs/screenshots/filament-details.jpg"
+      "screenshot": "docs/images/v0.35.0/inventory.png"
     },
     {
       "surface": "desktop",
       "keyPrefix": "inventory.historyEvent.purchase",
       "meaning": "History entries distinguishing initial purchase receipt recording, later edits to purchase metadata, group-price application and per-roll protection from future group updates.",
-      "screenshot": "docs/screenshots/filament-history.jpg"
+      "screenshot": "docs/images/v0.35.0/inventory.png"
     },
     {
       "surface": "desktop",
       "keyPrefix": "statistics.forecast",
       "meaning": "Consumption forecast derived from owned stock and recorded usage; it is an estimate and not a purchase recommendation.",
-      "screenshot": "docs/screenshots/statistics.jpg"
+      "screenshot": "docs/images/v0.35.0/statistics.png"
     },
     {
       "surface": "desktop",
       "keyPrefix": "statistics.period",
       "meaning": "Reporting-period controls and validation for statistics date ranges.",
-      "screenshot": "docs/screenshots/statistics.jpg"
+      "screenshot": "docs/images/v0.35.0/statistics.png"
     },
     {
       "surface": "desktop",
       "keyPrefix": "statistics.valueCost",
       "meaning": "Inventory value and material-cost coverage, trace rows and missing-data reasons; currencies remain separate and are never converted implicitly.",
-      "screenshot": "docs/screenshots/statistics.jpg"
+      "screenshot": "docs/images/v0.35.0/statistics.png"
     },
     {
       "surface": "desktop",
       "keyPrefix": "settings.filamentDefaults",
       "meaning": "Library-wide purchase currency and price groups. Group updates may skip protected, borrowed or historical spools and produce a follow-up receipt.",
-      "screenshot": "docs/screenshots/settings-general.jpg"
+      "screenshot": "docs/images/v0.35.0/settings.png"
     },
     {
       "surface": "desktop",
       "keyPrefix": "settings.lowStock",
       "meaning": "Default low-stock threshold plus optional per-material overrides; materials without an override inherit the library default.",
-      "screenshot": "docs/screenshots/settings-general.jpg"
+      "screenshot": "docs/images/v0.35.0/settings.png"
     },
     {
       "surface": "desktop",
       "keyPrefix": "settings.bambuTheme",
       "meaning": "Bambu-inspired appearance choice and its concise description; preserve the Bambu brand name and describe a vivid green workshop without implying official affiliation.",
-      "screenshot": "docs/screenshots/settings-general.jpg"
+      "screenshot": "docs/images/v0.35.0/settings.png"
     },
     {
       "surface": "desktop",
       "keyPrefix": "settings.prusaTheme",
       "meaning": "Prusa-inspired appearance choice and its concise description; preserve the Prusa brand name and describe a warm orange workshop without implying official affiliation.",
-      "screenshot": "docs/screenshots/settings-general.jpg"
+      "screenshot": "docs/images/v0.35.0/settings.png"
     },
     {
       "surface": "companion",
       "keyPrefix": "settings.bambuTheme",
       "meaning": "Bambu-inspired appearance choice and its concise description; preserve the Bambu brand name and describe a vivid green workshop without implying official affiliation.",
-      "screenshot": "docs/screenshots/companion-phone-settings.jpg"
+      "screenshot": "docs/images/v0.35.0/companion-mobile.png"
     },
     {
       "surface": "companion",
       "keyPrefix": "settings.prusaTheme",
       "meaning": "Prusa-inspired appearance choice and its concise description; preserve the Prusa brand name and describe a warm orange workshop without implying official affiliation.",
-      "screenshot": "docs/screenshots/companion-phone-settings.jpg"
+      "screenshot": "docs/images/v0.35.0/companion-mobile.png"
     },
     {
       "surface": "companion",
       "keyPrefix": "errors.location",
       "meaning": "Browser Companion error for deleting a storage location that still has roll or child-location references.",
-      "screenshot": "docs/screenshots/companion-phone-inventory.jpg"
+      "screenshot": "docs/images/v0.35.0/companion-mobile.png"
     },
     {
       "surface": "companion",
       "keyPrefix": "errors.loan",
       "meaning": "Browser Companion loan validation and conflict errors, including contact and expected-return metadata, older-Host capability failures, active or already returned loans, and direction mismatches.",
-      "screenshot": "docs/screenshots/companion-phone-lend-spool.jpg"
+      "screenshot": "docs/images/v0.35.0/companion-mobile.png"
     },
     {
       "surface": "companion",
       "keyPrefix": "errors.filamentStandards",
       "meaning": "Browser Companion fallbacks for Host-owned filament price-standard validation and stale group reviews.",
-      "screenshot": "docs/screenshots/companion-phone-settings.jpg"
+      "screenshot": "docs/images/v0.35.0/companion-mobile.png"
     },
     {
       "surface": "companion",
       "keyPrefix": "purchaseReceipt.",
       "meaning": "Optional purchase receipt fields saved per physical spool; price is the unit price and currency is a three-letter code.",
-      "screenshot": "docs/screenshots/companion-phone-detail.jpg"
+      "screenshot": "docs/images/v0.35.0/companion-mobile.png"
     },
     {
       "surface": "desktop",
       "keyPrefix": "dashboard.hideLowStock",
       "meaning": "Controls that hide low-stock purchase suggestions from the dashboard without changing stock data or thresholds.",
-      "screenshot": "docs/screenshots/dashboard.jpg"
+      "screenshot": "docs/images/v0.35.0/overview.png"
     },
     {
       "surface": "desktop",
       "keyPrefix": "dashboard.showLowStock",
       "meaning": "Control that reveals previously hidden low-stock purchase suggestions on the dashboard.",
-      "screenshot": "docs/screenshots/dashboard.jpg"
+      "screenshot": "docs/images/v0.35.0/overview.png"
     },
     {
       "surface": "desktop",
       "keyPrefix": "dashboard.queueLowStock",
       "meaning": "Action that adds a low-stock filament suggestion to the wishlist or ordering queue.",
-      "screenshot": "docs/screenshots/dashboard.jpg"
+      "screenshot": "docs/images/v0.35.0/overview.png"
     },
     {
       "surface": "desktop",
       "keyPrefix": "dashboard.restoreLowStock",
       "meaning": "Action that restores one hidden low-stock suggestion to the visible dashboard queue.",
-      "screenshot": "docs/screenshots/dashboard.jpg"
+      "screenshot": "docs/images/v0.35.0/overview.png"
     },
     {
       "surface": "desktop",
       "keyPrefix": "dashboard.openLowStock",
       "meaning": "Action that opens inventory already filtered to the affected low-stock filament rows.",
-      "screenshot": "docs/screenshots/dashboard.jpg"
+      "screenshot": "docs/images/v0.35.0/overview.png"
     },
     {
       "surface": "desktop",
       "keyPrefix": "dashboard.noVisibleLowStock",
       "meaning": "Empty state shown when all current low-stock suggestions have been hidden by the user.",
-      "screenshot": "docs/screenshots/dashboard.jpg"
+      "screenshot": "docs/images/v0.35.0/overview.png"
     },
     {
       "surface": "desktop",
       "keyPrefix": "dashboard.hiddenLowStock",
       "meaning": "Heading for the dashboard section containing low-stock suggestions hidden by the user.",
-      "screenshot": "docs/screenshots/dashboard.jpg"
+      "screenshot": "docs/images/v0.35.0/overview.png"
     },
     {
       "surface": "desktop",
       "keyPrefix": "dashboard.atOrBelowThreshold",
       "meaning": "Explains that a spool is considered low stock when its remaining weight is at or below its configured gram threshold.",
-      "screenshot": "docs/screenshots/dashboard.jpg"
+      "screenshot": "docs/images/v0.35.0/overview.png"
     },
     {
       "surface": "desktop",
       "keyPrefix": "dashboard.materialLowStockThresholds",
       "meaning": "Notes that low-stock status can use different configured thresholds for different filament materials.",
-      "screenshot": "docs/screenshots/dashboard.jpg"
+      "screenshot": "docs/images/v0.35.0/overview.png"
     },
     {
       "surface": "desktop",
       "keyPrefix": "dashboard.legacyLowStockFallback",
       "meaning": "Compatibility notice that an older Host forces the legacy 200 gram low-stock threshold.",
-      "screenshot": "docs/screenshots/dashboard.jpg"
+      "screenshot": "docs/images/v0.35.0/overview.png"
     },
     {
       "surface": "desktop",
       "keyPrefix": "inventory.lowStock",
       "meaning": "Inventory filter for physical spools whose remaining weight meets their configured low-stock threshold.",
-      "screenshot": "docs/screenshots/inventory.jpg"
+      "screenshot": "docs/images/v0.35.0/inventory.png"
     },
     {
       "surface": "desktop",
       "keyPrefix": "inventory.selectedRollActions",
       "meaning": "Heading for actions that apply only to the currently selected inventory spool.",
-      "screenshot": "docs/screenshots/inventory.jpg"
+      "screenshot": "docs/images/v0.35.0/inventory.png"
     },
     {
       "surface": "desktop",
       "keyPrefix": "inventory.nextStep",
       "meaning": "Compact heading for the most likely follow-up actions after selecting an inventory spool.",
-      "screenshot": "docs/screenshots/filament-details.jpg"
+      "screenshot": "docs/images/v0.35.0/inventory.png"
     },
     {
       "surface": "desktop",
       "keyPrefix": "inventory.loanOut",
       "meaning": "Action that starts an outbound loan for the selected owned inventory spool.",
-      "screenshot": "docs/screenshots/filament-details.jpg"
+      "screenshot": "docs/images/v0.35.0/inventory.png"
     },
     {
       "surface": "desktop",
       "keyPrefix": "inventory.loadInPrinter",
       "meaning": "Actions and guidance for assigning the selected inventory spool to an available printer material slot.",
-      "screenshot": "docs/screenshots/printer-slot-assignment.jpg"
+      "screenshot": "docs/images/v0.35.0/printers.png"
     },
     {
       "surface": "desktop",
       "keyPrefix": "inventory.noAvailablePrinterSlots",
       "meaning": "Empty state shown when the selected spool cannot be loaded because no compatible printer slot is available.",
-      "screenshot": "docs/screenshots/printer-slot-assignment.jpg"
+      "screenshot": "docs/images/v0.35.0/printers.png"
     },
     {
       "surface": "desktop",
       "keyPrefix": "inventory.loadedInPrinter",
       "meaning": "State label confirming that the selected spool is already assigned to a printer slot.",
-      "screenshot": "docs/screenshots/filament-details.jpg"
+      "screenshot": "docs/images/v0.35.0/inventory.png"
     },
     {
       "surface": "desktop",
       "keyPrefix": "inventory.printLabel",
       "meaning": "Action that prints or creates a label for the currently selected physical spool.",
-      "screenshot": "docs/screenshots/filament-label.jpg"
+      "screenshot": "docs/images/v0.35.0/inventory.png"
     },
     {
       "surface": "desktop",
       "keyPrefix": "inventory.unsaved",
       "meaning": "Warning that edits to the selected spool have not yet been persisted.",
-      "screenshot": "docs/screenshots/filament-details.jpg"
+      "screenshot": "docs/images/v0.35.0/inventory.png"
     },
     {
       "surface": "desktop",
       "keyPrefix": "inventory.allChanges",
       "meaning": "Save-state confirmation that every edit in the spool detail view has been persisted.",
-      "screenshot": "docs/screenshots/filament-details.jpg"
+      "screenshot": "docs/images/v0.35.0/inventory.png"
     },
     {
       "surface": "desktop",
       "keyPrefix": "inventory.discardUnsaved",
       "meaning": "Action that intentionally abandons unsaved edits to the selected spool.",
-      "screenshot": "docs/screenshots/filament-details.jpg"
+      "screenshot": "docs/images/v0.35.0/inventory.png"
     },
     {
       "surface": "desktop",
       "keyPrefix": "inventory.rollChanges",
       "meaning": "Confirmation that edits to the current physical spool were saved.",
-      "screenshot": "docs/screenshots/filament-details.jpg"
+      "screenshot": "docs/images/v0.35.0/inventory.png"
     },
     {
       "surface": "desktop",
       "keyPrefix": "inventory.labelSheet",
       "meaning": "Label-sheet actions and guidance; distinguish a sheet for all inventory from one for selected spools.",
-      "screenshot": "docs/screenshots/inventory-label-sheet.jpg"
+      "screenshot": "docs/images/v0.35.0/inventory.png"
     },
     {
       "surface": "desktop",
       "keyPrefix": "inventory.protectIndividualPriceFromGroupUpdates",
       "meaning": "Per-spool lock that preserves an individually edited purchase price when library-wide price groups are applied.",
-      "screenshot": "docs/screenshots/filament-details.jpg"
+      "screenshot": "docs/images/v0.35.0/inventory.png"
     },
     {
       "surface": "desktop",
       "keyPrefix": "inventory.borrowerContact",
       "meaning": "Optional contact details for the person borrowing an owned spool; this is separate from the borrower name.",
-      "screenshot": "docs/screenshots/loan-out.jpg"
+      "screenshot": "docs/images/v0.35.0/inventory.png"
     },
     {
       "surface": "desktop",
       "keyPrefix": "inventory.expectedReturn",
       "meaning": "Optional expected-return date entered while creating an outbound spool loan.",
-      "screenshot": "docs/screenshots/loan-out.jpg"
+      "screenshot": "docs/images/v0.35.0/inventory.png"
     },
     {
       "surface": "desktop",
       "keyPrefix": "inventory.error.purchaseMetadata",
       "meaning": "Validation error for invalid per-spool purchase price, currency or receipt metadata.",
-      "screenshot": "docs/screenshots/filament-details.jpg"
+      "screenshot": "docs/images/v0.35.0/inventory.png"
     },
     {
       "surface": "desktop",
       "keyPrefix": "inventory.error.loadInPrinter",
       "meaning": "Failure or stale-state error while assigning an inventory spool to a printer slot.",
-      "screenshot": "docs/screenshots/printer-slot-assignment.jpg"
+      "screenshot": "docs/images/v0.35.0/printers.png"
     },
     {
       "surface": "desktop",
       "keyPrefix": "inventory.error.expectedReturn",
       "meaning": "Validation errors for an impossible or past expected-return date on an outbound loan.",
-      "screenshot": "docs/screenshots/loan-out.jpg"
+      "screenshot": "docs/images/v0.35.0/inventory.png"
     },
     {
       "surface": "desktop",
       "keyPrefix": "wishlist.receive",
       "meaning": "Workflow for receiving a wishlist purchase into inventory and choosing how many physical spools arrived.",
-      "screenshot": "docs/screenshots/wishlist-queue.jpg"
+      "screenshot": "docs/images/v0.35.0/inventory.png"
     },
     {
       "surface": "desktop",
       "keyPrefix": "loans.contact",
       "meaning": "Contact information for the person associated with a tracked spool loan.",
-      "screenshot": "docs/screenshots/loans.jpg"
+      "screenshot": "docs/images/v0.35.0/inventory.png"
     },
     {
       "surface": "desktop",
       "keyPrefix": "loans.expectedReturn",
       "meaning": "Expected date when an active outbound spool loan should be returned.",
-      "screenshot": "docs/screenshots/loans.jpg"
+      "screenshot": "docs/images/v0.35.0/inventory.png"
     },
     {
       "surface": "desktop",
       "keyPrefix": "loans.dueToday",
       "meaning": "Status label for an active loan whose expected-return date is the current local calendar day.",
-      "screenshot": "docs/screenshots/loans.jpg"
+      "screenshot": "docs/images/v0.35.0/inventory.png"
     },
     {
       "surface": "desktop",
       "keyPrefix": "loans.overdue",
       "meaning": "Status label for an active loan whose expected-return date has already passed.",
-      "screenshot": "docs/screenshots/loans.jpg"
+      "screenshot": "docs/images/v0.35.0/inventory.png"
     },
     {
       "surface": "desktop",
       "keyPrefix": "statistics.consumptionForecast",
       "meaning": "Statistics heading and guidance for projected filament depletion based on recorded owned-stock consumption.",
-      "screenshot": "docs/screenshots/statistics.jpg"
+      "screenshot": "docs/images/v0.35.0/statistics.png"
     },
     {
       "surface": "desktop",
       "keyPrefix": "statistics.inventoryValue",
       "meaning": "Statistics heading and guidance for current inventory value calculated from remaining weight and registered spool prices.",
-      "screenshot": "docs/screenshots/statistics.jpg"
+      "screenshot": "docs/images/v0.35.0/statistics.png"
     },
     {
       "surface": "desktop",
       "keyPrefix": "statistics.materialCost",
       "meaning": "Statistics heading and guidance for material cost attributed to recorded filament consumption.",
-      "screenshot": "docs/screenshots/statistics.jpg"
+      "screenshot": "docs/images/v0.35.0/statistics.png"
     },
     {
       "surface": "desktop",
       "keyPrefix": "statistics.openFilamentDefaults",
       "meaning": "Action from incomplete cost data to the Filament defaults settings where currency and group prices can be configured.",
-      "screenshot": "docs/screenshots/statistics.jpg"
+      "screenshot": "docs/images/v0.35.0/statistics.png"
     },
     {
       "surface": "desktop",
       "keyPrefix": "settings.tabFilamentDefaults",
       "meaning": "Settings navigation tab for low-stock thresholds, default purchase currency and filament price groups.",
-      "screenshot": "docs/screenshots/settings-general.jpg"
+      "screenshot": "docs/images/v0.35.0/settings.png"
     },
     {
       "surface": "companion",
       "keyPrefix": "errors.purchaseMetadata",
       "meaning": "Browser Companion capability error requiring a newer Host before purchase metadata can be saved.",
-      "screenshot": "docs/screenshots/companion-phone-detail.jpg"
+      "screenshot": "docs/images/v0.35.0/companion-mobile.png"
     },
     {
       "surface": "desktop",
       "keyPrefix": "errors.purchasePriceProtection",
       "meaning": "Lightweight inventory-import validation for the per-spool price-protection lock and price-source fields.",
-      "screenshot": "docs/screenshots/settings-general.jpg"
+      "screenshot": "docs/images/v0.35.0/settings.png"
     },
     {
       "surface": "companion",
       "keyPrefix": "errors.wishlist",
       "meaning": "Validation, stale-state and quantity errors shown when changing wishlist status or receiving physical rolls into inventory.",
-      "screenshot": "docs/screenshots/wishlist-queue.jpg"
+      "screenshot": "docs/images/v0.35.0/inventory.png"
     },
     {
       "surface": "desktop",
       "keyPrefix": "errors.inventoryBulk",
       "meaning": "Atomic inventory bulk-action failures that require refreshing, changing the selection or using the owning printer or loan workflow.",
-      "screenshot": "docs/screenshots/inventory.jpg"
+      "screenshot": "docs/images/v0.35.0/inventory.png"
     },
     {
       "surface": "desktop",
       "keyPrefix": "errors.filamentBatch",
       "meaning": "Validation failures for applying a filament price group to selected active or explicitly chosen historical spools.",
-      "screenshot": "docs/screenshots/settings-general.jpg"
+      "screenshot": "docs/images/v0.35.0/settings.png"
     },
     {
       "surface": "desktop",
       "keyPrefix": "errors.purchase",
       "meaning": "Per-spool purchase price, currency and receipt-metadata validation; price always means the unit price of one physical spool.",
-      "screenshot": "docs/screenshots/filament-details.jpg"
+      "screenshot": "docs/images/v0.35.0/inventory.png"
     },
     {
       "surface": "companion",
       "keyPrefix": "errors.inventoryBulk",
       "meaning": "Browser Companion fallbacks for atomic inventory bulk-action failures owned by the desktop or Host workflow.",
-      "screenshot": "docs/screenshots/companion-phone-inventory.jpg"
+      "screenshot": "docs/images/v0.35.0/companion-mobile.png"
     },
     {
       "surface": "companion",
       "keyPrefix": "errors.filamentBatch",
       "meaning": "Browser Companion fallbacks for Host-owned filament price-batch validation failures.",
-      "screenshot": "docs/screenshots/companion-phone-settings.jpg"
+      "screenshot": "docs/images/v0.35.0/companion-mobile.png"
     },
     {
       "surface": "companion",
       "keyPrefix": "errors.purchase",
       "meaning": "Browser Companion purchase price, currency and receipt-metadata validation; price is per physical spool.",
-      "screenshot": "docs/screenshots/companion-phone-detail.jpg"
+      "screenshot": "docs/images/v0.35.0/companion-mobile.png"
     },
     {
       "surface": "desktop",
       "keyPrefix": "errors.spoolCommonDetailsHostUnsupported",
       "meaning": "Shown before any write when an older Host cannot atomically save tare weight or ownership together with common roll details.",
-      "screenshot": "docs/screenshots/filament-details.jpg"
+      "screenshot": "docs/images/v0.35.0/inventory.png"
     },
     {
       "surface": "companion",
       "keyPrefix": "errors.spoolCommonDetailsHostUnsupported",
       "meaning": "Localized capability fallback for clients that require the atomic common-details Host contract.",
-      "screenshot": "docs/screenshots/companion-phone-detail.jpg"
+      "screenshot": "docs/images/v0.35.0/companion-mobile.png"
     },
     {
       "surface": "desktop",
       "keyPrefix": "errors.unavailable",
       "meaning": "Fail-closed message shown when the configured Host library cannot safely serve the requested desktop Client operation, including after a role or target change.",
-      "screenshot": "docs/screenshots/settings-library.jpg"
+      "screenshot": "docs/images/v0.35.0/settings.png"
     },
     {
       "surface": "companion",
       "keyPrefix": "errors.unavailable",
       "meaning": "Fail-closed response shown when this process is configured as a Client and therefore cannot serve protected Host-library routes.",
-      "screenshot": "docs/screenshots/companion-phone-inventory.jpg"
+      "screenshot": "docs/images/v0.35.0/companion-mobile.png"
     },
     {
       "surface": "desktop",
       "keyPrefix": "access.",
       "meaning": "Browser access recovery. Host means the computer running Companion, not another desktop Client. Device names and browser hints are untrusted suggestions, never proof of identity. Approval in the native Host app precedes entry of a six-digit, five-minute, three-attempt code on the requesting browser; the code alone cannot grant access. Pairing links remain an alternative.",
-      "screenshot": "docs/screenshots/settings-library-pairing.jpg"
+      "screenshot": "docs/images/v0.35.0/settings.png"
     },
     {
       "surface": "companion",
       "keyPrefix": "access.",
       "meaning": "Browser access recovery. Host means the computer running Companion, not another desktop Client. Device names and browser hints are untrusted suggestions, never proof of identity. Approval in the native Host app precedes entry of a six-digit, five-minute, three-attempt code on the requesting browser; the code alone cannot grant access. Pairing links remain an alternative.",
-      "screenshot": "docs/screenshots/companion-phone-settings.jpg"
+      "screenshot": "docs/images/v0.35.0/companion-mobile.png"
     }
   ],
   "trivialGroups": [

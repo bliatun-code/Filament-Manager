@@ -6,7 +6,7 @@ community translations. Norwegian Bokmål, German, and French retain a
 named review record for an earlier source fingerprint and require a renewed
 handoff before maintained status. This checklist supplements the canonical
 terminology and workflow in
-[`docs/LOCALIZATION.md`](../docs/LOCALIZATION.md); it does not replace a named
+[`docs/development/LOCALIZATION.md`](../docs/development/LOCALIZATION.md); it does not replace a named
 reviewer or record approval by itself.
 
 ## Before review

@@ -11,7 +11,7 @@ license as the project: GNU Affero General Public License v3.0 or later
 ## Development Setup
 
 The workspace supports Rust 1.90 and newer. A checked-in toolchain file selects
-the reviewed Rust 1.99.0 release, including Clippy and rustfmt, for normal local
+the reviewed Rust release, including Clippy and rustfmt, for normal local
 commands. Install it with `rustup` if your environment does not resolve it
 automatically.
 
@@ -97,7 +97,7 @@ npm run check:public-readiness
 The first public repository is created from a reviewed, one-commit source
 mirror rather than the private development history. Maintainers must also run
 `npm run audit:public-mirror` in that new repository and follow
-[the publication checklist](docs/PUBLIC_REPOSITORY.md) before its first push.
+[the publication checklist](docs/development/PUBLIC_REPOSITORY.md) before its first push.
 
 Useful focused checks:
 
@@ -113,7 +113,7 @@ cargo test -p bambu-filament-manager library_sync_resilience_tests -- --nocaptur
 The blocking performance, Host/Client resilience, backup/upgrade,
 accessibility, and localization thresholds—and the maintainer accountable for
 each—are listed in
-[the quality-gate contract](docs/QUALITY_GATES.md). Update that contract and its
+[the quality-gate contract](docs/development/QUALITY_GATES.md). Update that contract and its
 executable test in the same change whenever a gate or threshold changes.
 
 ## Local Build And QA Cleanup
@@ -184,7 +184,7 @@ Participation is also covered by [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md).
 
 ## Areas That Need Extra Care
 
-- Read [the architecture guide](docs/ARCHITECTURE.md) before moving Rust
+- Read [the architecture guide](docs/development/ARCHITECTURE.md) before moving Rust
   modules or changing startup, database, or Bambu Live boundaries.
 - Bambu Live/AMS matching and RFID onboarding must be conservative. A weak hint
   should not overwrite a deliberate slot assignment or RFID identity.
@@ -199,7 +199,7 @@ Participation is also covered by [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md).
 
 ## Localization
 
-Read [the localization workflow](docs/LOCALIZATION.md) before changing source
+Read [the localization workflow](docs/development/LOCALIZATION.md) before changing source
 copy or adding a language. Run `npm run report:i18n` after English source-string
 changes; maintained locales must be translated and natively reviewed against
 the new source fingerprint before release.
@@ -224,13 +224,12 @@ Filament Manager uses a Tauri desktop shell, a React interface and a Rust core.
 The core owns library rules and SQLite data; the desktop shell also serves the
 paired Companion browsers. Start with these references for technical work:
 
-- [Architecture and workspace layout](docs/ARCHITECTURE.md)
+- [Architecture and workspace layout](docs/development/ARCHITECTURE.md)
 - [English user guide](docs/USER_GUIDE.md) and [Norwegian user guide](docs/BRUKERVEILEDNING.md)
-- [Implementation plan](docs/IMPROVEMENT_PLAN.md)
-- [Quality gates](docs/QUALITY_GATES.md)
-- [Localization](docs/LOCALIZATION.md)
-- [macOS distribution and verification](docs/MACOS_DISTRIBUTION.md)
-- [Release integrity and SBOM](docs/SUPPLY_CHAIN.md)
+- [Quality gates](docs/development/QUALITY_GATES.md)
+- [Localization](docs/development/LOCALIZATION.md)
+- [macOS distribution and verification](docs/development/MACOS_DISTRIBUTION.md)
+- [Release integrity and SBOM](docs/development/SUPPLY_CHAIN.md)
 - [Security policy](SECURITY.md) and [community standards](CODE_OF_CONDUCT.md)
 
 The workspace contains `src/backend/` for the shared core, `src-tauri/` for the
@@ -240,11 +239,28 @@ Rust toolchain are required for development. macOS builds also need Xcode and
 its command-line tools. End users can install the published DMG or MSI without
 these development tools.
 
+## Documentation and working evidence
+
+Keep the README focused on downloads, the user guides and current product
+images. Public documentation describes supported behavior and repeatable
+maintenance procedures. Update the existing document when a contract changes.
+Keep task plans, dated QA reports, review rounds and superseded screenshots in
+ignored local working storage; summarize validation in the pull request and
+GitHub Actions instead of adding another report under `docs`. The ignored
+`docs/internal/` directory is available for local notes and archives.
+
+Current follow-up work includes testing the main workflows with human users,
+physical label/camera validation and Windows installer signing. Automated
+checks do not stand in for those remaining checks; their repeatable procedures
+belong in the maintained quality and distribution documentation.
+
 ## Recent Release Notes
 
 - [v0.35.0](docs/releases/RELEASE_NOTES_v0.35.0.md)
 - [v0.34.0](docs/releases/RELEASE_NOTES_v0.34.0.md)
 - [v0.33.0](docs/releases/RELEASE_NOTES_v0.33.0.md)
 
-The three newest release-note files stay in the working tree. Older notes and
-source remain available under their published Git tags and GitHub releases.
+The three newest release-note files stay in the working tree. Older source and
+checked-in notes remain available through their published Git tags. Archive
+older release downloads and metadata locally before removing release entries;
+preserve the tags used by historical links and upgrade tests.

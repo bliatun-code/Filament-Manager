@@ -32,7 +32,7 @@ struct StructuralMigration {
 }
 
 // This is the authoritative runtime order for versioned schema migrations.
-// Published rows are append-only; see docs/DATABASE_MIGRATIONS.md.
+// Published rows are append-only; see docs/development/DATABASE_MIGRATIONS.md.
 const STRUCTURAL_MIGRATIONS: &[StructuralMigration] = &[
     StructuralMigration {
         from_version: 1,
