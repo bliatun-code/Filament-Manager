@@ -16,6 +16,7 @@ function createShellStateHarness(overrides = {}) {
       renderCalls.push("render");
     },
     resetSessionState,
+    submitUnweighedPrinterOperation: overrides.submitUnweighedPrinterOperation,
   });
 
   return {
@@ -242,4 +243,23 @@ test('an observed roll opens catalog creation with its matching series and retur
   harness.state.printers[0].slots[0].spool_id='occupied';
   harness.shellState.openLiveCatalogSpool('p','s');
   assert.equal(harness.state.activeTaskSheet,null);
+});
+
+test("trusted AMS clear and swap submit directly while manual unload keeps a blank measurement", () => {
+  for(const mode of ["clear","assign"]) for(const confirmed of [false,true]) {
+    const at=new Date().toISOString();let submissions=0, submittedTask=null;
+    const harness=createShellStateHarness({submitUnweighedPrinterOperation:task=>{submissions++;submittedTask=task;},state:{
+      printers:[{printer:{id:"p",model:"P1S"},slots:[{slot_id:"s",spool_id:"old",spool_remaining_g:510,
+        live_can_unload_without_weighing:confirmed,live_loaded:true,live_mqtt_connected:true,
+        live_match_status:"clear_match",live_matched_inventory_mode:"exact_rfid",live_matched_inventory_spool_id:"old",
+        live_remaining_grams:510,live_weight_seen_at:at,live_last_identity_seen_at:at,live_printer_last_seen_at:at}]}],
+      spools:[{spool:{id:"old",remaining_g:510},master:{vendor:"Bambu"}},{spool:{id:"new",remaining_g:800},master:{vendor:"eSUN"}}],
+    }});
+    harness.shellState.startPrinterWeightUpdate({mode,printerId:"p",slotId:"s",targetSpoolId:mode==="assign"?"new":null});
+    assert.equal(submissions,confirmed?1:0);
+    const task=confirmed?submittedTask:harness.state.activeTaskSheet;
+    assert.equal(task.outgoingWeightConfirmed,confirmed);
+    assert.equal(task.incomingWeightRequired,false);
+    if(confirmed) assert.equal(harness.state.activeTaskSheet,null,"no intermediate weighing sheet");
+  }
 });

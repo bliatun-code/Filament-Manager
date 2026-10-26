@@ -359,12 +359,12 @@ export function renderPrinterWeightTaskSheetBody(options) {
   const targetPlacementLabel = formatPlacementLabel(task.targetLocationLabel || task.targetLocationId, locale);
   const mode = String(task.mode || "update").trim();
   const requiresOutgoing =
-    Boolean(task.currentSpoolId) && (mode === "clear" || (mode === "assign" && task.currentSpoolId !== task.targetSpoolId));
-  const requiresIncoming = mode === "assign" && Boolean(task.targetSpoolId);
+    Boolean(task.currentSpoolId) && task.outgoingWeightConfirmed !== true && (mode === "clear" || (mode === "assign" && task.currentSpoolId !== task.targetSpoolId));
+  const requiresIncoming = mode === "assign" && Boolean(task.targetSpoolId) && task.incomingWeightRequired !== false;
   const defaultCurrentMeasuredWeight =
-    task.currentMeasuredWeight != null && task.currentMeasuredWeight !== ""
+    mode === "update" && task.currentMeasuredWeight != null && task.currentMeasuredWeight !== ""
       ? task.currentMeasuredWeight
-      : task.currentRemainingWeight != null && task.currentRemainingWeight !== ""
+      : mode === "update" && task.currentRemainingWeight != null && task.currentRemainingWeight !== ""
         ? task.currentRemainingWeight
         : "";
   const defaultIncomingMeasuredWeight =
@@ -376,7 +376,7 @@ export function renderPrinterWeightTaskSheetBody(options) {
   const weightPreview = (inputName, tare, total) => `
     <div id="printer-${inputName}-preview" class="metric-card" data-weight-preview="measurement" data-weight-input="${inputName}" data-tare-weight="${escapeHtml(tare || 0)}" aria-live="polite">
       <div class="metric-label">${escapeHtml(t(locale, "storage.filament", "Filament"))}</div>
-      <div class="metric-value">${escapeHtml(formatGrams(Number(total) || 0))} − ${escapeHtml(formatGrams(Number(tare) || 0))} = ${escapeHtml(formatGrams(Math.max(0, (Number(total) || 0) - (Number(tare) || 0))))}</div>
+      <div class="metric-value">${total === "" ? "—" : `${escapeHtml(formatGrams(Number(total) || 0))} − ${escapeHtml(formatGrams(Number(tare) || 0))} = ${escapeHtml(formatGrams(Math.max(0, (Number(total) || 0) - (Number(tare) || 0))))}`}</div>
     </div>`;
   const submitLabel =
     mode === "clear"

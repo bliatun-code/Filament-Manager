@@ -367,6 +367,7 @@ fn make_slot() -> PrinterAmsSlotRow {
         live_remaining_grams: None,
         live_weight_seen_at: None,
         live_weight_review_samples: None,
+        live_can_unload_without_weighing: None,
         live_last_identity_seen_at: None,
         live_match_status: None,
         live_match_note: None,
@@ -8096,6 +8097,11 @@ fn live_registered_bambu_rolls_can_be_removed_and_replaced_automatically() {
                 false,
             )
             .unwrap();
+            // The manual shortcut is deliberately unavailable without current,
+            // confirmed AMS weight; physical RFID replacement remains independent.
+            assert!(!db
+                .can_unload_without_weighing("printer_1", "printer_1_ams_1_slot_1", "outgoing")
+                .unwrap());
             let now = super::now_iso_string();
             let mut observed = super::default_offline_state();
             observed.online = true;

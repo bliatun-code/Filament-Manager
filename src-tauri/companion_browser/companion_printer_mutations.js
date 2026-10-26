@@ -12,6 +12,7 @@ export function createCompanionPrinterMutations({
   tr,
   findSpoolRow,
 }) {
+  let operationInFlight = false;
   async function submitPrinterSlotAssignment(printerId, slotId, spoolId, mutationOptions = {}) {
     const trimmedPrinterId = printerId.trim();
     const trimmedSlotId = slotId.trim();
@@ -128,8 +129,9 @@ export function createCompanionPrinterMutations({
     }
   }
 
-  async function submitPrinterSlotOperation(currentGramsValue, incomingGramsValue, outgoingGramsValue) {
-    const task = state.activeTaskSheet || null;
+  async function submitPrinterSlotOperation(currentGramsValue, incomingGramsValue, outgoingGramsValue, operationTask = null) {
+    if (operationInFlight || state.busy) return;
+    const task = operationTask || state.activeTaskSheet || null;
     if (!task || task.type !== "printer-weight") {
       setStatus(tr("status.printerSlotFailed", "Failed to update printer slot."), "error");
       render();
@@ -140,8 +142,8 @@ export function createCompanionPrinterMutations({
     const currentSpoolId = String(task.currentSpoolId || "").trim();
     const targetSpoolId = String(task.targetSpoolId || "").trim();
     const requiresOutgoing =
-      Boolean(currentSpoolId) && (mode === "clear" || (mode === "assign" && currentSpoolId !== targetSpoolId));
-    const requiresIncoming = mode === "assign" && Boolean(targetSpoolId);
+      Boolean(currentSpoolId) && task.outgoingWeightConfirmed !== true && (mode === "clear" || (mode === "assign" && currentSpoolId !== targetSpoolId));
+    const requiresIncoming = mode === "assign" && Boolean(targetSpoolId) && task.incomingWeightRequired !== false;
     const currentMeasured =
       mode === "update" ? parseCompanionMeasuredWeight(currentGramsValue) : null;
     const incomingMeasured =
@@ -165,6 +167,7 @@ export function createCompanionPrinterMutations({
       return;
     }
 
+    operationInFlight = true;
     setBusy(true);
     setStatus(
       mode === "clear"
@@ -225,6 +228,7 @@ export function createCompanionPrinterMutations({
       setStatus(error.message || tr("status.printerSlotFailed", "Failed to update printer slot."), "error");
       render();
     } finally {
+      operationInFlight = false;
       setBusy(false);
     }
   }

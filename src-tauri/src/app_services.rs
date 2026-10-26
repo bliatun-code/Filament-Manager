@@ -192,6 +192,17 @@ impl CompanionService {
             let mut rows = enrich_printer_overview_with_live_slots(rows, &integrations);
             for printer in &mut rows {
                 for slot in &mut printer.slots {
+                    slot.live_can_unload_without_weighing = slot
+                        .spool_id
+                        .as_deref()
+                        .map(|id| {
+                            snapshot.can_unload_without_weighing(
+                                &printer.printer.id,
+                                &slot.slot_id,
+                                id,
+                            )
+                        })
+                        .transpose()?;
                     slot.live_weight_review_samples =
                         snapshot.stable_live_weight_rejection_count(&printer.printer.id, slot)?;
                 }

@@ -31,7 +31,7 @@ async function buildPrinterWeightHarness() {
     const writes = [], reads = [], feedback = [], observedAt = new Date().toISOString();
     let workflow, snapshot, currentSlot, retained, settled = 0;
     let options = { current: "A", host: null, library: "library-A", generation: 1,
-      ready: true, tauri: true, ams: false };
+      ready: true, tauri: true, ams: false, confirmed: false, cached: false };
     window.__TAURI__ = { invoke: (command, payload) => {
       if (!["operate_printer_slot", "operate_library_sync_host_printer_slot", "accept_bambu_live_weight_estimate"].includes(command)) {
         return Promise.reject(new Error("Unexpected non-atomic write: " + command));
@@ -50,13 +50,15 @@ async function buildPrinterWeightHarness() {
     const accept = () => {
       Promise.resolve(workflow.acceptIncomingAmsWeightEstimate()).finally(() => { settled += 1; });
     };
-    function Harness({ current, host, library, generation, ready, tauri, ams }) {
+    function Harness({ current, host, library, generation, ready, tauri, ams, confirmed, cached }) {
       const [busy, setBusy] = useState(false), [error, setError] = useState(null),
         [info, setInfo] = useState(null);
       const trackBusy = useCallback(value => { feedback.push(["busy", value]); setBusy(value); }, []);
       const trackError = useCallback(value => { feedback.push(["error", value]); setError(value); }, []);
       const trackInfo = useCallback(value => { feedback.push(["info", value]); setInfo(value); }, []);
       currentSlot = slot(current);
+      for (const row of spools) row.spool.remaining_g = confirmed && row.spool.id === current ? 400 : 500;
+      if (confirmed) Object.assign(currentSlot,{spool_remaining_g:400,live_can_unload_without_weighing:true});
       const integrations = ams ? { "printer-1": { enabled: true, observed_state: {
         online: true, mqtt_connected: true, trays: [{ tray_index: 0, loaded: true,
           match_status: "clear_match", matched_inventory_mode: "exact_rfid",
@@ -70,7 +72,7 @@ async function buildPrinterWeightHarness() {
       workflow = usePrinterSlotInteractions({
         bambuLiveIntegrations: integrations, busy, canUseClientHostWrite: allow,
         clientHostBaseUrl: host ? "http://" + host : null,
-        clientLibraryId: host ? library : null, clientPrinterSource: "LIVE",
+        clientLibraryId: host ? library : null, clientPrinterSource: cached ? "CACHED" : "LIVE",
         clientReadOnly: Boolean(host), clientTargetGeneration: generation,
         ensureLocalWriteAllowed: allow, librarySyncReady: ready, locale: "en",
         printers: [{ printer: { id: "printer-1", model: "P1S", name: "QA" }, slots: [currentSlot] }],
@@ -277,6 +279,27 @@ test("rendered printer weight operations keep the original roll and session", as
       await complete(page);
       assert.equal((await page.evaluate("printerWeight.snapshot()")).info,
         "Weight updated from the current AMS estimate.");
+    });
+
+    for (const host of [null,"host-A"]) for (const action of ["Unload","Load C"]) {
+      await scenario(`confirmed AMS weight skips ${action} dialog on ${host??"local"}`,async page=>{
+        await page.evaluate(`printerWeight.render({ams:true,confirmed:true,host:${JSON.stringify(host)}})`);
+        await page.getByRole("button",{name:action,exact:true}).click();
+        await page.waitForFunction("printerWeight.snapshot().writes.length===1");
+        assert.equal(await page.getByRole("dialog").count(),0);
+        const write=(await page.evaluate("printerWeight.snapshot()")).writes[0];
+        assert.equal(write.command,host?"operate_library_sync_host_printer_slot":"operate_printer_slot");
+        const input=host?write.payload.input.operation:write.payload.input;
+        assert.equal(input.outgoing_measured_total_g,null);assert.equal(input.incoming_measured_total_g,null);
+        assert.equal(input.target_spool_id,action==="Unload"?null:"C");
+        await complete(page);
+      });
+    }
+    await scenario("cached AMS weight still opens an empty outgoing weigh-in",async page=>{
+      await page.evaluate("printerWeight.render({ams:true,confirmed:true,cached:true})");
+      await page.getByRole("button",{name:"Unload",exact:true}).click();
+      await page.getByRole("dialog").waitFor();assert.equal(await page.getByRole("spinbutton").inputValue(),"");
+      assert.equal((await page.evaluate("printerWeight.snapshot()")).writes.length,0);
     });
 
     await scenario("replacement measures only outgoing weight and an empty slot loads without a dialog", async page => {

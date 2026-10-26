@@ -333,6 +333,7 @@ export function buildIncomingWeightPrompt(
   row: SpoolWithMasterRow,
   liveTray?: BambuLiveObservedTray | null,
   nowMs = Date.now(),
+  outgoingWeightConfirmed = false,
 ): IncomingWeightPrompt {
   return {
     printerId,
@@ -343,7 +344,7 @@ export function buildIncomingWeightPrompt(
     targetFilamentName: row.master.filament_name,
     targetColorName: row.master.color_name,
     targetHexColor: row.master.hex_color,
-    requiresOutgoingWeight: Boolean(slot.spool_id && slot.spool_id !== row.spool.id),
+    requiresOutgoingWeight: Boolean(slot.spool_id && slot.spool_id !== row.spool.id) && !outgoingWeightConfirmed,
     requiresIncomingWeight: slot.spool_id === row.spool.id,
     updatesCurrentRollWeight: slot.spool_id === row.spool.id,
     currentMaterial: slot.spool_material,
@@ -356,6 +357,7 @@ export function buildIncomingWeightPrompt(
 export function buildEmptySlotWeightPrompt(
   printerId: string,
   slot: PrinterAmsSlotRow,
+  outgoingWeightConfirmed = false,
 ): IncomingWeightPrompt {
   return {
     printerId,
@@ -366,7 +368,7 @@ export function buildEmptySlotWeightPrompt(
     targetFilamentName: slot.spool_filament_name ?? "—",
     targetColorName: slot.spool_color_name ?? "—",
     targetHexColor: slot.spool_hex_color,
-    requiresOutgoingWeight: true,
+    requiresOutgoingWeight: !outgoingWeightConfirmed,
     requiresIncomingWeight: false,
     currentMaterial: slot.spool_material,
     currentFilamentName: slot.spool_filament_name,

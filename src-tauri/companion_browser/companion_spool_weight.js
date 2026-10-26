@@ -69,3 +69,17 @@ export function updateCompanionWeightPreviews(root, locale = "en") {
     });
   }
 }
+
+export function canUnloadPrinterSlotWithoutWeighing(slot, row, nowMs = Date.now()) {
+  if (slot?.live_can_unload_without_weighing !== true || !row ||
+      slot.live_loaded !== true || slot.live_mqtt_connected !== true ||
+      slot.live_match_status !== "clear_match" || slot.live_matched_inventory_mode !== "exact_rfid" ||
+      slot.live_matched_inventory_spool_id !== slot.spool_id || row.spool?.id !== slot.spool_id) return false;
+  for (const value of [slot.live_weight_seen_at, slot.live_last_identity_seen_at, slot.live_printer_last_seen_at]) {
+    const at = value ? Date.parse(/(?:Z|[+-]\d{2}:?\d{2})$/i.test(String(value)) ? String(value) : String(value).replace(" ", "T") + "Z") : NaN;
+    if (!Number.isFinite(at) || nowMs - at < -5000 || nowMs - at > 10 * 60 * 1000) return false;
+  }
+  const remaining = slot.live_remaining_grams;
+  return Number.isSafeInteger(remaining) && remaining >= 0 &&
+    remaining === slot.spool_remaining_g && remaining === row.spool?.remaining_g;
+}

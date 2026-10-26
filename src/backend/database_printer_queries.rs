@@ -206,6 +206,7 @@ fn build_printer_overview(
             live_remaining_grams: None,
             live_weight_seen_at: None,
             live_weight_review_samples: None,
+            live_can_unload_without_weighing: None,
             live_last_identity_seen_at: None,
             live_match_status: None,
             live_match_note: None,

@@ -964,7 +964,8 @@ test("printer workspace renders a dedicated weight task sheet body for loaded sl
   assert.match(html, /companion-selection-card swatch-surface detail-section-card printer-weight-summary/);
   assert.match(html, /--swatch-rgb:155 158 160/);
   assert.match(html, /Brutus · AMS 1 · Spor 4/);
-  assert.match(html, /980 g − 250 g = 730 g/);
+  assert.match(html, /name="outgoing-grams"[\s\S]*?value=""/);
+  assert.doesNotMatch(html, /980 g − 250 g = 730 g/);
   assert.match(html, /data-weight-input="outgoing-grams"/);
   assert.ok(submitButton);
   assert.match(submitButton, /class="primary-button"/);

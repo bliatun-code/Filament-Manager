@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import {
+  canUnloadPrinterSlotWithoutWeighing,
   defaultSpoolTareWeightForVendor,
   resolveSpoolRowTareWeight,
   resolveSpoolTareWeight,
@@ -70,4 +71,18 @@ test("measured weight parsing never truncates decimals, exponent notation or uns
   }
   assert.equal(parseCompanionMeasuredWeight(" 900 "), 900);
   assert.equal(parseCompanionMeasuredWeight("0"), 0);
+});
+
+test("confirmed AMS unload requires fresh Host evidence matching stored weight", () => {
+  const at=new Date().toISOString();
+  const row={spool:{id:"roll",remaining_g:510}};
+  const slot={spool_id:"roll",spool_remaining_g:510,live_can_unload_without_weighing:true,
+    live_loaded:true,live_mqtt_connected:true,live_match_status:"clear_match",live_matched_inventory_mode:"exact_rfid",
+    live_matched_inventory_spool_id:"roll",live_remaining_grams:510,live_weight_seen_at:at,
+    live_last_identity_seen_at:at,live_printer_last_seen_at:at};
+  assert.equal(canUnloadPrinterSlotWithoutWeighing(slot,row),true);
+  for(const patch of [{live_can_unload_without_weighing:undefined},{live_remaining_grams:500},
+    {live_match_status:"ambiguous"},{live_mqtt_connected:false},{live_weight_seen_at:"2000-01-01T00:00:00Z"}]) {
+    assert.equal(canUnloadPrinterSlotWithoutWeighing({...slot,...patch},row),false);
+  }
 });

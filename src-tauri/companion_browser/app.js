@@ -89,6 +89,7 @@ const companionShellState = createCompanionShellState({
   state,
   render,
   resetSessionState,
+  submitUnweighedPrinterOperation: task => submitPrinterSlotOperation("", "", "", task),
 });
 const {
   applyLayoutMode,

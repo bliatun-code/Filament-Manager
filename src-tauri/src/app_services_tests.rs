@@ -1863,13 +1863,18 @@ fn printer_overview_reads_fresh_weight_outliers_with_the_application_schema() {
     db.connection().execute("UPDATE ams_slots SET live_cache_cleared_at=datetime('now','-2 minutes') WHERE id='printer_ams_1_slot_1'",[]).unwrap();
     let now: String = db
         .connection()
-        .query_row("SELECT datetime('now')", [], |r| r.get(0))
+        .query_row(
+            "SELECT strftime('%Y-%m-%dT%H:%M:%SZ','now','+1 second')",
+            [],
+            |r| r.get(0),
+        )
         .unwrap();
     let observation: BambuLiveIntegrationRow = serde_json::from_value(serde_json::json!({
         "enabled":true, "observed_state":{"online":true,"mqtt_connected":true,"last_seen_at":now,
             "trays":[{"ams_index":0,"tray_index":0,"loaded":true,"tray_uuid":"RFID",
             "last_identity_seen_at":now,"last_weight_seen_at":now,"remaining_grams":600,
-            "tray_weight_g":1000,"remaining_percent":60}]},
+            "tray_weight_g":1000,"remaining_percent":60,
+            "match_status":"clear_match","matched_inventory_mode":"exact_rfid","matched_inventory_spool_id":"roll"}]},
     }))
     .unwrap();
     db.save_bambu_live_integration("printer", &observation)
@@ -1913,10 +1918,26 @@ fn printer_overview_reads_fresh_weight_outliers_with_the_application_schema() {
         slot.live_matched_inventory_mode.as_deref(),
         Some("exact_rfid")
     );
+    assert_eq!(slot.live_can_unload_without_weighing, Some(false));
     assert_eq!(
         db.library_domain_revisions().unwrap(),
         revisions,
         "warning reads do not write inventory"
+    );
+
+    db.connection()
+        .execute(
+            "UPDATE filament_spools SET current_weight_g=600, remaining_g=600 WHERE id='roll'",
+            [],
+        )
+        .unwrap();
+    let corrected_revisions = db.library_domain_revisions().unwrap();
+    assert_eq!(read_slot().live_can_unload_without_weighing, Some(true));
+
+    assert_eq!(
+        db.library_domain_revisions().unwrap(),
+        corrected_revisions,
+        "capability reads do not write inventory"
     );
     drop(db);
     std::fs::remove_file(path).expect("cleanup");
