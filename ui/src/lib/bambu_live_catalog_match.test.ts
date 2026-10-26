@@ -134,3 +134,11 @@ test("buildBambuLiveCatalogMatchResult ignores color-only live tray metadata", (
 
   assert.equal(result.kind, "none");
 });
+
+test('specific Bambu series remain distinct when white PLA is missing from inventory', () => {
+  const result = buildBambuLiveCatalogMatchResult([
+    master('matte-white', {filament_name:'PLA Matte',hex_color:'#FFFFFF'}),
+    master('tough-white', {filament_name:'PLA Tough+',hex_color:'#FFFFFF'}),
+  ], tray({filament_name:'PLA Tough+',color_hex:'#FFFFFF'}));
+  assert.deepEqual(result.candidates.map(row=>row.id),['tough-white']);
+});

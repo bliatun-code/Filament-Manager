@@ -1,6 +1,36 @@
 import type { DictionaryNode } from "../../i18n_types";
 
 export const plPLDictionary: DictionaryNode = {
+    access: {
+      "title": "Dostęp wymaga odnowienia",
+      "body": "Poproś hosta o ponowne zatwierdzenie tej przeglądarki.",
+      "deviceName": "Nazwa urządzenia",
+      "nameHint": "Nazwa pomaga hostowi jedynie rozpoznać urządzenie.",
+      "request": "Poproś ponownie o dostęp",
+      "pendingTitle": "Wysłano prośbę",
+      "pendingBody": "Dostęp musi zostać zatwierdzony w Filament Manager na komputerze hosta.",
+      "waiting": "Oczekiwanie na hosta…",
+      "codeTitle": "Wpisz kod z hosta",
+      "codeLabel": "Kod jednorazowy",
+      "codeHint": "Sześć cyfr. Kod jest ważny przez pięć minut.",
+      "confirm": "Potwierdź dostęp",
+      "badCode": "Nieprawidłowy kod. Pozostało prób: {count}.",
+      "rejected": "Prośba została odrzucona.",
+      "expired": "Prośba wygasła. Poproś ponownie o dostęp.",
+      "locked": "Trzy błędne próby. Poproś ponownie o dostęp.",
+      "cancelled": "Prośba została anulowana.",
+      "cancel": "Anuluj prośbę",
+      "otherWay": "Użyj linku parowania",
+      "fallback": "Otwórz nowy link parowania lub zeskanuj jego kod QR w sekcji Biblioteka i aplikacja internetowa na hoście.",
+      "banner": "Prośby o dostęp przeglądarki: {count}",
+      "open": "Zobacz prośby",
+      "hostTitle": "Prośby o dostęp przeglądarki",
+      "trust": "Nazwę podaje urządzenie. Zatwierdzaj tylko rozpoznawane urządzenia.",
+      "actionFailed": "Prośba uległa zmianie lub usługa jest niedostępna. Spróbuj ponownie.",
+      "reject": "Odrzuć",
+      "approve": "Zezwól na dostęp",
+      "shareCode": "Przekaż ten kod osobie korzystającej z urządzenia, które poprosiło o dostęp."
+    },
   "app": {
     "iconAlt": "Ikona Filament Manager",
     "loadingPage": "Ładowanie strony...",

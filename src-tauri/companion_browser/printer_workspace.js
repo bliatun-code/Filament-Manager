@@ -17,6 +17,7 @@ import {
 import {
   buildLiveInventoryCandidateRows,
   liveSlotObservedRfid,
+  rowMatchesLiveBambuSlot,
 } from "./companion_live_rfid_candidates.js";
 import { formatPrinterSlotLabelForModel } from "./printer_slot_labels.js";
 import {
@@ -607,6 +608,21 @@ function renderLiveInventoryCandidateRows(slot, spoolRows, activePrinter, locale
   `;
 }
 
+function observedCatalogColorName(slot, masters) {
+  const labels = new Map();
+  for (const master of masters || []) {
+    if (!rowMatchesLiveBambuSlot(slot, {spool:{status:"IN_STOCK",rfid_tag:null},master})) continue;
+    let label = String(master.color_name || "").replace(/\s*\(\d{4,}\)\s*/g, "").trim();
+    const profile = String(master.filament_name || "").trim();
+    if (profile && label.toLowerCase().startsWith(`${profile.toLowerCase()} `)) {
+      label = label.slice(profile.length).trim();
+    }
+    if (label) labels.set(label.toLowerCase(),label);
+  }
+  // Colour is a visual hint; it does not identify or register a physical roll.
+  return labels.size === 1 ? [...labels.values()][0] : "";
+}
+
 function renderSlotCards(options) {
   const { activePrinter, state, printerSpoolOptions = [], escapeHtml, formatGrams } = options;
   const locale = state.locale || "en";
@@ -648,7 +664,7 @@ function renderSlotCards(options) {
       const liveMaterialBits = formatInventoryDisplayTitle(
         slot.live_filament_type,
         slot.live_filament_name,
-        slot.live_tray_id_name,
+        observedCatalogColorName(slot, state.catalogMasters),
         locale,
       );
       const slotContentTitle = slot.spool_id
@@ -723,6 +739,11 @@ function renderSlotCards(options) {
           </div></div>
           ${candidateRows}
           <div class="slot-actions">
+          ${slotHasLiveLoaded && !slot.spool_id && slot.live_match_status === "unknown_rfid" ? renderCompanionActionButton({
+            variant:"secondary", className:"slot-button", escapeHtml,
+            label:t(locale,"storage.addSpool","Add spool"),
+            attributes:{"data-action":"add-live-catalog-spool", "data-printer-id":activePrinter.printer.id,"data-slot-id":slot.slot_id},
+          }) : ""}
             ${
               slot.spool_id
                 ? `

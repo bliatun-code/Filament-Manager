@@ -226,3 +226,20 @@ test("startPrinterWeightUpdate derives model-aware prusa slot labels for task sh
 
   assert.equal(harness.state.activeTaskSheet?.slotLabel, "MMU3 · Kanal 2");
 });
+
+test('an observed roll opens catalog creation with its matching series and returns to printers', () => {
+  const harness = createShellStateHarness({state:{
+    printers:[{printer:{id:'p'},slots:[{slot_id:'s',spool_id:null,live_loaded:true,live_match_status:'unknown_rfid',live_filament_type:'PLA',live_filament_name:'PLA Tough+',live_color_hex:'#FFFFFF'}]}],
+    catalogMasters:[{id:'matte',vendor:'Bambu',material:'PLA',filament_name:'PLA Matte',hex_color:'#FFFFFF'},
+      {id:'tough',vendor:'Bambu',material:'PLA',filament_name:'PLA Tough+',hex_color:'#FFFFFF',default_weight:1000}],
+  }});
+  harness.shellState.openLiveCatalogSpool('p','s');
+  assert.equal(harness.state.borrowedInDraft.selectedMasterId,'tough');
+  assert.equal(harness.state.borrowedInDraft.catalogSearch,'PLA Tough+');
+  assert.equal(harness.state.activeTaskSheet.returnFlow,'printers');
+  assert.equal(harness.state.showBorrowedInForm,true);
+  harness.state.activeTaskSheet=null;
+  harness.state.printers[0].slots[0].spool_id='occupied';
+  harness.shellState.openLiveCatalogSpool('p','s');
+  assert.equal(harness.state.activeTaskSheet,null);
+});

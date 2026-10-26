@@ -275,6 +275,15 @@ pub(crate) fn find_inventory_candidates<'a>(
                 .as_deref()
                 .or(tray.tray_id_name.as_deref());
             let name_match = live_name_matches(observed_name, Some(&row.master.filament_name));
+            // An identified Bambu profile (for example PLA Tough+) must not
+            // automatically select a different series just because it is white PLA.
+            if require_missing_rfid_tag
+                && observed_name
+                    .is_some_and(|name| live_name_has_distinctive_token(&live_name_tokens(name)))
+                && !name_match
+            {
+                return false;
+            }
             let color_match = live_color_matches_swatch(
                 tray.color_hex.as_deref(),
                 row.master.hex_color.as_deref(),

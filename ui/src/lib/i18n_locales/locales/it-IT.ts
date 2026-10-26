@@ -1,6 +1,36 @@
 import type { DictionaryNode } from "../../i18n_types";
 
 export const itITDictionary: DictionaryNode = {
+    access: {
+      "title": "L’accesso deve essere rinnovato",
+      "body": "Chiedi all’host di autorizzare nuovamente questo browser.",
+      "deviceName": "Nome del dispositivo",
+      "nameHint": "Il nome serve solo ad aiutare l’host a riconoscere il dispositivo.",
+      "request": "Richiedi nuovamente l’accesso",
+      "pendingTitle": "Richiesta inviata",
+      "pendingBody": "L’accesso deve essere autorizzato in Filament Manager sul computer host.",
+      "waiting": "In attesa dell’host…",
+      "codeTitle": "Inserisci il codice dell’host",
+      "codeLabel": "Codice monouso",
+      "codeHint": "Sei cifre. Il codice è valido per cinque minuti.",
+      "confirm": "Conferma accesso",
+      "badCode": "Codice errato. Restano {count} tentativi.",
+      "rejected": "La richiesta è stata rifiutata.",
+      "expired": "La richiesta è scaduta. Richiedi nuovamente l’accesso.",
+      "locked": "Tre tentativi errati. Richiedi nuovamente l’accesso.",
+      "cancelled": "La richiesta è stata annullata.",
+      "cancel": "Annulla richiesta",
+      "otherWay": "Usa un link di abbinamento",
+      "fallback": "Apri un nuovo link di abbinamento o scansiona il suo codice QR in Libreria e app web sull’host.",
+      "banner": "Richieste di accesso del browser: {count}",
+      "open": "Visualizza richieste",
+      "hostTitle": "Richieste di accesso del browser",
+      "trust": "Il nome è fornito dal dispositivo. Autorizza solo dispositivi che riconosci.",
+      "actionFailed": "La richiesta è cambiata o il servizio non è disponibile. Riprova.",
+      "reject": "Rifiuta",
+      "approve": "Consenti accesso",
+      "shareCode": "Comunica questo codice alla persona che usa il dispositivo che ha richiesto l’accesso."
+    },
   app: {
     iconAlt: "Icona Filament Manager",
     loadingPage: "Caricamento pagina...",

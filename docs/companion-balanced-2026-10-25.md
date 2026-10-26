@@ -1,5 +1,10 @@
 # Balanced Companion — implementation and access-renewal proposal
 
+Update 2026-10-26: the recovery proposal below is now implemented, with the
+requested lifetime increased to 365 days. See
+[the implementation and validation record](companion-access-recovery-2026-10-26.md).
+The original investigation/proposal is retained here as historical context.
+
 ## Implemented locally
 
 The browser Companion now follows the committed desktop direction:

@@ -1,6 +1,36 @@
 import type { DictionaryNode } from "../../i18n_types";
 
 export const csCZDictionary: DictionaryNode = {
+    access: {
+      "title": "Přístup je třeba obnovit",
+      "body": "Požádejte hostitele o opětovné schválení tohoto prohlížeče.",
+      "deviceName": "Název zařízení",
+      "nameHint": "Název pouze pomáhá hostiteli rozpoznat vaše zařízení.",
+      "request": "Znovu požádat o přístup",
+      "pendingTitle": "Žádost odeslána",
+      "pendingBody": "Přístup musí být schválen ve Filament Manager na hostitelském počítači.",
+      "waiting": "Čekání na hostitele…",
+      "codeTitle": "Zadejte kód od hostitele",
+      "codeLabel": "Jednorázový kód",
+      "codeHint": "Šest číslic. Kód platí pět minut.",
+      "confirm": "Potvrdit přístup",
+      "badCode": "Nesprávný kód. Zbývající pokusy: {count}.",
+      "rejected": "Žádost byla zamítnuta.",
+      "expired": "Platnost žádosti vypršela. Požádejte znovu o přístup.",
+      "locked": "Tři nesprávné pokusy. Požádejte znovu o přístup.",
+      "cancelled": "Žádost byla zrušena.",
+      "cancel": "Zrušit žádost",
+      "otherWay": "Použít odkaz pro párování",
+      "fallback": "Otevřete nový odkaz pro párování nebo naskenujte jeho QR kód v části Knihovna a webová aplikace na hostiteli.",
+      "banner": "Žádosti o přístup prohlížeče: {count}",
+      "open": "Zobrazit žádosti",
+      "hostTitle": "Žádosti o přístup prohlížeče",
+      "trust": "Název poskytlo zařízení. Schvalujte pouze zařízení, která znáte.",
+      "actionFailed": "Žádost se změnila nebo služba není dostupná. Zkuste to znovu.",
+      "reject": "Zamítnout",
+      "approve": "Povolit přístup",
+      "shareCode": "Sdělte tento kód osobě, která používá žádající zařízení."
+    },
   "app": {
     "iconAlt": "Ikona Filament Manager",
     "loadingPage": "Načítání stránky...",

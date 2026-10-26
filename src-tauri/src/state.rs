@@ -26,6 +26,7 @@ pub struct CompanionRuntimeState {
 
 #[derive(Clone)]
 pub struct TrustedLanCompanionRuntime {
+    pub(crate) access_recovery: crate::companion_access_recovery::AccessRecoveryStore,
     config: Arc<RwLock<TrustedLanCompanionConfig>>,
     status: Arc<RwLock<TrustedLanCompanionRuntimeStatus>>,
     server: Arc<RwLock<Option<TrustedLanCompanionServerHandle>>>,
@@ -117,6 +118,7 @@ impl TrustedLanCompanionRuntime {
             reconcile_gate: Arc::new(tokio::sync::Mutex::new(())),
             shutting_down: tokio::sync::watch::channel(false).0,
             qa_mode: companion_visual_qa_enabled(),
+            access_recovery: crate::companion_access_recovery::AccessRecoveryStore::default(),
         }
     }
 
@@ -210,6 +212,7 @@ impl TrustedLanCompanionRuntime {
     }
 
     pub fn mark_stopped(&self) {
+        self.access_recovery.clear();
         if let Ok(mut status) = self.status.write() {
             status.running = false;
             status.last_error = None;

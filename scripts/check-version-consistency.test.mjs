@@ -17,7 +17,8 @@ function writeFixture(root, overrides = {}) {
     "src-tauri/Cargo.toml": `[package]\nversion = "${version}"\n`,
     "Cargo.lock": `[[package]]\nname = "bambu-filament-manager"\nversion = "${version}"\n\n[[package]]\nname = "filament-manager-core"\nversion = "${version}"\n`,
     "src-tauri/tauri.conf.json": `${JSON.stringify({ version }, null, 2)}\n`,
-    "README.md": `Release notes:\n\n- [${tag}](docs/releases/RELEASE_NOTES_${tag}.md)\n\n- Current version: \`${version}\`\n`,
+    "README.md": `[Download latest release · v${version}](https://github.com/bliatun-code/Filament-Manager/releases/latest)\n`,
+    "CONTRIBUTING.md": `Release notes:\n\n- [${tag}](docs/releases/RELEASE_NOTES_${tag}.md)\n`,
     [`docs/releases/RELEASE_NOTES_${tag}.md`]: `# Filament Manager ${tag}\n\nRelease date: 2026-08-10\n`,
     ...overrides,
   };
@@ -76,10 +77,10 @@ test("rejects a missing versioned release notes file", (t) => {
   );
 });
 
-test("rejects a missing README release notes link", (t) => {
-  const result = runFixture(t, { "README.md": `- Current version: \`${version}\`\n` });
+test("rejects a missing latest-release download link", (t) => {
+  const result = runFixture(t, { "README.md": `Download latest release · v${version}\n` });
   assert.equal(result.status, 1);
-  assert.match(result.stderr, /README release notes link is missing/);
+  assert.match(result.stderr, /README latest-release download link is missing/);
 });
 
 test("rejects a mismatched release notes heading", (t) => {
@@ -100,12 +101,12 @@ test("rejects retaining more than three release notes", (t) => {
   assert.match(result.stderr, /release notes retention has 4 files, expected at most 3/);
 });
 
-test("rejects README links to release notes that are no longer retained", (t) => {
+test("rejects contributor links to release notes that are no longer retained", (t) => {
   const result = runFixture(t, {
-    "README.md": `Release notes:\n\n- [${tag}](docs/releases/RELEASE_NOTES_${tag}.md)\n- [v0.22.0](docs/releases/RELEASE_NOTES_v0.22.0.md)\n\n- Current version: \`${version}\`\n`,
+    "CONTRIBUTING.md": `Release notes:\n\n- [${tag}](docs/releases/RELEASE_NOTES_${tag}.md)\n- [v0.22.0](docs/releases/RELEASE_NOTES_v0.22.0.md)\n`,
   });
   assert.equal(result.status, 1);
-  assert.match(result.stderr, /README links to missing release notes file RELEASE_NOTES_v0\.22\.0\.md/);
+  assert.match(result.stderr, /CONTRIBUTING links to missing release notes file RELEASE_NOTES_v0\.22\.0\.md/);
 });
 
 test("rejects release notes at the repository root", (t) => {

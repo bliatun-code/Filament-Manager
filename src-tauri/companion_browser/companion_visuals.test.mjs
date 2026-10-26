@@ -8,8 +8,8 @@ test('Companion uses the desktop model and multi-material artwork without guessi
  assert.equal(printerImageFilename(' Bambu Lab P1S ',true),'bambu-p1s.png');
  assert.equal(printerImageFilename('prusa mk4s',true),'prusa-mk4smmu3.png');
  assert.equal(printerImageFilename('A custom P1S case',true),null);
- assert.match(renderPrinterImage('Prusa MK4S',true),/src="\/companion\/prusa-mk4smmu3.png"/);
- assert.match(renderPrinterImage('Bambu Lab P1S',true),/src="\/companion\/bambu-p1s-companion-cutout.png"/);
+ assert.match(renderPrinterImage('Prusa MK4S',true),/href="\/companion\/prusa-mk4smmu3.png"/);
+ assert.match(renderPrinterImage('Bambu Lab P1S',true),/href="\/companion\/bambu-p1s-companion-cutout.png"/);
  const catalog=JSON.parse(readFileSync(new URL('../../ui/src/lib/printer_image_catalog.json',import.meta.url),'utf8'));
  for(const [name,entry] of Object.entries(catalog)) {assert.equal(printerImageFilename(name),entry.single);assert.equal(printerImageFilename(name,true),entry.multi??entry.single);}
 });

@@ -43,6 +43,8 @@ import {
 } from "./lib/tauri_visual_qa_client";
 import type { SettingsTabKey } from "./pages/settings_page_model";
 import { AppUpdateBanner } from "./components/app_update_banner";
+import { CompanionAccessRequestBanner } from "./components/companion_access_request_banner";
+import { CompanionAccessRequestsContext, useCompanionAccessRequestState } from "./lib/companion_access_requests";
 import type { SettingsFilamentDefaultsFocusTarget } from "./components/settings_filament_defaults_tab";
 import type { FilamentPriceBatchReceipt } from "./lib/settings_filament_defaults_model";
 import type { InventoryNavigationGuard } from "./lib/use_inventory_unsaved_changes_guard";
@@ -71,6 +73,7 @@ function initialSettingsTabFromUrl(): SettingsTabKey | null {
 }
 
 export default function App() {
+  const companionAccess = useCompanionAccessRequestState();
   const { locale, t } = useI18n();
   const appUpdate = useAppUpdateContext();
   const [activePage, setActivePage] = useState<PageKey>(() => initialPageFromUrl());
@@ -382,6 +385,7 @@ export default function App() {
   })();
 
   return (
+    <CompanionAccessRequestsContext.Provider value={companionAccess}>
     <div>
       <a className="app-skip-link" href="#app-main-content">
         {t("app.skipToMainContent", "Skip to main content")}
@@ -430,6 +434,11 @@ export default function App() {
           }}
         />
       ) : null}
+      <CompanionAccessRequestBanner onOpen={() => {
+        const open = () => { companionAccess.setReviewRequested(true); openSettingsTab("LIBRARY"); };
+        if (inventoryNavigationGuardRef.current && !inventoryNavigationGuardRef.current(open)) return;
+        open();
+      }} />
       <main id="app-main-content" tabIndex={-1}>
         <Suspense
           fallback={
@@ -442,5 +451,6 @@ export default function App() {
         </Suspense>
       </main>
     </div>
+    </CompanionAccessRequestsContext.Provider>
   );
 }

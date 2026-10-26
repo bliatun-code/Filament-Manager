@@ -101,6 +101,8 @@ impl CompanionApiState {
         runtime: TrustedLanCompanionRuntime,
         credentials: CredentialStore,
     ) -> Self {
+        // A new listener/library binding never inherits approvals from its predecessor.
+        runtime.access_recovery.clear();
         Self {
             service: CompanionService::new_bound_to_current_library(db_path.clone()),
             db_path,

@@ -12,7 +12,7 @@ const issueConfig = readFileSync(
   new URL("../.github/ISSUE_TEMPLATE/config.yml", import.meta.url),
   "utf8",
 );
-const readme = readFileSync(new URL("../README.md", import.meta.url), "utf8");
+const contributing = readFileSync(new URL("../CONTRIBUTING.md", import.meta.url), "utf8");
 const localizationGuide = readFileSync(
   new URL("../docs/LOCALIZATION.md", import.meta.url),
   "utf8",
@@ -43,8 +43,8 @@ test("translation issue form accepts corrections only for the 20 published non-E
   assert.doesNotMatch(issueTemplate, /request a new language/i);
 });
 
-test("repository entry points link directly to the translation correction form", () => {
-  for (const source of [issueConfig, readme, localizationGuide]) {
+test("contributor entry points link directly to the translation correction form", () => {
+  for (const source of [issueConfig, contributing, localizationGuide]) {
     assert.ok(source.includes(TRANSLATION_FORM_URL));
   }
   assert.match(

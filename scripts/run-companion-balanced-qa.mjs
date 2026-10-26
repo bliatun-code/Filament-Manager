@@ -17,14 +17,24 @@ const out=resolve('release-artifacts/visual-qa/companion-balanced');await mkdir(
 const localeCatalog=JSON.parse(await readFile(resolve('localization/companion-dictionaries.json'),'utf8')).dictionaries;
 const browser=await chromium.launch();const report=[];
 try{for(const theme of ['dark','dark-deep','blue','light','auto'])for(const [device,width,height] of [['phone',390,844],['ipad',1024,1366],['desktop',1440,1000],...(theme==='dark'?[['phone-small',320,700]]:[])]){
- const context=await browser.newContext({viewport:{width,height},colorScheme:'dark',isMobile:device.startsWith('phone'),hasTouch:device!=='desktop'});const page=await context.newPage();let authenticated=true;const errors=[];page.on('pageerror',e=>errors.push(e.message));
+ const context=await browser.newContext({viewport:{width,height},colorScheme:'dark',isMobile:device.startsWith('phone'),hasTouch:device!=='desktop'});const page=await context.newPage();let authenticated=true;let accessStatus=null;let attempts=3;const errors=[];page.on('pageerror',e=>errors.push(e.message));
  try{
  await context.addInitScript(({theme})=>{if(!localStorage.getItem('bfm-companion-locale'))localStorage.setItem('bfm-companion-locale','nb');localStorage.setItem('bfm-companion-theme-mode',theme);},{theme});
  await page.route('http://companion-balanced.local/**',async route=>{
   const url=new URL(route.request().url());const path=url.pathname;let data;
+  if(path.startsWith('/api/v1/auth/recovery/')) {
+   const action=path.split('/').at(-1);const payload=route.request().postDataJSON();
+   if(action==='request'){accessStatus='pending';attempts=3;}
+   if(action==='cancel')accessStatus='cancelled';
+   if(action==='confirm' && accessStatus==='approved') {
+    if(payload.code==='482913'){authenticated=true;accessStatus='completed';return route.fulfill({contentType:'application/json',body:JSON.stringify({ok:true,csrf_token:'fixture-csrf'})});}
+    if(--attempts===0)accessStatus='locked';
+   }
+   return route.fulfill({status:accessStatus?200:401,contentType:'application/json',body:JSON.stringify({status:accessStatus,expires_in_seconds:300,attempts_remaining:attempts})});
+  }
   if(!authenticated && path.startsWith('/api/v1/') && path!=='/api/v1/auth/session') return route.fulfill({status:401,contentType:'application/json',body:JSON.stringify({code:'common.unauthorized',message:'Authentication required'})});
   if(path==='/api/v1/auth/session')data={authenticated,csrf_token:authenticated?'fixture-csrf':null,auth_mode:'pairing-session',access_mode:'trusted-lan',can_renew:authenticated};
-  else if(path==='/api/v1/auth/renew')return route.fulfill({status:401,contentType:'application/json',body:JSON.stringify({code:'common.unauthorized',message:'Authentication required'})});
+  else if(path==='/api/v1/auth/renew')return route.fulfill({status:authenticated?200:401,contentType:'application/json',body:JSON.stringify(authenticated?{ok:true,csrf_token:'fixture-csrf'}:{code:'common.unauthorized',message:'Authentication required'})});
   else if(path==='/api/v1/inventory/spools')data=spools.slice(Number(url.searchParams.get('offset')||0),Number(url.searchParams.get('offset')||0)+Number(url.searchParams.get('limit')||500));
   else if(path==='/api/v1/catalog/masters')data=masters;
   else if(path==='/api/v1/wishlist')data=seed.wishlist_items;
@@ -48,8 +58,9 @@ try{for(const theme of ['dark','dark-deep','blue','light','auto'])for(const [dev
   const metrics=await page.evaluate(()=>({overflow:document.documentElement.scrollWidth>innerWidth,brokenImages:[...document.images].filter(i=>!i.naturalWidth).map(i=>i.src.slice(0,70))}));
   assert.equal(metrics.overflow,false,`${device} ${theme} ${flow} overflow`);assert.deepEqual(metrics.brokenImages,[]);
   if(flow==='printers') {
-   const alpha=await page.evaluate(()=>{
-    const image=document.querySelector('.printer-board-header .companion-printer-image');
+   const alpha=await page.evaluate(async()=>{
+    const source=document.querySelector('.printer-board-header .companion-printer-image image');
+    const image=new Image();image.src=source.href.baseVal;await image.decode();
     const canvas=document.createElement('canvas');canvas.width=image.naturalWidth;canvas.height=image.naturalHeight;
     const ctx=canvas.getContext('2d');ctx.drawImage(image,0,0);return ctx.getImageData(0,0,1,1).data[3];
    });
@@ -90,6 +101,15 @@ try{for(const theme of ['dark','dark-deep','blue','light','auto'])for(const [dev
    const localeAxe=await new AxeBuilder({page}).withTags(['wcag2a','wcag2aa']).analyze();
    report.push({device,theme,locale,flow:'localized-storage',...localizedLayout,violations:localeAxe.violations.map(v=>({id:v.id,nodes:v.nodes.map(n=>({target:n.target,summary:n.failureSummary}))}))});
    await page.evaluate(()=>scrollTo(0,0));await page.screenshot({path:resolve(out,`phone-small-dark-storage-${locale}.png`)});console.log(locale,'compact inventory OK');
+   authenticated=false;
+   for(const phase of [null,'approved']){
+    accessStatus=phase;await page.reload();await page.locator(phase?'#access-code':'#access-name').waitFor();
+    const overflow=await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth);assert.equal(overflow,false,`${locale}: translated access form`);
+    const accessAxe=await new AxeBuilder({page}).withTags(['wcag2a','wcag2aa']).analyze();
+    report.push({device,theme,locale,flow:phase?'localized-access-code':'localized-access-request',overflow,violations:accessAxe.violations.map(v=>({id:v.id,nodes:v.nodes.map(n=>({target:n.target,summary:n.failureSummary}))}))});
+    await page.screenshot({path:resolve(out,`phone-small-dark-access-${phase?'code':'request'}-${locale}.png`)});
+   }
+   authenticated=true;accessStatus=null;await page.reload();await page.locator('.storage-shell .spool-list-row').first().waitFor();
   }
   await page.evaluate(()=>localStorage.setItem('bfm-companion-locale','nb'));await page.reload();await page.locator('.storage-shell .spool-list-row').first().waitFor();
  }
@@ -101,9 +121,19 @@ try{for(const theme of ['dark','dark-deep','blue','light','auto'])for(const [dev
  if(theme==='auto'){await page.emulateMedia({colorScheme:'light'});await page.waitForFunction(()=>document.documentElement.dataset.resolvedTheme==='light');}
  if(device==='phone' && (theme==='dark'||theme==='light')) {
   authenticated=false;await page.reload();await page.locator('.pairing-card').waitFor();assert.equal(await page.locator('.spool-list-row').count(),0);
-  await page.locator('[data-action="refresh"]').click();await page.locator('.pairing-card .status-line[data-tone="error"]').waitFor();
   const access=await new AxeBuilder({page}).withTags(['wcag2a','wcag2aa']).analyze();report.push({device,theme,flow:'access-required',violations:access.violations.map(v=>({id:v.id,nodes:v.nodes.map(n=>({target:n.target,summary:n.failureSummary}))}))});
   await page.screenshot({path:resolve(out,`${device}-${theme}-access-required.png`)});
+  await page.locator('#access-name').fill('Bjørns iPhone');await page.locator('[data-access-form="request"] button[type="submit"]').click();await page.locator('.access-waiting').waitFor();
+  assert.equal(await page.locator('.spool-list-row').count(),0);await page.screenshot({path:resolve(out,`${device}-${theme}-access-pending.png`)});
+  const pendingAxe=await new AxeBuilder({page}).withTags(['wcag2a','wcag2aa']).analyze();report.push({device,theme,flow:'access-pending',violations:pendingAxe.violations});
+  accessStatus='approved';await page.reload();await page.locator('#access-code').waitFor();await page.screenshot({path:resolve(out,`${device}-${theme}-access-code.png`)});
+  const codeAxe=await new AxeBuilder({page}).withTags(['wcag2a','wcag2aa']).analyze();report.push({device,theme,flow:'access-code',violations:codeAxe.violations});
+  await page.locator('#access-code').fill('000000');await page.locator('[data-access-form="confirm"] button').click();await page.locator('#access-feedback').filter({hasText:'2'}).waitFor();
+  await page.locator('#access-code').fill('482913');await page.locator('[data-access-form="confirm"] button').click();await page.locator('.storage-shell .spool-list-row').first().waitFor();
+  for(const terminal of ['rejected','expired','locked']){
+   authenticated=false;accessStatus=terminal;await page.reload();await page.locator('[data-access-form="request"]').waitFor();assert.equal(await page.locator('#access-code').count(),0);
+  }
+  accessStatus='pending';await page.reload();await page.locator('[data-access-action="cancel"]').click();await page.locator('[data-access-form="request"]').waitFor();
  }
  assert.deepEqual(errors,[]);
  }finally{await context.close();}

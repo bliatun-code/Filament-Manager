@@ -1,6 +1,36 @@
 import type { DictionaryNode } from "../../i18n_types";
 
 export const zhCNDictionary: DictionaryNode = {
+    access: {
+      "title": "需要重新授权",
+      "body": "请主机重新批准此浏览器的访问。",
+      "deviceName": "设备名称",
+      "nameHint": "此名称仅用于帮助主机识别您的设备。",
+      "request": "重新申请访问",
+      "pendingTitle": "请求已发送",
+      "pendingBody": "必须在主机上的 Filament Manager 中批准访问。",
+      "waiting": "正在等待主机…",
+      "codeTitle": "输入主机提供的代码",
+      "codeLabel": "一次性代码",
+      "codeHint": "六位数字。代码有效期为五分钟。",
+      "confirm": "确认访问",
+      "badCode": "代码不正确。还可尝试 {count} 次。",
+      "rejected": "请求已被拒绝。",
+      "expired": "请求已过期。请重新申请访问。",
+      "locked": "三次尝试均不正确。请重新申请访问。",
+      "cancelled": "请求已取消。",
+      "cancel": "取消请求",
+      "otherWay": "改用配对链接",
+      "fallback": "打开新的配对链接，或扫描主机上“库与网页应用”中的二维码。",
+      "banner": "浏览器访问请求: {count}",
+      "open": "查看请求",
+      "hostTitle": "浏览器访问请求",
+      "trust": "名称由设备提供。仅批准您认识的设备。",
+      "actionFailed": "请求已更改或服务不可用。请重试。",
+      "reject": "拒绝",
+      "approve": "允许访问",
+      "shareCode": "将此代码告知使用申请设备的人员。"
+    },
   "app": {
     "title": "Filament Manager",
     "iconAlt": "Filament Manager 图标",

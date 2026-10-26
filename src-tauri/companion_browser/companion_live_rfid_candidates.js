@@ -4,7 +4,7 @@ function normalizedText(value) {
   return String(value || "")
     .trim()
     .toLowerCase()
-    .replace(/[^a-z0-9]+/g, " ")
+    .replace(/[^a-z0-9+]+/g, " ")
     .replace(/\s+/g, " ")
     .trim();
 }
@@ -126,6 +126,16 @@ export function rowMatchesLiveBambuSlot(slot, row) {
     row?.master?.material || row?.master?.filament_name,
   );
   if (!liveMaterialFamily || liveMaterialFamily !== rowMaterialFamily) {
+    return false;
+  }
+
+  const liveProfile = normalizedText(slot?.live_filament_name);
+  const rowProfile = normalizedText(row?.master?.filament_name);
+  const hasVariant = liveProfile.split(" ").some(token =>
+    token.length >= 2 && !MATERIAL_FAMILY_TOKENS.includes(token) && token !== "bambu");
+  if (hasVariant && liveProfile !== rowProfile &&
+      !` ${rowProfile} `.includes(` ${liveProfile} `) &&
+      !` ${liveProfile} `.includes(` ${rowProfile} `)) {
     return false;
   }
 

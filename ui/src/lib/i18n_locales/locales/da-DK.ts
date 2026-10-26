@@ -1,6 +1,36 @@
 import type { DictionaryNode } from "../../i18n_types";
 
 export const daDKDictionary: DictionaryNode = {
+    access: {
+      "title": "Adgangen skal fornyes",
+      "body": "Bed værten om at godkende denne browser igen.",
+      "deviceName": "Enhedens navn",
+      "nameHint": "Navnet hjælper kun værten med at genkende din enhed.",
+      "request": "Anmod om adgang igen",
+      "pendingTitle": "Anmodning sendt",
+      "pendingBody": "Adgangen skal godkendes i Filament Manager på værtscomputeren.",
+      "waiting": "Venter på værten…",
+      "codeTitle": "Indtast koden fra værten",
+      "codeLabel": "Engangskode",
+      "codeHint": "Seks cifre. Koden er gyldig i fem minutter.",
+      "confirm": "Bekræft adgang",
+      "badCode": "Forkert kode. {count} forsøg tilbage.",
+      "rejected": "Anmodningen blev afvist.",
+      "expired": "Anmodningen er udløbet. Anmod om adgang igen.",
+      "locked": "Tre forkerte forsøg. Anmod om adgang igen.",
+      "cancelled": "Anmodningen blev annulleret.",
+      "cancel": "Annuller anmodning",
+      "otherWay": "Brug et parringslink i stedet",
+      "fallback": "Åbn et nyt parringslink, eller scan QR-koden under Bibliotek og webapp på værten.",
+      "banner": "Anmodninger om browseradgang: {count}",
+      "open": "Se anmodninger",
+      "hostTitle": "Anmodninger om browseradgang",
+      "trust": "Navnet er angivet af enheden. Godkend kun enheder, du kender.",
+      "actionFailed": "Anmodningen er ændret, eller tjenesten er utilgængelig. Prøv igen.",
+      "reject": "Afvis",
+      "approve": "Giv adgang",
+      "shareCode": "Giv denne kode til personen, der bruger enheden, som anmodede om adgang."
+    },
   "app": {
     "navigation": "Navigation",
     "skipToMainContent": "Spring til hovedindhold",

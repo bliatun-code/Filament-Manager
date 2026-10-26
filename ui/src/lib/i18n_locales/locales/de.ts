@@ -1,6 +1,36 @@
 import type { DictionaryNode } from "../../i18n_types";
 
 export const deDictionary: DictionaryNode = {
+    access: {
+      "title": "Der Zugriff muss erneuert werden",
+      "body": "Bitte den Host, diesen Browser erneut zu genehmigen.",
+      "deviceName": "Gerätename",
+      "nameHint": "Der Name hilft dem Host nur, dein Gerät zu erkennen.",
+      "request": "Zugriff erneut anfordern",
+      "pendingTitle": "Anfrage gesendet",
+      "pendingBody": "Der Zugriff muss in Filament Manager auf dem Host genehmigt werden.",
+      "waiting": "Warten auf den Host…",
+      "codeTitle": "Code vom Host eingeben",
+      "codeLabel": "Einmalcode",
+      "codeHint": "Sechs Ziffern. Der Code ist fünf Minuten gültig.",
+      "confirm": "Zugriff bestätigen",
+      "badCode": "Falscher Code. Noch {count} Versuche.",
+      "rejected": "Die Anfrage wurde abgelehnt.",
+      "expired": "Die Anfrage ist abgelaufen. Fordere den Zugriff erneut an.",
+      "locked": "Drei Fehlversuche. Fordere den Zugriff erneut an.",
+      "cancelled": "Die Anfrage wurde abgebrochen.",
+      "cancel": "Anfrage abbrechen",
+      "otherWay": "Stattdessen einen Kopplungslink verwenden",
+      "fallback": "Öffne einen neuen Kopplungslink oder scanne dessen QR-Code unter Bibliothek und Web-App auf dem Host.",
+      "banner": "Browser-Zugriffsanfragen: {count}",
+      "open": "Anfragen anzeigen",
+      "hostTitle": "Browser-Zugriffsanfragen",
+      "trust": "Der Name wird vom Gerät angegeben. Genehmige nur Geräte, die du kennst.",
+      "actionFailed": "Die Anfrage wurde geändert oder der Dienst ist nicht verfügbar. Versuche es erneut.",
+      "reject": "Ablehnen",
+      "approve": "Zugriff erlauben",
+      "shareCode": "Gib diesen Code an die Person weiter, die das anfragende Gerät verwendet."
+    },
   app: {
     title: "Filament Manager",
     iconAlt: "Filament-Manager-Symbol",

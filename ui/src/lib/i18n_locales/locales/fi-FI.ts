@@ -1,6 +1,36 @@
 import type { DictionaryNode } from "../../i18n_types";
 
 export const fiFIDictionary: DictionaryNode = {
+    access: {
+      "title": "Käyttöoikeus on uusittava",
+      "body": "Pyydä isäntää hyväksymään tämä selain uudelleen.",
+      "deviceName": "Laitteen nimi",
+      "nameHint": "Nimi auttaa isäntää vain tunnistamaan laitteesi.",
+      "request": "Pyydä käyttöoikeutta uudelleen",
+      "pendingTitle": "Pyyntö lähetetty",
+      "pendingBody": "Käyttöoikeus on hyväksyttävä isäntäkoneen Filament Managerissa.",
+      "waiting": "Odotetaan isäntää…",
+      "codeTitle": "Anna isännän koodi",
+      "codeLabel": "Kertakäyttöinen koodi",
+      "codeHint": "Kuusi numeroa. Koodi on voimassa viisi minuuttia.",
+      "confirm": "Vahvista käyttöoikeus",
+      "badCode": "Virheellinen koodi. Yrityksiä jäljellä: {count}.",
+      "rejected": "Pyyntö hylättiin.",
+      "expired": "Pyyntö on vanhentunut. Pyydä käyttöoikeutta uudelleen.",
+      "locked": "Kolme virheellistä yritystä. Pyydä käyttöoikeutta uudelleen.",
+      "cancelled": "Pyyntö peruttiin.",
+      "cancel": "Peru pyyntö",
+      "otherWay": "Käytä parituslinkkiä",
+      "fallback": "Avaa uusi parituslinkki tai skannaa sen QR-koodi isännän Kirjasto ja verkkosovellus -osiossa.",
+      "banner": "Selaimen käyttöoikeuspyynnöt: {count}",
+      "open": "Näytä pyynnöt",
+      "hostTitle": "Selaimen käyttöoikeuspyynnöt",
+      "trust": "Nimen on antanut laite. Hyväksy vain tunnistamasi laitteet.",
+      "actionFailed": "Pyyntö muuttui tai palvelu ei ole käytettävissä. Yritä uudelleen.",
+      "reject": "Hylkää",
+      "approve": "Salli käyttöoikeus",
+      "shareCode": "Anna tämä koodi henkilölle, joka käyttää pyynnön lähettänyttä laitetta."
+    },
   "app": {
     "title": "Filament Manager",
     "iconAlt": "Filament Manager-kuvake",

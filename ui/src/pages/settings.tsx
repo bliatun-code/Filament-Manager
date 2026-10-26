@@ -7,6 +7,7 @@ import {
   type SetStateAction,
 } from "react";
 import { useSettingsLowStockSave } from "./use_settings_low_stock_save";
+import { useCompanionAccessRequests } from "../lib/companion_access_requests";
 import type { SettingsTabKey } from "./settings_page_model";
 import { resolveDesktopVisualQaScenario } from "../lib/desktop_visual_qa_scenario";
 import {
@@ -97,6 +98,12 @@ export default function SettingsPage({
     t,
   });
   const desktopLifecycle = useDesktopLifecycleSettings({ tauri });
+  const reviewAccessRequested = useCompanionAccessRequests()?.reviewRequested;
+  useEffect(() => {
+    // The request must also navigate when initialTab was already LIBRARY on a
+    // previous visit and the user has since selected another Settings tab.
+    if (reviewAccessRequested) setActiveTab("LIBRARY");
+  }, [reviewAccessRequested, setActiveTab]);
 
   useEffect(() => {
     if (

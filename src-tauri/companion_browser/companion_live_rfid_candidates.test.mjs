@@ -260,3 +260,16 @@ test("Companion live RFID candidates ignore color-only unknown RFID signals", ()
     [],
   );
 });
+
+test('known Bambu profiles reject same-color rolls from another series', () => {
+  const live = slot({live_filament_name:'PLA Tough+', live_color_hex:'#FFFFFF'});
+  const matte = row('matte-white', {master:{filament_name:'PLA Matte',hex_color:'#FFFFFF'}});
+  const tough = row('tough-white', {master:{filament_name:'PLA Tough+',hex_color:'#FFFFFF'}});
+  assert.equal(rowMatchesLiveBambuSlot(live, matte), false);
+  assert.deepEqual(buildLiveInventoryCandidateRows(live,[matte,tough]).map(r=>r.spool.id),['tough-white']);
+});
+
+test('Tough and Tough+ remain distinct Bambu profiles', () => {
+ const live=slot({live_filament_name:'PLA Tough+',live_color_hex:'#FFFFFF'});
+ assert.equal(rowMatchesLiveBambuSlot(live,row('old-tough',{master:{filament_name:'PLA Tough',hex_color:'#FFFFFF'}})),false);
+});

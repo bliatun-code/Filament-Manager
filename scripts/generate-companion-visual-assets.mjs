@@ -29,7 +29,9 @@ const renderSource=ts.transpileModule(jsxSource,{compilerOptions:{target:ts.Scri
 outputs.set('filament_spool_visual.js',header+jsxRuntime+renderSource);
 const imageCatalog=JSON.parse(readFileSync(resolve(root,'ui/src/lib/printer_image_catalog.json'),'utf8'));
 outputs.set('printer_image_catalog.js',header+'export const printerImageCatalog = '+JSON.stringify(imageCatalog,null,2)+';\n');
-const names={storage:'Boxes',loans:'ArrowRightLeft',printers:'Printer',settings:'Settings',plus:'Plus',search:'Search',refresh:'RefreshCw',close:'X',weight:'Scale',swap:'Replace',back:'ArrowLeft',tag:'Tag',check:'Check',chevron:'ChevronRight',sun:'Sun',moon:'Moon',auto:'Monitor',book:'BookOpen',shield:'ShieldCheck',nozzle:'Thermometer',bed:'Heater',humidity:'Droplet'};
+const presentation=JSON.parse(readFileSync(resolve(root,'ui/src/lib/printer_image_presentation.json'),'utf8'));
+outputs.set('printer_image_presentation.js',header+'export const printerImagePresentation = '+JSON.stringify(presentation,null,2)+';\n');
+const names={storage:'Boxes',loans:'ArrowRightLeft',printers:'Printer',settings:'Settings',plus:'Plus',search:'Search',refresh:'RefreshCw',close:'X',weight:'Scale',swap:'Replace',back:'ArrowLeft',tag:'Tag',check:'Check',chevron:'ChevronRight',sun:'Sun',moon:'Moon',auto:'Monitor',clock:'Clock',key:'KeyRound',book:'BookOpen',shield:'ShieldCheck',nozzle:'Thermometer',bed:'Heater',humidity:'Droplet'};
 const markup=Object.fromEntries(Object.entries(names).map(([key,name])=>[key,renderToStaticMarkup(React.createElement(icons[name],{size:20,strokeWidth:1.7,'aria-hidden':true,focusable:false}))]));
 outputs.set('companion_icons.js',header+'// Lucide ISC/Feather notices: /companion/lucide-LICENSE.txt\nconst icons = '+JSON.stringify(markup,null,2)+';\nexport function companionIcon(name) { return icons[name] ?? ""; }\n');
 let failed=false;

@@ -335,3 +335,9 @@ test("click router returns false for unhandled actions", () => {
   const handled = routeCompanionClickAction("missing-action", createTarget({}), {});
   assert.equal(handled, false);
 });
+
+test('observed roll catalog action keeps printer and slot context', () => {
+ const calls=[];
+ assert.equal(routeCompanionClickAction('add-live-catalog-spool',createTarget({'data-printer-id':'p','data-slot-id':'s'}),{openLiveCatalogSpool:(...args)=>calls.push(args)}),true);
+ assert.deepEqual(calls,[['p','s']]);
+});

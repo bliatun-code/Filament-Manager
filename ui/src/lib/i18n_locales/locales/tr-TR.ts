@@ -1,6 +1,36 @@
 import type { DictionaryNode } from "../../i18n_types";
 
 export const trTRDictionary: DictionaryNode = {
+    access: {
+      "title": "Erişimin yenilenmesi gerekiyor",
+      "body": "Sunucudan bu tarayıcıyı yeniden onaylamasını isteyin.",
+      "deviceName": "Cihaz adı",
+      "nameHint": "Ad, yalnızca sunucunun cihazınızı tanımasına yardımcı olur.",
+      "request": "Yeniden erişim iste",
+      "pendingTitle": "İstek gönderildi",
+      "pendingBody": "Erişim, sunucu bilgisayardaki Filament Manager üzerinden onaylanmalıdır.",
+      "waiting": "Sunucu bekleniyor…",
+      "codeTitle": "Sunucudaki kodu girin",
+      "codeLabel": "Tek kullanımlık kod",
+      "codeHint": "Altı rakam. Kod beş dakika geçerlidir.",
+      "confirm": "Erişimi onayla",
+      "badCode": "Yanlış kod. {count} deneme kaldı.",
+      "rejected": "İstek reddedildi.",
+      "expired": "İsteğin süresi doldu. Yeniden erişim isteyin.",
+      "locked": "Üç yanlış deneme. Yeniden erişim isteyin.",
+      "cancelled": "İstek iptal edildi.",
+      "cancel": "İsteği iptal et",
+      "otherWay": "Eşleştirme bağlantısı kullan",
+      "fallback": "Sunucudaki Kitaplık ve web uygulaması bölümünden yeni bir eşleştirme bağlantısı açın veya QR kodunu tarayın.",
+      "banner": "Tarayıcı erişim istekleri: {count}",
+      "open": "İstekleri görüntüle",
+      "hostTitle": "Tarayıcı erişim istekleri",
+      "trust": "Ad, cihaz tarafından belirtilmiştir. Yalnızca tanıdığınız cihazları onaylayın.",
+      "actionFailed": "İstek değişti veya hizmet kullanılamıyor. Yeniden deneyin.",
+      "reject": "Reddet",
+      "approve": "Erişime izin ver",
+      "shareCode": "Bu kodu, istekte bulunan cihazı kullanan kişiye iletin."
+    },
   "app": {
     "iconAlt": "Filament Manager simgesi",
     "loadingPage": "Sayfa yükleniyor...",

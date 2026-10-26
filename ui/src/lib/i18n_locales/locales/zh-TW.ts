@@ -1,6 +1,36 @@
 import type { DictionaryNode } from "../../i18n_types";
 
 export const zhTWDictionary: DictionaryNode = {
+    access: {
+      "title": "需要重新授權",
+      "body": "請主機重新核准此瀏覽器的存取。",
+      "deviceName": "裝置名稱",
+      "nameHint": "此名稱僅用於協助主機辨識您的裝置。",
+      "request": "重新申請存取",
+      "pendingTitle": "請求已送出",
+      "pendingBody": "必須在主機上的 Filament Manager 中核准存取。",
+      "waiting": "正在等待主機…",
+      "codeTitle": "輸入主機提供的代碼",
+      "codeLabel": "一次性代碼",
+      "codeHint": "六位數字。代碼有效期限為五分鐘。",
+      "confirm": "確認存取",
+      "badCode": "代碼不正確。還可嘗試 {count} 次。",
+      "rejected": "請求已遭拒絕。",
+      "expired": "請求已過期。請重新申請存取。",
+      "locked": "三次嘗試皆不正確。請重新申請存取。",
+      "cancelled": "請求已取消。",
+      "cancel": "取消請求",
+      "otherWay": "改用配對連結",
+      "fallback": "開啟新的配對連結，或掃描主機上「資料庫與網頁應用程式」中的 QR 碼。",
+      "banner": "瀏覽器存取請求: {count}",
+      "open": "查看請求",
+      "hostTitle": "瀏覽器存取請求",
+      "trust": "名稱由裝置提供。僅核准您認識的裝置。",
+      "actionFailed": "請求已變更或服務無法使用。請重試。",
+      "reject": "拒絕",
+      "approve": "允許存取",
+      "shareCode": "將此代碼告知使用申請裝置的人員。"
+    },
   "app": {
     "title": "Filament Manager",
     "iconAlt": "Filament Manager 圖示",

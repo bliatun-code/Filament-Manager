@@ -125,6 +125,20 @@ static CACHED_COMPANION_ASSETS: OnceLock<HashMap<&'static str, CachedCompanionAs
 
 const COMPANION_BROWSER_BASE_ASSETS: &[(&str, CompanionBrowserAsset)] = &[
     (
+        "printer_image_presentation.js",
+        CompanionBrowserAsset {
+            content_type: "application/javascript; charset=utf-8",
+            content: include_str!("../companion_browser/printer_image_presentation.js"),
+        },
+    ),
+    (
+        "companion_access_recovery.js",
+        CompanionBrowserAsset {
+            content_type: "application/javascript; charset=utf-8",
+            content: include_str!("../companion_browser/companion_access_recovery.js"),
+        },
+    ),
+    (
         "printer-image-derivatives.json",
         CompanionBrowserAsset {
             content_type: "text/plain; charset=utf-8",
@@ -563,6 +577,55 @@ fn build_cached_companion_assets() -> HashMap<&'static str, CachedCompanionAsset
     }
     for (path, asset) in [
         (
+            "bambu-a1-mini-cutout.png",
+            CompanionBinaryAsset {
+                content_type: "image/png",
+                content: include_bytes!("../../ui/src/assets/printers/bambu-a1-mini-cutout.png"),
+            },
+        ),
+        (
+            "bambu-a1-cutout.png",
+            CompanionBinaryAsset {
+                content_type: "image/png",
+                content: include_bytes!("../../ui/src/assets/printers/bambu-a1-cutout.png"),
+            },
+        ),
+        (
+            "bambu-h2d-cutout.png",
+            CompanionBinaryAsset {
+                content_type: "image/png",
+                content: include_bytes!("../../ui/src/assets/printers/bambu-h2d-cutout.png"),
+            },
+        ),
+        (
+            "bambu-p1p-cutout.png",
+            CompanionBinaryAsset {
+                content_type: "image/png",
+                content: include_bytes!("../../ui/src/assets/printers/bambu-p1p-cutout.png"),
+            },
+        ),
+        (
+            "bambu-x1-carbon-cutout.png",
+            CompanionBinaryAsset {
+                content_type: "image/png",
+                content: include_bytes!("../../ui/src/assets/printers/bambu-x1-carbon-cutout.png"),
+            },
+        ),
+        (
+            "bambu-x1e-cutout.png",
+            CompanionBinaryAsset {
+                content_type: "image/png",
+                content: include_bytes!("../../ui/src/assets/printers/bambu-x1e-cutout.png"),
+            },
+        ),
+        (
+            "bambu-x1-cutout.png",
+            CompanionBinaryAsset {
+                content_type: "image/png",
+                content: include_bytes!("../../ui/src/assets/printers/bambu-x1-cutout.png"),
+            },
+        ),
+        (
             "bambu-a1-mini.png",
             CompanionBinaryAsset {
                 content_type: "image/png",
@@ -874,6 +937,37 @@ mod tests {
             .expect("bundled Companion cutout");
         assert_eq!(cutout.content_type, "image/png");
         assert!(cutout.content.starts_with(b"\x89PNG\r\n\x1a\n"));
+    }
+
+    #[test]
+    fn every_shared_printer_presentation_is_served_with_matching_dimensions() {
+        let presentation: serde_json::Value = serde_json::from_str(include_str!(
+            "../../ui/src/lib/printer_image_presentation.json"
+        ))
+        .expect("valid shared printer presentation");
+        for entry in presentation
+            .as_object()
+            .expect("presentation object")
+            .values()
+        {
+            let filename = entry["file"].as_str().expect("presentation filename");
+            let image = cached_companion_browser_asset(filename)
+                .unwrap_or_else(|| panic!("missing presented printer artwork: {filename}"));
+            assert_eq!(image.content_type, "image/png");
+            assert!(image.content.starts_with(b"\x89PNG\r\n\x1a\n"));
+            let width = u32::from_be_bytes(image.content[16..20].try_into().unwrap());
+            let height = u32::from_be_bytes(image.content[20..24].try_into().unwrap());
+            assert_eq!(
+                entry["width"].as_u64(),
+                Some(u64::from(width)),
+                "{filename}"
+            );
+            assert_eq!(
+                entry["height"].as_u64(),
+                Some(u64::from(height)),
+                "{filename}"
+            );
+        }
     }
 
     #[test]

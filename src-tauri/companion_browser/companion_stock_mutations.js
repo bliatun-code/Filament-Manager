@@ -15,6 +15,7 @@ export function createCompanionStockMutations({
   postJson,
 }) {
   async function submitManualSpoolRegistration(values) {
+    const returnToPrinter = state.activeTaskSheet?.type === "storage-add" && state.activeTaskSheet.returnFlow === "printers";
     const draft = normalizeAddSpoolValues(values);
     const isBorrowedIn = isBorrowedInOwnership(draft.ownershipType);
     if (draft.source !== "manual" && !draft.master) {
@@ -112,8 +113,9 @@ export function createCompanionStockMutations({
       state.activeTaskSheet = null;
       state.showBorrowedInForm = false;
       state.borrowedInDraft = createBorrowedInDraft();
-      state.activeRootFlow = "storage";
-      if (spoolId) {
+      state.activeRootFlow = returnToPrinter ? "printers" : "storage";
+      if (returnToPrinter) state.detailOpen = false;
+      if (spoolId && !returnToPrinter) {
         state.selectedSpoolId = spoolId;
         setDetailReturnContext("storage");
         state.detailOpen = true;

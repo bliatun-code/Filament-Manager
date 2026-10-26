@@ -1,6 +1,36 @@
 import type { DictionaryNode } from "../../i18n_types";
 
 export const ptBRDictionary: DictionaryNode = {
+    access: {
+      "title": "O acesso precisa ser renovado",
+      "body": "Peça ao anfitrião para autorizar este navegador novamente.",
+      "deviceName": "Nome do dispositivo",
+      "nameHint": "O nome apenas ajuda o anfitrião a reconhecer seu dispositivo.",
+      "request": "Solicitar acesso novamente",
+      "pendingTitle": "Solicitação enviada",
+      "pendingBody": "O acesso deve ser autorizado no Filament Manager no computador anfitrião.",
+      "waiting": "Aguardando o anfitrião…",
+      "codeTitle": "Digite o código do anfitrião",
+      "codeLabel": "Código de uso único",
+      "codeHint": "Seis dígitos. O código é válido por cinco minutos.",
+      "confirm": "Confirmar acesso",
+      "badCode": "Código incorreto. Restam {count} tentativas.",
+      "rejected": "A solicitação foi recusada.",
+      "expired": "A solicitação expirou. Solicite acesso novamente.",
+      "locked": "Três tentativas incorretas. Solicite acesso novamente.",
+      "cancelled": "A solicitação foi cancelada.",
+      "cancel": "Cancelar solicitação",
+      "otherWay": "Usar um link de pareamento",
+      "fallback": "Abra um novo link de pareamento ou leia o código QR em Biblioteca e aplicativo web no anfitrião.",
+      "banner": "Solicitações de acesso do navegador: {count}",
+      "open": "Ver solicitações",
+      "hostTitle": "Solicitações de acesso do navegador",
+      "trust": "O nome é fornecido pelo dispositivo. Autorize apenas dispositivos que você reconhece.",
+      "actionFailed": "A solicitação mudou ou o serviço está indisponível. Tente novamente.",
+      "reject": "Recusar",
+      "approve": "Permitir acesso",
+      "shareCode": "Informe este código à pessoa que usa o dispositivo que solicitou acesso."
+    },
   app: {
     iconAlt: "Ícone Filament Manager",
     loadingPage: "Carregando página...",

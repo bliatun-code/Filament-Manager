@@ -987,3 +987,14 @@ test("printer workspace localizes slot labels in norwegian", () => {
     "AMS 1 · Spor 3",
   );
 });
+
+test('unlinked live spool uses a friendly observed name, not its internal profile code', () => {
+ const observed={slot_id:'s',ams_id:'a',slot_index:1,spool_id:null,live_loaded:true,live_filament_type:'ABS',live_filament_name:'ABS',live_tray_id_name:'B00-K0',live_color_hex:'#000000',live_match_status:'unknown_rfid'};
+ const html=renderBoard({state:{catalogMasters:[{vendor:'Bambu',material:'ABS',filament_name:'ABS',color_name:'Black (40101)',hex_color:'#000000'}]},activePrinter:createPrinterRow({slots:[observed]})});
+ assert.match(html,/ABS · Black/);
+ assert.match(html,/RFID not registered/);
+ assert.match(html,/class="secondary-button slot-button"[^>]*data-action="add-live-catalog-spool"/);
+ assert.doesNotMatch(html,/B00-K0/);
+ const withoutCatalog=renderBoard({activePrinter:createPrinterRow({slots:[observed]})});
+ assert.doesNotMatch(withoutCatalog,/B00-K0/);
+});

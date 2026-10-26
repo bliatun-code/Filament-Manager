@@ -513,7 +513,7 @@ export function buildInventoryMatchResult<Row extends SpoolWithMasterRow>(
     return { kind: "none", candidates: [] };
   }
   const shouldUseNameAsFilter =
-    observedColors.length === 0 &&
+    (observedColors.length === 0 || options.onlyBambuMetadataCandidates === true) &&
     hasDistinctiveInventoryNameToken(inventoryNameTokens(observedFilamentName));
   const scoreById = new Map<string, number>();
 

@@ -1,6 +1,36 @@
 import type { DictionaryNode } from "../../i18n_types";
 
 export const svSEDictionary: DictionaryNode = {
+    access: {
+      "title": "Åtkomsten behöver förnyas",
+      "body": "Be värden godkänna den här webbläsaren igen.",
+      "deviceName": "Enhetens namn",
+      "nameHint": "Namnet hjälper bara värden att känna igen din enhet.",
+      "request": "Begär åtkomst igen",
+      "pendingTitle": "Förfrågan skickad",
+      "pendingBody": "Åtkomsten måste godkännas i Filament Manager på värddatorn.",
+      "waiting": "Väntar på värden…",
+      "codeTitle": "Ange koden från värden",
+      "codeLabel": "Engångskod",
+      "codeHint": "Sex siffror. Koden är giltig i fem minuter.",
+      "confirm": "Bekräfta åtkomst",
+      "badCode": "Fel kod. {count} försök återstår.",
+      "rejected": "Förfrågan avslogs.",
+      "expired": "Förfrågan har gått ut. Begär åtkomst igen.",
+      "locked": "Tre felaktiga försök. Begär åtkomst igen.",
+      "cancelled": "Förfrågan avbröts.",
+      "cancel": "Avbryt förfrågan",
+      "otherWay": "Använd en parkopplingslänk",
+      "fallback": "Öppna en ny parkopplingslänk eller skanna dess QR-kod under Bibliotek och webbapp på värden.",
+      "banner": "Förfrågningar om webbläsaråtkomst: {count}",
+      "open": "Visa förfrågningar",
+      "hostTitle": "Förfrågningar om webbläsaråtkomst",
+      "trust": "Namnet anges av enheten. Godkänn bara enheter som du känner igen.",
+      "actionFailed": "Förfrågan har ändrats eller tjänsten är otillgänglig. Försök igen.",
+      "reject": "Avslå",
+      "approve": "Ge åtkomst",
+      "shareCode": "Ge den här koden till personen som använder enheten som begärde åtkomst."
+    },
   "app": {
     "navigation": "Navigering",
     "skipToMainContent": "Hoppa till huvudinnehållet",

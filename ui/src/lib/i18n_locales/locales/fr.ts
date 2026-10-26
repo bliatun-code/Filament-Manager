@@ -1,6 +1,36 @@
 import type { DictionaryNode } from "../../i18n_types";
 
 export const frDictionary: DictionaryNode = {
+    access: {
+      "title": "L’accès doit être renouvelé",
+      "body": "Demandez à l’hôte d’autoriser à nouveau ce navigateur.",
+      "deviceName": "Nom de l’appareil",
+      "nameHint": "Le nom aide uniquement l’hôte à reconnaître votre appareil.",
+      "request": "Redemander l’accès",
+      "pendingTitle": "Demande envoyée",
+      "pendingBody": "L’accès doit être autorisé dans Filament Manager sur l’ordinateur hôte.",
+      "waiting": "En attente de l’hôte…",
+      "codeTitle": "Saisissez le code de l’hôte",
+      "codeLabel": "Code à usage unique",
+      "codeHint": "Six chiffres. Le code est valable cinq minutes.",
+      "confirm": "Confirmer l’accès",
+      "badCode": "Code incorrect. Il reste {count} tentatives.",
+      "rejected": "La demande a été refusée.",
+      "expired": "La demande a expiré. Redemandez l’accès.",
+      "locked": "Trois tentatives incorrectes. Redemandez l’accès.",
+      "cancelled": "La demande a été annulée.",
+      "cancel": "Annuler la demande",
+      "otherWay": "Utiliser plutôt un lien d’association",
+      "fallback": "Ouvrez un nouveau lien d’association ou scannez son code QR dans Bibliothèque et application web sur l’hôte.",
+      "banner": "Demandes d’accès au navigateur: {count}",
+      "open": "Voir les demandes",
+      "hostTitle": "Demandes d’accès au navigateur",
+      "trust": "Le nom est fourni par l’appareil. N’autorisez que les appareils que vous reconnaissez.",
+      "actionFailed": "La demande a changé ou le service est indisponible. Réessayez.",
+      "reject": "Refuser",
+      "approve": "Autoriser l’accès",
+      "shareCode": "Communiquez ce code à la personne utilisant l’appareil à l’origine de la demande."
+    },
   app: {
     title: "Filament Manager",
     iconAlt: "Icône Filament Manager",

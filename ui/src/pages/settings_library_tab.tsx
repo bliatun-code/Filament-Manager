@@ -6,6 +6,7 @@ import { SettingsSurfaceCard } from "../components/settings_ui";
 import { SettingsLibraryClientPanel, SettingsLibraryClientAdvanced } from "./settings_library_client_panel";
 import { SettingsLibraryRolePanel } from "./settings_library_role_panel";
 import { SettingsLibraryWebappControl } from "./settings_library_webapp_control";
+import { SettingsCompanionAccessRequests } from "../components/settings_companion_access_requests";
 
 export type SettingsLibraryTabProps = {
   browsersPanel: ComponentProps<typeof SettingsTrustedLanBrowsersPanel>;
@@ -45,6 +46,7 @@ export function SettingsLibraryTab({
       </section>
       {showClientPanel ? <section className="settings-library-section settings-library-advanced"><SettingsLibraryClientAdvanced {...clientPanel} /></section> : null}
 
+      {showHostPanels ? <SettingsCompanionAccessRequests /> : null}
       {showHostPanels ? <SettingsTrustedLanPairingPanel {...pairingPanel} /> : null}
       {showHostPanels ? <SettingsTrustedLanBrowsersPanel {...browsersPanel} /> : null}
     </SettingsSurfaceCard>

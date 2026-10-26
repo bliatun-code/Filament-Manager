@@ -1,5 +1,6 @@
 import { companionIcon } from "./companion_icons.js";
 import { renderFilamentSpool } from "./companion_visuals.js";
+import { renderAccessRecovery } from "./companion_access_recovery.js";
 import { formatInventoryDisplayTitle } from "./formatters.js";
 import { t } from "./companion_i18n.js";
 import { buildPurchaseReceiptMetadataDraft } from "./companion_domain.js";
@@ -110,7 +111,7 @@ export function renderCompanionActionButton(options) {
     },
     escape,
   );
-  const actionIcon = { "toggle-add-spool-form": "plus", refresh: "refresh", "close-detail": "close", "start-printer-weight-update": "weight", "start-printer-load": "plus", "start-printer-swap": "swap" }[attributes["data-action"]];
+  const actionIcon = { "toggle-add-spool-form": "plus", "add-live-catalog-spool": "plus", refresh: "refresh", "close-detail": "close", "start-printer-weight-update": "weight", "start-printer-load": "plus", "start-printer-swap": "swap" }[attributes["data-action"]];
   return `<button class="${escape(classes)}"${renderedAttributes ? ` ${renderedAttributes}` : ""}>${actionIcon ? companionIcon(actionIcon) : ""}${escape(actionIcon ? String(label).replace(/^[⚖↔⇄＋+]\s*/u, "") : label)}</button>`;
 }
 
@@ -204,7 +205,7 @@ export function renderFilterChipButton(options) {
     },
     escape,
   );
-  const actionIcon = { "toggle-add-spool-form": "plus", refresh: "refresh", "close-detail": "close", "start-printer-weight-update": "weight", "start-printer-load": "plus", "start-printer-swap": "swap" }[attributes["data-action"]];
+  const actionIcon = { "toggle-add-spool-form": "plus", "add-live-catalog-spool": "plus", refresh: "refresh", "close-detail": "close", "start-printer-weight-update": "weight", "start-printer-load": "plus", "start-printer-swap": "swap" }[attributes["data-action"]];
   return `<button class="${escape(classes)}"${renderedAttributes ? ` ${renderedAttributes}` : ""}>${actionIcon ? companionIcon(actionIcon) : ""}${escape(actionIcon ? String(label).replace(/^[⚖↔⇄＋+]\s*/u, "") : label)}</button>`;
 }
 
@@ -768,53 +769,5 @@ export function renderTaskSheetShell(options) {
 }
 
 export function renderTrustedLanPairingApp(options) {
-  const { busy, statusTone, statusMessage, escapeHtml, locale = "en" } = options;
-
-  return `
-    <div class="companion-shell">
-      <div class="companion-frame pairing-frame">
-        <section class="hero-card pairing-card">
-          <div>
-            <p class="eyebrow">${escapeHtml(t(locale, "rail.title", "Filament Manager"))}</p>
-            <h1 class="hero-title">${escapeHtml(t(locale, "trustedLan.title", "Trusted-LAN browser companion"))}</h1>
-            <p class="hero-copy">
-              ${escapeHtml(
-                t(
-                  locale,
-                  "trustedLan.copy",
-                  "This browser is using the trusted-LAN companion path. Open a pairing link from desktop Settings to approve this browser. Trusted-LAN traffic is not encrypted, so only use it on a network you trust.",
-                ),
-              )}
-            </p>
-          </div>
-          <div class="stack">
-            ${renderCompanionStateCard({
-              escapeHtml,
-              message: t(
-                locale,
-                "trustedLan.pairingHint",
-                "Desktop Settings creates short-lived, single-use pairing links for human browser access.",
-              ),
-              tone: "info",
-            })}
-            <div class="status-line" data-tone="${escapeHtml(statusTone)}">${escapeHtml(
-              statusMessage ||
-                t(
-                  locale,
-                  "trustedLan.awaiting",
-                  "Waiting for a trusted-LAN pairing link.",
-                ),
-            )}</div>
-            ${renderCompanionActionButton({
-              variant: "ghost",
-              attributes: { "data-action": "refresh" },
-              disabled: busy,
-              escapeHtml,
-              label: t(locale, "shell.refresh", "Refresh"),
-            })}
-          </div>
-        </section>
-      </div>
-    </div>
-  `;
+  return renderAccessRecovery(options);
 }

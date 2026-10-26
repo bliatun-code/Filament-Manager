@@ -249,6 +249,7 @@ export function createCompanionApiClient(options) {
   }
 
   return {
+    acceptAuthenticatedSession: applyAuthenticatedSession,
     pairSession,
     renewSession,
     readSessionStatus,

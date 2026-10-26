@@ -7,5 +7,68 @@
     "processing": "Built-in image_gen background extraction, 2026-10-25. AI-processed illustration derived from the official thumbnail; not an untouched official photograph. Original retained.",
     "sha256": "388535ec5eb223b77620031394c5715aee35fdd140572203d74bdc3a929e8409",
     "prompt": "Use case: background-extraction. Edit target: the attached official Bambu Lab P1S printer thumbnail. Remove ONLY the light gray background and its outer border. Preserve the printer itself, its exact perspective, proportions, dark gray finish, door, buttons, panels and details. This is a faithful cutout, not a redesign or new printer. Output a genuinely transparent PNG with clean alpha edges. Crop closely around the full printer, keeping the entire printer visible with about 3 percent transparent margin. No ground shadow, no white or gray rectangle, no added text or elements."
+  },
+  {
+    "file": "bambu-a1-mini-cutout.png",
+    "derived_from": "bambu-a1-mini.png",
+    "original_provenance": "sources.json",
+    "license": "AGPL-3.0",
+    "processing": "Built-in image_gen transparent background extraction, 2026-10-26. AI-processed illustration based on the original official thumbnail, shared by desktop and Companion. Original retained.",
+    "sha256": "f5f109464e74ec78b80e36ba41037450d07c5934b5e866230e9dc9e0a5de8238",
+    "prompt": "Use case: background-extraction. Edit target: the attached official Bambu Lab A1 mini thumbnail. Make a faithful transparent cutout for a small application thumbnail. Change only the pale gray background to real transparent alpha and trim the excess outside margin. Keep this exact printer, its cantilever gantry, build plate, screen, toolhead, cable loop, camera angle and colors unchanged. Preserve existing product details instead of redesigning or inventing them. Keep the complete printer visible with 3 percent transparent margin. No AMS, spool, floor, shadow, text additions, white matte or gray rectangle."
+  },
+  {
+    "file": "bambu-a1-cutout.png",
+    "derived_from": "bambu-a1.png",
+    "original_provenance": "sources.json",
+    "license": "AGPL-3.0",
+    "processing": "Built-in image_gen transparent background extraction, 2026-10-26. AI-processed illustration based on the original official thumbnail, shared by desktop and Companion. Original retained.",
+    "sha256": "8e8f3d61094ebc0c030ae2532ff53f4907e7f82b6b55447d2c53e2daa877559e",
+    "prompt": "Use case: background-extraction. Edit target: the attached official Bambu Lab A1 thumbnail. Make a faithful transparent cutout for a small application thumbnail. Change only the pale gray background to real transparent alpha and trim excess outside margin. Keep this exact printer, its dual upright columns, rectangular gantry, build plate, screen, toolhead, cable loop and camera angle and colors unchanged. Preserve existing product details instead of redesigning or inventing them. Keep the complete printer visible with 3 percent transparent margin. No AMS or spool added, no floor, shadow, new text, white matte or gray rectangle."
+  },
+  {
+    "file": "bambu-h2d-cutout.png",
+    "derived_from": "bambu-h2d.png",
+    "original_provenance": "sources.json",
+    "license": "AGPL-3.0",
+    "processing": "Built-in image_gen transparent background extraction, 2026-10-26. AI-processed illustration based on the original official thumbnail, shared by desktop and Companion. Original retained.",
+    "sha256": "21b00bc7897cd3e0bb0384b160da451ad132a66a160232dc7b0ae0c3e9f9eaac",
+    "prompt": "Use case: background-extraction. Edit target: the attached official Bambu Lab H2D thumbnail. Make a faithful transparent cutout for a small application thumbnail. Change only the pale gray background to real transparent alpha and trim excess outside margin. Keep this exact printer, its enclosed gray cabinet, glass door and interior, upper-left display, tall dark right-side window, proportions and exact camera angle and colors unchanged. Preserve existing product details instead of redesigning or inventing them. Keep the complete printer visible with 3 percent transparent margin. No AMS or spool added, no floor, shadow, new text, white matte or gray rectangle."
+  },
+  {
+    "file": "bambu-p1p-cutout.png",
+    "derived_from": "bambu-p1p.png",
+    "original_provenance": "sources.json",
+    "license": "AGPL-3.0",
+    "processing": "Built-in image_gen transparent background extraction, 2026-10-26. AI-processed illustration based on the original official thumbnail, shared by desktop and Companion. Original retained.",
+    "sha256": "f0ad7d8bee86d7b540356a1053abb45eab5016fed147d202b0de1e6cb559e8d4",
+    "prompt": "Use case: background-extraction. Edit target: attached official Bambu Lab P1P thumbnail. Remove only the pale gray background and outer whitespace, producing a real transparent alpha cutout for an application thumbnail. Preserve the exact visible printer silhouette and appearance: open black frame, visible front gantry and toolhead, small upper-left controller and display, open sides and rear panel, original front three-quarter perspective. Do not redraw or reinterpret hardware, invent accessories, alter camera angle or recolor the printer. Retain the entire printer and 3 percent transparent margin, no gray/white rectangular backdrop, no ground or shadow, no additional spool or AMS, no added words."
+  },
+  {
+    "file": "bambu-x1-carbon-cutout.png",
+    "derived_from": "bambu-x1-carbon.png",
+    "original_provenance": "sources.json",
+    "license": "AGPL-3.0",
+    "processing": "Built-in image_gen transparent background extraction, 2026-10-26. AI-processed illustration based on the original official thumbnail, shared by desktop and Companion. Original retained.",
+    "sha256": "d9a240ae065cef854dbbf6784f6551151c6eaeab4a16b2ff13ace214cf42cd4c",
+    "prompt": "Use case: background-extraction. Edit target: attached official Bambu Lab X1 Carbon thumbnail. Remove only the pale gray background and outer whitespace, producing a real transparent alpha cutout for an application thumbnail. Preserve the exact visible printer silhouette and appearance: silver side panels, dark glass front door, original upper-left angled touchscreen, top and side surfaces, and the original front three-quarter perspective. Do not redraw or reinterpret hardware, invent accessories, alter camera angle or recolor the printer. Retain the entire printer and 3 percent transparent margin, no gray/white rectangular backdrop, no ground or shadow, no additional spool or AMS, no added words."
+  },
+  {
+    "file": "bambu-x1e-cutout.png",
+    "derived_from": "bambu-x1e.png",
+    "original_provenance": "sources.json",
+    "license": "AGPL-3.0",
+    "processing": "Built-in image_gen transparent background extraction, 2026-10-26. AI-processed illustration based on the original official thumbnail, shared by desktop and Companion. Original retained.",
+    "sha256": "b476ce35318710eb1108c4258901b5ed8228c50e9e099a0cae7d091d2b3df2a7",
+    "prompt": "Use case: background-extraction. Edit target: attached official Bambu Lab X1E thumbnail. Create a faithful clean transparent product cutout for an application thumbnail. Remove only the pale gray background and outer whitespace. Preserve the exact printer appearance: gray side panels, closed dark front glass door, original upper-left angled touchscreen, original upper panels and original three-quarter camera view. Do not redesign hardware or add details, text, spools, AMS or accessories. Keep the complete printer with 3 percent transparent margin. Output real transparent alpha with crisp clean edges, absolutely no white halo, white fringe, gray matte, detached speckles or opaque background pixels outside the printer. No ground plane or cast shadow."
+  },
+  {
+    "file": "bambu-x1-cutout.png",
+    "derived_from": "bambu-x1.png",
+    "original_provenance": "sources.json",
+    "license": "AGPL-3.0",
+    "processing": "Built-in image_gen transparent background extraction, 2026-10-26. AI-processed illustration based on the original official thumbnail, shared by desktop and Companion. Original retained.",
+    "sha256": "06ef708f4ebcb111d0194d1f5f9a94133120843620a029b1afd92fbb29ed09f6",
+    "prompt": "Use case: background-extraction. Edit target: attached official Bambu Lab X1 thumbnail. Create a faithful clean transparent product cutout for an application thumbnail. Remove only the pale gray background and outer whitespace. Preserve the exact printer appearance: gray side panels, closed dark front glass door, original upper-left touchscreen, body proportions and original three-quarter camera view. Do not redesign hardware or add details, text, spools, AMS or accessories. Keep the complete printer with 3 percent transparent margin. Output real transparent alpha with crisp clean edges, absolutely no white halo, white fringe, gray matte, detached speckles or opaque background pixels outside the printer. No ground plane or cast shadow."
   }
 ]

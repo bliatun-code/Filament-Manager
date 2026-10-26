@@ -1,6 +1,36 @@
 import type { DictionaryNode } from "../../i18n_types";
 
 export const jaJPDictionary: DictionaryNode = {
+    access: {
+      "title": "アクセスの更新が必要です",
+      "body": "このブラウザーを再承認するようホストに依頼してください。",
+      "deviceName": "デバイス名",
+      "nameHint": "この名前はホストがデバイスを見分けるためだけに使用します。",
+      "request": "アクセスを再申請",
+      "pendingTitle": "申請を送信しました",
+      "pendingBody": "ホストの Filament Manager でアクセスを承認する必要があります。",
+      "waiting": "ホストの承認待ち…",
+      "codeTitle": "ホストのコードを入力",
+      "codeLabel": "ワンタイムコード",
+      "codeHint": "6桁の数字です。有効期限は5分です。",
+      "confirm": "アクセスを確認",
+      "badCode": "コードが違います。残り {count} 回試行できます。",
+      "rejected": "申請は拒否されました。",
+      "expired": "申請の有効期限が切れました。再申請してください。",
+      "locked": "3回失敗しました。アクセスを再申請してください。",
+      "cancelled": "申請はキャンセルされました。",
+      "cancel": "申請をキャンセル",
+      "otherWay": "ペアリングリンクを使用",
+      "fallback": "ホストの「ライブラリとウェブアプリ」で新しいペアリングリンクを開くか、QRコードを読み取ってください。",
+      "banner": "ブラウザーアクセス申請: {count}",
+      "open": "申請を表示",
+      "hostTitle": "ブラウザーアクセス申請",
+      "trust": "名前はデバイスが提示したものです。知っているデバイスだけを承認してください。",
+      "actionFailed": "申請が変更されたか、サービスを利用できません。再試行してください。",
+      "reject": "拒否",
+      "approve": "アクセスを許可",
+      "shareCode": "このコードを申請元のデバイスを使用している人に伝えてください。"
+    },
   "app": {
     "title": "Filament Manager",
     "iconAlt": "Filament Managerアイコン",

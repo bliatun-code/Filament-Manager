@@ -422,13 +422,11 @@ pub(super) async fn handle_session_status(
             let active_session = find_active_session(&state.sessions, &state.db_path, &headers)?;
             let mut authenticated = false;
             let mut csrf_token = None;
-            let mut can_renew = false;
+            let can_renew = find_active_trusted_lan_browser(&state.db_path, &headers)?.is_some();
 
             if let Some(session) = active_session {
                 authenticated = true;
                 csrf_token = Some(session.csrf_token.clone());
-            } else {
-                can_renew = find_active_trusted_lan_browser(&state.db_path, &headers)?.is_some();
             }
 
             Ok(Json(SessionStatusResponse {
@@ -512,7 +510,8 @@ pub(super) async fn handle_renew_session(
                     &state.sessions,
                     &state.db_path,
                     Some(paired_browser.id),
-                    None,
+                    crate::companion_session::trusted_lan_device_token_from_headers(&headers)
+                        .as_deref(),
                     origin.as_deref(),
                 )
             })

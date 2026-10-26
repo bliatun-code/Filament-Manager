@@ -8135,3 +8135,72 @@ fn live_registered_bambu_rolls_can_be_removed_and_replaced_automatically() {
         let _ = std::fs::remove_file(path);
     }
 }
+
+#[test]
+fn unknown_bambu_profile_does_not_suggest_another_white_pla_series() {
+    let mut slot = make_slot();
+    slot.spool_id = None;
+    let overview = make_overview(slot);
+    let mut tray = make_tray();
+    tray.filament_type = Some("PLA".into());
+    tray.filament_name = Some("PLA Tough+".into());
+    tray.color_hex = Some("#FFFFFF".into());
+    let mut matte = make_inventory_spool("matte_white", None);
+    matte.master.vendor = "Bambu".into();
+    matte.master.material = "PLA".into();
+    matte.master.filament_name = "PLA Matte".into();
+    matte.master.hex_color = Some("#FFFFFF".into());
+    apply_tray_match_status(&mut tray, &overview, &[matte.clone()]);
+    assert_eq!(tray.matched_inventory_spool_id, None);
+    let mut tough = matte.clone();
+    tough.spool.id = "tough_white".into();
+    tough.master.filament_name = "PLA Tough+".into();
+    apply_tray_match_status(&mut tray, &overview, &[matte, tough]);
+    assert_eq!(
+        tray.matched_inventory_spool_id.as_deref(),
+        Some("tough_white")
+    );
+}
+
+#[test]
+fn long_abs_probe_keeps_job_context_and_original_field_times_across_mqtt_bursts() {
+    for phase in ["PREPARE", "RUNNING", "PAUSE"] {
+        let mut previous = super::default_offline_state();
+        previous.online = true;
+        previous.mqtt_connected = true;
+        previous.last_seen_at = Some("2026-10-26T01:00:00Z".into());
+        previous.gcode_state = Some(phase.into());
+        previous.progress_percent = Some(0);
+        previous.remaining_minutes = Some(184);
+        previous.bed_temp_c = Some(90.0);
+        previous.raw_payload_json = Some(serde_json::json!({
+            "_bfm_observed_fields":{"gcode_state_at":"2026-10-26T01:00:00Z", "remaining_minutes_at":"2026-10-26T01:00:00Z"}
+        }));
+        let mut next = super::default_offline_state();
+        next.online = true;
+        next.mqtt_connected = true;
+        next.last_seen_at = Some("2026-10-26T01:20:00Z".into());
+        next.nozzle_temp_c = Some(140.0);
+        next.raw_payload_json = Some(serde_json::json!({
+            "_bfm_job":{},
+            "_bfm_observed_fields":{"nozzle_temper_at":"2026-10-26T01:20:00Z"}
+        }));
+        let merged = super::merge_idle_observation(Some(&previous), next);
+        assert_eq!(merged.gcode_state.as_deref(), Some(phase));
+        assert_eq!(merged.remaining_minutes, Some(184));
+        assert_eq!(merged.bed_temp_c, Some(90.0));
+        assert_eq!(
+            merged.raw_payload_json.as_ref().unwrap()["_bfm_observed_fields"]
+                ["remaining_minutes_at"],
+            "2026-10-26T01:00:00Z"
+        );
+        assert!(!crate::bambu_live_observation::observed_field_is_fresh(
+            &merged,
+            "remaining_minutes_at"
+        ));
+        assert!(crate::bambu_live_observation::observed_field_is_fresh(
+            &merged,
+            "nozzle_temper_at"
+        ));
+    }
+}

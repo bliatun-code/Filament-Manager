@@ -147,8 +147,8 @@ test("app shell renderer falls back to trusted-LAN pairing chrome before the bro
 
   const html = renderer.renderRoot();
 
-  assert.match(html, /Trusted-LAN browser companion/);
-  assert.match(html, /trusted-LAN pairing link/i);
+  assert.match(html, /Access needs to be renewed/);
+  assert.match(html, /Request access again/);
   assert.doesNotMatch(html, /phone-bottom-nav/);
 });
 

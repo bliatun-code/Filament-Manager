@@ -3,7 +3,9 @@ use rusqlite::{params, Connection, OptionalExtension};
 use super::database_ids::new_id;
 use super::database_result::{require_rows, InventoryError, InventoryResult};
 use super::database_rows::map_trusted_lan_paired_browser_row;
-use super::database_trusted_lan_models::TrustedLanPairedBrowserRow;
+use super::database_trusted_lan_models::{
+    TrustedLanPairedBrowserRow, TRUSTED_LAN_DEVICE_MAX_AGE_SECONDS,
+};
 
 pub(crate) fn create_trusted_lan_pairing(
     conn: &Connection,
@@ -119,8 +121,12 @@ pub(crate) fn get_active_trusted_lan_paired_browser_by_device_token_hash(
          FROM trusted_lan_paired_browsers
          WHERE device_token_hash = ?1
            AND revoked_at IS NULL
+           AND datetime(COALESCE(last_seen_at, paired_at)) > datetime('now', ?2)
          LIMIT 1",
-        params![device_token_hash.trim()],
+        params![
+            device_token_hash.trim(),
+            format!("-{} seconds", TRUSTED_LAN_DEVICE_MAX_AGE_SECONDS)
+        ],
         map_trusted_lan_paired_browser_row,
     )
     .optional()
@@ -183,4 +189,49 @@ pub(crate) fn revoke_all_trusted_lan_paired_browsers(conn: &Connection) -> Inven
         [],
     )?;
     Ok(updated)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[test]
+    fn trusted_lan_browser_credential_expires_after_a_year_of_inactivity_and_slides_on_renewal() {
+        let conn = Connection::open_in_memory().unwrap();
+        crate::backend::database_trusted_lan_schema::ensure_trusted_lan_schema(&conn).unwrap();
+        let row =
+            create_trusted_lan_paired_browser(&conn, Some("Phone"), "credential", None).unwrap();
+        for days in [31, 364] {
+            conn.execute(
+                "UPDATE trusted_lan_paired_browsers SET last_seen_at=datetime('now',?1)",
+                params![format!("-{days} days")],
+            )
+            .unwrap();
+            assert!(get_active_trusted_lan_paired_browser_by_device_token_hash(
+                &conn,
+                "credential"
+            )
+            .unwrap()
+            .is_some());
+        }
+        touch_trusted_lan_paired_browser(&conn, &row.id, None).unwrap();
+        assert!(
+            get_active_trusted_lan_paired_browser_by_device_token_hash(&conn, "credential")
+                .unwrap()
+                .is_some()
+        );
+        conn.execute(
+            "UPDATE trusted_lan_paired_browsers SET last_seen_at=datetime('now','-365 days')",
+            [],
+        )
+        .unwrap();
+        assert!(
+            get_active_trusted_lan_paired_browser_by_device_token_hash(&conn, "credential")
+                .unwrap()
+                .is_none()
+        );
+        // A persistent list entry is not proof of continuing authorization.
+        assert!(get_trusted_lan_paired_browser_by_id(&conn, &row.id)
+            .unwrap()
+            .is_some());
+    }
 }

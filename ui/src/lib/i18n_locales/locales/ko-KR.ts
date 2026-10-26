@@ -1,6 +1,36 @@
 import type { DictionaryNode } from "../../i18n_types";
 
 export const koKRDictionary: DictionaryNode = {
+    access: {
+      "title": "접근 권한을 갱신해야 합니다",
+      "body": "호스트에 이 브라우저의 접근을 다시 승인해 달라고 요청하세요.",
+      "deviceName": "기기 이름",
+      "nameHint": "이름은 호스트가 기기를 알아보는 데만 사용됩니다.",
+      "request": "접근 권한 다시 요청",
+      "pendingTitle": "요청을 보냈습니다",
+      "pendingBody": "호스트 컴퓨터의 Filament Manager에서 접근을 승인해야 합니다.",
+      "waiting": "호스트 승인 대기 중…",
+      "codeTitle": "호스트의 코드 입력",
+      "codeLabel": "일회용 코드",
+      "codeHint": "숫자 6자리입니다. 코드는 5분간 유효합니다.",
+      "confirm": "접근 확인",
+      "badCode": "코드가 올바르지 않습니다. {count}회 더 시도할 수 있습니다.",
+      "rejected": "요청이 거절되었습니다.",
+      "expired": "요청이 만료되었습니다. 접근 권한을 다시 요청하세요.",
+      "locked": "3회 실패했습니다. 접근 권한을 다시 요청하세요.",
+      "cancelled": "요청이 취소되었습니다.",
+      "cancel": "요청 취소",
+      "otherWay": "페어링 링크 사용",
+      "fallback": "호스트의 라이브러리 및 웹 앱에서 새 페어링 링크를 열거나 QR 코드를 스캔하세요.",
+      "banner": "브라우저 접근 요청: {count}",
+      "open": "요청 보기",
+      "hostTitle": "브라우저 접근 요청",
+      "trust": "이름은 기기가 제공한 정보입니다. 아는 기기만 승인하세요.",
+      "actionFailed": "요청이 변경되었거나 서비스를 사용할 수 없습니다. 다시 시도하세요.",
+      "reject": "거절",
+      "approve": "접근 허용",
+      "shareCode": "이 코드를 요청한 기기를 사용하는 사람에게 알려 주세요."
+    },
   "app": {
     "title": "Filament Manager",
     "iconAlt": "Filament Manager 아이콘",

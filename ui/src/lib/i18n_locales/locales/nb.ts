@@ -1,6 +1,36 @@
 import type { DictionaryNode } from "../../i18n_types";
 
 export const nbDictionary: DictionaryNode = {
+    access: {
+      "title": "Tilgangen må fornyes",
+      "body": "Be verten om å godkjenne denne nettleseren på nytt.",
+      "deviceName": "Navn på enheten",
+      "nameHint": "Navnet hjelper bare verten å kjenne igjen enheten.",
+      "request": "Be om tilgang på nytt",
+      "pendingTitle": "Forespørsel sendt",
+      "pendingBody": "Tilgang må godkjennes i Filament Manager på vertsmaskinen.",
+      "waiting": "Venter på verten…",
+      "codeTitle": "Skriv inn koden fra verten",
+      "codeLabel": "Engangskode",
+      "codeHint": "Seks sifre. Koden er gyldig i fem minutter.",
+      "confirm": "Bekreft tilgang",
+      "badCode": "Koden stemmer ikke. {count} forsøk gjenstår.",
+      "rejected": "Forespørselen ble avvist.",
+      "expired": "Forespørselen er utløpt. Be om tilgang på nytt.",
+      "locked": "Tre feil forsøk. Be om tilgang på nytt.",
+      "cancelled": "Forespørselen ble avbrutt.",
+      "cancel": "Avbryt forespørsel",
+      "otherWay": "Bruk en parringslenke i stedet",
+      "fallback": "Åpne en ny parringslenke eller skann QR-koden under Bibliotek og webapp på verten.",
+      "banner": "Forespørsler om nettlesertilgang: {count}",
+      "open": "Se forespørsler",
+      "hostTitle": "Forespørsler om nettlesertilgang",
+      "trust": "Navnet er oppgitt av enheten. Godta bare enheter du kjenner.",
+      "actionFailed": "Forespørselen er endret, eller tjenesten er utilgjengelig. Prøv igjen.",
+      "reject": "Avvis",
+      "approve": "Gi tilgang",
+      "shareCode": "Gi denne koden til personen som bruker enheten som ba om tilgang."
+    },
     app: {
       title: "Filament Manager",
       iconAlt: "Filament Manager-ikon",

@@ -253,7 +253,10 @@ pub(crate) async fn enforce_companion_rate_limit(
     let is_auth_attempt = request.method() == Method::POST
         && matches!(
             request.uri().path(),
-            "/api/v1/auth/pair" | "/api/v1/auth/renew"
+            "/api/v1/auth/pair"
+                | "/api/v1/auth/renew"
+                | "/api/v1/auth/recovery/request"
+                | "/api/v1/auth/recovery/confirm"
         );
     if is_auth_attempt && let Err(error) = security.auth_attempts.check(client_ip) {
         return error.into_response();

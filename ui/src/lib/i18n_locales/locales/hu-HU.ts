@@ -1,6 +1,36 @@
 import type { DictionaryNode } from "../../i18n_types";
 
 export const huHUDictionary: DictionaryNode = {
+    access: {
+      "title": "A hozzáférést meg kell újítani",
+      "body": "Kérd meg a gazdagépet, hogy ismét engedélyezze ezt a böngészőt.",
+      "deviceName": "Eszköz neve",
+      "nameHint": "A név csak az eszköz felismerésében segíti a gazdagépet.",
+      "request": "Hozzáférés újbóli kérése",
+      "pendingTitle": "Kérelem elküldve",
+      "pendingBody": "A hozzáférést a gazdagépen futó Filament Manager alkalmazásban kell engedélyezni.",
+      "waiting": "Várakozás a gazdagépre…",
+      "codeTitle": "Add meg a gazdagép kódját",
+      "codeLabel": "Egyszer használatos kód",
+      "codeHint": "Hat számjegy. A kód öt percig érvényes.",
+      "confirm": "Hozzáférés megerősítése",
+      "badCode": "Hibás kód. Hátralévő próbálkozások: {count}.",
+      "rejected": "A kérelmet elutasították.",
+      "expired": "A kérelem lejárt. Kérj ismét hozzáférést.",
+      "locked": "Három hibás próbálkozás. Kérj ismét hozzáférést.",
+      "cancelled": "A kérelmet visszavonták.",
+      "cancel": "Kérelem visszavonása",
+      "otherWay": "Párosítási hivatkozás használata",
+      "fallback": "Nyiss meg egy új párosítási hivatkozást, vagy olvasd be a QR-kódját a gazdagép Könyvtár és webalkalmazás részében.",
+      "banner": "Böngésző-hozzáférési kérelmek: {count}",
+      "open": "Kérelmek megtekintése",
+      "hostTitle": "Böngésző-hozzáférési kérelmek",
+      "trust": "A nevet az eszköz adja meg. Csak ismert eszközöket engedélyezz.",
+      "actionFailed": "A kérelem megváltozott, vagy a szolgáltatás nem érhető el. Próbáld újra.",
+      "reject": "Elutasítás",
+      "approve": "Hozzáférés engedélyezése",
+      "shareCode": "Add át ezt a kódot a kérelmező eszközt használó személynek."
+    },
   "app": {
     "navigation": "Navigáció",
     "loadingPage": "Oldal betöltése...",

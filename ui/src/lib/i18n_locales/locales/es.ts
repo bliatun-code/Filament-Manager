@@ -1,6 +1,36 @@
 import type { DictionaryNode } from "../../i18n_types";
 
 export const esDictionary: DictionaryNode = {
+    access: {
+      "title": "Es necesario renovar el acceso",
+      "body": "Pide al anfitrión que vuelva a autorizar este navegador.",
+      "deviceName": "Nombre del dispositivo",
+      "nameHint": "El nombre solo ayuda al anfitrión a reconocer tu dispositivo.",
+      "request": "Volver a solicitar acceso",
+      "pendingTitle": "Solicitud enviada",
+      "pendingBody": "El acceso debe autorizarse en Filament Manager en el equipo anfitrión.",
+      "waiting": "Esperando al anfitrión…",
+      "codeTitle": "Introduce el código del anfitrión",
+      "codeLabel": "Código de un solo uso",
+      "codeHint": "Seis dígitos. El código es válido durante cinco minutos.",
+      "confirm": "Confirmar acceso",
+      "badCode": "Código incorrecto. Quedan {count} intentos.",
+      "rejected": "La solicitud fue rechazada.",
+      "expired": "La solicitud ha caducado. Vuelve a solicitar acceso.",
+      "locked": "Tres intentos incorrectos. Vuelve a solicitar acceso.",
+      "cancelled": "La solicitud fue cancelada.",
+      "cancel": "Cancelar solicitud",
+      "otherWay": "Usar un enlace de vinculación",
+      "fallback": "Abre un nuevo enlace de vinculación o escanea su código QR en Biblioteca y aplicación web en el anfitrión.",
+      "banner": "Solicitudes de acceso del navegador: {count}",
+      "open": "Ver solicitudes",
+      "hostTitle": "Solicitudes de acceso del navegador",
+      "trust": "El dispositivo proporciona el nombre. Autoriza solo dispositivos que reconozcas.",
+      "actionFailed": "La solicitud ha cambiado o el servicio no está disponible. Inténtalo de nuevo.",
+      "reject": "Rechazar",
+      "approve": "Permitir acceso",
+      "shareCode": "Da este código a la persona que utiliza el dispositivo que solicitó acceso."
+    },
   app: {
     title: "Filament Manager",
     iconAlt: "Icono de Filament Manager",

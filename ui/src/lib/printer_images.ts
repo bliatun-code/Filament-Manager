@@ -30,8 +30,25 @@ import PrusaXlImage from "../assets/printers/prusa-xl.png";
 import PrusaXl2Image from "../assets/printers/prusa-xl2.png";
 import PrusaXl5Image from "../assets/printers/prusa-xl5.png";
 import imageCatalog from "./printer_image_catalog.json";
+import imagePresentation from "./printer_image_presentation.json";
+import BambuA1MiniCutout from "../assets/printers/bambu-a1-mini-cutout.png";
+import BambuA1Cutout from "../assets/printers/bambu-a1-cutout.png";
+import BambuH2DCutout from "../assets/printers/bambu-h2d-cutout.png";
+import BambuP1PCutout from "../assets/printers/bambu-p1p-cutout.png";
+import BambuP1SCutout from "../assets/printers/bambu-p1s-companion-cutout.png";
+import BambuX1CarbonCutout from "../assets/printers/bambu-x1-carbon-cutout.png";
+import BambuX1Cutout from "../assets/printers/bambu-x1-cutout.png";
+import BambuX1ECutout from "../assets/printers/bambu-x1e-cutout.png";
 
 const imageFiles: Record<string, string> = {
+  "bambu-a1-mini-cutout.png": BambuA1MiniCutout,
+  "bambu-a1-cutout.png": BambuA1Cutout,
+  "bambu-h2d-cutout.png": BambuH2DCutout,
+  "bambu-p1p-cutout.png": BambuP1PCutout,
+  "bambu-p1s-companion-cutout.png": BambuP1SCutout,
+  "bambu-x1-carbon-cutout.png": BambuX1CarbonCutout,
+  "bambu-x1-cutout.png": BambuX1Cutout,
+  "bambu-x1e-cutout.png": BambuX1ECutout,
   "bambu-a1-mini.png": BambuA1MiniImage,
   "bambu-a1.png": BambuA1Image,
   "bambu-a2l.png": BambuA2LImage,
@@ -74,5 +91,11 @@ export function printerImageFilename(model: string, hasMultiMaterial: boolean): 
 
 export function printerImageUrl(model: string, hasMultiMaterial: boolean): string | null {
   const filename = printerImageFilename(model, hasMultiMaterial);
-  return filename ? imageFiles[filename] ?? null : null;
+  const presentation = filename ? imagePresentation[filename as keyof typeof imagePresentation] : null;
+  return filename ? imageFiles[presentation?.file ?? filename] ?? null : null;
+}
+
+export function printerImageBounds(model: string, hasMultiMaterial: boolean) {
+  const filename=printerImageFilename(model,hasMultiMaterial);
+  return filename ? imagePresentation[filename as keyof typeof imagePresentation] ?? null : null;
 }

@@ -1,6 +1,36 @@
 import type { DictionaryNode } from "../../i18n_types";
 
 export const enDictionary: DictionaryNode = {
+    access: {
+      "title": "Access needs to be renewed",
+      "body": "Ask the Host to approve this browser again.",
+      "deviceName": "Device name",
+      "nameHint": "The name only helps the Host recognize your device.",
+      "request": "Request access again",
+      "pendingTitle": "Request sent",
+      "pendingBody": "Access must be approved in Filament Manager on the Host computer.",
+      "waiting": "Waiting for the Host…",
+      "codeTitle": "Enter the code from the Host",
+      "codeLabel": "One-time code",
+      "codeHint": "Six digits. The code is valid for five minutes.",
+      "confirm": "Confirm access",
+      "badCode": "Incorrect code. {count} attempts remain.",
+      "rejected": "The request was declined.",
+      "expired": "The request expired. Request access again.",
+      "locked": "Three incorrect attempts. Request access again.",
+      "cancelled": "The request was cancelled.",
+      "cancel": "Cancel request",
+      "otherWay": "Use a pairing link instead",
+      "fallback": "Open a new pairing link or scan its QR code from Library & web app on the Host.",
+      "banner": "Browser access requests: {count}",
+      "open": "View requests",
+      "hostTitle": "Browser access requests",
+      "trust": "The name is supplied by the device. Only approve devices you recognize.",
+      "actionFailed": "The request changed or the service is unavailable. Try again.",
+      "reject": "Decline",
+      "approve": "Allow access",
+      "shareCode": "Give this code to the person using the requesting device."
+    },
     app: {
       title: "Filament Manager",
       iconAlt: "Filament Manager icon",

@@ -2,6 +2,7 @@ import { FilamentSpoolVisual } from "./filament_spool_visual.js";
 import { parseSwatchSpec } from "./companion_theme.js";
 import { printerImageCatalog } from "./printer_image_catalog.js";
 import { companionIcon } from "./companion_icons.js";
+import { printerImagePresentation } from "./printer_image_presentation.js";
 
 const spoolImages = new Map();
 export function renderFilamentSpool(color) {
@@ -25,7 +26,6 @@ export function printerImageFilename(model, hasMultiMaterial = false) {
 
 export function renderPrinterImage(model, hasMultiMaterial = false) {
   const original = printerImageFilename(model, hasMultiMaterial);
-  // The original official thumbnail stays untouched; this separate cutout is a processed derivative.
-  const file = original === "bambu-p1s.png" ? "bambu-p1s-companion-cutout.png" : original;
-  return file ? `<img class="companion-printer-image" src="/companion/${file}" alt="" width="100" height="100" loading="lazy" decoding="async" />` : `<span class="companion-printer-placeholder" aria-hidden="true">${companionIcon("printers")}</span>`;
+  const presentation=printerImagePresentation[original];
+  return presentation ? `<svg class="companion-printer-image" viewBox="${presentation.viewBox}" width="100" height="100" aria-hidden="true" focusable="false" preserveAspectRatio="xMidYMid meet"><image href="/companion/${presentation.file}" width="${presentation.width}" height="${presentation.height}" /></svg>` : `<span class="companion-printer-placeholder" aria-hidden="true">${companionIcon("printers")}</span>`;
 }

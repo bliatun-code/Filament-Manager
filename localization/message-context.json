@@ -1727,6 +1727,18 @@
       "keyPrefix": "errors.unavailable",
       "meaning": "Fail-closed response shown when this process is configured as a Client and therefore cannot serve protected Host-library routes.",
       "screenshot": "docs/screenshots/companion-phone-inventory.jpg"
+    },
+    {
+      "surface": "desktop",
+      "keyPrefix": "access.",
+      "meaning": "Browser access recovery. Host means the computer running Companion, not another desktop Client. Device names and browser hints are untrusted suggestions, never proof of identity. Approval in the native Host app precedes entry of a six-digit, five-minute, three-attempt code on the requesting browser; the code alone cannot grant access. Pairing links remain an alternative.",
+      "screenshot": "docs/screenshots/settings-library-pairing.jpg"
+    },
+    {
+      "surface": "companion",
+      "keyPrefix": "access.",
+      "meaning": "Browser access recovery. Host means the computer running Companion, not another desktop Client. Device names and browser hints are untrusted suggestions, never proof of identity. Approval in the native Host app precedes entry of a six-digit, five-minute, three-attempt code on the requesting browser; the code alone cannot grant access. Pairing links remain an alternative.",
+      "screenshot": "docs/screenshots/companion-phone-settings.jpg"
     }
   ],
   "trivialGroups": [

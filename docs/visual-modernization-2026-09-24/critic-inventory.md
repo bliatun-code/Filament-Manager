@@ -105,4 +105,4 @@ Hvert funn får stabil `VM-Fnn`-ID, type (funksjon/visuell inkonsistens/subjekti
 
 `docs/QUALITY_GATES.md` krever blant annet null axe-brudd for seks datadrevne hovedsider, modalens fokus/Escape/fokusretur/200 % zoom, ytelses- og bundlegrenser, lokaliseringskontrakter og reelle Client/Companion-dataflyter. Maskinelle tester supplerer visuell inspeksjon; de beviser ikke i seg selv at en flate når 9. Fysiske printerhandlinger og produksjonsdata skal aldri brukes i denne oppgaven.
 
-Kilder: [tidligere bred review](../UI_USABILITY_REVIEW_2026-09-19.md), [Host/Client](../HOST_CLIENT_USABILITY_REVIEW_2026-09-19.md), [bulk](../BULK_ACTIONS_USABILITY_REVIEW_2026-09-20.md), [import](../DATA_IMPORT_USABILITY_REVIEW_2026-09-20.md), [programbilder](../SCREENSHOTS.md), [kvalitetsporter](../QUALITY_GATES.md).
+Kilder: [tidligere bred review](../UI_USABILITY_REVIEW_2026-09-19.md), [Host/Client](../HOST_CLIENT_USABILITY_REVIEW_2026-09-19.md), [bulk](../BULK_ACTIONS_USABILITY_REVIEW_2026-09-20.md), [import](../DATA_IMPORT_USABILITY_REVIEW_2026-09-20.md), [programbilder](../USER_GUIDE.md), [kvalitetsporter](../QUALITY_GATES.md).

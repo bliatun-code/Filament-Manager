@@ -1,6 +1,36 @@
 import type { DictionaryNode } from "../../i18n_types";
 
 export const nlNLDictionary: DictionaryNode = {
+    access: {
+      "title": "De toegang moet worden vernieuwd",
+      "body": "Vraag de host om deze browser opnieuw goed te keuren.",
+      "deviceName": "Apparaatnaam",
+      "nameHint": "De naam helpt de host alleen om je apparaat te herkennen.",
+      "request": "Opnieuw toegang aanvragen",
+      "pendingTitle": "Aanvraag verzonden",
+      "pendingBody": "De toegang moet worden goedgekeurd in Filament Manager op de hostcomputer.",
+      "waiting": "Wachten op de host…",
+      "codeTitle": "Voer de code van de host in",
+      "codeLabel": "Eenmalige code",
+      "codeHint": "Zes cijfers. De code is vijf minuten geldig.",
+      "confirm": "Toegang bevestigen",
+      "badCode": "Onjuiste code. Nog {count} pogingen over.",
+      "rejected": "De aanvraag is afgewezen.",
+      "expired": "De aanvraag is verlopen. Vraag opnieuw toegang aan.",
+      "locked": "Drie onjuiste pogingen. Vraag opnieuw toegang aan.",
+      "cancelled": "De aanvraag is geannuleerd.",
+      "cancel": "Aanvraag annuleren",
+      "otherWay": "Een koppelingslink gebruiken",
+      "fallback": "Open een nieuwe koppelingslink of scan de QR-code bij Bibliotheek en webapp op de host.",
+      "banner": "Aanvragen voor browsertoegang: {count}",
+      "open": "Aanvragen bekijken",
+      "hostTitle": "Aanvragen voor browsertoegang",
+      "trust": "De naam wordt door het apparaat opgegeven. Keur alleen apparaten goed die je herkent.",
+      "actionFailed": "De aanvraag is gewijzigd of de dienst is niet beschikbaar. Probeer het opnieuw.",
+      "reject": "Afwijzen",
+      "approve": "Toegang toestaan",
+      "shareCode": "Geef deze code aan de persoon die het aanvragende apparaat gebruikt."
+    },
   "app": {
     "iconAlt": "Filament Manager-pictogram",
     "loadingPage": "Pagina laden...",

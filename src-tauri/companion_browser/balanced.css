@@ -93,6 +93,20 @@ body { background:linear-gradient(165deg,var(--bg-top),var(--bg-bottom)); }
 .desktop-rail-nav .root-flow-button[data-active="true"] { background:var(--accent-soft); border-color:transparent; box-shadow:inset 3px 0 0 var(--focus-ring); }
 .desktop-rail-nav .root-flow-button:hover { background:var(--surface-muted); }
 .printer-live-strip > .printer-live-divider:first-child { display:none; }
+.access-recovery { display:grid; gap:.75rem; }
+.access-brand { display:grid; gap:.15rem; }
+.access-brand > span { font-size:.75rem; color:var(--muted); }
+.access-illustration { display:flex; justify-content:center; align-items:center; height:8.5rem; }
+.access-illustration .companion-spool-visual { width:7rem; height:8rem; max-height:8rem; }
+.access-illustration > svg { width:4rem; height:4rem; color:var(--muted); }
+.access-recovery .hero-title,.access-recovery .hero-copy { margin:0; }
+.access-recovery .text-input { width:100%; padding:.7rem; font-size:16px; }
+.access-recovery .primary-button,.access-recovery .ghost-button { min-height:44px; width:100%; }
+.access-code { text-align:center; letter-spacing:.4em; font-variant-numeric:tabular-nums; }
+.access-waiting { text-align:center; color:var(--muted); }
+.access-fallback { margin-top:.5rem; color:var(--muted); font-size:.75rem; }
+.access-fallback summary { cursor:pointer; }
+.access-recovery .status-line:empty { display:none; }
 
 /* Inventory uses one compact header, with a single accessible search label. */
 .visually-hidden { position:absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip-path:inset(50%); white-space:nowrap; border:0; }

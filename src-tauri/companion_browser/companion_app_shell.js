@@ -445,6 +445,7 @@ export function createCompanionAppShellRenderer(options) {
   function renderRoot() {
     if (!state.apiReady) {
       return renderTrustedLanPairingApp({
+        recovery: state.accessRecovery,
         locale: state.locale,
         busy: state.busy,
         statusTone: state.statusTone,
