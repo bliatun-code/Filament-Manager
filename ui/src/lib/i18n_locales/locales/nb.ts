@@ -1022,6 +1022,11 @@ export const nbDictionary: DictionaryNode = {
         "Ingen RFID-identitet er tilgjengelig ennå for valgt kildespor.",
       rfidCaptureFailed:
         "Kunne ikke oppdatere RFID-fangsten fra printeren.",
+      "rfidRemove": "Fjern lagret RFID",
+      "rfidRemoved": "Lagret RFID er fjernet fra denne rullen.",
+      "rfidRemoveHint": "Fjerner den lagrede RFID-koblingen. Rullen, vekten og sportildelingen beholdes.",
+      "amsWeightAccept": "Aksepter vekt fra AMS",
+      "amsWeightReview": "Sjekk vekten: gjentatte AMS-estimater avviker fra lagret vekt.",
       rfidSaved: "RFID-identitet lagret på valgt filament.",
       saveRfid: "Lagre RFID",
       markEmpty: "Marker som oppbrukt (tom)",

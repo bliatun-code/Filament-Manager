@@ -24,6 +24,7 @@ import type {
   SpoolWithMasterRow,
 } from "../lib/tauri_client";
 import { PrinterSlotAssignmentStatus } from "./printer_slot_assignment_status";
+import { buildAcceptableAmsWeightEstimate, canOfferAmsWeightEstimateFromSource } from "../lib/printer_ams_weight_estimate";
 import { PrinterSlotPicker } from "./printer_slot_picker";
 
 type PrinterSlotCardProps = {
@@ -153,7 +154,15 @@ export function PrinterSlotCard({
     !!slotDisplay.effectiveLiveTray && !slotDisplay.effectiveLiveTray.loaded;
   const showObserved = !!observed && (slotDisplay.unknownLiveRfid ||
     candidates.some(row => row.spool.id !== slot.spool_id));
-  const hasDetails = showObserved || reviewRemoval || slotDisplay.rfidOverridden;
+  const duplicateRfidWarning = slotDisplay.duplicateRfidRolls.length > 1
+    ? t("settings.bambuLiveMatchNoteDuplicateIdentity", "Multiple inventory rolls share this saved RFID/AMS identity.") : null;
+  const observationLabel = duplicateRfidWarning ?? (reviewRemoval
+    ? t("printers.outgoingWeightPromptTitle", "Set outgoing roll weight")
+    : t("printers.linkObserved", "Link observed roll"));
+  const hasDetails = Boolean(duplicateRfidWarning) || showObserved || reviewRemoval || slotDisplay.rfidOverridden;
+  const needsWeightReview = (slot.live_weight_review_samples ?? 0) >= 3 && !slotDisplay.duplicateRfidRolls.length &&
+    canOfferAmsWeightEstimateFromSource(clientPrinterSource, liveConfig) && !!current &&
+    !!buildAcceptableAmsWeightEstimate(slot, current, slotDisplay.effectiveLiveTray);
   const remaining = current?.spool.remaining_g ?? slot.spool_remaining_g;
   const initial = current?.spool.initial_weight_g ?? current?.master.default_weight ?? 1000;
   const low = !!current && isInventorySpoolLowStockCandidate({status: normalizeSpoolStatus(current.spool.status),
@@ -177,7 +186,7 @@ export function PrinterSlotCard({
           <span>{slot.spool_id ? formatSpoolReference(slot.spool_id) : "—"}</span>
           {slotDisplay.liveIdentityLabel ? <div className="printer-secondary">{slotDisplay.liveIdentityLabel}</div> : null}
           {slotDisplay.liveSlotInUse ? <div className="printer-in-use">{t("inventory.statusInUse", "In use")}</div> : null}
-          {hasDetails ? <div className="printer-observation-label">{reviewRemoval ? t("printers.outgoingWeightPromptTitle", "Set outgoing roll weight") : t("printers.linkObserved", "Link observed roll")}</div> : null}
+          {hasDetails ? <div className="printer-observation-label">{duplicateRfidWarning ? <span title={duplicateRfidWarning}><span aria-hidden="true">⚠ </span>{t("inventory.rfidButton", "RFID")}</span> : observationLabel}</div> : null}
         </td>
         <td className="printer-weight-cell">
           <span>{slot.spool_id ? formatGrams(remaining, "dash", locale) : "—"}</span>
@@ -193,17 +202,18 @@ export function PrinterSlotCard({
             setOpenDropdownSlotId={setOpenDropdownSlotId} setSlotDraft={setSlotDraft}
             openIncomingWeightDialog={openIncomingWeightDialog} openEmptySlotWeightDialog={openEmptySlotWeightDialog}
           />
-          {slot.spool_id ? <button type="button" className="printer-row-action"
+          {slot.spool_id ? <button type="button" className={`printer-row-action ${needsWeightReview ? "printer-weight-review" : ""}`}
+            title={needsWeightReview ? t("inventory.amsWeightReview", "Check weight: repeated AMS estimates differ from the saved weight.") : undefined}
             onClick={() => openWeightPromptForDraft(printer.printer, slot, draft)}
             disabled={!tauri || busy || !draft.targetSpoolId}>
-            {t("printers.updateWeight", "Update weight")}
+            {needsWeightReview ? t("inventory.amsWeightAccept", "Accept AMS weight") : t("printers.updateWeight", "Update weight")}
           </button> : null}
         </td>
       </tr>
       {hasDetails ? <tr className="printer-observation-row"><td colSpan={5}>
         <details className="printer-observation-details">
-          <summary>{reviewRemoval ? t("printers.outgoingWeightPromptTitle", "Set outgoing roll weight") : t("printers.linkObserved", "Link observed roll")}</summary>
-          {reviewRemoval ? <button type="button" className="printer-row-action" disabled={!tauri || busy}
+          <summary>{observationLabel}</summary>
+          {reviewRemoval && !duplicateRfidWarning ? <button type="button" className="printer-row-action" disabled={!tauri || busy}
             onClick={() => openEmptySlotWeightDialog(printer.printer.id, slot)}>
             {t("printers.clearSlotOptionHint", "Remove current roll from this slot")}
           </button> : <PrinterSlotAssignmentStatus
@@ -211,6 +221,7 @@ export function PrinterSlotCard({
               liveSuggestedInventoryMatch: {...slotDisplay.liveSuggestedInventoryMatch,
                 candidates: candidates.filter(row => slotOptions.some(option => option.spool.id === row.spool.id))}}}
             openRfidOverrideDialog={openRfidOverrideDialog}
+            clearSlot={() => openEmptySlotWeightDialog(printer.printer.id, slot)}
             registerLiveRfidCandidate={registerLiveRfidCandidate}
             createLiveBambuCatalogSpool={createLiveBambuCatalogSpool}
             selectCandidate={(row) => {

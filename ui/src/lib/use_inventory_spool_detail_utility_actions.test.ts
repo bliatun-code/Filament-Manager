@@ -14,20 +14,20 @@ async function harness() {
     let api,state,calls=[],reloads=[],results=[],old,held=false,release,failure='LIVE';
     window.__TAURI__={invoke:(command,payload)=>new Promise((resolve,reject)=>calls.push({command,payload,resolve,reject}))};
     const t=(_key,fallback='')=>fallback;
-    function Harness({active=true,ready=true,host='local',generation=1,id='a',capture=true,tag='TAG-123',slot='slot-a',paired=true,allowed=true,tauri=true}) {
+    function Harness({active=true,ready=true,host='local',generation=1,id='a',capture=true,tag='TAG-123',slot='slot-a',paired=true,allowed=true,tauri=true,savedTag='SAVED-RFID'}) {
       const [busy,setBusy]=useState(false),[error,setError]=useState(null),[info,setInfo]=useState(null),[rfidError,setRfidError]=useState(null),[open,setOpen]=useState(true);
       const reload=kind=>async report=>{reloads.push(kind);if(held&&(kind==='spools'||reloads.length===1&&kind==='printers'))await new Promise(resolve=>release=resolve);if(failure==='throw')throw Error('refresh rejected');report?.(kind,failure);};
       api=useInventorySpoolDetailUtilityActions({active,ready,captureOpen:capture&&open,selectedRfidCaptureSlotId:slot,clientTargetGeneration:generation,
         canUseClientHostWrite:()=>paired,clientHostBaseUrl:'http://'+host,clientLibraryId:'library',clientReadOnly:host!=='local',closeRfidCaptureModal:()=>setOpen(false),
         ensureLocalWriteAllowed:()=>allowed,manageBusy:busy,openRfidCaptureModal:()=>setOpen(true),reloadPrinterOverview:reload('printers'),reloadSpoolDetail:()=>reload('detail')(),reloadSpools:reload('spools'),
-        rfidCaptureLastSeenAt:'2026-09-15T12:00:00Z',rfidCaptureSummary:{rfidTag:tag},selectedRfidCaptureLiveIntegration:null,selectedSpool:{id},
+        rfidCaptureLastSeenAt:'2026-09-15T12:00:00Z',rfidCaptureSummary:{rfidTag:tag},selectedRfidCaptureLiveIntegration:null,selectedSpool:{id,rfidTag:savedTag},
         selectedSpoolAssignedSlot:null,selectedSpoolRfidCaptureSlots:[],setError,setInfoMessage:setInfo,setManageBusy:setBusy,setRfidCaptureError:setRfidError,
         setSelectedRfidCaptureSlotId:()=>{},setShowRfidCapturedFields:()=>{},tauriAvailable:tauri,t});
       state={busy,error,info,rfidError,open};return React.createElement('div');
     }
     const root=createRoot(document.getElementById('root'));const render=(props={})=>flushSync(()=>root.render(React.createElement(Harness,props)));
-    const run=kind=>{void(kind==='RFID'?api.handleSaveCapturedRfid():api.handlePrintLabel('ptouch-24','data:image/png;base64,cG5n')).then(result=>results.push(result??null));};
-    window.utility={render,run,start:()=>api.handleStartRfidCapture(),double:kind=>{run(kind);run(kind);},capture:kind=>{const fn=api.handlePrintLabel;old=kind==='RFID'?api.handleSaveCapturedRfid:()=>fn('ptouch-24','data:image/png;base64,cG5n');},old:()=>{void old();},
+    const run=kind=>{void(kind==='RFID'?api.handleSaveCapturedRfid():kind==='REMOVE'?api.handleRemoveRfid():api.handlePrintLabel('ptouch-24','data:image/png;base64,cG5n')).then(result=>results.push(result??null));};
+    window.utility={render,run,start:()=>api.handleStartRfidCapture(),double:kind=>{run(kind);run(kind);},capture:kind=>{const fn=api.handlePrintLabel;old=kind==='RFID'?api.handleSaveCapturedRfid:kind==='REMOVE'?api.handleRemoveRfid:()=>fn('ptouch-24','data:image/png;base64,cG5n');},old:()=>{void old();},
       hold:()=>{held=true;},failure:value=>{failure=value;},release:()=>release(),finish:async(index,fail=false)=>{await new Promise(resolve=>setTimeout(resolve,0));fail?calls[index].reject(Error('write rejected')):calls[index].resolve('/Downloads/label.png');},
       snapshot:()=>({...state,results,calls:calls.map(({command,payload})=>({command,payload})),reloads})};
   `;
@@ -49,9 +49,9 @@ test('inventory detail utility lifecycle',async context=>{
       await page.evaluate("utility.render({capture:false});utility.hold();utility.failure('throw');utility.start();utility.start();utility.render()");
       await page.waitForFunction('utility.snapshot().reloads.length===1');await page.evaluate('utility.render({capture:false});utility.release()');await page.waitForTimeout(30);assert.equal((await page.evaluate('utility.snapshot()')).rfidError,null);
     });
-    for(const kind of ['RFID','PNG']) {
+    for(const kind of ['RFID','REMOVE','PNG']) {
       await scenario(`${kind}: duplicate submission sends one command`,async page=>{
-        await page.evaluate(`utility.double('${kind}')`);assert.equal((await page.evaluate('utility.snapshot()')).calls.length,1);await page.evaluate('utility.finish(0)');await page.waitForFunction('!utility.snapshot().busy');const done=await page.evaluate('utility.snapshot()');assert.equal(done.error,null);assert.equal(done.rfidError,null);assert.ok(done.info);if(kind==='RFID')assert.equal(done.open,false);else assert.deepEqual(done.results,[null,{success:true,message:done.info,exportedPath:'/Downloads/label.png'}]);
+        await page.evaluate(`utility.double('${kind}')`);assert.equal((await page.evaluate('utility.snapshot()')).calls.length,1);await page.evaluate('utility.finish(0)');await page.waitForFunction('!utility.snapshot().busy');const done=await page.evaluate('utility.snapshot()');assert.equal(done.error,null);assert.equal(done.rfidError,null);assert.ok(done.info);if(kind==='RFID')assert.equal(done.open,false);else if(kind==='PNG')assert.deepEqual(done.results,[null,{success:true,message:done.info,exportedPath:'/Downloads/label.png'}]);
       });
       for(const fail of [false,true]) {
         await scenario(`${kind}: old ${fail?'failure':'success'} cannot alter a new detail operation`,async page=>{
@@ -84,6 +84,19 @@ test('inventory detail utility lifecycle',async context=>{
     }
     await scenario('RFID: Client request carries observed time and reviewed generation',async page=>{
       await page.evaluate("utility.render({host:'host',generation:7});utility.run('RFID')");const s=await page.evaluate('utility.snapshot()');assert.equal(s.calls[0].payload.input.expected_target_generation,7);assert.equal(s.calls[0].payload.input.rfid_observed_at,'2026-09-15T12:00:00Z');await page.evaluate('utility.finish(0)');
+    });
+    for(const props of ['{savedTag:null}','{savedTag:"changed"}','{host:"host",generation:null}','{host:"host",paired:false}','{allowed:false}']) {
+      await scenario(`REMOVE: missing identity or changed authority cannot clear: ${props}`,async page=>{
+        await page.evaluate(`utility.capture('REMOVE');utility.render(${props});utility.old()`);assert.equal((await page.evaluate('utility.snapshot()')).calls.length,0);
+      });
+    }
+    await scenario('REMOVE: Client clears only the saved identity and refreshes all views',async page=>{
+      await page.evaluate("utility.render({host:'host',generation:7,capture:false});utility.run('REMOVE')");
+      const s=await page.evaluate('utility.snapshot()');assert.equal(s.calls[0].command,'update_library_sync_host_spool_rfid_tag');
+      assert.equal(s.calls[0].payload.input.rfid_tag,null);assert.equal(s.calls[0].payload.input.rfid_observed_at,null);
+      assert.equal(s.calls[0].payload.input.expected_target_generation,7);
+      await page.evaluate('utility.finish(0)');await page.waitForFunction('!utility.snapshot().busy');
+      const done=await page.evaluate('utility.snapshot()');assert.equal(done.info,'Saved RFID removed from this roll.');assert.equal(done.reloads.length,3);
     });
     await scenario('RFID: new capture is not closed by an old accepted write',async page=>{
       await page.evaluate("utility.run('RFID');utility.render({capture:false});utility.render();utility.finish(0)");await page.waitForFunction('!utility.snapshot().busy');assert.equal((await page.evaluate('utility.snapshot()')).open,true);

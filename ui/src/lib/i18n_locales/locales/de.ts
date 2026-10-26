@@ -1084,6 +1084,11 @@ export const deDictionary: DictionaryNode = {
     rfidCaptureNoSlotData: "Für diesen Quellplatz sind noch keine platzspezifischen AMS-Felder verfügbar.",
     rfidCaptureNothingToSave: "Für den ausgewählten Quellplatz ist noch keine RFID-Identität verfügbar.",
     rfidCaptureFailed: "RFID-Erfassung vom Drucker konnte nicht aktualisiert werden.",
+    "rfidRemove": "Gespeicherte RFID entfernen",
+    "rfidRemoved": "Die gespeicherte RFID wurde von dieser Rolle entfernt.",
+    "rfidRemoveHint": "Entfernt die gespeicherte RFID-Verknüpfung. Rolle, Gewicht und Schachtzuordnung bleiben erhalten.",
+    "amsWeightAccept": "AMS-Gewicht übernehmen",
+    "amsWeightReview": "Gewicht prüfen: Wiederholte AMS-Schätzungen weichen vom gespeicherten Gewicht ab.",
     rfidSaved: "RFID-Tag auf der ausgewählten Rolle gespeichert.",
     saveRfid: "RFID speichern",
     error: {

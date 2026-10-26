@@ -1607,3 +1607,317 @@ fn companion_service_lists_outbound_loan_history() {
         panic!("companion_service_lists_outbound_loan_history failed: {message}");
     }
 }
+
+#[test]
+fn printer_reads_reconcile_saved_rfid_without_a_new_mqtt_observation_or_writes() {
+    for create_after_observation in [false, true] {
+        let path = temp_db_path("rfid-read-reconciliation");
+        let db = FilamentDatabase::open(&path).expect("open");
+        db.apply_schema().expect("schema");
+        let service = CompanionService::new(path.to_string_lossy().into_owned());
+        service
+            .create_printer(CreatePrinterInput {
+                id: "printer_1".into(),
+                model: "Bambu Lab P1S".into(),
+                name: "Printer".into(),
+                ams_units: Some(1),
+                slots_per_ams: Some(4),
+            })
+            .expect("printer");
+        let master_id = db
+            .upsert_manual_master(ManualMasterInput {
+                material: "PLA",
+                filament_name: "PLA Matte",
+                color_name: "Black",
+                hex_color: Some("#000000"),
+                product_url: None,
+                vendor: Some("Bambu"),
+                default_weight: Some(1000),
+            })
+            .expect("catalog master");
+        let create_roll = |id: &str| {
+            service.create_spool(serde_json::from_value(serde_json::json!({
+                "id": id, "master_id": master_id, "status": "IN_STOCK", "initial_weight_g": 1000,
+            })).expect("create input")).expect("create roll");
+        };
+        if !create_after_observation {
+            create_roll("selected-roll");
+        }
+        let observation: BambuLiveIntegrationRow = serde_json::from_value(serde_json::json!({
+            "enabled": true,
+            "observed_state": {
+                "online": true, "mqtt_connected": true, "last_seen_at": "2026-10-26T20:31:59Z",
+                "trays": [{
+                    "ams_index": 0, "tray_index": 3, "loaded": true,
+                    "tray_uuid": "observed-rfid", "filament_type": "PLA", "color_hex": "#000000",
+                    "last_identity_seen_at": "2026-10-26T20:31:59Z",
+                    "match_status": "unknown_rfid", "remaining_grams": 824,
+                }],
+            },
+        }))
+        .expect("observation");
+        db.save_bambu_live_integration("printer_1", &observation)
+            .expect("save observation");
+        let read_slot = || {
+            service.list_printer_overview().expect("read overview")[0]
+                .slots
+                .iter()
+                .find(|slot| slot.slot_index == 4)
+                .expect("slot 4")
+                .clone()
+        };
+        assert_eq!(
+            read_slot().live_match_status.as_deref(),
+            Some("unknown_rfid")
+        );
+        if create_after_observation {
+            create_roll("selected-roll");
+        }
+        service
+            .update_spool_rfid_tag(
+                serde_json::from_value(serde_json::json!({
+                    "spool_id": "selected-roll", "rfid_tag": "observed-rfid",
+                }))
+                .expect("RFID input"),
+            )
+            .expect("save RFID");
+        service
+            .assign_printer_slot(
+                "printer_1",
+                "printer_1_ams_1_slot_4",
+                Some("selected-roll"),
+                None,
+                None,
+                false,
+            )
+            .expect("assign slot");
+        let revisions = db.library_domain_revisions().expect("revisions");
+        let history_count = db
+            .list_spool_history_events("selected-roll", 100)
+            .expect("history")
+            .len();
+        let slot = read_slot();
+        assert_eq!(slot.live_match_status.as_deref(), Some("clear_match"));
+        assert_eq!(
+            slot.live_matched_inventory_mode.as_deref(),
+            Some("exact_rfid")
+        );
+        assert_eq!(
+            slot.live_matched_inventory_spool_id.as_deref(),
+            Some("selected-roll")
+        );
+        assert_eq!(
+            slot.live_last_identity_seen_at.as_deref(),
+            Some("2026-10-26T20:31:59Z")
+        );
+        assert_eq!(
+            slot.spool_remaining_g,
+            Some(1000),
+            "a read must not apply the AMS estimate"
+        );
+
+        // Both desktop and Companion settings use this same read-only reconciliation.
+        let mut entries = db.list_bambu_live_integrations().expect("entries");
+        crate::bambu_live_sync::refresh_inventory_match_status(&db, &mut entries)
+            .expect("settings match");
+        let tray = &entries[0].config.observed_state.as_ref().unwrap().trays[0];
+        assert_eq!(tray.match_status.as_deref(), Some("clear_match"));
+        assert_eq!(
+            tray.matched_inventory_spool_id.as_deref(),
+            Some("selected-roll")
+        );
+        assert_eq!(
+            entries[0]
+                .config
+                .observed_state
+                .as_ref()
+                .unwrap()
+                .last_seen_at,
+            observation.observed_state.as_ref().unwrap().last_seen_at
+        );
+        assert_eq!(
+            db.list_bambu_live_integrations().expect("persisted")[0].config,
+            observation,
+            "reading must not persist a fabricated printer observation"
+        );
+        assert_eq!(
+            db.library_domain_revisions().expect("revisions after read"),
+            revisions
+        );
+        assert_eq!(
+            db.list_spool_history_events("selected-roll", 100)
+                .expect("history after read")
+                .len(),
+            history_count
+        );
+
+        create_roll("duplicate-roll");
+        service
+            .update_spool_rfid_tag(
+                serde_json::from_value(serde_json::json!({
+                    "spool_id": "duplicate-roll", "rfid_tag": "observed-rfid",
+                }))
+                .unwrap(),
+            )
+            .expect("duplicate identity");
+        assert_eq!(
+            read_slot().live_match_status.as_deref(),
+            Some("ambiguous"),
+            "a newly conflicting identity must not be silently accepted"
+        );
+        service
+            .update_spool_rfid_tag(
+                serde_json::from_value(serde_json::json!({
+                    "spool_id": "duplicate-roll", "rfid_tag": null,
+                }))
+                .unwrap(),
+            )
+            .expect("remove duplicate");
+        assert_eq!(
+            read_slot().live_match_status.as_deref(),
+            Some("clear_match")
+        );
+        assert_eq!(read_slot().spool_remaining_g, Some(1000));
+        assert_eq!(read_slot().spool_id.as_deref(), Some("selected-roll"));
+        service
+            .update_spool_rfid_tag(
+                serde_json::from_value(serde_json::json!({
+                    "spool_id": "selected-roll", "rfid_tag": "a-different-identity",
+                }))
+                .unwrap(),
+            )
+            .expect("change identity");
+        assert_eq!(
+            read_slot().live_match_status.as_deref(),
+            Some("unknown_rfid")
+        );
+        assert_eq!(
+            read_slot().spool_id.as_deref(),
+            Some("selected-roll"),
+            "reading does not clear or replace the assigned roll"
+        );
+        drop(db);
+        std::fs::remove_file(path).expect("cleanup");
+    }
+}
+
+#[test]
+fn printer_overview_reads_fresh_weight_outliers_with_the_application_schema() {
+    let path = temp_db_path("weight-review-real-schema");
+    let db = FilamentDatabase::open(&path).expect("open");
+    db.apply_schema().expect("application schema");
+    let service = CompanionService::new(path.to_string_lossy().into_owned());
+    service
+        .create_printer(CreatePrinterInput {
+            id: "printer".into(),
+            model: "Bambu Lab P1S".into(),
+            name: "Printer".into(),
+            ams_units: Some(1),
+            slots_per_ams: Some(4),
+        })
+        .expect("printer");
+    let master_id = db
+        .upsert_manual_master(ManualMasterInput {
+            material: "PLA",
+            filament_name: "PLA Basic",
+            color_name: "Black",
+            hex_color: Some("#000000"),
+            product_url: None,
+            vendor: Some("Bambu"),
+            default_weight: Some(1000),
+        })
+        .expect("master");
+    service
+        .create_spool(
+            serde_json::from_value(serde_json::json!({
+                "id":"roll", "master_id":master_id, "status":"IN_STOCK", "initial_weight_g":1000,
+            }))
+            .unwrap(),
+        )
+        .expect("spool");
+    service
+        .update_spool_rfid_tag(
+            serde_json::from_value(serde_json::json!({
+                "spool_id":"roll", "rfid_tag":"RFID",
+            }))
+            .unwrap(),
+        )
+        .expect("RFID");
+    service
+        .assign_printer_slot(
+            "printer",
+            "printer_ams_1_slot_1",
+            Some("roll"),
+            None,
+            None,
+            false,
+        )
+        .expect("assign");
+    db.connection()
+        .execute(
+            "UPDATE filament_spools SET updated_at=datetime('now','-1 hour') WHERE id='roll'",
+            [],
+        )
+        .unwrap();
+    // The live observations occur after the initial manual slot assignment.
+    db.connection().execute("UPDATE ams_slots SET live_cache_cleared_at=datetime('now','-2 minutes') WHERE id='printer_ams_1_slot_1'",[]).unwrap();
+    let now: String = db
+        .connection()
+        .query_row("SELECT datetime('now')", [], |r| r.get(0))
+        .unwrap();
+    let observation: BambuLiveIntegrationRow = serde_json::from_value(serde_json::json!({
+        "enabled":true, "observed_state":{"online":true,"mqtt_connected":true,"last_seen_at":now,
+            "trays":[{"ams_index":0,"tray_index":0,"loaded":true,"tray_uuid":"RFID",
+            "last_identity_seen_at":now,"last_weight_seen_at":now,"remaining_grams":600,
+            "tray_weight_g":1000,"remaining_percent":60}]},
+    }))
+    .unwrap();
+    db.save_bambu_live_integration("printer", &observation)
+        .unwrap();
+    let read_slot = || {
+        service
+            .list_printer_overview()
+            .expect("overview with fresh rejected weight")
+            .into_iter()
+            .find(|p| p.printer.id == "printer")
+            .unwrap()
+            .slots
+            .into_iter()
+            .find(|s| s.spool_id.as_deref() == Some("roll"))
+            .unwrap()
+    };
+    assert_eq!(read_slot().live_weight_review_samples, None);
+    for age in [60, 30, 0] {
+        let at: String = db
+            .connection()
+            .query_row(
+                "SELECT datetime('now',?1)",
+                [format!("-{age} seconds")],
+                |r| r.get(0),
+            )
+            .unwrap();
+        db.insert_printer_live_event("printer","LIVE_AUTO_WEIGHT_REJECTED",&serde_json::json!({
+            "spool_id":"roll","reason":"drop_outlier","current_grams":1000,"remaining_grams":600,
+            "tray_uuid":"RFID","weight_observed_at":at,
+        })).unwrap();
+    }
+    let revisions = db.library_domain_revisions().unwrap();
+    let slot = read_slot();
+    assert_eq!(slot.live_weight_review_samples, Some(3), "{slot:?}");
+    assert_eq!(
+        slot.spool_remaining_g,
+        Some(1000),
+        "reading a warning never accepts the AMS estimate"
+    );
+    assert_eq!(
+        slot.live_matched_inventory_mode.as_deref(),
+        Some("exact_rfid")
+    );
+    assert_eq!(
+        db.library_domain_revisions().unwrap(),
+        revisions,
+        "warning reads do not write inventory"
+    );
+    drop(db);
+    std::fs::remove_file(path).expect("cleanup");
+}

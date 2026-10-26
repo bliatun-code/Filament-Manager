@@ -129,6 +129,7 @@ type InventorySpoolDetailModalProps = {
   onSaveCommonDetails: () => void;
   onSaveMasterMetadata: () => void;
   onStartRfidCapture: () => void;
+  onRemoveRfid?: () => void;
   onSubmitWeight: (grams: number) => void;
   onToggleEditUnlocked: () => void;
   onToggleLostStatus: () => void;
@@ -225,6 +226,7 @@ export function InventorySpoolDetailModal({
   onSaveCommonDetails,
   onSaveMasterMetadata,
   onStartRfidCapture,
+  onRemoveRfid,
   onSubmitWeight,
   onToggleEditUnlocked,
   onToggleLostStatus,
@@ -434,6 +436,10 @@ export function InventorySpoolDetailModal({
                   spool={spool}
                 />
                     <button type="button" className={inventoryDetailActionButtonClassName} onClick={onStartRfidCapture} disabled={!runtimeAvailable || manageBusy || !supportsRfidCapture}>{t("inventory.rfidButton", "RFID")}</button>
+                    {spool.rfidTag?.trim() && onRemoveRfid ? <div className="mt-3">
+                      <button type="button" className={inventoryDetailActionButtonClassName} onClick={onRemoveRfid} disabled={!runtimeAvailable || manageBusy}>{t("inventory.rfidRemove", "Remove saved RFID")}</button>
+                      <p className="mt-2 text-xs text-slate-600 dark:text-slate-300">{t("inventory.rfidRemoveHint", "Removes the saved RFID link. The roll, weight and slot assignment are kept.")}</p>
+                    </div> : null}
                     <p className="mt-2 text-xs text-slate-600 dark:text-slate-300">{supportsRfidCapture ? t("inventory.rfidHintReady", "Capture AMS slot identity data, review it, and save the observed RFID tag when it looks correct.") : t("inventory.rfidHintNeedsLive", "RFID capture needs a printer with Live Bambu status enabled and at least one AMS slot available.")}</p>
                   </div>
                 </details>

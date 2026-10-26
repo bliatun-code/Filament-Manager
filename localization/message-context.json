@@ -1275,6 +1275,36 @@
       "key": "storage.searchShortPlaceholder",
       "meaning": "Short inventory search placeholder in the compact toolbar, especially on narrow phones. Searches filament, colour, owner and placement; the longer associated accessible label explains the fields. Keep short enough to fit a 320 px viewport.",
       "screenshot": "docs/images/v0.35.0/companion-mobile.png"
+    },
+    {
+      "surface": "desktop",
+      "key": "inventory.rfidRemove",
+      "meaning": "Action in the roll properties RFID section. Clears only this inventory roll’s saved RFID identity; never deletes the roll or clears its printer slot.",
+      "screenshot": "docs/images/v0.35.0/inventory.png"
+    },
+    {
+      "surface": "desktop",
+      "key": "inventory.rfidRemoved",
+      "meaning": "Success notice after clearing a roll’s saved RFID identity. Weight and slot assignment are unchanged.",
+      "screenshot": "docs/images/v0.35.0/inventory.png"
+    },
+    {
+      "surface": "desktop",
+      "key": "inventory.rfidRemoveHint",
+      "meaning": "Explains the limited effect of removing a saved RFID binding, distinguishing it from deleting inventory or physically removing the roll.",
+      "screenshot": "docs/images/v0.35.0/inventory.png"
+    },
+    {
+      "surface": "desktop",
+      "key": "inventory.amsWeightAccept",
+      "meaning": "Printer slot action replacing Update weight after at least three stable, rejected AMS estimates. Opens the existing review dialog; does not accept the estimate immediately.",
+      "screenshot": "docs/images/v0.35.0/printers.png"
+    },
+    {
+      "surface": "desktop",
+      "key": "inventory.amsWeightReview",
+      "meaning": "Tooltip for the highlighted Accept AMS weight action. Repeated recent estimates disagree with inventory. AMS estimates are not scale measurements.",
+      "screenshot": "docs/images/v0.35.0/printers.png"
     }
   ],
   "groups": [

@@ -1017,6 +1017,11 @@ export const enDictionary: DictionaryNode = {
         "No RFID identity is available yet for the selected source slot.",
       rfidCaptureFailed:
         "Could not refresh RFID capture from the printer.",
+      "rfidRemove": "Remove saved RFID",
+      "rfidRemoved": "Saved RFID removed from this roll.",
+      "rfidRemoveHint": "Removes the saved RFID link. The roll, weight and slot assignment are kept.",
+      "amsWeightAccept": "Accept AMS weight",
+      "amsWeightReview": "Check weight: repeated AMS estimates differ from the saved weight.",
       rfidSaved: "RFID tag saved on the selected roll.",
       saveRfid: "Save RFID",
       markEmpty: "Mark as used up (empty)",

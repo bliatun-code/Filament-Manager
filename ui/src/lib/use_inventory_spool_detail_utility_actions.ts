@@ -84,8 +84,9 @@ export function useInventorySpoolDetailUtilityActions({
   useLayoutEffect(() => { if (!captureOpen) captureStart.current = null; }, [captureOpen]);
   const consumedCaptures = useRef(new WeakSet<object>());
   const current = useRef<{ scope: object; busy: boolean } | null>(null);
-  const latest = useRef({ capture, manageBusy, tauriAvailable, ensureLocalWriteAllowed, canUseClientHostWrite });
-  useLayoutEffect(() => { latest.current = { capture, manageBusy, tauriAvailable, ensureLocalWriteAllowed, canUseClientHostWrite }; }, [capture, manageBusy, tauriAvailable, ensureLocalWriteAllowed, canUseClientHostWrite]);
+  const savedRfidTag = selectedSpool?.rfidTag?.trim() ?? "";
+  const latest = useRef({ savedRfidTag, capture, manageBusy, tauriAvailable, ensureLocalWriteAllowed, canUseClientHostWrite });
+  useLayoutEffect(() => { latest.current = { savedRfidTag, capture, manageBusy, tauriAvailable, ensureLocalWriteAllowed, canUseClientHostWrite }; }, [savedRfidTag, capture, manageBusy, tauriAvailable, ensureLocalWriteAllowed, canUseClientHostWrite]);
   useLayoutEffect(() => {
     const operation = { scope, busy: false };
     current.current = operation;
@@ -246,7 +247,45 @@ export function useInventorySpoolDetailUtilityActions({
     t,
   ]);
 
+  const handleRemoveRfid = useCallback(async () => {
+    if (!available() || !selectedSpool || !savedRfidTag || latest.current.savedRfidTag !== savedRfidTag) return;
+    if (clientReadOnly ? !latest.current.canUseClientHostWrite() : !latest.current.ensureLocalWriteAllowed()) return;
+    if (clientReadOnly && (!Number.isSafeInteger(clientTargetGeneration) || clientTargetGeneration! < 0)) return;
+    const operation = current.current!;
+    const isCurrent = () => current.current === operation;
+    operation.busy = true;
+    setManageBusy(true);
+    setError(null);
+    setInfoMessage(null);
+    try {
+      await updateInventorySpoolRfidTag(
+        { spool_id: selectedSpool.id, rfid_tag: null, rfid_observed_at: null },
+        { clientReadOnly, clientHostBaseUrl, clientLibraryId, clientTargetGeneration },
+      );
+      if (!isCurrent()) return;
+      setInfoMessage(t("inventory.rfidRemoved", "Saved RFID removed from this roll."));
+      let refreshFailed = false;
+      const report: InventoryReloadReporter = (_domain, resolution) => {
+        if (resolution !== "LIVE" && resolution !== "SUPERSEDED") refreshFailed = true;
+      };
+      const results = await Promise.allSettled([
+        () => reloadSpools(report), () => reloadPrinterOverview(report), () => reloadSpoolDetail(selectedSpool.id),
+      ].map(reload => Promise.resolve().then(reload)));
+      if (!isCurrent()) return;
+      if (refreshFailed || results.some(result => result.status === "rejected")) {
+        setError(t("inventory.error.loadInventory", "Failed to load inventory."));
+      }
+    } catch (error) {
+      if (isCurrent()) setError(commandErrorText(error, t("inventory.error.saveRfid", "Failed to save RFID tag."), t));
+    } finally {
+      if (isCurrent()) { operation.busy = false; setManageBusy(false); }
+    }
+  }, [available, selectedSpool, savedRfidTag, clientReadOnly, clientTargetGeneration,
+    clientHostBaseUrl, clientLibraryId, setManageBusy, setError, setInfoMessage,
+    reloadSpools, reloadPrinterOverview, reloadSpoolDetail, t]);
+
   return {
+    handleRemoveRfid,
     handlePrintLabel,
     handleSaveCapturedRfid,
     handleStartRfidCapture,

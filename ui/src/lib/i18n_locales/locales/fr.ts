@@ -1037,6 +1037,11 @@ export const frDictionary: DictionaryNode = {
     rfidCaptureNothingToSave:
       "Aucune identité RFID n’est encore disponible pour l’emplacement sélectionné.",
     rfidCaptureFailed: "Impossible d’actualiser la capture RFID depuis l’imprimante.",
+    "rfidRemove": "Supprimer le RFID enregistré",
+    "rfidRemoved": "Le RFID enregistré a été supprimé de cette bobine.",
+    "rfidRemoveHint": "Supprime le lien RFID enregistré. La bobine, le poids et l’affectation à l’emplacement sont conservés.",
+    "amsWeightAccept": "Accepter le poids AMS",
+    "amsWeightReview": "Vérifiez le poids : les estimations AMS répétées diffèrent du poids enregistré.",
     rfidSaved: "RFID enregistrée sur la bobine sélectionnée.",
     saveRfid: "Enregistrer la RFID",
     markEmpty: "Marquer comme épuisée (vide)",

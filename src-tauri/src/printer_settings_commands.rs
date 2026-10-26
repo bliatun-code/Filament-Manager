@@ -39,7 +39,16 @@ pub(crate) fn get_printer_settings(
     state: tauri::State<'_, AppState>,
 ) -> Result<PrinterSettingsSnapshot, String> {
     let bambu_live_integrations = sanitized_bambu_live_integrations(
-        with_db(&state, |db| db.list_bambu_live_integrations())?,
+        with_db(&state, |db| {
+            db.with_read_transaction(|snapshot| {
+                let mut integrations = snapshot.list_bambu_live_integrations()?;
+                crate::bambu_live_sync::refresh_inventory_match_status(
+                    snapshot,
+                    &mut integrations,
+                )?;
+                Ok(integrations)
+            })
+        })?,
         &state.credentials,
         false,
     )?;

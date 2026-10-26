@@ -40,6 +40,7 @@ export type PrinterSlotDisplayState = {
   showManualLabel: boolean;
   liveObservedAge: string | null;
   liveObservedAtLabel: string | null;
+  duplicateRfidRolls: SpoolWithMasterRow[];
   liveInventoryMatch: InventoryMatchResult;
   liveSuggestedInventoryMatch: InventoryMatchResult;
   liveCatalogMatch: BambuLiveCatalogMatchResult;
@@ -111,22 +112,9 @@ export function derivePrinterSlotDisplayState(options: {
     ((activeTrayMatchesSlot && activePrintContext && liveActiveSignalFresh) ||
       (slot.live_is_active === true && liveIdentityFresh));
   const savedRfidTag = slot.spool_rfid_tag?.trim() ?? "";
-  const liveIdentityLabel =
-    liveIdentityFresh && effectiveLiveTray?.matched_inventory_mode === "exact_rfid" &&
-      effectiveLiveTray.matched_inventory_spool_id === slot.spool_id
-      ? t("printers.liveRfid", "Live RFID")
-      : savedRfidTag
-        ? t("inventory.rfidRegistered", "RFID registered")
-      : null;
   const unknownLiveRfid =
     liveIdentityFresh && liveSignalEnabled && isUnknownLiveRfid(effectiveLiveTray);
   const rfidOverridden = unknownLiveRfid && liveUnknownMatchesSlotOverride(slot, effectiveLiveTray);
-  const showManualLabel =
-    !!slot.spool_id &&
-    !liveIdentityLabel &&
-    !rfidOverridden &&
-    liveSignalEnabled &&
-    isOlderThanMinutes(lastLiveIdentityAt, 10);
   const lastLiveObservationAt = liveSlotInUse
     ? lastLiveActiveAt ?? lastLiveIdentityAt
     : lastLiveIdentityAt;
@@ -146,6 +134,21 @@ export function derivePrinterSlotDisplayState(options: {
         suggestedInventoryMatch: { kind: "none" as const, candidates: [] },
       };
   const liveInventoryMatch = inventoryDecision.strictInventoryMatch;
+  const duplicateRfidRolls = liveInventoryMatch.kind === "rfid_exact" && liveInventoryMatch.candidates.length > 1
+    ? liveInventoryMatch.candidates : [];
+  const liveIdentityLabel =
+    duplicateRfidRolls.length ? null : liveIdentityFresh && effectiveLiveTray?.matched_inventory_mode === "exact_rfid" &&
+      effectiveLiveTray.matched_inventory_spool_id === slot.spool_id
+      ? t("printers.liveRfid", "Live RFID")
+      : savedRfidTag
+        ? t("inventory.rfidRegistered", "RFID registered")
+      : null;
+  const showManualLabel =
+    !!slot.spool_id &&
+    !liveIdentityLabel &&
+    !rfidOverridden &&
+    liveSignalEnabled &&
+    isOlderThanMinutes(lastLiveIdentityAt, 10);
   const liveSuggestedInventoryMatch = inventoryDecision.suggestedInventoryMatch;
   const liveCatalogMatch =
     unknownLiveRfid && liveSuggestedInventoryMatch.candidates.length === 0
@@ -170,6 +173,7 @@ export function derivePrinterSlotDisplayState(options: {
     showManualLabel,
     liveObservedAge,
     liveObservedAtLabel,
+    duplicateRfidRolls,
     liveInventoryMatch,
     liveSuggestedInventoryMatch,
     liveCatalogMatch,

@@ -810,6 +810,11 @@ export const esDictionary: DictionaryNode = {
       "Aún no hay una identidad RFID disponible para esta ranura.",
     rfidCaptureFailed:
       "No se pudo actualizar la captura RFID desde la impresora.",
+    "rfidRemove": "Eliminar RFID guardado",
+    "rfidRemoved": "Se ha eliminado el RFID guardado de esta bobina.",
+    "rfidRemoveHint": "Elimina el vínculo RFID guardado. Se conservan la bobina, el peso y la asignación a la ranura.",
+    "amsWeightAccept": "Aceptar peso de AMS",
+    "amsWeightReview": "Comprueba el peso: las estimaciones AMS repetidas difieren del peso guardado.",
     rfidSaved: "Etiqueta RFID guardada en la bobina seleccionada.",
     saveRfid: "Guardar RFID",
     markEmpty: "Marcar como agotada (vacía)",
