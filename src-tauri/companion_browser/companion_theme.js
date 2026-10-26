@@ -1,54 +1,25 @@
 export const COMPANION_THEME_STORAGE_KEY = "bfm-companion-theme-mode";
 
 export const COMPANION_BRAND_THEME_ACCENTS = Object.freeze({
-  bambu: "#00AE42",
-  prusa: "#FD5000",
+  "dark-deep": "#0962D3",
+  blue: "#0962D3",
 });
 
 export const COMPANION_THEME_OPTIONS = Object.freeze([
-  Object.freeze({
-    id: "auto",
-    labelKey: "settings.auto",
-    labelFallback: "Auto",
-    helpKey: "settings.autoHelp",
-    helpFallback: "Follow device",
-  }),
-  Object.freeze({
-    id: "light",
-    labelKey: "settings.light",
-    labelFallback: "Light",
-    helpKey: "settings.lightHelp",
-    helpFallback: "Bright surfaces",
-  }),
-  Object.freeze({
-    id: "dark",
-    labelKey: "settings.dark",
-    labelFallback: "Dark",
-    helpKey: "settings.darkHelp",
-    helpFallback: "Low-light friendly",
-  }),
-  Object.freeze({
-    id: "bambu",
-    labelKey: "settings.bambuTheme",
-    labelFallback: "Bambu",
-    helpKey: "settings.bambuThemeHelp",
-    helpFallback: "Vivid green workshop",
-  }),
-  Object.freeze({
-    id: "prusa",
-    labelKey: "settings.prusaTheme",
-    labelFallback: "Prusa",
-    helpKey: "settings.prusaThemeHelp",
-    helpFallback: "Warm orange workshop",
-  }),
+  Object.freeze({ id: "auto", labelKey: "settings.auto", labelFallback: "Auto", helpKey: "settings.autoHelp", helpFallback: "Follow device" }),
+  Object.freeze({ id: "dark", labelKey: "settings.themeGraySoft", labelFallback: "Gray · Soft", helpKey: "settings.darkHelp", helpFallback: "Low-light friendly" }),
+  Object.freeze({ id: "dark-deep", labelKey: "settings.themeGrayDeep", labelFallback: "Gray · Deep", helpKey: "settings.darkHelp", helpFallback: "Low-light friendly" }),
+  Object.freeze({ id: "blue", labelKey: "settings.themeBlueNight", labelFallback: "Blue · Night", helpKey: "settings.darkHelp", helpFallback: "Low-light friendly" }),
+  Object.freeze({ id: "light", labelKey: "settings.themeLightClean", labelFallback: "Light · Clean", helpKey: "settings.lightHelp", helpFallback: "Bright surfaces" }),
 ]);
 
 const SWATCH_FALLBACK = "#CBD5E1";
 const SWATCH_ACTION_CONTRAST_TARGET = 4.55;
 const VALID_THEME_MODES = new Set(COMPANION_THEME_OPTIONS.map(({ id }) => id));
-const DARK_BASED_THEME_MODES = new Set(["bambu", "prusa"]);
+const DARK_BASED_THEME_MODES = new Set(["dark-deep", "blue"]);
 const PRINTER_BRAND_HEX = {
-  ...COMPANION_BRAND_THEME_ACCENTS,
+  bambu: "#00AE42",
+  prusa: "#FD5000",
   generic: "#CBD5E1",
 };
 
@@ -104,6 +75,7 @@ function hashString(seed) {
 
 export function normalizeThemeMode(mode) {
   const normalized = String(mode || "").trim().toLowerCase();
+  if (normalized === "bambu" || normalized === "prusa") return "dark";
   return VALID_THEME_MODES.has(normalized) ? normalized : "auto";
 }
 

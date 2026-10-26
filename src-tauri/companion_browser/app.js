@@ -1,4 +1,5 @@
 import { createCompanionApiClient } from "./companion_api_client.js";
+import { createAccessRecoveryController } from "./companion_access_recovery.js";
 import { createCompanionAppShellRenderer } from "./companion_app_shell.js";
 import {
   createCompanionDataController,
@@ -116,6 +117,7 @@ const {
   showMoreLoanPicker,
   syncLegacySectionState,
   toggleBorrowedInForm,
+  openLiveCatalogSpool,
   toggleLoanReturn,
 } = companionShellState;
 
@@ -150,6 +152,16 @@ const companionDataController = createCompanionDataController({
   },
 });
 const { pairAndLoad, renewAndLoad, openSpoolDetail, refreshOverview } = companionDataController;
+const accessRecovery = createAccessRecoveryController({
+  state,
+  render,
+  async onAuthenticated(data) {
+    companionApiClient.acceptAuthenticatedSession(data);
+    await refreshOverview();
+    await openQrFromUrlIfPresent();
+  },
+});
+accessRecovery.install(root);
 
 const companionAppShellRenderer = createCompanionAppShellRenderer({
   state,
@@ -337,7 +349,8 @@ async function initializeCompanionEntry() {
   try {
     const sessionStatus = await readSessionStatus();
     if (sessionStatus?.authenticated) {
-      await refreshOverview();
+      if (sessionStatus.can_renew) await renewAndLoad();
+      else await refreshOverview();
       await openQrFromUrlIfPresent();
       return;
     }
@@ -353,6 +366,7 @@ async function initializeCompanionEntry() {
       return;
     }
     state.pairingRequired = true;
+    await accessRecovery.restore();
     setStatus(
       t(
         state.locale || "en",
@@ -525,6 +539,7 @@ installCompanionDomEvents({
   startPrinterSlotAssignment,
   startPrinterWeightUpdate,
   toggleBorrowedInForm,
+  openLiveCatalogSpool,
   setAddSpoolSource,
   setCatalogStatusFilter,
   setFilamentOwnership,

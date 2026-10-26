@@ -16,7 +16,7 @@ function readComponentSource(fileName: string): string {
   return readFileSync(new URL(`./${fileName}`, import.meta.url), "utf8");
 }
 
-test("inventory detail labels use shared detail typography classes", () => {
+test("inventory detail uses shared controls and balanced section headings", () => {
   const detailPanelClasses = readComponentSource("inventory_detail_panel_class.ts");
   const catalogMetadataPanel = readComponentSource("inventory_catalog_metadata_panel.tsx");
   const detailModal = readComponentSource("inventory_spool_detail_modal.tsx");
@@ -68,8 +68,8 @@ test("inventory detail labels use shared detail typography classes", () => {
     /type="color"(?:(?!\/>)[\s\S])*?className="[^"]*(?:border-slate|bg-white)/,
   );
   assert.match(catalogMetadataPanel, /inventorySwatchInsetStyle/);
-  assert.match(detailModal, /inventoryDetailEyebrowClassName/);
-  assert.match(detailModal, /inventorySwatchPanelStyle/);
+  assert.match(detailModal, /inventory-balanced-section/);
+  assert.doesNotMatch(detailModal, /inventorySwatchPanelStyle/);
   assert.match(maintenancePanels, /inventoryDetailEyebrowClassName/);
   assert.match(maintenancePanels, /inventoryDetailDangerActionButtonClassName/);
   assert.match(maintenancePanels, /inventoryDetailFormControlClassName/);
@@ -216,7 +216,7 @@ test("multi-roll label workflow is rendered in Inventory and linked from roll de
     ),
   );
 
-  assert.match(html, />Create label sheet for all stock<\/button>/);
+  assert.match(html, />Labels<\/button>/);
   assert.match(
     html,
     /Need labels for several rolls\? Choose “Select multiple” in Inventory, or create a label sheet for all stock from the header\./,

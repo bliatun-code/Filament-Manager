@@ -773,6 +773,7 @@ function renderSpoolRows(options) {
       }
       return renderSwatchListRow({
         action: "select-spool",
+        showSpool: true,
         active,
         attributes: { "data-spool-id": row.spool.id },
         badges: rowBadges,
@@ -782,6 +783,8 @@ function renderSpoolRows(options) {
         swatch,
         title: displayTitle,
         weight: formatGrams(row.spool.remaining_g),
+        remainingRatio: Number(row.spool.initial_weight_g || row.master.default_weight) > 0
+          ? Number(row.spool.remaining_g) / Number(row.spool.initial_weight_g || row.master.default_weight) : null,
       });
     })
     .join("");
@@ -820,40 +823,34 @@ export function renderStorageShell(options) {
 
   return `
     <section class="workflow-shell storage-shell">
-      <div class="workflow-header">
-        <div class="workflow-header-copy">
-          <h2>${escapeHtml(t(locale, "storage.title", "Inventory"))}</h2>
-          <p class="section-copy">
-            ${escapeHtml(t(locale, "storage.subtitle", "Browse inventory and open the spool you need."))}
-          </p>
-        </div>
-        <div class="workflow-header-side workflow-header-summary">
-          ${escapeHtml(t(locale, "nav.visibleCount", "{count} visible", { count: spools.length }))}
-        </div>
-      </div>
-
-      <div class="workflow-toolbar">
-        <div class="toolbar-row">
-          <label class="search-field toolbar-search" for="companion-inventory-search">
-            <span class="search-field-label">${escapeHtml(t(locale, "storage.searchPlaceholder", "Search filament, color, owner, or placement"))}</span>
-            <input
-              id="companion-inventory-search"
-              class="search-input"
-              name="inventory-search"
-              type="search"
-              value="${escapeHtml(state.search)}"
-              placeholder="${escapeHtml(t(locale, "storage.searchPlaceholder", "Search filament, color, owner, or placement"))}"
-              autocomplete="off"
-            />
-          </label>
-          <div class="toolbar-actions">
-            ${renderCompanionActionButton({
-              disabled: state.busy,
-              attributes: { "data-action": "toggle-add-spool-form" },
-              escapeHtml,
-              label: t(locale, "storage.addSpool", "Add spool"),
-            })}
+      <div class="storage-controls">
+        <div class="workflow-header">
+          <div class="workflow-header-copy">
+            <h1>${escapeHtml(t(locale, "storage.title", "Inventory"))}</h1>
+            <div class="workflow-header-summary">
+              ${escapeHtml(t(locale, "nav.visibleCount", "{count} visible", { count: spools.length }))}
+            </div>
           </div>
+        </div>
+        <label class="search-field toolbar-search" for="companion-inventory-search">
+          <span class="search-field-label visually-hidden">${escapeHtml(t(locale, "storage.searchPlaceholder", "Search filament, color, owner, or placement"))}</span>
+          <input
+            id="companion-inventory-search"
+            class="search-input"
+            name="inventory-search"
+            type="search"
+            value="${escapeHtml(state.search)}"
+            placeholder="${escapeHtml(t(locale, "storage.searchShortPlaceholder", "Search inventory"))}"
+            autocomplete="off"
+          />
+        </label>
+        <div class="toolbar-actions">
+          ${renderCompanionActionButton({
+            disabled: state.busy,
+            attributes: { "data-action": "toggle-add-spool-form" },
+            escapeHtml,
+            label: t(locale, "storage.addSpool", "Add spool"),
+          })}
         </div>
       </div>
 
@@ -871,7 +868,7 @@ export function renderStorageShell(options) {
       }
 
       <div class="workflow-body">
-        <div class="dense-list">
+        <div class="dense-list companion-inventory-grid">
           ${renderSpoolRows({
             state,
             spools,

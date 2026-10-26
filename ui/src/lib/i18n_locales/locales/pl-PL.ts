@@ -1,6 +1,36 @@
 import type { DictionaryNode } from "../../i18n_types";
 
 export const plPLDictionary: DictionaryNode = {
+    access: {
+      "title": "Dostęp wymaga odnowienia",
+      "body": "Poproś hosta o ponowne zatwierdzenie tej przeglądarki.",
+      "deviceName": "Nazwa urządzenia",
+      "nameHint": "Nazwa pomaga hostowi jedynie rozpoznać urządzenie.",
+      "request": "Poproś ponownie o dostęp",
+      "pendingTitle": "Wysłano prośbę",
+      "pendingBody": "Dostęp musi zostać zatwierdzony w Filament Manager na komputerze hosta.",
+      "waiting": "Oczekiwanie na hosta…",
+      "codeTitle": "Wpisz kod z hosta",
+      "codeLabel": "Kod jednorazowy",
+      "codeHint": "Sześć cyfr. Kod jest ważny przez pięć minut.",
+      "confirm": "Potwierdź dostęp",
+      "badCode": "Nieprawidłowy kod. Pozostało prób: {count}.",
+      "rejected": "Prośba została odrzucona.",
+      "expired": "Prośba wygasła. Poproś ponownie o dostęp.",
+      "locked": "Trzy błędne próby. Poproś ponownie o dostęp.",
+      "cancelled": "Prośba została anulowana.",
+      "cancel": "Anuluj prośbę",
+      "otherWay": "Użyj linku parowania",
+      "fallback": "Otwórz nowy link parowania lub zeskanuj jego kod QR w sekcji Biblioteka i aplikacja internetowa na hoście.",
+      "banner": "Prośby o dostęp przeglądarki: {count}",
+      "open": "Zobacz prośby",
+      "hostTitle": "Prośby o dostęp przeglądarki",
+      "trust": "Nazwę podaje urządzenie. Zatwierdzaj tylko rozpoznawane urządzenia.",
+      "actionFailed": "Prośba uległa zmianie lub usługa jest niedostępna. Spróbuj ponownie.",
+      "reject": "Odrzuć",
+      "approve": "Zezwól na dostęp",
+      "shareCode": "Przekaż ten kod osobie korzystającej z urządzenia, które poprosiło o dostęp."
+    },
   "app": {
     "iconAlt": "Ikona Filament Manager",
     "loadingPage": "Ładowanie strony...",
@@ -301,6 +331,19 @@ export const plPLDictionary: DictionaryNode = {
     "filamentStandardsInvalid": "Zapisane standardy filamentu są już nieaktualne. Wczytaj je ponownie i sprawdź."
   },
   "inventory": {
+    labelsAction: "Etykiety",
+    loansTab: "Wypożyczone i pożyczone",
+    "detailWeight": "Waga",
+    "detailPlacementOwnership": "Lokalizacja i własność",
+    "detailIdentityLabel": "Tożsamość i etykieta",
+    "detailMorePurchase": "Więcej szczegółów zakupu",
+    "detailUsageHistory": "Zużycie i historia",
+    "detailUpdateWeight": "Zaktualizuj wagę",
+    "detailShowUsageHistory": "Pokaż wykres i historię",
+    "detailSaveTareFirst": "Zapisz zmienioną wagę pustej szpuli przed aktualizacją zmierzonej wagi całkowitej.",
+    "detailAdvancedActions": "Zaawansowane działania",
+    "detailOpenPrinters": "Otwórz drukarki",
+
     "labelPreviewFailed": "Nie udało się przygotować podglądu etykiety. Spróbuj ponownie.",
     "labelRetryPreview": "Ponów podgląd",
     "labelOpenSavedFile": "Otwórz zapisany plik",
@@ -937,6 +980,7 @@ export const plPLDictionary: DictionaryNode = {
     "labelSheetInventoryHint": "Potrzebujesz etykiet dla kilku szpul? Wybierz „Wybierz wiele” w magazynie albo utwórz arkusz etykiet dla całego magazynu z poziomu nagłówka."
   },
   "loans": {
+    person: "Osoba",
     "activeBorrowedIn": "Aktywny zapożyczony",
     "activeLoans": "Aktywne pożyczki",
     "activeRecords": "Aktywne rekordy",
@@ -1027,6 +1071,11 @@ export const plPLDictionary: DictionaryNode = {
     "statistics": "Statystyki"
   },
   "printers": {
+      replaceRoll: "Wymień szpulę",
+      selectRoll: "Wybierz szpulę",
+      linkObserved: "Powiąż wykrytą szpulę",
+      startedCandidatesFirst: "Przy takim samym dopasowaniu częściowo zużyte szpule są wyświetlane przed pełnymi. Potwierdź szpulę przed powiązaniem.",
+
     "addBorrowedCatalogRollAndSaveRfid": "Dodaj zapożyczone + zapisz RFID",
     "addCatalogRollAndSaveRfid": "Dodaj + zapisz RFID",
     "amsSlot": "Gniazdo AMS",
@@ -1176,6 +1225,25 @@ export const plPLDictionary: DictionaryNode = {
     "withToolheads": "Głowica wielofunkcyjna"
   },
   "settings": {
+    themeGraySoft: "Szary · Łagodny",
+    themeGrayDeep: "Szary · Głęboki",
+    themeBlueNight: "Niebieski · Noc",
+    themeLightClean: "Jasny · Czysty",
+    searchPrinterModels: "Szukaj modeli drukarek",
+    printerBrand: "Producent",
+    customPrinterModel: "Własna nazwa modelu",
+    printerModelsAll: "Wszystkie",
+    printerModelsOther: "Inne",
+    printerModelsNoResults: "Brak wyników",
+
+    "noMatchingSwatches": "Żadna brakująca próbka koloru nie pasuje do wyszukiwania.",
+    "autoSaveHint": "Zmiany na tej stronie są zapisywane automatycznie.",
+    "changeLibraryRole": "Zmień rolę biblioteki",
+    "localDiagnosticsScope": "To urządzenie · lokalna baza danych",
+    "unsavedChanges": "Niezapisane zmiany",
+    "filamentDefaultsSaveGroupHint": "Zapisz domyślną cenę grupy. Ceny istniejących szpul zmienią się dopiero po zastosowaniu ceny poniżej.",
+    "swatchSearch": "Szukaj producenta, filamentu, koloru lub ID",
+
     "catalogRefreshStatusUncertain": "Nie udało się potwierdzić stanu. Sprawdź dziennik odświeżania; aktualizacja może nadal trwać.",
     "catalogRefreshFailedNextStep": "Aktualizacja nie została ukończona. Sprawdź dziennik odświeżania przed rozpoczęciem kolejnej aktualizacji.",
     "catalogRefreshInterruptedNextStep": "Aktualizacja została przerwana. Sprawdź katalog i dziennik odświeżania, zanim zaczniesz ponownie.",

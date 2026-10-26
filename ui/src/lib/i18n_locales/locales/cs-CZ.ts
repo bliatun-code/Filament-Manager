@@ -1,6 +1,36 @@
 import type { DictionaryNode } from "../../i18n_types";
 
 export const csCZDictionary: DictionaryNode = {
+    access: {
+      "title": "Přístup je třeba obnovit",
+      "body": "Požádejte hostitele o opětovné schválení tohoto prohlížeče.",
+      "deviceName": "Název zařízení",
+      "nameHint": "Název pouze pomáhá hostiteli rozpoznat vaše zařízení.",
+      "request": "Znovu požádat o přístup",
+      "pendingTitle": "Žádost odeslána",
+      "pendingBody": "Přístup musí být schválen ve Filament Manager na hostitelském počítači.",
+      "waiting": "Čekání na hostitele…",
+      "codeTitle": "Zadejte kód od hostitele",
+      "codeLabel": "Jednorázový kód",
+      "codeHint": "Šest číslic. Kód platí pět minut.",
+      "confirm": "Potvrdit přístup",
+      "badCode": "Nesprávný kód. Zbývající pokusy: {count}.",
+      "rejected": "Žádost byla zamítnuta.",
+      "expired": "Platnost žádosti vypršela. Požádejte znovu o přístup.",
+      "locked": "Tři nesprávné pokusy. Požádejte znovu o přístup.",
+      "cancelled": "Žádost byla zrušena.",
+      "cancel": "Zrušit žádost",
+      "otherWay": "Použít odkaz pro párování",
+      "fallback": "Otevřete nový odkaz pro párování nebo naskenujte jeho QR kód v části Knihovna a webová aplikace na hostiteli.",
+      "banner": "Žádosti o přístup prohlížeče: {count}",
+      "open": "Zobrazit žádosti",
+      "hostTitle": "Žádosti o přístup prohlížeče",
+      "trust": "Název poskytlo zařízení. Schvalujte pouze zařízení, která znáte.",
+      "actionFailed": "Žádost se změnila nebo služba není dostupná. Zkuste to znovu.",
+      "reject": "Zamítnout",
+      "approve": "Povolit přístup",
+      "shareCode": "Sdělte tento kód osobě, která používá žádající zařízení."
+    },
   "app": {
     "iconAlt": "Ikona Filament Manager",
     "loadingPage": "Načítání stránky...",
@@ -301,6 +331,19 @@ export const csCZDictionary: DictionaryNode = {
     "filamentStandardsInvalid": "Uložené standardy filamentu již nejsou platné. Načtěte je znovu a zkontrolujte."
   },
   "inventory": {
+    labelsAction: "Štítky",
+    loansTab: "Výpůjčky a zápůjčky",
+    "detailWeight": "Hmotnost",
+    "detailPlacementOwnership": "Umístění a vlastnictví",
+    "detailIdentityLabel": "Identita a štítek",
+    "detailMorePurchase": "Další podrobnosti nákupu",
+    "detailUsageHistory": "Spotřeba a historie",
+    "detailUpdateWeight": "Aktualizovat hmotnost",
+    "detailShowUsageHistory": "Zobrazit graf a historii",
+    "detailSaveTareFirst": "Před aktualizací naměřené celkové hmotnosti uložte změněnou hmotnost prázdné cívky.",
+    "detailAdvancedActions": "Pokročilé akce",
+    "detailOpenPrinters": "Otevřít tiskárny",
+
     "labelPreviewFailed": "Náhled štítku se nepodařilo připravit. Zkuste to znovu.",
     "labelRetryPreview": "Zkusit náhled znovu",
     "labelOpenSavedFile": "Otevřít uložený soubor",
@@ -937,6 +980,7 @@ export const csCZDictionary: DictionaryNode = {
     "labelSheetInventoryHint": "Potřebujete štítky pro více cívek? Ve skladu zvolte „Vybrat více“ nebo v záhlaví vytvořte arch štítků pro celý sklad."
   },
   "loans": {
+    person: "Osoba",
     "activeBorrowedIn": "Aktivní zapůjčené",
     "activeLoans": "Aktivní půjčky",
     "activeRecords": "Aktivní záznamy",
@@ -1027,6 +1071,11 @@ export const csCZDictionary: DictionaryNode = {
     "statistics": "Statistiky"
   },
   "printers": {
+      replaceRoll: "Vyměnit cívku",
+      selectRoll: "Vybrat cívku",
+      linkObserved: "Přiřadit zjištěnou cívku",
+      startedCandidatesFirst: "Při stejné shodě se částečně spotřebované cívky zobrazují před plnými. Před přiřazením cívku potvrďte.",
+
     "addBorrowedCatalogRollAndSaveRfid": "Přidat vypůjčené + uložit RFID",
     "addCatalogRollAndSaveRfid": "Přidat + uložit RFID",
     "amsSlot": "Pozice AMS",
@@ -1176,6 +1225,25 @@ export const csCZDictionary: DictionaryNode = {
     "withToolheads": "Vícenástrojová hlava"
   },
   "settings": {
+    themeGraySoft: "Šedá · Jemná",
+    themeGrayDeep: "Šedá · Hluboká",
+    themeBlueNight: "Modrá · Noční",
+    themeLightClean: "Světlá · Čistá",
+    searchPrinterModels: "Hledat modely tiskáren",
+    printerBrand: "Výrobce",
+    customPrinterModel: "Vlastní název modelu",
+    printerModelsAll: "Vše",
+    printerModelsOther: "Ostatní",
+    printerModelsNoResults: "Žádné výsledky",
+
+    "noMatchingSwatches": "Vyhledávání neodpovídají žádné chybějící vzorky barev.",
+    "autoSaveHint": "Změny na této stránce se ukládají automaticky.",
+    "changeLibraryRole": "Změnit roli knihovny",
+    "localDiagnosticsScope": "Toto zařízení · místní databáze",
+    "unsavedChanges": "Neuložené změny",
+    "filamentDefaultsSaveGroupHint": "Uložte výchozí cenu skupiny. Ceny stávajících cívek se změní až po použití ceny níže.",
+    "swatchSearch": "Hledat výrobce, filament, barvu nebo ID",
+
     "catalogRefreshStatusUncertain": "Stav se nepodařilo potvrdit. Zkontrolujte protokol obnovení; aktualizace může stále probíhat.",
     "catalogRefreshFailedNextStep": "Aktualizace nebyla dokončena. Před zahájením další aktualizace zkontrolujte protokol obnovení.",
     "catalogRefreshInterruptedNextStep": "Aktualizace byla přerušena. Před novým spuštěním zkontrolujte katalog a protokol obnovení.",

@@ -2,10 +2,10 @@ import type { ComponentProps } from "react";
 import type { SettingsTabKey } from "./settings_page_model";
 import { SettingsFeedbackStack } from "./settings_feedback_stack";
 import { SettingsLibraryRoleModalRoute } from "./settings_library_role_modal_route";
-import { SettingsPageHeader } from "./settings_page_header";
 import type { SettingsPageTabButton } from "./settings_page_model";
 import { SettingsRouteOutlet } from "./settings_route_outlet";
 import { SettingsTabNav } from "./settings_tab_nav";
+import { SettingsPageHeader } from "./settings_page_header";
 
 type SettingsPageLayoutProps = {
   activeTab: SettingsTabKey;
@@ -35,19 +35,21 @@ export function SettingsPageLayout({
   title,
 }: SettingsPageLayoutProps) {
   return (
-    <div className="page-shell">
+    <div className="page-shell settings-balanced-layout">
       <SettingsPageHeader subtitle={subtitle} title={title} />
-
-      <SettingsFeedbackStack
-        desktopOnlyMessage={desktopOnlyMessage}
-        error={error}
-        info={info}
-        tauri={tauri}
-      />
-
-      <SettingsTabNav label={title} onTabChange={onTabChange} tabs={tabButtons} />
-
-      <SettingsRouteOutlet activeTab={activeTab} routes={routes} />
+      <div className="settings-balanced-body">
+        <SettingsTabNav label={title} onTabChange={onTabChange} tabs={tabButtons} />
+        <div className="settings-balanced-content">
+          <h2 className="mb-6 text-2xl font-semibold tracking-tight text-slate-900 dark:text-slate-100">{tabButtons.find((tab) => tab.active)?.label}</h2>
+          <SettingsFeedbackStack
+            desktopOnlyMessage={desktopOnlyMessage}
+            error={error}
+            info={info}
+            tauri={tauri}
+          />
+          <SettingsRouteOutlet activeTab={activeTab} routes={routes} />
+        </div>
+      </div>
       <SettingsLibraryRoleModalRoute {...roleModal} />
     </div>
   );

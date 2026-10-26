@@ -1,0 +1,11 @@
+.settings-printers-balanced { min-width:0; padding:0; background:transparent; border:0; box-shadow:none; }
+.settings-printer-balanced-card { padding:1.25rem; background-image:none!important; box-shadow:none!important; border-inline-start-width:4px; }
+.settings-printer-balanced-header { display:grid; grid-template-columns:minmax(0,1fr) auto; gap:1rem; align-items:center; }
+.settings-printer-observed-toggle { grid-column:1/-1; }
+.settings-printer-observed-toggle:empty { display:none; }
+.settings-printer-observed-toggle button { width:auto; text-align:start; }
+.settings-printer-observed-panel { margin-top:1rem; padding-top:1rem; border-top:1px solid var(--app-theme-subtle-border); }
+.settings-printer-technical { padding-top:.875rem; border-top:1px solid var(--app-theme-subtle-border); }
+.settings-printer-technical > summary { font-size:.875rem; font-weight:500; cursor:pointer; margin-bottom:.75rem; }
+@media(max-width:800px) { .settings-printer-balanced-header { grid-template-columns:1fr; } .settings-printer-balanced-header > .justify-end { justify-content:flex-start; } }
+@media(max-width:500px) { .settings-printer-balanced-card { padding:.875rem; } }

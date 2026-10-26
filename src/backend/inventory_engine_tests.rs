@@ -7156,3 +7156,100 @@ fn roll_weight_rejects_outbound_removed_and_invalid_measurements() {
         });
     }
 }
+
+#[test]
+fn printer_slot_operation_unweighed_replacement_records_only_outgoing_usage() {
+    for rollback in [false, true] {
+        let path = temp_db_path("unweighed-replacement");
+        {
+            let db = FilamentDatabase::open(&path).unwrap();
+            db.apply_schema().unwrap();
+            let engine = InventoryEngine::new(db);
+            let (printer_id, slot_id, outgoing, incoming) =
+                seed_printer_slot_operation_fixture(&engine, "unweighed_replacement").unwrap();
+            engine
+                .db
+                .connection()
+                .execute(
+                    "UPDATE filament_spools SET current_weight_g=824, remaining_g=824 WHERE id=?1",
+                    [&incoming],
+                )
+                .unwrap();
+            let input = PrinterSlotOperationInput {
+                printer_id: printer_id.clone(),
+                slot_id: slot_id.clone(),
+                expected_current_spool_id: Some(outgoing.clone()),
+                target_spool_id: Some(incoming.clone()),
+                outgoing_measured_total_g: None,
+                incoming_measured_total_g: None,
+            };
+            let before = printer_slot_operation_snapshot(&engine).unwrap();
+            assert!(engine.operate_printer_slot(input.clone()).is_err());
+            assert_eq!(
+                printer_slot_operation_snapshot(&engine).unwrap(),
+                before,
+                "no outgoing weight means no writes"
+            );
+            if rollback {
+                engine.db.connection().execute_batch("CREATE TRIGGER fail_replace_history BEFORE INSERT ON spool_history_events WHEN NEW.event_type='ASSIGNED_TO_AMS' BEGIN SELECT RAISE(ABORT,'forced replace failure'); END;").unwrap();
+            }
+            let result = engine.operate_printer_slot(PrinterSlotOperationInput {
+                outgoing_measured_total_g: Some(850),
+                ..input
+            });
+            if rollback {
+                assert!(result.is_err());
+                assert_eq!(printer_slot_operation_snapshot(&engine).unwrap(), before);
+            } else {
+                result.unwrap();
+                let old = engine.db.get_spool_by_id(&outgoing).unwrap().unwrap();
+                let new = engine.db.get_spool_by_id(&incoming).unwrap().unwrap();
+                assert_eq!(old.remaining_g, Some(600)); // 850 total minus 250 tare.
+                assert_eq!(new.remaining_g, Some(824));
+                assert_eq!(new.current_weight_g, Some(824));
+                let overview = engine
+                    .db
+                    .get_printer_overview(&printer_id)
+                    .unwrap()
+                    .unwrap();
+                assert_eq!(
+                    overview
+                        .slots
+                        .iter()
+                        .find(|s| s.slot_id == slot_id)
+                        .unwrap()
+                        .spool_id
+                        .as_deref(),
+                    Some(incoming.as_str())
+                );
+                let used: i64 = engine
+                    .db
+                    .connection()
+                    .query_row(
+                        "SELECT SUM(material_used_g) FROM print_jobs WHERE printer_id=?1",
+                        [&printer_id],
+                        |r| r.get(0),
+                    )
+                    .unwrap();
+                assert_eq!(
+                    used, 400,
+                    "only measured outgoing consumption belongs to this printer"
+                );
+                let incoming_readings: i64 = engine
+                    .db
+                    .connection()
+                    .query_row(
+                        "SELECT COUNT(*) FROM weight_readings WHERE spool_id=?1",
+                        [&incoming],
+                        |r| r.get(0),
+                    )
+                    .unwrap();
+                assert_eq!(
+                    incoming_readings, 0,
+                    "loading the stored roll is not a fresh measurement"
+                );
+            }
+        }
+        let _ = std::fs::remove_file(path);
+    }
+}

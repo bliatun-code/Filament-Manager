@@ -1,0 +1,31 @@
+.printer-model-preview { display:flex; align-items:center; justify-content:center; flex-shrink:0; width:6rem; padding:.3rem; border-radius:.4rem; overflow:hidden; }
+.printer-model-preview img, .printer-model-preview svg { max-width:100%; max-height:6rem; object-fit:contain; }
+.printer-model-picker { min-width:0; width:100%; }
+.printer-model-picker-trigger { display:flex; align-items:center; gap:.75rem; width:100%; min-height:3rem; padding:.5rem .75rem; text-align:start; border-radius:.5rem; font-size:.875rem; }
+.printer-model-picker-trigger > span { flex:1; min-width:0; overflow-wrap:anywhere; }
+.printer-model-picker-trigger .printer-model-preview { width:3rem; padding:.15rem; }
+.printer-model-picker-trigger .printer-model-preview img, .printer-model-preview svg { height:2.5rem; }
+.printer-model-picker-panel { padding:1rem; margin-top:.5rem; border:1px solid var(--app-theme-subtle-border); border-radius:.5rem; background:var(--app-theme-data-inset-base); }
+.printer-model-search { display:flex; align-items:center; gap:.6rem; padding:.5rem .75rem; border-radius:.4rem; }
+.printer-model-search input { width:100%; min-width:0; background:transparent!important; border:0; outline:0; padding:0; font-size:.875rem; }
+.printer-model-search:focus-within { outline:2px solid var(--app-theme-focus-outline); outline-offset:2px; }
+.printer-model-brands { display:flex; flex-wrap:wrap; gap:.4rem; margin:.75rem 0; }
+.printer-model-brands button { padding:.375rem .65rem; border-radius:.35rem; font-size:.75rem; }
+.printer-model-brands button[aria-pressed="true"] { color:var(--app-theme-control-text); border-color:var(--app-theme-accent); background:var(--app-theme-control-hover-background); }
+.printer-model-results { display:grid; grid-template-columns:repeat(auto-fit,minmax(min(100%,14rem),1fr)); gap:.5rem; max-height:22rem; overflow-y:auto; padding:.2rem; }
+.printer-model-option { display:flex; align-items:center; gap:.75rem; padding:.7rem; border:1px solid var(--app-theme-subtle-border); border-radius:.4rem; background:var(--app-theme-data-card-base); color:var(--app-theme-control-text); text-align:start; }
+.printer-model-option:hover,.printer-model-option[aria-pressed="true"] { background:var(--app-theme-control-hover-background); border-color:var(--app-theme-accent); }
+.printer-model-option > .printer-model-preview { width:3.75rem; height:4.5rem; }
+.printer-model-option > .printer-model-preview img, .printer-model-preview svg { height:4rem; }
+.printer-model-option > span { flex:1; min-width:0; }
+.printer-model-option strong { display:block; font-size:.8rem; font-weight:600; overflow-wrap:anywhere; }
+.printer-model-option small { display:block; font-size:.7rem; line-height:1.5; color:var(--app-theme-control-placeholder); margin-top:.25rem; }
+.printer-model-custom { display:grid; gap:.4rem; margin-top:.75rem; font-size:.75rem; color:var(--app-theme-control-placeholder); }
+.printer-model-custom input { padding:.5rem; border-radius:.35rem; }
+.printer-model-no-results { padding:1rem; font-size:.875rem; color:var(--app-theme-control-placeholder); }
+.settings-balanced-tab { display:flex; align-items:center; gap:.75rem; }
+.settings-balanced-tab > svg { flex-shrink:0; }
+.settings-printer-balanced-card { border-inline-start-width:1px; }
+.settings-printer-balanced-header .printer-model-preview { width:6rem; height:6rem; }
+.settings-printer-balanced-header .printer-model-preview img, .printer-model-preview svg { height:5.5rem; }
+.settings-printer-balanced-header button:has(> svg) { display:inline-flex; align-items:center; gap:.4rem; }

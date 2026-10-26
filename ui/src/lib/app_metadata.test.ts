@@ -73,3 +73,8 @@ test("locales without a translated guide retain the version-pinned English manua
 test("latest release link stays on the repository", () => {
   assert.equal(latestReleaseUrl(), `${APP_REPOSITORY_URL}/releases/latest`);
 });
+
+test("new releases use the compact README gallery for the product tour", () => {
+  assert.equal(screenshotTourUrl("0.35.0"), `${APP_REPOSITORY_URL}/blob/v0.35.0/README.md`);
+  assert.equal(screenshotTourUrl("1.0.0"), `${APP_REPOSITORY_URL}/blob/v1.0.0/README.md`);
+});

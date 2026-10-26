@@ -21,6 +21,7 @@ export const APP_PAGE_LABEL_FALLBACKS = {
 } satisfies Record<PageKey, string>;
 
 export type InventoryNavigationIntent =
+  | { kind: "LOANS"; seq: number }
   | {
       kind: "LOW_STOCK";
       seq: number;
@@ -41,6 +42,16 @@ export type InventoryNavigationIntent =
       spoolId: string;
     }
   | null;
+
+export function resolveAppNavigationDestination(
+  page: PageKey,
+  inventoryIntent: InventoryNavigationIntent = null,
+  sequence = Date.now(),
+): { page: PageKey; inventoryIntent: InventoryNavigationIntent } {
+  return page === "loans"
+    ? { page: "inventory", inventoryIntent: { kind: "LOANS", seq: sequence } }
+    : { page, inventoryIntent };
+}
 
 export function resolveInitialPageFromSearch(
   search: string | URLSearchParams | null | undefined,

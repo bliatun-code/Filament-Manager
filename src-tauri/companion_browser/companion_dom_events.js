@@ -127,6 +127,7 @@ export function handleCompanionClickEvent(event, options) {
     startPrinterSlotAssignment: options.startPrinterSlotAssignment,
     startPrinterWeightUpdate: options.startPrinterWeightUpdate,
     toggleBorrowedInForm: options.toggleBorrowedInForm,
+    openLiveCatalogSpool: options.openLiveCatalogSpool,
     setAddSpoolSource: options.setAddSpoolSource,
     setCatalogStatusFilter: options.setCatalogStatusFilter,
     setFilamentOwnership: options.setFilamentOwnership,

@@ -39,12 +39,12 @@ test("companion screenshot gate recognizes standard and brand themes", () => {
   assert.equal(normalizeCompanionScreenshotTheme("light"), "light");
   assert.equal(normalizeCompanionScreenshotTheme(" DARK "), "dark");
   assert.equal(normalizeCompanionScreenshotTheme("Auto"), "auto");
-  assert.equal(normalizeCompanionScreenshotTheme("Bambu"), "bambu");
-  assert.equal(normalizeCompanionScreenshotTheme(" PRUSA "), "prusa");
+  assert.equal(normalizeCompanionScreenshotTheme("dark-deep"), "dark-deep");
+  assert.equal(normalizeCompanionScreenshotTheme(" BLUE "), "blue");
   assert.equal(companionScreenshotColorScheme("light"), "light");
   assert.equal(companionScreenshotColorScheme("auto"), undefined);
-  assert.equal(companionScreenshotColorScheme("bambu"), "light");
-  assert.equal(companionScreenshotColorScheme("prusa"), "light");
+  assert.equal(companionScreenshotColorScheme("dark-deep"), "light");
+  assert.equal(companionScreenshotColorScheme("blue"), "light");
   assert.throws(() => normalizeCompanionScreenshotTheme(""), /theme is required/);
   assert.throws(
     () => normalizeCompanionScreenshotTheme("sepia"),
@@ -54,8 +54,8 @@ test("companion screenshot gate recognizes standard and brand themes", () => {
 
 test("companion screenshot metrics prove the selected brand profile and accent", () => {
   for (const [theme, accent] of [
-    ["bambu", "#00AE42"],
-    ["prusa", "#FD5000"],
+    ["dark-deep", "#0962D3"],
+    ["blue", "#0962D3"],
   ]) {
     assert.deepEqual(
       validateCompanionScreenshotMetrics([
@@ -78,15 +78,15 @@ test("companion screenshot metrics prove the selected brand profile and accent",
       theme: {
         accent: "#F3F7FB",
         baseMode: "dark",
-        requested: "bambu",
+        requested: "dark-deep",
         resolved: "light",
         selected: "dark",
       },
     }),
   ]);
-  assert.ok(errors.some((error) => error.includes("selected theme dark instead of bambu")));
+  assert.ok(errors.some((error) => error.includes("selected theme dark instead of dark-deep")));
   assert.ok(errors.some((error) => error.includes("resolved theme light instead of dark")));
-  assert.ok(errors.some((error) => error.includes("instead of #00AE42")));
+  assert.ok(errors.some((error) => error.includes("instead of #0962D3")));
 });
 
 test("POSIX process-group termination keeps bounded runner headroom", () => {

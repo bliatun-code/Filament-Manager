@@ -1,6 +1,36 @@
 import type { DictionaryNode } from "../../i18n_types";
 
 export const trTRDictionary: DictionaryNode = {
+    access: {
+      "title": "Erişimin yenilenmesi gerekiyor",
+      "body": "Sunucudan bu tarayıcıyı yeniden onaylamasını isteyin.",
+      "deviceName": "Cihaz adı",
+      "nameHint": "Ad, yalnızca sunucunun cihazınızı tanımasına yardımcı olur.",
+      "request": "Yeniden erişim iste",
+      "pendingTitle": "İstek gönderildi",
+      "pendingBody": "Erişim, sunucu bilgisayardaki Filament Manager üzerinden onaylanmalıdır.",
+      "waiting": "Sunucu bekleniyor…",
+      "codeTitle": "Sunucudaki kodu girin",
+      "codeLabel": "Tek kullanımlık kod",
+      "codeHint": "Altı rakam. Kod beş dakika geçerlidir.",
+      "confirm": "Erişimi onayla",
+      "badCode": "Yanlış kod. {count} deneme kaldı.",
+      "rejected": "İstek reddedildi.",
+      "expired": "İsteğin süresi doldu. Yeniden erişim isteyin.",
+      "locked": "Üç yanlış deneme. Yeniden erişim isteyin.",
+      "cancelled": "İstek iptal edildi.",
+      "cancel": "İsteği iptal et",
+      "otherWay": "Eşleştirme bağlantısı kullan",
+      "fallback": "Sunucudaki Kitaplık ve web uygulaması bölümünden yeni bir eşleştirme bağlantısı açın veya QR kodunu tarayın.",
+      "banner": "Tarayıcı erişim istekleri: {count}",
+      "open": "İstekleri görüntüle",
+      "hostTitle": "Tarayıcı erişim istekleri",
+      "trust": "Ad, cihaz tarafından belirtilmiştir. Yalnızca tanıdığınız cihazları onaylayın.",
+      "actionFailed": "İstek değişti veya hizmet kullanılamıyor. Yeniden deneyin.",
+      "reject": "Reddet",
+      "approve": "Erişime izin ver",
+      "shareCode": "Bu kodu, istekte bulunan cihazı kullanan kişiye iletin."
+    },
   "app": {
     "iconAlt": "Filament Manager simgesi",
     "loadingPage": "Sayfa yükleniyor...",
@@ -301,6 +331,19 @@ export const trTRDictionary: DictionaryNode = {
     "unauthorized": "Kimlik doğrulama gerekli."
   },
   "inventory": {
+    labelsAction: "Etiketler",
+    loansTab: "Ödünç verilen ve alınan",
+    "detailWeight": "Ağırlık",
+    "detailPlacementOwnership": "Konum ve sahiplik",
+    "detailIdentityLabel": "Kimlik ve etiket",
+    "detailMorePurchase": "Diğer satın alma ayrıntıları",
+    "detailUsageHistory": "Tüketim ve geçmiş",
+    "detailUpdateWeight": "Ağırlığı güncelle",
+    "detailShowUsageHistory": "Grafiği ve geçmişi göster",
+    "detailSaveTareFirst": "Ölçülen toplam ağırlığı güncellemeden önce değiştirilen boş makara ağırlığını kaydedin.",
+    "detailAdvancedActions": "Gelişmiş işlemler",
+    "detailOpenPrinters": "Yazıcıları aç",
+
     "labelPreviewFailed": "Etiket önizlemesi hazırlanamadı. Yeniden deneyin.",
     "labelRetryPreview": "Önizlemeyi yeniden dene",
     "labelOpenSavedFile": "Kaydedilen dosyayı aç",
@@ -937,6 +980,7 @@ export const trTRDictionary: DictionaryNode = {
     "workspace": "Çalışma alanı"
   },
   "loans": {
+    person: "Kişi",
     "activeBorrowedIn": "Aktif ödünç alınan",
     "activeLoans": "Aktif krediler",
     "activeRecords": "Aktif kayıtlar",
@@ -1027,6 +1071,11 @@ export const trTRDictionary: DictionaryNode = {
     "statistics": "İstatistikler"
   },
   "printers": {
+      replaceRoll: "Makarayı değiştir",
+      selectRoll: "Makara seç",
+      linkObserved: "Algılanan makarayı eşleştir",
+      startedCandidatesFirst: "Eşit eşleşmelerde kısmen kullanılmış makaralar dolu makaralardan önce gösterilir. Eşleştirmeden önce makarayı doğrulayın.",
+
     "addBorrowedCatalogRollAndSaveRfid": "Ödünç alınanları ekle + kaydet RFID",
     "addCatalogRollAndSaveRfid": "Ekle + kaydet RFID",
     "amsSlot": "AMS Yuvası",
@@ -1176,6 +1225,25 @@ export const trTRDictionary: DictionaryNode = {
     "withToolheads": "Çoklu takım başlığı"
   },
   "settings": {
+    themeGraySoft: "Gri · Yumuşak",
+    themeGrayDeep: "Gri · Derin",
+    themeBlueNight: "Mavi · Gece",
+    themeLightClean: "Açık · Sade",
+    searchPrinterModels: "Yazıcı modellerini ara",
+    printerBrand: "Üretici",
+    customPrinterModel: "Özel model adı",
+    printerModelsAll: "Tümü",
+    printerModelsOther: "Diğer",
+    printerModelsNoResults: "Sonuç yok",
+
+    "noMatchingSwatches": "Bu aramayla eşleşen eksik renk örneği yok.",
+    "autoSaveHint": "Bu sayfadaki değişiklikler otomatik kaydedilir.",
+    "changeLibraryRole": "Kitaplık rolünü değiştir",
+    "localDiagnosticsScope": "Bu cihaz · yerel veritabanı",
+    "unsavedChanges": "Kaydedilmemiş değişiklikler",
+    "filamentDefaultsSaveGroupHint": "Grubun varsayılan fiyatını kaydedin. Mevcut makaraların fiyatları yalnızca aşağıdaki fiyatı uyguladığınızda değişir.",
+    "swatchSearch": "Üretici, filament, renk veya kimlik ara",
+
     "catalogRefreshStatusUncertain": "Durum doğrulanamadı. Yenileme günlüğünü kontrol edin; güncelleme hâlâ çalışıyor olabilir.",
     "catalogRefreshFailedNextStep": "Güncelleme tamamlanmadı. Başka bir güncelleme başlatmadan önce yenileme günlüğünü kontrol edin.",
     "catalogRefreshInterruptedNextStep": "Güncelleme kesintiye uğradı. Yeniden başlamadan önce kataloğu ve yenileme günlüğünü kontrol edin.",

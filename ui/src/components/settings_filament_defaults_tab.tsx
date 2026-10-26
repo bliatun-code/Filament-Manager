@@ -205,7 +205,7 @@ function GroupSpoolRow({
   const historicalMissing = inactive && !priced;
 
   return (
-    <div className="grid gap-2 rounded-lg border border-slate-200/80 bg-white/70 px-3 py-2 dark:border-slate-700 dark:bg-slate-950/30 sm:grid-cols-[auto_minmax(10rem,1fr)_auto] sm:items-center">
+    <div className="grid gap-2 rounded-lg border border-slate-200/80 bg-white/70 px-3 py-2 dark:border-slate-700 dark:bg-slate-950/30 sm:grid-cols-[auto_minmax(0,1fr)_auto] sm:items-center">
       <input
         aria-describedby={historicalMissing ? historicalHintId : undefined}
         aria-label={
@@ -297,7 +297,7 @@ function BatchReceiptCard({
 
   return (
     <SettingsSurfaceCard
-      className="min-w-0 space-y-4 lg:col-span-2"
+      className="min-w-0 space-y-4"
       eyebrow={t("settings.filamentDefaultsReceipt", "Latest pricing receipt")}
       description={t(
         "settings.filamentDefaultsReceiptHint",
@@ -474,6 +474,11 @@ export function SettingsFilamentDefaultsTab({
     () => resolveDesktopVisualQaScenario() === "settings-filament-defaults",
     [],
   );
+  const [activeSection, setActiveSection] = useState("GROUPS");
+  const [selectedCategoryKey, setSelectedCategoryKey] = useState<string | null>(null);
+  const [selectedGroupKey, setSelectedGroupKey] = useState<string | null>(null);
+  const selectedCategory = categories.find((category) => category.key === selectedCategoryKey) ?? categories[0];
+  const selectedGroup = selectedCategory?.groups.find((group) => group.key === selectedGroupKey) ?? selectedCategory?.groups[0];
   const [defaultCurrencyRaw, setDefaultCurrencyRaw] = useState(defaultCurrency);
   const [groupDrafts, setGroupDrafts] = useState<Record<string, GroupPriceDraft>>({});
   const [groupModes, setGroupModes] = useState<Record<string, FilamentPriceBatchMode>>({});
@@ -516,13 +521,14 @@ export function SettingsFilamentDefaultsTab({
   }, [groups, groupModes]);
 
   useEffect(() => {
-    if (focusTarget === "DEFAULT_CURRENCY") {
-      currencyInputRef.current?.scrollIntoView({ block: "center", behavior: "smooth" });
-      currencyInputRef.current?.focus({ preventScroll: true });
-    } else if (focusTarget === "GROUP_PRICING") {
-      pricingSectionRef.current?.scrollIntoView({ block: "start", behavior: "smooth" });
-      pricingSectionRef.current?.focus({ preventScroll: true });
-    }
+    if (!focusTarget) return;
+    setActiveSection(focusTarget === "DEFAULT_CURRENCY" ? "CURRENCY" : "GROUPS");
+    const frame = window.requestAnimationFrame(() => {
+      const target = focusTarget === "DEFAULT_CURRENCY" ? currencyInputRef.current : pricingSectionRef.current;
+      target?.scrollIntoView({ block: "center", behavior: "smooth" });
+      target?.focus({ preventScroll: true });
+    });
+    return () => window.cancelAnimationFrame(frame);
   }, [focusTarget]);
 
   useEffect(() => {
@@ -557,6 +563,14 @@ export function SettingsFilamentDefaultsTab({
       ...current,
       [group.key]: { ...draftForGroup(group), ...patch },
     }));
+  }
+
+  function groupHasUnsavedChanges(group: FilamentPriceGroup) {
+    const draft = groupDrafts[group.key];
+    if (!draft) return false;
+    const saved = persistedByGroup.get(group.key);
+    return draft.priceRaw !== (saved ? String(saved.price) : "") ||
+      draft.currencyRaw !== (saved?.currency ?? normalizedDefaultCurrency ?? "");
   }
 
   function setSpoolSelected(spoolId: string, selected: boolean) {
@@ -789,9 +803,9 @@ export function SettingsFilamentDefaultsTab({
   }
 
   return (
-    <>
+    <div className="settings-filament-balanced">
       {loadFailed ? (
-        <SettingsNotice className="lg:col-span-2" tone="warning">
+        <SettingsNotice tone="warning">
           <div className="flex flex-col gap-2 min-[560px]:flex-row min-[560px]:items-center min-[560px]:justify-between">
             <span>
               {t(
@@ -811,7 +825,7 @@ export function SettingsFilamentDefaultsTab({
           </div>
         </SettingsNotice>
       ) : hostTargetMissing ? (
-        <SettingsNotice className="lg:col-span-2" tone="warning">
+        <SettingsNotice tone="warning">
           <p>
             {t(
               "inventory.clientHostUnavailable",
@@ -826,7 +840,7 @@ export function SettingsFilamentDefaultsTab({
           </p>
         </SettingsNotice>
       ) : hostUnsupported ? (
-        <SettingsNotice className="lg:col-span-2" tone="warning">
+        <SettingsNotice tone="warning">
           {t(
             "errors.filamentStandardsHostUnsupported",
             "Update the Host before using filament pricing standards.",
@@ -834,7 +848,7 @@ export function SettingsFilamentDefaultsTab({
         </SettingsNotice>
       ) : null}
       {!settingsValid ? (
-        <SettingsNotice className="lg:col-span-2" tone="warning">
+        <SettingsNotice tone="warning">
           {readOnly
             ? t(
                 "settings.filamentDefaultsSettingsRepairReadOnly",
@@ -846,6 +860,20 @@ export function SettingsFilamentDefaultsTab({
               )}
         </SettingsNotice>
       ) : null}
+      <div className="settings-filament-summary">
+        <div><span>{t("settings.filamentDefaultsCurrency", "Default purchase currency")}</span><strong>{!loadFailed && settingsValid ? defaultCurrency : "—"}</strong></div>
+        <div><span>{t("settings.lowStockDefaultThreshold", "Default threshold")}</span><strong>{lowStock.policyValid && lowStock.policy ? `${lowStock.policy.default_threshold_g.toLocaleString(locale)} g` : "—"}</strong></div>
+      </div>
+      {!readOnly && (defaultCurrencyRaw !== defaultCurrency || groups.some(groupHasUnsavedChanges)) ? <p role="status" className="text-sm font-medium text-amber-800 dark:text-amber-200">{t("settings.unsavedChanges", "Unsaved changes")}</p> : null}
+      {readOnly ? <SettingsNotice tone="neutral">{t("settings.filamentDefaultsHostOwned", "Manage library-wide filament defaults on the Host desktop app.")}</SettingsNotice> : null}
+      <div className="settings-filament-sections" role="group" aria-label={t("settings.tabFilamentDefaults", "Filament defaults")}>
+        {([
+          ["GROUPS", t("settings.filamentDefaultsGroupPrices", "Filament group prices")],
+          ["CURRENCY", t("settings.filamentDefaultsCurrency", "Default purchase currency")],
+          ["LOW_STOCK", t("settings.lowStockThresholds", "Low-stock thresholds")],
+        ] as const).map(([id, label]) => <button key={id} type="button" aria-pressed={activeSection === id} onClick={() => setActiveSection(id)} className="settings-filament-section-button app-control-focus">{label}</button>)}
+      </div>
+      <div hidden={activeSection !== "CURRENCY"}>
       <SettingsSurfaceCard
         className="min-w-0 space-y-4"
         eyebrow={t("settings.filamentDefaultsCurrency", "Default purchase currency")}
@@ -854,14 +882,6 @@ export function SettingsFilamentDefaultsTab({
           "Used as the starting currency for new individual prices and filament group defaults. Existing purchase data is not changed automatically.",
         )}
       >
-        {readOnly ? (
-          <SettingsNotice tone="neutral">
-            {t(
-              "settings.filamentDefaultsHostOwned",
-              "Manage library-wide filament defaults on the Host desktop app.",
-            )}
-          </SettingsNotice>
-        ) : null}
         <div id="settings-filament-default-currency" className="surface-subtle p-3">
           <label className="block max-w-sm text-sm font-medium text-slate-700 dark:text-slate-200">
             {t("settings.filamentDefaultsCurrencyCode", "Three-letter currency code")}
@@ -907,18 +927,22 @@ export function SettingsFilamentDefaultsTab({
         </div>
       </SettingsSurfaceCard>
 
+      </div>
+      <div hidden={activeSection !== "LOW_STOCK"}>
       <SettingsLowStockPanel {...lowStock} busy={busy || activeMutation != null || lowStock.busy} onSave={saveLowStock} t={t} />
+      </div>
 
-      {localInfo ? <SettingsNotice className="lg:col-span-2" tone="success"><span role="status">{localInfo}</span></SettingsNotice> : null}
+      {localInfo ? <SettingsNotice tone="success"><span role="status">{localInfo}</span></SettingsNotice> : null}
 
       {localError && !pendingOverwrite ? (
-        <SettingsNotice className="lg:col-span-2" tone="danger">
+        <SettingsNotice tone="danger">
           {localError}
         </SettingsNotice>
       ) : null}
 
+      <div hidden={activeSection !== "GROUPS"}>
       <SettingsSurfaceCard
-        className="min-w-0 space-y-4 lg:col-span-2"
+        className="settings-filament-pricing min-w-0 space-y-4"
         eyebrow={t("settings.filamentDefaultsGroupPrices", "Filament group prices")}
         description={t(
           "settings.filamentDefaultsGroupPricesHint",
@@ -942,6 +966,27 @@ export function SettingsFilamentDefaultsTab({
               {selectionAnnouncement}
             </p>
           ) : null}
+          <div className="settings-filament-vendors" role="group" aria-label={t("inventory.vendorGroup", "Vendor")}>
+            {categories.map((category) => <button key={category.key} type="button" className="settings-filament-vendor app-control-focus" aria-pressed={selectedCategory?.key === category.key} onClick={() => { setSelectedCategoryKey(category.key); setSelectedGroupKey(null); }}>
+              <span>{category.key === "generic" ? t("vendor.generic", "Generic") : category.label}</span>
+              <span className="text-xs opacity-75">{t("settings.filamentDefaultsGroups", "{count, plural, one {# price group} other {# price groups}}", {count:category.groupCount})}</span>
+            </button>)}
+          </div>
+          {selectedCategory ? <label className="settings-filament-group-select text-sm">
+            <span className="sr-only">{t("settings.filamentDefaultsGroupPrices", "Filament group prices")}</span>
+            <select className={settingsFormControlClass} value={selectedGroup?.key ?? ""} onChange={(event) => setSelectedGroupKey(event.target.value)}>
+              {selectedCategory.groups.map((group) => <option key={group.key} value={group.key}>{localizedGroupLabel(group.materialLabel,t)} · {localizedGroupLabel(group.filamentLabel,t)} · {groupWeightLabel(group,locale,t)}{groupHasUnsavedChanges(group) ? ` · ${t("settings.unsavedChanges", "Unsaved changes")}` : ""}</option>)}
+            </select>
+          </label> : null}
+          <div className="settings-filament-workspace">
+            {selectedCategory ? <div className="settings-filament-groups" role="group" aria-label={t("settings.filamentDefaultsGroupPrices", "Filament group prices")}>
+              {selectedCategory.groups.map((group) => <button key={group.key} type="button" className="settings-filament-group app-control-focus" aria-pressed={selectedGroup?.key === group.key} onClick={() => setSelectedGroupKey(group.key)}>
+                <span className="font-medium">{localizedGroupLabel(group.materialLabel,t)} · {localizedGroupLabel(group.filamentLabel,t)}</span>
+                {groupHasUnsavedChanges(group) ? <span className="text-xs font-semibold text-amber-800 dark:text-amber-200">{t("settings.unsavedChanges", "Unsaved changes")}</span> : null}
+                <span className="text-xs opacity-75">{groupWeightLabel(group,locale,t)} · {t("settings.filamentDefaultsSpools", "{count, plural, one {# spool} other {# spools}}", {count:group.counts.total})}</span>
+              </button>)}
+            </div> : null}
+            <div className="min-w-0">
           {categories.length === 0 ? (
             <div className="surface-subtle border-dashed px-4 py-6 text-center text-sm text-slate-600 dark:text-slate-300">
               {t(
@@ -950,34 +995,11 @@ export function SettingsFilamentDefaultsTab({
               )}
             </div>
           ) : (
-            categories.map((category, categoryIndex) => (
-              <details
-                className="overflow-hidden rounded-xl border border-slate-200 bg-white/60 dark:border-slate-700 dark:bg-slate-950/25"
-                key={category.key}
-                open={visualQaPricingOpen ? categoryIndex === 0 : undefined}
-              >
-                <summary className="app-disclosure-summary app-control-focus cursor-pointer px-4 py-3 outline-none transition hover:bg-slate-50 focus-visible:bg-slate-50 dark:hover:bg-slate-900/55 dark:focus-visible:bg-slate-900/55">
-                  <span className="flex flex-wrap items-center justify-between gap-2">
-                    <span className="font-semibold text-slate-900 dark:text-slate-100">
-                      {category.key === "generic"
-                        ? t("vendor.generic", "Generic")
-                        : category.label}
-                    </span>
-                    <span className="text-xs font-medium text-slate-500 dark:text-slate-400">
-                      {t(
-                        "settings.filamentDefaultsSpools",
-                        "{count, plural, one {# spool} other {# spools}}",
-                        { count: category.spoolCount },
-                      )} · {t(
-                        "settings.filamentDefaultsGroups",
-                        "{count, plural, one {# price group} other {# price groups}}",
-                        { count: category.groupCount },
-                      )}
-                    </span>
-                  </span>
-                </summary>
-                <div className="grid gap-3 border-t border-slate-200/80 p-3 dark:border-slate-700/80">
-                  {category.groups.map((group, groupIndex) => {
+            categories.map((category) => (
+              <div key={category.key} hidden={selectedCategory?.key !== category.key}>
+                <div>
+                  {category.groups.map((group) => {
+
                     const draft = draftForGroup(group);
                     const price = parseFilamentGroupPrice(draft.priceRaw);
                     const currency = normalizeFilamentDefaultCurrency(draft.currencyRaw);
@@ -1003,14 +1025,8 @@ export function SettingsFilamentDefaultsTab({
                         preview.lockedCount > 0 ||
                         preview.manualUpdateCount > 0);
                     return (
-                      <details
-                        className="overflow-hidden rounded-xl border border-slate-200 bg-slate-50/70 dark:border-slate-700 dark:bg-slate-900/35"
-                        key={group.key}
-                        open={visualQaPricingOpen
-                          ? categoryIndex === 0 && groupIndex === 0
-                          : undefined}
-                      >
-                        <summary className="app-disclosure-summary app-control-focus cursor-pointer px-4 py-3 outline-none transition hover:bg-white focus-visible:bg-white dark:hover:bg-slate-900/75 dark:focus-visible:bg-slate-900/75">
+                      <section className="settings-filament-editor" key={group.key} hidden={selectedGroup?.key !== group.key} aria-label={`${category.label} · ${group.filamentLabel} · ${groupWeightLabel(group, locale, t)}`}>
+                        <header className="settings-filament-editor-header">
                           <span className="flex flex-wrap items-center justify-between gap-2">
                             <span>
                               <span className="block text-sm font-semibold text-slate-900 dark:text-slate-100">
@@ -1045,9 +1061,10 @@ export function SettingsFilamentDefaultsTab({
                               ) : null}
                             </span>
                           </span>
-                        </summary>
+                        </header>
                         <div className="space-y-4 border-t border-slate-200/80 p-4 dark:border-slate-700/80">
-                          <div className="grid gap-3 md:grid-cols-[minmax(8rem,1fr)_minmax(7rem,10rem)_auto] md:items-end">
+                          <p className="text-xs text-slate-600 dark:text-slate-300">{t("settings.filamentDefaultsSaveGroupHint", "Save the reusable group standard. Existing spool prices change only when you apply the price below.")}</p>
+                          <div className="grid gap-3 grid-cols-[minmax(0,1fr)_minmax(0,1fr)] [&>button]:col-span-2">
                             <label className="text-xs font-medium text-slate-600 dark:text-slate-300">
                               {t("settings.filamentDefaultsGroupPrice", "Price per spool")}
                               <input
@@ -1166,6 +1183,8 @@ export function SettingsFilamentDefaultsTab({
                             </span>
                           </div>
 
+                          <details className="settings-filament-spools" key={group.key}>
+                            <summary className="app-control-focus">{t("settings.filamentDefaultsSpools", "{count, plural, one {# spool} other {# spools}}", {count:group.counts.total})} · {t("settings.filamentDefaultsSelected", "{count, plural, one {# selected} other {# selected}}", {count:preview.selectedCount})}</summary>
                           <div className="grid gap-2">
                             {group.spoolRows.map((row) => (
                               <GroupSpoolRow
@@ -1183,6 +1202,7 @@ export function SettingsFilamentDefaultsTab({
                               />
                             ))}
                           </div>
+                          </details>
 
                           {mode === "OVERWRITE" && preview.overwriteCount > 0 ? (
                             <SettingsNotice tone="warning">
@@ -1258,15 +1278,18 @@ export function SettingsFilamentDefaultsTab({
                                 : t("settings.filamentDefaultsApplyMissing", "Price spools missing a price")}
                           </button>
                         </div>
-                      </details>
+                      </section>
                     );
                   })}
                 </div>
-              </details>
+              </div>
             ))
           )}
+            </div>
+          </div>
         </section>
       </SettingsSurfaceCard>
+      </div>
 
       {receipt ? (
         <BatchReceiptCard
@@ -1388,6 +1411,6 @@ export function SettingsFilamentDefaultsTab({
           </AppModal>
         );
       })() : null}
-    </>
+    </div>
   );
 }

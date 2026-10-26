@@ -1,10 +1,9 @@
 import { SettingsBackupActionFeedback } from "./settings_backup_action_feedback";
 import type { SettingsBackupValidation } from "../pages/settings_backup_model";
-import type { ChangeEvent, RefObject } from "react";
+import { useEffect, useState, type ChangeEvent, type RefObject } from "react";
 import { SettingsBackupValidationSummary } from "./settings_backup_validation_summary";
 import { SettingsApplicationDiagnosticsPanel } from "./settings_application_diagnostics_panel";
 import {
-  SettingsMetricTile,
   SettingsNotice,
   SettingsSectionBody,
   SettingsSectionControls,
@@ -150,16 +149,17 @@ export function SettingsMaintenanceTab({
   onRefreshApplicationDiagnostics,
   onValidateBackupFile,
 }: SettingsMaintenanceTabProps) {
+  const [resetExpanded, setResetExpanded] = useState(confirmResetAction !== null);
+  useEffect(() => { if (confirmResetAction !== null) setResetExpanded(true); }, [confirmResetAction]);
   const hostOnlyActionDisabled = !tauri || busy || settingsClientReadOnly;
   const fullBackupActionDisabled =
     !tauri || busy || (settingsClientReadOnly && !settingsClientHostWritePaired);
 
   return (
     <SettingsSurfaceCard
-      className="xl:col-span-2"
-      eyebrow={t("settings.maintenance", "Maintenance")}
+      className="settings-maintenance-balanced"
     >
-      <SettingsSectionPanel className="mt-4">
+      <SettingsSectionPanel className="settings-maintenance-backup">
         <SettingsSectionHeader
           eyebrow={t("settings.backupTitle", "Backup")}
           description={t(
@@ -167,16 +167,11 @@ export function SettingsMaintenanceTab({
             "Export a full JSON backup with inventory, history and configured printers.",
           )}
           descriptionClassName="text-slate-700 dark:text-slate-300"
-          metrics={
-            <>
-              <SettingsMetricTile label={t("nav.printers", "Printers")} value={printerCount} />
-              <SettingsMetricTile label={t("settings.totalCatalog", "Catalog")} value={catalogCount} />
-              <SettingsMetricTile
-                label={t("settings.missingSwatches", "Missing swatches")}
-                value={missingSwatchCount}
-              />
-            </>
-          }
+          metrics={<div className="settings-maintenance-counts">
+            <span>{t("nav.printers", "Printers")}: {formatDisplayInteger(printerCount,locale)}</span>
+            <span>{t("settings.totalCatalog", "Catalog")}: {typeof catalogCount === "number" ? formatDisplayInteger(catalogCount,locale) : catalogCount}</span>
+            <span>{t("settings.missingSwatches", "Missing swatches")}: {typeof missingSwatchCount === "number" ? formatDisplayInteger(missingSwatchCount,locale) : missingSwatchCount}</span>
+          </div>}
           status={
             <div className="max-w-sm rounded-lg border border-slate-300/70 bg-white/60 px-3 py-2 text-xs leading-5 text-slate-600 dark:border-slate-700 dark:bg-slate-950/30 dark:text-slate-300">
               <div className="font-semibold text-slate-800 dark:text-slate-100">
@@ -208,12 +203,12 @@ export function SettingsMaintenanceTab({
           ) : null}
         </SettingsSectionHeader>
 
-        <SettingsSectionBody className="grid gap-4 p-5 lg:grid-cols-[1.15fr_0.95fr]">
+        <SettingsSectionBody className="settings-maintenance-backup-body">
           <SettingsSectionControls>
             <div className="section-eyebrow">
               {t("settings.backupExportGroup", "Backup and export")}
             </div>
-            <div className="mt-4 grid gap-2 sm:grid-cols-2">
+            <div className="mt-4 flex flex-wrap gap-2">
               <button
                 type="button"
                 className={settingsActionButtonClass("primary")}
@@ -256,10 +251,10 @@ export function SettingsMaintenanceTab({
                 )}
               </div>
             ) : null}
-            <div className="mt-4 space-y-2">
+            <div className="mt-4 flex flex-wrap gap-2">
               <button
                 type="button"
-                className={`${settingsActionButtonClass()} w-full`}
+                className={settingsActionButtonClass()}
                 onClick={onOpenDataImport}
                 disabled={hostOnlyActionDisabled}
               >
@@ -267,7 +262,7 @@ export function SettingsMaintenanceTab({
               </button>
               <button
                 type="button"
-                className={`${settingsActionButtonClass()} w-full`}
+                className={settingsActionButtonClass()}
                 onClick={onOpenBackupValidate}
                 disabled={!tauri || busy}
               >
@@ -319,10 +314,11 @@ export function SettingsMaintenanceTab({
         />
       ) : null}
 
-      <div className="mt-6 border-t border-slate-200 pt-4 dark:border-slate-700">
-        <div className="section-eyebrow">
-          {t("settings.resetSectionTitle", "Reset and cleanup")}
-        </div>
+      <details className="settings-maintenance-reset" open={resetExpanded || confirmResetAction !== null} onToggle={(event) => setResetExpanded(event.currentTarget.open)}>
+        <summary className="app-control-focus" onClick={(event) => { if (confirmResetAction !== null) event.preventDefault(); }}>
+          <span>{t("settings.resetSectionTitle", "Reset and cleanup")}</span>
+          <span className="settings-maintenance-reset-warning">{t("settings.resetApp", "Reset app data")}: {t("settings.resetAppList1", "Clears inventory rolls and roll lifecycle history.")}</span>
+        </summary>
         <div className="mt-3 grid grid-cols-1 gap-4 lg:grid-cols-2">
           <div className="surface-subtle rounded-xl border-l-2 border-l-amber-500 p-4">
             <div className="flex items-center gap-2 text-sm font-semibold text-amber-950 dark:text-amber-200">
@@ -418,7 +414,7 @@ export function SettingsMaintenanceTab({
             </ul>
           </div>
         </div>
-      </div>
+      </details>
       {lastCatalogReset ? (
         <SettingsNotice className="mt-4" tone="neutral">
           {t("settings.removed", "Removed")}:{" "}

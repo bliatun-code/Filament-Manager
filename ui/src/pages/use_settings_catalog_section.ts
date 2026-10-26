@@ -112,6 +112,8 @@ export function useSettingsCatalogSection({
     swatchBusy,
     swatchDraftById,
     swatchVendorFilter,
+    swatchSearch,
+    setSwatchSearch,
     swatchVendorOptions,
     toggleCatalogRefreshLog,
     saveDiscoveredCatalogMaterials,
@@ -126,6 +128,7 @@ export function useSettingsCatalogSection({
     setConfirmBulkSwatch,
     swatchVendorFilter,
     visibleMissingSwatchCount: visibleMissingSwatchMasters.length,
+    visibleMissingSwatchIds: JSON.stringify(visibleMissingSwatchMasters.map(row => row.id)),
   });
 
   const { startCatalogRefreshJob } = useSettingsCatalogRefreshJobs({
@@ -218,6 +221,8 @@ export function useSettingsCatalogSection({
           "Catalog updates are performed here. Inventory add-flow uses the local catalog managed on this page.",
         ),
     missingSwatchesPanel: {
+      swatchSearch,
+      onSwatchSearchChange: setSwatchSearch,
       busy,
       catalogRowsAvailable,
       catalogRowsUnavailable,

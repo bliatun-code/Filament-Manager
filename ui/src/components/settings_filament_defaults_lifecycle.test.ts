@@ -57,6 +57,8 @@ test("rendered filament standards saves retain their library and operation", asy
       await page.clock.install({time:new Date('2026-09-19T12:00:00Z')});await page.clock.pauseAt(new Date('2026-09-19T12:00:01Z'));
       await page.setContent(`<html><body><div id="root"></div><script>${script.replaceAll('</script','<\\/script')}</script></body></html>`);
       await page.locator('details').evaluateAll(elements=>elements.forEach(element=>element.setAttribute('open','')));
+      if (name.startsWith('currency')) await page.getByRole('button',{name:'Default purchase currency',exact:true}).click();
+      if (name.startsWith('threshold')) await page.getByRole('button',{name:'Low-stock thresholds',exact:true}).click();
       await run(page);
     } finally {await page.close();}
   });
@@ -66,7 +68,7 @@ test("rendered filament standards saves retain their library and operation", asy
     for(const [kind,label] of [['currency','Save default currency'],['group','Save group default']] as const){
       await scenario(`${kind} save blocks repeats, shows success, expires and permits retry`,async page=>{
         await clickTwice(page,label);assert.equal(await count(page),1);
-        assert.equal(await page.getByRole('button',{name:/^(Save|Saving) thresholds/}).isDisabled(),true);
+        assert.equal(await page.getByRole('button',{name:/^(Save|Saving) thresholds/,includeHidden:true}).isDisabled(),true);
         await page.evaluate('standards.reject()');await page.getByText(kind==='currency'?'Could not save the default currency.':'Could not save the filament group price.',{exact:true}).waitFor();
         await page.getByRole('button',{name:label,exact:true}).click();assert.equal(await count(page),2);
         await page.evaluate('standards.resolve()');await page.getByRole('status').filter({hasText:'Saved'}).waitFor();
@@ -76,6 +78,7 @@ test("rendered filament standards saves retain their library and operation", asy
         await page.getByRole('button',{name:label,exact:true}).click();
         await page.evaluate("standards.change({scope:'b'})");
         await page.locator('details').evaluateAll(elements=>elements.forEach(element=>element.setAttribute('open','')));
+        if(kind==='currency') await page.getByRole('button',{name:'Default purchase currency',exact:true}).click();
         await page.getByRole('button',{name:label,exact:true}).click();
         await page.evaluate('standards.resolve()');
         assert.equal(await page.getByRole('status').count(),0);
@@ -88,6 +91,7 @@ test("rendered filament standards saves retain their library and operation", asy
       assert.equal(await count(page),1);
       await page.evaluate("standards.change({scope:'b'});oldSave({default_threshold_g:500,material_overrides:[]})");
       assert.equal(await count(page),1);
+      await page.getByRole('button',{name:'Low-stock thresholds',exact:true}).click();
       await page.getByRole('button',{name:'Save thresholds',exact:true}).click();
       assert.equal(await count(page),2);
       await page.evaluate('standards.resolve()');
@@ -115,7 +119,7 @@ test("rendered filament standards saves retain their library and operation", asy
       assert.equal(await result.evaluate(element => element === document.activeElement), true);
       const bounds = await result.boundingBox();
       assert.ok(bounds && bounds.y >= 0 && bounds.y + bounds.height <= 720, 'Pricing result must be visible below long groups');
-      assert.equal(await page.getByRole('button',{name:'Save default currency',exact:true}).isDisabled(),true);
+      assert.equal(await page.getByRole('button',{name:'Save default currency',exact:true,includeHidden:true}).isDisabled(),true);
       await page.evaluate('standards.resolve()');
       await page.waitForFunction("!Array.from(document.querySelectorAll('button')).find(b=>b.textContent==='Save default currency').disabled");
       await page.evaluate("standards.change({scope:'b',readOnly:true})");
@@ -132,8 +136,8 @@ test("rendered filament standards saves retain their library and operation", asy
     await scenario('Client view cannot invoke local threshold writes',async page=>{
       await page.evaluate("standards.change({scope:'client',readOnly:true});standards.lowHandler()({default_threshold_g:300,material_overrides:[]})");
       assert.equal(await count(page),0);
-      assert.equal(await page.getByRole('button',{name:'Save default currency',exact:true}).isDisabled(),true);
-      assert.equal(await page.getByRole('button',{name:/^(Save|Saving) thresholds/}).isDisabled(),true);
+      assert.equal(await page.getByRole('button',{name:'Save default currency',exact:true,includeHidden:true}).isDisabled(),true);
+      assert.equal(await page.getByRole('button',{name:/^(Save|Saving) thresholds/,includeHidden:true}).isDisabled(),true);
     });
   } finally {await browser.close();}
 });

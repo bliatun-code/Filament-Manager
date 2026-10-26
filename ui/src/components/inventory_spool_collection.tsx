@@ -1,6 +1,5 @@
 import { useEffect, useId, useMemo, useState } from "react";
 import { PageHeaderButton } from "./page_header_button";
-import { VendorBadge } from "./vendor_badge";
 import { inlineStatusSignalClass } from "../lib/chip_styles";
 import { formatPlacementLabel } from "../lib/display_format";
 import { useI18n } from "../lib/i18n";
@@ -10,17 +9,14 @@ import {
   formatInventoryOwnershipLabel,
   formatRollReference,
   inventoryOwnershipTone,
-  remainingBarClass,
+  isInventorySpoolLowStockCandidate,
+  normalizeStatus,
   resolveInventoryCollectionEmptyState,
   spoolRemainingRatio,
   type InventorySpool,
   type SpoolGroup,
 } from "../lib/inventory_list_model";
-import {
-  inventorySwatchCardStyle,
-  inventorySwatchInteractiveInsetStyle,
-} from "../lib/inventory_swatch_style";
-import { materialTone } from "../lib/material_theme";
+import { FilamentSpoolVisual } from "./filament_spool_visual";
 import { formatDisplayInteger } from "../lib/number_display";
 import type { ResolvedTheme } from "../lib/theme_mode";
 import { formatGrams } from "../lib/weight_display";
@@ -85,12 +81,13 @@ function RemainingMeter({
   spool: InventorySpool;
 }) {
   const rollFillRatio = spoolRemainingRatio(spool);
+  const lowStock = isInventorySpoolLowStockCandidate(spool);
   return (
     <div
-      className={`${className} h-1.5 overflow-hidden rounded-full bg-slate-200/80 dark:bg-slate-800/80`}
+      className={`${className} inventory-remaining-track`} aria-hidden="true"
     >
       <div
-        className={`h-full rounded-full ${remainingBarClass(rollFillRatio)}`}
+        className={`inventory-remaining-fill ${lowStock ? "is-low" : ""}`}
         style={{
           width: `${rollFillRatio <= 0 ? 0 : Math.max(4, Math.round(rollFillRatio * 100))}%`,
         }}
@@ -125,31 +122,10 @@ function InventoryBulkSpoolSelectionCheckbox({
 }
 
 function inventorySpoolRollButtonClassName(mode: "single" | "compact"): string {
-  const base =
-    "rounded-xl border px-3.5 py-3 text-left outline-none transition hover:-translate-y-[1px] focus-visible:border-sky-300 focus-visible:ring-2 focus-visible:ring-sky-100 dark:focus-visible:border-sky-400/60 dark:focus-visible:ring-sky-500/20";
-
-  if (mode === "compact") {
-    return `flex w-full items-start justify-between gap-3 ${base}`;
-  }
-
-  return base;
+  return `inventory-roll-row app-control-focus ${mode}`;
 }
-
-type InventorySpoolListButtonState = "default" | "recent" | "selected";
-
-function inventorySpoolListButtonClassName(state: InventorySpoolListButtonState): string {
-  const base =
-    "w-full rounded-xl border px-4 py-3 text-left shadow-sm outline-none transition hover:-translate-y-[1px] focus-visible:border-sky-300 focus-visible:ring-2 focus-visible:ring-sky-100 dark:focus-visible:border-sky-400/60 dark:focus-visible:ring-sky-500/20";
-
-  if (state === "selected") {
-    return `${base} border-slate-900 ring-1 ring-slate-300 dark:border-slate-300 dark:ring-slate-600`;
-  }
-
-  if (state === "recent") {
-    return `${base} border-emerald-300 ring-2 ring-emerald-200 dark:border-emerald-400/60 dark:ring-emerald-400/20`;
-  }
-
-  return base;
+function inventorySpoolListButtonClassName(state: "default" | "recent" | "selected"): string {
+  return `inventory-list-row app-control-focus is-${state}`;
 }
 
 export function InventorySpoolCollection({
@@ -165,7 +141,6 @@ export function InventorySpoolCollection({
   onResetFilters,
   onSelectRoll,
   recentlyAddedSpoolId,
-  resolvedTheme,
   selectedSpoolId,
   selectedBulkSpoolIds,
   totalSpoolCount,
@@ -215,309 +190,97 @@ export function InventorySpoolCollection({
     <div
       className={
         inventoryView === "CARDS"
-          ? "grid grid-cols-1 items-start gap-3 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4"
-          : "space-y-3"
+          ? "inventory-product-grid"
+          : "inventory-product-list"
       }
     >
       {inventoryView === "CARDS"
         ? collectionWindow.groupedSpools.map((group, groupIndex) => {
-            const hasRecentRoll = group.rolls.some(
-              (roll) => roll.id === recentlyAddedSpoolId,
-            );
-            const sortedRolls = [...group.rolls].sort((left, right) => {
-              if (left.id === recentlyAddedSpoolId) {
-                return -1;
-              }
-              if (right.id === recentlyAddedSpoolId) {
-                return 1;
-              }
-              return 0;
-            });
+            const hasRecentRoll = group.rolls.some(roll => roll.id === recentlyAddedSpoolId);
+            const sortedRolls = [...group.rolls].sort((left, right) =>
+              left.id === recentlyAddedSpoolId ? -1 : right.id === recentlyAddedSpoolId ? 1 : 0);
             const groupRollLimit = visibleRollLimitsByGroup.get(group.key) ?? 3;
             const visibleRolls = sortedRolls.slice(0, groupRollLimit);
             const groupExpanded = groupRollLimit > 3;
             const allGroupRollsVisible = visibleRolls.length >= group.rolls.length;
             const hiddenRollCount = Math.max(0, group.rolls.length - visibleRolls.length);
             const rollListId = `${collectionId}-group-${groupIndex}-rolls`;
-            const singleVisibleRoll = group.rolls.length === 1 ? visibleRolls[0] : null;
-
-            return (
-              <div
-                key={group.key}
-                className={`surface-card-compact flex flex-col gap-4 self-start overflow-hidden ${
-                  hasRecentRoll ? "ring-2 ring-emerald-200/80 dark:ring-emerald-400/20" : ""
-                }`}
-                style={inventorySwatchCardStyle(group.hexColor, resolvedTheme)}
-              >
-                <div className="flex items-start gap-3.5">
-                  <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl border border-white/70 bg-white/60 p-2 shadow-sm shadow-slate-200/20 dark:border-white/10 dark:bg-slate-950/35 dark:shadow-none">
-                    <InventorySwatchChip
-                      className="h-full w-full rounded-xl"
-                      swatchColor={group.hexColor}
-                    />
-                  </div>
-
+            return <article key={group.key} className={`inventory-product-card ${hasRecentRoll ? "is-recent" : ""}`}>
+              <FilamentSpoolVisual color={group.hexColor} className="inventory-product-spool" />
+              <div className="inventory-product-content">
+                <header className="inventory-product-header">
+                  <InventorySwatchChip className="inventory-product-swatch" swatchColor={group.hexColor} />
                   <div className="min-w-0 flex-1">
-                    <div
-                      className="overflow-hidden break-words text-[1.02rem] font-semibold leading-tight text-slate-950 [-webkit-box-orient:vertical] [-webkit-line-clamp:2] [display:-webkit-box] dark:text-slate-50"
-                      title={formatInventoryDisplayTitle(
-                        group.material,
-                        group.filamentName,
-                        group.colorName,
-                      )}
-                    >
-                      {formatInventoryDisplayTitle(
-                        group.material,
-                        group.filamentName,
-                        group.colorName,
-                      )}
-                    </div>
-                    <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] leading-relaxed text-slate-600 dark:text-slate-400">
-                      <VendorBadge vendor={group.vendor} compact />
-                      <span
-                        className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${materialTone(group.material).badge} ${materialTone(group.material).badgeText}`}
-                      >
-                        {group.material}
-                      </span>
+                    <h2 title={formatInventoryDisplayTitle(group.material, group.filamentName, group.colorName)}>
+                      {formatInventoryDisplayTitle(group.material, group.filamentName, group.colorName)}
+                    </h2>
+                    <div className="inventory-product-meta">
+                      <span>{group.vendor}</span><span aria-hidden="true">·</span><span>{group.material}</span>
                       <OwnershipChip ownershipType={group.ownershipType} t={t} />
-                      <span>
-                        {t("inventory.rolls", "Rolls")}: {group.rolls.length}
-                      </span>
-                      <span>
-                        {t("inventory.total", "Total")}:{" "}
-                        {formatGrams(group.totalRemaining, "dash", locale)}
-                      </span>
                     </div>
-                    {isBorrowedInOwnership(group.ownershipType) && group.ownerName ? (
-                      <div className="mt-1 text-[11px] leading-relaxed text-slate-600 dark:text-slate-400">
-                        {t("inventory.borrowedFrom", "Borrowed from")}: {group.ownerName}
-                      </div>
-                    ) : null}
                   </div>
-                </div>
-
-                {singleVisibleRoll ? (
-                  <div className="flex items-start gap-1">
-                    {bulkSelectionActive ? (
-                      <InventoryBulkSpoolSelectionCheckbox
-                        checked={selectedBulkSpoolIds.has(singleVisibleRoll.id)}
-                        disabled={bulkSelectionDisabled}
-                        label={t(
-                          "inventory.bulkSelectSpool",
-                          "Select {reference}",
-                          { reference: formatRollReference(singleVisibleRoll) },
-                        )}
-                        onCheckedChange={(selected) =>
-                          onBulkSelectionChange(singleVisibleRoll.id, selected)
-                        }
-                      />
-                    ) : null}
-                    <button
-                      type="button"
-                      onClick={() => onSelectRoll(singleVisibleRoll.id)}
-                      className={`${inventorySpoolRollButtonClassName("single")} min-w-0 flex-1`}
-                      style={inventorySwatchInteractiveInsetStyle(
-                        singleVisibleRoll.hexColor ?? group.hexColor,
-                        resolvedTheme,
-                        selectedSpoolId === singleVisibleRoll.id
-                          ? "selected"
-                          : singleVisibleRoll.id === recentlyAddedSpoolId
-                            ? "recent"
-                            : "default",
-                      )}
-                    >
-                      <div className="flex items-start justify-between gap-3">
-                        <div className="min-w-0">
-                          <div className="truncate text-sm font-semibold text-slate-900 dark:text-slate-50">
-                            {formatInventoryPlacement(t, singleVisibleRoll.location, slotLabelById)}
-                          </div>
-                          <div className="mt-1 truncate text-[11px] leading-relaxed text-slate-600 dark:text-slate-400">
-                            {formatRollReference(singleVisibleRoll)}
-                            {isBorrowedInOwnership(singleVisibleRoll.ownershipType) &&
-                            singleVisibleRoll.ownerName
-                              ? ` · ${t("inventory.borrowedFrom", "Borrowed from")}: ${
-                                  singleVisibleRoll.ownerName
-                                }`
-                              : ""}
-                          </div>
-                        </div>
-                        <div className="shrink-0 text-right">
-                          <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">
-                            {t("inventory.remaining", "Remaining")}
-                          </div>
-                          <div className="mt-1 text-sm font-semibold leading-tight text-slate-900 dark:text-slate-50">
-                            {formatGrams(singleVisibleRoll.remainingGrams, "dash", locale)}
-                          </div>
-                        </div>
-                      </div>
-                      <RemainingMeter className="mt-3" spool={singleVisibleRoll} />
+                  <details className="inventory-product-menu">
+                    <summary aria-label={`${t("common.actions", "Actions")} · ${formatInventoryDisplayTitle(group.material, group.filamentName, group.colorName)}`}>⋮</summary>
+                    <div>{group.rolls.map(roll => <button key={roll.id} type="button" onClick={event => {
+                      event.currentTarget.closest("details")?.removeAttribute("open");
+                      onSelectRoll(roll.id);
+                    }}>{t("inventory.openCreatedRoll", "Open roll")} · {formatRollReference(roll)}</button>)}</div>
+                  </details>
+                </header>
+                {group.rolls.length > 1 ? <div className="inventory-product-total">
+                  {group.rolls.length} {t("inventory.spoolResults", "spools")} · {formatGrams(group.totalRemaining, "dash", locale)}
+                </div> : null}
+                <div id={rollListId} className="inventory-product-rolls">
+                  {visibleRolls.map(roll => <div key={roll.id} className="inventory-roll-line">
+                    {bulkSelectionActive ? <InventoryBulkSpoolSelectionCheckbox
+                      checked={selectedBulkSpoolIds.has(roll.id)} disabled={bulkSelectionDisabled}
+                      label={t("inventory.bulkSelectSpool", "Select {reference}", { reference: formatRollReference(roll) })}
+                      onCheckedChange={selected => onBulkSelectionChange(roll.id, selected)} /> : null}
+                    <button type="button" onClick={() => onSelectRoll(roll.id)}
+                      className={`${group.rolls.length === 1 ? inventorySpoolRollButtonClassName("single") : inventorySpoolRollButtonClassName("compact")} ${selectedSpoolId === roll.id ? "is-selected" : ""}`}>
+                      <span className="inventory-roll-reference">{formatRollReference(roll)}</span>
+                      <span className="inventory-roll-placement" title={formatInventoryPlacement(t, roll.location, slotLabelById)}>
+                        {formatInventoryPlacement(t, roll.location, slotLabelById)}
+                        {isBorrowedInOwnership(roll.ownershipType) && roll.ownerName ? <span className="block">{t("inventory.borrowedFrom", "Borrowed from")}: {roll.ownerName}</span> : null}
+                        {normalizeStatus(roll.status) === "EMPTY" ? <span className="block">{t("inventory.statusEmpty", "Empty")}</span> : null}
+                        {normalizeStatus(roll.status) === "LOST" ? <span className="block">{t("inventory.statusLost", "Lost")}</span> : null}
+                      </span>
+                      <span className="inventory-roll-weight">{formatGrams(roll.remainingGrams, "dash", locale)}</span>
+                      <RemainingMeter className="inventory-roll-meter" spool={roll} />
                     </button>
-                  </div>
-                ) : (
-                  <div className="space-y-2.5">
-                    <div id={rollListId} className="space-y-2.5">
-                      {visibleRolls.map((roll) => {
-                        const emphasis =
-                          selectedSpoolId === roll.id
-                            ? "selected"
-                            : roll.id === recentlyAddedSpoolId
-                              ? "recent"
-                              : "default";
-                        return (
-                          <div key={roll.id} className="flex items-start gap-1">
-                            {bulkSelectionActive ? (
-                              <InventoryBulkSpoolSelectionCheckbox
-                                checked={selectedBulkSpoolIds.has(roll.id)}
-                                disabled={bulkSelectionDisabled}
-                                label={t(
-                                  "inventory.bulkSelectSpool",
-                                  "Select {reference}",
-                                  { reference: formatRollReference(roll) },
-                                )}
-                                onCheckedChange={(selected) =>
-                                  onBulkSelectionChange(roll.id, selected)
-                                }
-                              />
-                            ) : null}
-                            <button
-                              type="button"
-                              onClick={() => onSelectRoll(roll.id)}
-                              className={`${inventorySpoolRollButtonClassName("compact")} min-w-0 flex-1`}
-                              style={inventorySwatchInteractiveInsetStyle(
-                                roll.hexColor ?? group.hexColor,
-                                resolvedTheme,
-                                emphasis,
-                              )}
-                            >
-                            <div className="min-w-0 flex-1">
-                              <div className="flex flex-wrap items-center gap-2">
-                                <div className="truncate text-[13px] font-semibold leading-snug text-slate-900 dark:text-slate-50">
-                                  {formatInventoryPlacement(t, roll.location, slotLabelById)}
-                                </div>
-                                <OwnershipChip ownershipType={roll.ownershipType} t={t} />
-                              </div>
-                              <div className="mt-1 truncate text-[11px] leading-relaxed text-slate-600 dark:text-slate-400">
-                                {formatRollReference(roll)}
-                              </div>
-                              {isBorrowedInOwnership(roll.ownershipType) && roll.ownerName ? (
-                                <div className="mt-1 truncate text-[11px] leading-relaxed text-slate-600 dark:text-slate-400">
-                                  {t("inventory.borrowedFrom", "Borrowed from")}: {roll.ownerName}
-                                </div>
-                              ) : null}
-                              <RemainingMeter spool={roll} />
-                            </div>
-                            <div className="shrink-0 text-right">
-                              <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">
-                                {t("inventory.remaining", "Remaining")}
-                              </div>
-                              <div className="mt-1 text-sm font-semibold leading-tight text-slate-900 dark:text-slate-50">
-                                {formatGrams(roll.remainingGrams, "dash", locale)}
-                              </div>
-                            </div>
-                            </button>
-                          </div>
-                        );
-                      })}
-                    </div>
-
-                    {group.rolls.length > 3 ? (
-                      <button
-                        type="button"
-                        aria-expanded={groupExpanded}
-                        aria-controls={rollListId}
-                        onClick={() => updateGroupRollLimit(group.key, group.rolls.length)}
-                        className="surface-subtle flex w-full items-center justify-between gap-3 border-dashed px-3.5 py-2 text-left text-[11px] font-semibold text-slate-700 outline-none transition hover:border-slate-400/70 hover:bg-white/80 focus-visible:border-sky-300 focus-visible:ring-2 focus-visible:ring-sky-100 dark:text-slate-200 dark:hover:border-slate-500 dark:hover:bg-slate-900/70 dark:focus-visible:border-sky-400/60 dark:focus-visible:ring-sky-500/20"
-                      >
-                        <span>
-                          {allGroupRollsVisible
-                            ? t("inventory.showFewerRolls", "Show fewer")
-                            : hiddenRollCount <= 100
-                              ? t("inventory.showAllRolls", "Show all")
-                              : t("inventory.showMoreHistory", "Show more")}
-                        </span>
-                        {allGroupRollsVisible ? (
-                          <span aria-hidden="true">&#9652;</span>
-                        ) : (
-                          <span className="font-medium text-slate-600 dark:text-slate-300">
-                            + {hiddenRollCount} {t("inventory.moreRolls", "more roll(s)")}
-                          </span>
-                        )}
-                      </button>
-                    ) : null}
-                  </div>
-                )}
-              </div>
-            );
-          })
-        : collectionWindow.filteredSpools.map((roll) => {
-            const listButtonState =
-              selectedSpoolId === roll.id
-                ? "selected"
-                : roll.id === recentlyAddedSpoolId
-                  ? "recent"
-                  : "default";
-            return (
-              <div key={roll.id} className="flex items-start gap-1">
-                {bulkSelectionActive ? (
-                  <InventoryBulkSpoolSelectionCheckbox
-                    checked={selectedBulkSpoolIds.has(roll.id)}
-                    disabled={bulkSelectionDisabled}
-                    label={t(
-                      "inventory.bulkSelectSpool",
-                      "Select {reference}",
-                      { reference: formatRollReference(roll) },
-                    )}
-                    onCheckedChange={(selected) =>
-                      onBulkSelectionChange(roll.id, selected)
-                    }
-                  />
-                ) : null}
-                <button
-                  type="button"
-                  onClick={() => onSelectRoll(roll.id)}
-                  className={`${inventorySpoolListButtonClassName(listButtonState)} min-w-0 flex-1`}
-                  style={inventorySwatchCardStyle(roll.hexColor, resolvedTheme)}
-                >
-                <div className="flex flex-wrap items-center justify-between gap-3">
-                  <div className="min-w-0 flex-1">
-                    <div className="text-sm font-semibold text-slate-900 dark:text-slate-50">
-                      {formatInventoryDisplayTitle(
-                        roll.material,
-                        roll.filamentName,
-                        roll.colorName,
-                      )}
-                    </div>
-                    <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
-                      <VendorBadge vendor={roll.vendor} compact />
-                      <span
-                        className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${materialTone(roll.material).badge} ${materialTone(roll.material).badgeText}`}
-                      >
-                        {roll.material}
-                      </span>
-                      <OwnershipChip ownershipType={roll.ownershipType} t={t} />
-                    </div>
-                    <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-                      {formatInventoryPlacement(t, roll.location, slotLabelById)} · {formatRollReference(roll)}
-                    </div>
-                    {isBorrowedInOwnership(roll.ownershipType) && roll.ownerName ? (
-                      <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-                        {t("inventory.borrowedFrom", "Borrowed from")}: {roll.ownerName}
-                      </div>
-                    ) : null}
-                    <RemainingMeter className="mt-3" spool={roll} />
-                  </div>
-                  <div className="shrink-0 text-right">
-                    <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">
-                      {t("inventory.remaining", "Remaining")}
-                    </div>
-                    <div className="mt-1 text-sm font-semibold text-slate-800 dark:text-slate-100">
-                      {formatGrams(roll.remainingGrams, "dash", locale)}
-                    </div>
-                  </div>
+                  </div>)}
                 </div>
-                </button>
+                {group.rolls.length > 3 ? <button type="button" aria-expanded={groupExpanded}
+                  aria-controls={rollListId} onClick={() => updateGroupRollLimit(group.key, group.rolls.length)}
+                  className="inventory-more-rolls app-control-focus">
+                  {allGroupRollsVisible ? t("inventory.showFewerRolls", "Show fewer rolls") :
+                    `${t("inventory.showAllRolls", "Show all rolls")} (+${hiddenRollCount})`}
+                </button> : null}
               </div>
-            );
+            </article>;
+          })
+        : collectionWindow.filteredSpools.map(roll => {
+            const listButtonState = selectedSpoolId === roll.id ? "selected" : roll.id === recentlyAddedSpoolId ? "recent" : "default";
+            return <div key={roll.id} className="inventory-list-line">
+              {bulkSelectionActive ? <InventoryBulkSpoolSelectionCheckbox
+                checked={selectedBulkSpoolIds.has(roll.id)} disabled={bulkSelectionDisabled}
+                label={t("inventory.bulkSelectSpool", "Select {reference}", {reference: formatRollReference(roll)})}
+                onCheckedChange={selected => onBulkSelectionChange(roll.id, selected)} /> : null}
+              <button type="button" onClick={() => onSelectRoll(roll.id)} className={inventorySpoolListButtonClassName(listButtonState)}>
+                <InventorySwatchChip className="inventory-product-swatch" swatchColor={roll.hexColor} />
+                <span className="inventory-list-name">
+                  <strong>{formatInventoryDisplayTitle(roll.material, roll.filamentName, roll.colorName)}</strong>
+                  <span className="inventory-product-meta">{roll.vendor} · {roll.material} <OwnershipChip ownershipType={roll.ownershipType} t={t} /></span>
+                  <span className="inventory-list-reference">{formatRollReference(roll)}</span>
+                </span>
+                <span className="inventory-roll-placement">{formatInventoryPlacement(t, roll.location, slotLabelById)}
+                  {isBorrowedInOwnership(roll.ownershipType) && roll.ownerName ? <span className="block">{t("inventory.borrowedFrom", "Borrowed from")}: {roll.ownerName}</span> : null}
+                </span>
+                <span className="inventory-roll-reference">{formatRollReference(roll)}</span>
+                <span className="inventory-roll-weight">{formatGrams(roll.remainingGrams, "dash", locale)}</span>
+                <RemainingMeter className="inventory-roll-meter" spool={roll} />
+              </button>
+            </div>;
           })}
 
       {collectionWindow.hasMore ? (

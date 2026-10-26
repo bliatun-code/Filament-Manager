@@ -89,14 +89,14 @@ test("getThemeMode honors supported desktop visual QA theme overrides", () => {
 });
 
 test("theme registry distinguishes selected modes from resolved color schemes", () => {
-  assert.deepEqual(THEME_MODES, ["auto", "light", "dark", "bambu", "prusa"]);
+  assert.deepEqual(THEME_MODES, ["auto", "dark", "dark-deep", "blue", "light"]);
   assert.equal(resolveThemeMode("auto", false), "light");
   assert.equal(resolveThemeMode("auto", true), "dark");
   assert.equal(resolveThemeMode("light", true), "light");
   assert.equal(resolveThemeMode("dark", false), "dark");
-  assert.equal(resolveThemeMode("bambu", false), "dark");
-  assert.equal(resolveThemeMode("prusa", false), "dark");
-  assert.equal(isThemeMode("bambu"), true);
+  assert.equal(resolveThemeMode("dark-deep", false), "dark");
+  assert.equal(resolveThemeMode("blue", false), "dark");
+  assert.equal(isThemeMode("dark-deep"), true);
   assert.equal(isThemeMode("sepia"), false);
 });
 
@@ -107,24 +107,24 @@ test("native window theme keeps system modes native and gives brand themes opaqu
   });
   assert.deepEqual(getNativeWindowTheme("light"), {
     appearance: "light",
-    backgroundColor: null,
+    backgroundColor: [245, 247, 249, 255],
   });
   assert.deepEqual(getNativeWindowTheme("dark"), {
     appearance: "dark",
-    backgroundColor: null,
+    backgroundColor: [34, 45, 53, 255],
   });
-  assert.deepEqual(getNativeWindowTheme("bambu"), {
+  assert.deepEqual(getNativeWindowTheme("dark-deep"), {
     appearance: "dark",
-    backgroundColor: [3, 18, 18, 255],
+    backgroundColor: [18, 25, 30, 255],
   });
-  assert.deepEqual(getNativeWindowTheme("prusa"), {
+  assert.deepEqual(getNativeWindowTheme("blue"), {
     appearance: "dark",
-    backgroundColor: [24, 16, 15, 255],
+    backgroundColor: [14, 23, 40, 255],
   });
 });
 
 test("getThemeMode restores stored branded themes", () => {
-  for (const theme of ["bambu", "prusa"] as const) {
+  for (const theme of ["dark-deep", "blue"] as const) {
     const mode = withLocalStorage({ getItem: () => theme }, () => getThemeMode());
     assert.equal(mode, theme);
   }
@@ -151,12 +151,12 @@ test("setThemeMode exposes selected and resolved themes without dropping dark co
   };
 
   withDocument(documentValue, () => {
-    withLocalStorage({ setItem: () => {} }, () => setThemeMode("bambu"));
+    withLocalStorage({ setItem: () => {} }, () => setThemeMode("dark-deep"));
   });
 
   assert.equal(classNames.has("dark"), true);
-  assert.equal(dataset.theme, "bambu");
-  assert.equal(dataset.themeMode, "bambu");
+  assert.equal(dataset.theme, "dark-deep");
+  assert.equal(dataset.themeMode, "dark-deep");
   assert.equal(dataset.resolvedTheme, "dark");
   assert.equal(style.colorScheme, "dark");
 
@@ -210,4 +210,11 @@ test("setThemeMode ignores localStorage write failures", () => {
   assert.doesNotThrow(() => {
     withLocalStorage(storage, () => setThemeMode("light"));
   });
+});
+
+test("retired brand preferences migrate to gray soft", () => {
+  for (const stored of ["bambu", "prusa"]) {
+    assert.equal(withLocalStorage({ getItem: () => stored }, () => getThemeMode()), "dark");
+    assert.equal(isThemeMode(stored), false);
+  }
 });

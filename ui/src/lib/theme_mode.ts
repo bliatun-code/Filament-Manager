@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { DESKTOP_VISUAL_QA_QUERY_KEY } from "./desktop_visual_qa_scenario";
 
-export const THEME_MODES = ["auto", "light", "dark", "bambu", "prusa"] as const;
+export const THEME_MODES = ["auto", "dark", "dark-deep", "blue", "light"] as const;
 
 export type ThemeMode = (typeof THEME_MODES)[number];
 export type ResolvedTheme = "light" | "dark";
@@ -20,18 +20,10 @@ export type ThemeDefinition = {
 
 export const THEME_DEFINITIONS: Readonly<Record<ThemeMode, ThemeDefinition>> = {
   auto: { id: "auto", colorScheme: "system", nativeWindowBackground: null },
-  light: { id: "light", colorScheme: "light", nativeWindowBackground: null },
-  dark: { id: "dark", colorScheme: "dark", nativeWindowBackground: null },
-  bambu: {
-    id: "bambu",
-    colorScheme: "dark",
-    nativeWindowBackground: [3, 18, 18, 255],
-  },
-  prusa: {
-    id: "prusa",
-    colorScheme: "dark",
-    nativeWindowBackground: [24, 16, 15, 255],
-  },
+  light: { id: "light", colorScheme: "light", nativeWindowBackground: [245, 247, 249, 255] },
+  dark: { id: "dark", colorScheme: "dark", nativeWindowBackground: [34, 45, 53, 255] },
+  "dark-deep": { id: "dark-deep", colorScheme: "dark", nativeWindowBackground: [18, 25, 30, 255] },
+  blue: { id: "blue", colorScheme: "dark", nativeWindowBackground: [14, 23, 40, 255] },
 };
 
 const STORAGE_KEY = "bfm-theme-mode";
@@ -142,6 +134,8 @@ export function getThemeMode(): ThemeMode {
   } catch {
     stored = null;
   }
+  // Retired brand themes move to the neutral default without changing library data.
+  if (stored === "bambu" || stored === "prusa") return "dark";
   if (isThemeMode(stored)) {
     return stored;
   }

@@ -16,6 +16,8 @@ mod bambu_printer_discovery;
 mod bambu_thermal;
 mod catalog_commands;
 mod catalog_refresh_jobs;
+mod companion_access_recovery;
+mod companion_access_recovery_api;
 mod companion_api;
 mod companion_assets;
 mod companion_catalog_batch_api;
@@ -114,6 +116,7 @@ mod secure_credential_mutation;
 mod security;
 mod sqlite_recovery;
 mod state;
+mod trusted_lan_access_request_commands;
 mod trusted_lan_browser_read_commands;
 mod trusted_lan_browser_revoke_all_commands;
 mod trusted_lan_browser_revoke_commands;
@@ -386,6 +389,8 @@ fn main() {
             trusted_lan_interface_commands::list_trusted_lan_interfaces,
             trusted_lan_config_commands::update_trusted_lan_companion_config,
             trusted_lan_pairing_commands::create_trusted_lan_pairing,
+            trusted_lan_access_request_commands::list_companion_access_requests,
+            trusted_lan_access_request_commands::decide_companion_access_request,
             trusted_lan_browser_read_commands::list_trusted_lan_paired_browsers,
             trusted_lan_browser_revoke_commands::revoke_trusted_lan_paired_browser,
             trusted_lan_browser_revoke_all_commands::revoke_all_trusted_lan_paired_browsers,
@@ -728,8 +733,8 @@ fn normalize_visual_qa_theme(value: &str) -> Option<&'static str> {
         "light" => Some("light"),
         "dark" => Some("dark"),
         "auto" => Some("auto"),
-        "bambu" => Some("bambu"),
-        "prusa" => Some("prusa"),
+        "dark-deep" => Some("dark-deep"),
+        "blue" => Some("blue"),
         _ => None,
     }
 }

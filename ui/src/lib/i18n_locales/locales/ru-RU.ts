@@ -1,6 +1,36 @@
 import type { DictionaryNode } from "../../i18n_types";
 
 export const ruRUDictionary: DictionaryNode = {
+    access: {
+      "title": "Доступ необходимо продлить",
+      "body": "Попросите хост повторно одобрить этот браузер.",
+      "deviceName": "Название устройства",
+      "nameHint": "Название помогает хосту только узнать ваше устройство.",
+      "request": "Снова запросить доступ",
+      "pendingTitle": "Запрос отправлен",
+      "pendingBody": "Доступ необходимо одобрить в Filament Manager на компьютере хоста.",
+      "waiting": "Ожидание хоста…",
+      "codeTitle": "Введите код с хоста",
+      "codeLabel": "Одноразовый код",
+      "codeHint": "Шесть цифр. Код действителен пять минут.",
+      "confirm": "Подтвердить доступ",
+      "badCode": "Неверный код. Осталось попыток: {count}.",
+      "rejected": "Запрос отклонён.",
+      "expired": "Срок действия запроса истёк. Запросите доступ снова.",
+      "locked": "Три неверные попытки. Запросите доступ снова.",
+      "cancelled": "Запрос отменён.",
+      "cancel": "Отменить запрос",
+      "otherWay": "Использовать ссылку сопряжения",
+      "fallback": "Откройте новую ссылку сопряжения или отсканируйте её QR-код в разделе Библиотека и веб-приложение на хосте.",
+      "banner": "Запросы на доступ браузера: {count}",
+      "open": "Посмотреть запросы",
+      "hostTitle": "Запросы на доступ браузера",
+      "trust": "Название указано устройством. Одобряйте только знакомые вам устройства.",
+      "actionFailed": "Запрос изменился или служба недоступна. Повторите попытку.",
+      "reject": "Отклонить",
+      "approve": "Разрешить доступ",
+      "shareCode": "Сообщите этот код человеку, использующему устройство, отправившее запрос."
+    },
   "nav": {
     "settings": "Настройки",
     "loans": "Выдачи",
@@ -392,6 +422,7 @@ export const ruRUDictionary: DictionaryNode = {
     "valueCostReasonCalculationInvalid": "Не удалось рассчитать стоимость"
   },
   "loans": {
+    person: "Человек",
     "clientHostUnavailable": "Для этого клиентского устройства отсутствуют сведения о подключении к хосту.",
     "clientReadOnlyHost": "Хозяин",
     "clientReadOnlyUpdated": "Обновлено",
@@ -635,6 +666,11 @@ export const ruRUDictionary: DictionaryNode = {
     "legacyLowStockFallback": "Резервный порог 200 г для старых версий хоста"
   },
   "printers": {
+      replaceRoll: "Заменить катушку",
+      selectRoll: "Выбрать катушку",
+      linkObserved: "Связать обнаруженную катушку",
+      startedCandidatesFirst: "При равном совпадении частично использованные катушки показаны перед полными. Подтвердите катушку перед связыванием.",
+
     "clientHostUnavailable": "Для этого клиентского устройства отсутствуют сведения о подключении к хосту.",
     "clientReadOnlyHost": "Хозяин",
     "subtitle": "Управляйте использованием слотов и материалов, связанных с принтером.",
@@ -784,6 +820,19 @@ export const ruRUDictionary: DictionaryNode = {
     }
   },
   "inventory": {
+    labelsAction: "Этикетки",
+    loansTab: "Выданные и взятые катушки",
+    "detailWeight": "Вес",
+    "detailPlacementOwnership": "Расположение и владение",
+    "detailIdentityLabel": "Идентификация и этикетка",
+    "detailMorePurchase": "Подробнее о покупке",
+    "detailUsageHistory": "Расход и история",
+    "detailUpdateWeight": "Обновить вес",
+    "detailShowUsageHistory": "Показать график и историю",
+    "detailSaveTareFirst": "Сохраните изменённый вес пустой катушки перед обновлением измеренного общего веса.",
+    "detailAdvancedActions": "Дополнительные действия",
+    "detailOpenPrinters": "Открыть принтеры",
+
     "labelPreviewFailed": "Не удалось подготовить предварительный просмотр этикетки. Попробуйте ещё раз.",
     "labelRetryPreview": "Повторить предпросмотр",
     "labelOpenSavedFile": "Открыть сохранённый файл",
@@ -1420,6 +1469,25 @@ export const ruRUDictionary: DictionaryNode = {
     }
   },
   "settings": {
+    themeGraySoft: "Серый · Мягкий",
+    themeGrayDeep: "Серый · Глубокий",
+    themeBlueNight: "Синий · Ночь",
+    themeLightClean: "Светлый · Чистый",
+    searchPrinterModels: "Поиск моделей принтеров",
+    printerBrand: "Производитель",
+    customPrinterModel: "Своё название модели",
+    printerModelsAll: "Все",
+    printerModelsOther: "Другие",
+    printerModelsNoResults: "Ничего не найдено",
+
+    "noMatchingSwatches": "По этому запросу нет отсутствующих образцов цвета.",
+    "autoSaveHint": "Изменения на этой странице сохраняются автоматически.",
+    "changeLibraryRole": "Изменить роль библиотеки",
+    "localDiagnosticsScope": "Это устройство · локальная база данных",
+    "unsavedChanges": "Несохранённые изменения",
+    "filamentDefaultsSaveGroupHint": "Сохраните цену группы по умолчанию. Цены существующих катушек изменятся только после применения цены ниже.",
+    "swatchSearch": "Поиск по производителю, филаменту, цвету или ID",
+
     "catalogRefreshStatusUncertain": "Не удалось подтвердить статус. Проверьте журнал обновления; обновление всё ещё может выполняться.",
     "catalogRefreshFailedNextStep": "Обновление не завершено. Проверьте журнал обновления, прежде чем начинать другое обновление.",
     "catalogRefreshInterruptedNextStep": "Обновление прервано. Проверьте каталог и журнал обновления, прежде чем начинать снова.",

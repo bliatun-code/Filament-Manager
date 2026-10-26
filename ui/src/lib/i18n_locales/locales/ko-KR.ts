@@ -1,6 +1,36 @@
 import type { DictionaryNode } from "../../i18n_types";
 
 export const koKRDictionary: DictionaryNode = {
+    access: {
+      "title": "접근 권한을 갱신해야 합니다",
+      "body": "호스트에 이 브라우저의 접근을 다시 승인해 달라고 요청하세요.",
+      "deviceName": "기기 이름",
+      "nameHint": "이름은 호스트가 기기를 알아보는 데만 사용됩니다.",
+      "request": "접근 권한 다시 요청",
+      "pendingTitle": "요청을 보냈습니다",
+      "pendingBody": "호스트 컴퓨터의 Filament Manager에서 접근을 승인해야 합니다.",
+      "waiting": "호스트 승인 대기 중…",
+      "codeTitle": "호스트의 코드 입력",
+      "codeLabel": "일회용 코드",
+      "codeHint": "숫자 6자리입니다. 코드는 5분간 유효합니다.",
+      "confirm": "접근 확인",
+      "badCode": "코드가 올바르지 않습니다. {count}회 더 시도할 수 있습니다.",
+      "rejected": "요청이 거절되었습니다.",
+      "expired": "요청이 만료되었습니다. 접근 권한을 다시 요청하세요.",
+      "locked": "3회 실패했습니다. 접근 권한을 다시 요청하세요.",
+      "cancelled": "요청이 취소되었습니다.",
+      "cancel": "요청 취소",
+      "otherWay": "페어링 링크 사용",
+      "fallback": "호스트의 라이브러리 및 웹 앱에서 새 페어링 링크를 열거나 QR 코드를 스캔하세요.",
+      "banner": "브라우저 접근 요청: {count}",
+      "open": "요청 보기",
+      "hostTitle": "브라우저 접근 요청",
+      "trust": "이름은 기기가 제공한 정보입니다. 아는 기기만 승인하세요.",
+      "actionFailed": "요청이 변경되었거나 서비스를 사용할 수 없습니다. 다시 시도하세요.",
+      "reject": "거절",
+      "approve": "접근 허용",
+      "shareCode": "이 코드를 요청한 기기를 사용하는 사람에게 알려 주세요."
+    },
   "app": {
     "title": "Filament Manager",
     "iconAlt": "Filament Manager 아이콘",
@@ -305,6 +335,19 @@ export const koKRDictionary: DictionaryNode = {
     "badgeNoPrinterSlots": "아직 구성된 프린터 슬롯이 없습니다."
   },
   "inventory": {
+    labelsAction: "라벨",
+    loansTab: "빌려준 필라멘트 및 빌린 필라멘트",
+    "detailWeight": "무게",
+    "detailPlacementOwnership": "위치 및 소유권",
+    "detailIdentityLabel": "식별 정보 및 라벨",
+    "detailMorePurchase": "추가 구매 정보",
+    "detailUsageHistory": "사용량 및 기록",
+    "detailUpdateWeight": "무게 업데이트",
+    "detailShowUsageHistory": "차트 및 기록 표시",
+    "detailSaveTareFirst": "측정한 총무게를 업데이트하기 전에 변경한 빈 스풀 무게를 저장하세요.",
+    "detailAdvancedActions": "고급 작업",
+    "detailOpenPrinters": "프린터 열기",
+
     "labelPreviewFailed": "라벨 미리보기를 준비하지 못했습니다. 다시 시도하세요.",
     "labelRetryPreview": "미리보기 다시 시도",
     "labelOpenSavedFile": "저장된 파일 열기",
@@ -1005,6 +1048,7 @@ export const koKRDictionary: DictionaryNode = {
     }
   },
   "loans": {
+    person: "대상자",
     "clientReadOnlyBanner": "이 기기는 클라이언트로 연결되어 있습니다. 대출 변경 사항은 현재 host에 유지됩니다.",
     "clientReadOnlyAction": "이 장치는 클라이언트로 연결되어 있습니다. 대출 변경에는 host를 사용하세요.",
     "clientReadOnlyBannerPaired": "이 장치는 클라이언트로 연결되어 있습니다. 반품 및 반납은 host로 보낼 수 있으며, 새로운 대출 생성은 계속 유지됩니다.",
@@ -1087,6 +1131,11 @@ export const koKRDictionary: DictionaryNode = {
     }
   },
   "printers": {
+      replaceRoll: "스풀 교체",
+      selectRoll: "스풀 선택",
+      linkObserved: "감지된 스풀 연결",
+      startedCandidatesFirst: "일치도가 같으면 일부 사용한 스풀이 가득 찬 스풀보다 먼저 표시됩니다. 연결 전에 스풀을 확인하세요.",
+
     "subtitle": "슬롯 및 프린터 연결 자료 사용을 관리합니다.",
     "desktopOnly": "프린터 개요는 desktop 앱 빌드에서 사용할 수 있습니다.",
     "clientReadOnlyBanner": "이 기기는 클라이언트로 연결되어 있습니다. 프린터 할당 변경 사항은 현재 host에 유지됩니다.",
@@ -1420,6 +1469,25 @@ export const koKRDictionary: DictionaryNode = {
     }
   },
   "settings": {
+    themeGraySoft: "회색 · 부드러운",
+    themeGrayDeep: "회색 · 깊은",
+    themeBlueNight: "파랑 · 밤",
+    themeLightClean: "밝음 · 깔끔한",
+    searchPrinterModels: "프린터 모델 검색",
+    printerBrand: "제조업체",
+    customPrinterModel: "사용자 지정 모델명",
+    printerModelsAll: "모두",
+    printerModelsOther: "기타",
+    printerModelsNoResults: "결과 없음",
+
+    "noMatchingSwatches": "검색과 일치하는 누락된 색상 샘플이 없습니다.",
+    "autoSaveHint": "이 페이지의 변경 사항은 자동으로 저장됩니다.",
+    "changeLibraryRole": "라이브러리 역할 변경",
+    "localDiagnosticsScope": "이 기기 · 로컬 데이터베이스",
+    "unsavedChanges": "저장하지 않은 변경 사항",
+    "filamentDefaultsSaveGroupHint": "그룹 기본 가격을 저장합니다. 기존 스풀 가격은 아래 가격을 적용할 때만 변경됩니다.",
+    "swatchSearch": "제조사, 필라멘트, 색상 또는 ID 검색",
+
     "catalogRefreshStatusUncertain": "상태를 확인하지 못했습니다. 새로고침 로그를 확인하세요. 업데이트가 계속 진행 중일 수 있습니다.",
     "catalogRefreshFailedNextStep": "업데이트가 완료되지 않았습니다. 다른 업데이트를 시작하기 전에 새로고침 로그를 확인하세요.",
     "catalogRefreshInterruptedNextStep": "업데이트가 중단되었습니다. 다시 시작하기 전에 카탈로그와 새로고침 로그를 확인하세요.",

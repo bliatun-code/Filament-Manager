@@ -10,7 +10,7 @@ import type { DashboardPrinterOverviewProps } from "./dashboard_printer_overview
 
 registerHooks({
   load(url, context, nextLoad) {
-    if (url.endsWith(".svg")) return { format: "module", shortCircuit: true, source: `export default ${JSON.stringify(url)};` };
+    if ((url.endsWith(".svg") || url.endsWith(".png"))) return { format: "module", shortCircuit: true, source: `export default ${JSON.stringify(url)};` };
     return nextLoad(url, context);
   },
 });
@@ -44,8 +44,8 @@ test("compact dashboard printer cards retain exact vivid brand accents and assig
   const html = render({ printers: [printer, prusa] });
   assert.match(html, /border-left-color:#00B140/);
   assert.match(html, /border-left-color:#F97316/);
-  assert.match(html, /rgba\(0, 177, 64,/);
-  assert.match(html, /rgba\(249, 115, 22,/);
+  assert.match(html, /background-color:var\(--app-theme-data-card-base\)/);
+  assert.doesNotMatch(html, /background-image:linear-gradient/);
   assert.match(html, /background:#2563EB/);
   assert.match(html, /background:#F97316/);
   assert.match(html, /Deep Blue/);
@@ -85,8 +85,8 @@ test("dashboard printer cards distinguish no assigned filament and offer trust r
 test("dark dashboard printer cards retain brand accent and surface color", () => {
   const html = render({ resolvedTheme: "dark" });
   assert.match(html, /border-left-color:#00B140/);
-  assert.match(html, /background-color:rgb\(10, 17, 31\)/);
-  assert.match(html, /rgba\(0, 177, 64, 0\.14\)/);
+  assert.match(html, /background-color:var\(--app-theme-data-card-base\)/);
+  assert.match(html, /background-image:none/);
 });
 
 test("printers without live integration omit the manual status badge on local and client dashboards", () => {

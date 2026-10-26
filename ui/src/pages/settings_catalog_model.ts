@@ -19,6 +19,7 @@ export function buildSettingsCatalogState({
   esunDiscoveredMaterials,
   esunRefreshMaterial,
   swatchVendorFilter,
+  swatchSearch = "",
 }: {
   bambuDiscoveredMaterials: string[];
   bambuRefreshMaterial: string | null;
@@ -27,16 +28,16 @@ export function buildSettingsCatalogState({
   esunDiscoveredMaterials: string[];
   esunRefreshMaterial: string | null;
   swatchVendorFilter: string;
+  swatchSearch?: string;
 }) {
   const missingSwatchMasters = catalogMasters.filter(
     (master) => !isValidSwatchColor(master.hex_color),
   );
-  const visibleMissingSwatchMasters =
-    swatchVendorFilter === "ALL"
-      ? missingSwatchMasters
-      : missingSwatchMasters.filter(
-          (master) => master.vendor.toLowerCase() === swatchVendorFilter.toLowerCase(),
-        );
+  const search = swatchSearch.trim().toLowerCase();
+  const visibleMissingSwatchMasters = missingSwatchMasters.filter((master) =>
+    (swatchVendorFilter === "ALL" || master.vendor.toLowerCase() === swatchVendorFilter.toLowerCase()) &&
+    (!search || [master.vendor, master.material, master.filament_name, master.color_name, master.id].join(" ").toLowerCase().includes(search)),
+  );
   const swatchVendorOptions = [
     "ALL",
     ...uniqueSortedStrings(missingSwatchMasters.map((master) => master.vendor).filter(Boolean)),

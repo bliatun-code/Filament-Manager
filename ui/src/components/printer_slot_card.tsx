@@ -4,7 +4,13 @@ import {
   findLiveTrayForSlot as resolveLiveTrayForSlot,
 } from "../lib/printer_live_display";
 import { formatPrinterSlotLabelForModel } from "../lib/printer_profiles";
-import { buildPrinterSlotCardStyles } from "../lib/printer_slot_card_styles";
+import { formatFilamentDisplayTitle, formatSpoolReference } from "../lib/display_format";
+import { formatGrams } from "../lib/printer_live_display";
+import { FilamentSpoolVisual } from "./filament_spool_visual";
+import { normalizeSpoolStatus } from "../lib/inventory_domain";
+import { isInventorySpoolLowStockCandidate } from "../lib/inventory_list_model";
+import { resolveSpoolLowStockThreshold } from "../lib/low_stock_policy";
+import { InventorySwatchChip } from "./inventory_swatch_chip";
 import { derivePrinterSlotDisplayState } from "../lib/printer_slot_display";
 import { type SlotSwapDraft } from "../lib/printer_slot_model";
 import type { PrinterSnapshotSource } from "../lib/printer_data_source";
@@ -131,73 +137,89 @@ export function PrinterSlotCard({
     ams_id: slot.ams_id,
     slot_index: slot.slot_index,
   });
-  const {
-    selectorStyle: slotSelectorStyle,
-    currentRollStyle: slotCurrentRollStyle,
-    actionStyle: slotActionStyle,
-    panelStyle: slotPanelStyle,
-  } = buildPrinterSlotCardStyles({
-    slotSwatchHex,
-    hasAssignedSpool: !!slot.spool_id,
-    isDropdownOpen,
-    resolvedTheme,
-  });
+  const current = findSpoolById(slot.spool_id);
+  const observed = slotDisplay.liveSignalEnabled && slotDisplay.liveIdentityFresh &&
+    slotDisplay.effectiveLiveTray?.loaded ? slotDisplay.effectiveLiveTray : null;
+  const color = current?.master.hex_color ?? slot.spool_hex_color ?? observed?.color_hex;
+  const title = slot.spool_id
+    ? formatFilamentDisplayTitle(current?.master.material ?? slot.spool_material,
+        current?.master.filament_name ?? slot.spool_filament_name,
+        current?.master.color_name ?? slot.spool_color_name)
+    : observed
+      ? formatFilamentDisplayTitle(observed.filament_type, observed.filament_name, null)
+      : t("printers.emptySlot", "Empty slot");
+  const candidates = slotDisplay.liveSuggestedInventoryMatch.candidates;
+  const reviewRemoval = !!slot.spool_id && slotDisplay.liveSignalEnabled &&
+    !!slotDisplay.effectiveLiveTray && !slotDisplay.effectiveLiveTray.loaded;
+  const showObserved = !!observed && (slotDisplay.unknownLiveRfid ||
+    candidates.some(row => row.spool.id !== slot.spool_id));
+  const hasDetails = showObserved || reviewRemoval || slotDisplay.rfidOverridden;
+  const remaining = current?.spool.remaining_g ?? slot.spool_remaining_g;
+  const initial = current?.spool.initial_weight_g ?? current?.master.default_weight ?? 1000;
+  const low = !!current && isInventorySpoolLowStockCandidate({status: normalizeSpoolStatus(current.spool.status),
+    remainingGrams:remaining,initialWeightGrams:initial,lowStockThresholdGrams:resolveSpoolLowStockThreshold(current).thresholdGrams});
+  const ratio = remaining == null ? 0 : Math.min(1, Math.max(0, remaining / Math.max(1, initial)));
 
   return (
-    <div
-      className={`surface-subtle relative flex h-full flex-col p-2.5 ${
-        isDropdownOpen ? "z-50" : "z-0"
-      }`}
-      style={slotPanelStyle}
-    >
-      <div className="text-sm font-semibold text-slate-900 dark:text-slate-50">
-        {slotLabel}
-      </div>
-
-      <PrinterSlotPicker
-        printerId={printer.printer.id}
-        slot={slot}
-        slotLabel={slotLabel}
-        busy={busy}
-        tauri={tauri}
-        resolvedTheme={resolvedTheme}
-        isDropdownOpen={isDropdownOpen}
-        selectedTargetSpool={selectedTargetSpool}
-        slotSwatchHex={slotSwatchHex}
-        slotSelectorStyle={slotSelectorStyle}
-        slotOptions={slotOptions}
-        slotLabelById={slotLabelById}
-        draft={draft}
-        setOpenDropdownSlotId={setOpenDropdownSlotId}
-        setSlotDraft={setSlotDraft}
-        openIncomingWeightDialog={openIncomingWeightDialog}
-        openEmptySlotWeightDialog={openEmptySlotWeightDialog}
-      />
-
-      <PrinterSlotAssignmentStatus
-        printer={printer}
-        slot={slot}
-        busy={busy}
-        displayState={slotDisplay}
-        currentRollStyle={slotCurrentRollStyle}
-        openRfidOverrideDialog={openRfidOverrideDialog}
-        registerLiveRfidCandidate={registerLiveRfidCandidate}
-        createLiveBambuCatalogSpool={createLiveBambuCatalogSpool}
-      />
-
-      <button
-        type="button"
-        className={`mt-2 w-full self-end rounded-lg border px-3 py-1.5 text-xs font-medium transition disabled:opacity-50 min-[720px]:w-auto ${
-          slotActionStyle
-            ? "shadow-sm"
-            : "border-slate-200 bg-white text-slate-700 shadow-sm dark:border-slate-600 dark:bg-slate-900/70 dark:text-slate-100 dark:shadow-none"
-        }`}
-        style={slotActionStyle}
-        onClick={() => openWeightPromptForDraft(printer.printer, slot, draft)}
-        disabled={!tauri || busy || !draft.targetSpoolId}
-      >
-        {t("printers.updateWeight", "Update weight")}
-      </button>
-    </div>
+    <tbody className={`printer-slot-rowgroup ${hasDetails ? "has-observation" : ""}`}>
+      <tr className="printer-slot-row">
+        <th scope="row" className="printer-slot-label">{slotLabel}</th>
+        <td className="printer-filament-cell">
+          <div className="printer-filament-identity">
+            {slot.spool_id || observed ? <FilamentSpoolVisual color={color} className="printer-filament-spool" /> : <span className="printer-empty-spool" aria-hidden="true">—</span>}
+            <div className="printer-filament-text">
+              <div className="printer-filament-title"><InventorySwatchChip swatchColor={color} className="h-3.5 w-3.5 rounded-sm" tone="tiny"/><span>{title}</span></div>
+              <div className="printer-secondary">{current?.master.vendor ?? (slot.spool_id ? "" : observed ? t("printers.noSpoolAssigned", "No spool assigned.") : "")}</div>
+            </div>
+          </div>
+        </td>
+        <td className="printer-reference-cell">
+          <span>{slot.spool_id ? formatSpoolReference(slot.spool_id) : "—"}</span>
+          {slotDisplay.liveIdentityLabel ? <div className="printer-secondary">{slotDisplay.liveIdentityLabel}</div> : null}
+          {slotDisplay.liveSlotInUse ? <div className="printer-in-use">{t("inventory.statusInUse", "In use")}</div> : null}
+          {hasDetails ? <div className="printer-observation-label">{reviewRemoval ? t("printers.outgoingWeightPromptTitle", "Set outgoing roll weight") : t("printers.linkObserved", "Link observed roll")}</div> : null}
+        </td>
+        <td className="printer-weight-cell">
+          <span>{slot.spool_id ? formatGrams(remaining, "dash", locale) : "—"}</span>
+          {slot.spool_id && remaining != null ? <span className={`printer-weight-track ${low ? "is-low" : ""}`} aria-hidden="true"><span style={{width: `${ratio * 100}%`}} /></span> : null}
+        </td>
+        <td className="printer-slot-actions">
+          <PrinterSlotPicker compact
+            printerId={printer.printer.id} slot={slot} slotLabel={slotLabel}
+            busy={busy} tauri={tauri} resolvedTheme={resolvedTheme}
+            isDropdownOpen={isDropdownOpen} selectedTargetSpool={selectedTargetSpool}
+            slotSwatchHex={slotSwatchHex} slotOptions={slotOptions}
+            slotLabelById={slotLabelById} draft={draft}
+            setOpenDropdownSlotId={setOpenDropdownSlotId} setSlotDraft={setSlotDraft}
+            openIncomingWeightDialog={openIncomingWeightDialog} openEmptySlotWeightDialog={openEmptySlotWeightDialog}
+          />
+          {slot.spool_id ? <button type="button" className="printer-row-action"
+            onClick={() => openWeightPromptForDraft(printer.printer, slot, draft)}
+            disabled={!tauri || busy || !draft.targetSpoolId}>
+            {t("printers.updateWeight", "Update weight")}
+          </button> : null}
+        </td>
+      </tr>
+      {hasDetails ? <tr className="printer-observation-row"><td colSpan={5}>
+        <details className="printer-observation-details">
+          <summary>{reviewRemoval ? t("printers.outgoingWeightPromptTitle", "Set outgoing roll weight") : t("printers.linkObserved", "Link observed roll")}</summary>
+          {reviewRemoval ? <button type="button" className="printer-row-action" disabled={!tauri || busy}
+            onClick={() => openEmptySlotWeightDialog(printer.printer.id, slot)}>
+            {t("printers.clearSlotOptionHint", "Remove current roll from this slot")}
+          </button> : <PrinterSlotAssignmentStatus
+            printer={printer} slot={slot} busy={busy || !tauri} displayState={{...slotDisplay,
+              liveSuggestedInventoryMatch: {...slotDisplay.liveSuggestedInventoryMatch,
+                candidates: candidates.filter(row => slotOptions.some(option => option.spool.id === row.spool.id))}}}
+            openRfidOverrideDialog={openRfidOverrideDialog}
+            registerLiveRfidCandidate={registerLiveRfidCandidate}
+            createLiveBambuCatalogSpool={createLiveBambuCatalogSpool}
+            selectCandidate={(row) => {
+              setOpenDropdownSlotId(null);
+              openIncomingWeightDialog(printer.printer.id, slot, row);
+            }}
+          />}
+        </details>
+      </td></tr> : null}
+    </tbody>
   );
 }

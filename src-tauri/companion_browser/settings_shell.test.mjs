@@ -33,10 +33,10 @@ test("settings shell renders session metrics and current session actions", () =>
   assert.match(html, /Appearance/);
   assert.match(html, /data-action="set-theme-mode"/);
   assert.equal((html.match(/data-action="set-theme-mode"/g) ?? []).length, 5);
-  assert.match(html, /data-theme-mode="bambu"/);
-  assert.match(html, /Vivid green workshop/);
-  assert.match(html, /data-theme-mode="prusa"/);
-  assert.match(html, /Warm orange workshop/);
+  assert.match(html, /data-theme-mode="dark-deep"/);
+  assert.match(html, /Gray · Deep/);
+  assert.match(html, /data-theme-mode="blue"/);
+  assert.match(html, /Blue · Night/);
   assert.match(html, /Connection/);
   assert.match(html, /Following device · Light/);
   assert.match(
@@ -63,13 +63,13 @@ test("settings shell renders session metrics and current session actions", () =>
 test("settings shell marks a brand theme as selected and renders its fallback summary", () => {
   const html = renderShell({
     state: {
-      themeMode: "bambu",
+      themeMode: "dark-deep",
       resolvedTheme: "dark",
     },
   });
 
-  assert.match(html, /data-theme-mode="bambu" data-active="true"/);
-  assert.match(html, /Bambu mode/);
+  assert.match(html, /data-theme-mode="dark-deep" data-active="true"/);
+  assert.match(html, /Gray · Deep mode/);
   assert.doesNotMatch(html, /Following device · Dark/);
 });
 
@@ -119,7 +119,7 @@ test("settings shell localizes visible controls in norwegian", () => {
   assert.match(html, /Følg enheten/);
   assert.match(html, /Lyse flater/);
   assert.match(html, /Bedre i svakt lys/);
-  assert.match(html, /Lys modus/);
+  assert.match(html, /Lys · Ren modus/);
   assert.doesNotMatch(html, /Lys modus · Lys/);
   assert.match(html, /Norsk/);
   assert.match(html, /English/);

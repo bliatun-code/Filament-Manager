@@ -1,6 +1,36 @@
 import type { DictionaryNode } from "../../i18n_types";
 
 export const nlNLDictionary: DictionaryNode = {
+    access: {
+      "title": "De toegang moet worden vernieuwd",
+      "body": "Vraag de host om deze browser opnieuw goed te keuren.",
+      "deviceName": "Apparaatnaam",
+      "nameHint": "De naam helpt de host alleen om je apparaat te herkennen.",
+      "request": "Opnieuw toegang aanvragen",
+      "pendingTitle": "Aanvraag verzonden",
+      "pendingBody": "De toegang moet worden goedgekeurd in Filament Manager op de hostcomputer.",
+      "waiting": "Wachten op de host…",
+      "codeTitle": "Voer de code van de host in",
+      "codeLabel": "Eenmalige code",
+      "codeHint": "Zes cijfers. De code is vijf minuten geldig.",
+      "confirm": "Toegang bevestigen",
+      "badCode": "Onjuiste code. Nog {count} pogingen over.",
+      "rejected": "De aanvraag is afgewezen.",
+      "expired": "De aanvraag is verlopen. Vraag opnieuw toegang aan.",
+      "locked": "Drie onjuiste pogingen. Vraag opnieuw toegang aan.",
+      "cancelled": "De aanvraag is geannuleerd.",
+      "cancel": "Aanvraag annuleren",
+      "otherWay": "Een koppelingslink gebruiken",
+      "fallback": "Open een nieuwe koppelingslink of scan de QR-code bij Bibliotheek en webapp op de host.",
+      "banner": "Aanvragen voor browsertoegang: {count}",
+      "open": "Aanvragen bekijken",
+      "hostTitle": "Aanvragen voor browsertoegang",
+      "trust": "De naam wordt door het apparaat opgegeven. Keur alleen apparaten goed die je herkent.",
+      "actionFailed": "De aanvraag is gewijzigd of de dienst is niet beschikbaar. Probeer het opnieuw.",
+      "reject": "Afwijzen",
+      "approve": "Toegang toestaan",
+      "shareCode": "Geef deze code aan de persoon die het aanvragende apparaat gebruikt."
+    },
   "app": {
     "iconAlt": "Filament Manager-pictogram",
     "loadingPage": "Pagina laden...",
@@ -301,6 +331,19 @@ export const nlNLDictionary: DictionaryNode = {
     "filamentStandardsInvalid": "De opgeslagen filamentstandaarden zijn niet meer geldig. Laad ze opnieuw en controleer ze."
   },
   "inventory": {
+    labelsAction: "Etiketten",
+    loansTab: "Uitgeleend en geleend",
+    "detailWeight": "Gewicht",
+    "detailPlacementOwnership": "Locatie en eigendom",
+    "detailIdentityLabel": "Identiteit en etiket",
+    "detailMorePurchase": "Meer aankoopdetails",
+    "detailUsageHistory": "Verbruik en geschiedenis",
+    "detailUpdateWeight": "Gewicht bijwerken",
+    "detailShowUsageHistory": "Grafiek en geschiedenis tonen",
+    "detailSaveTareFirst": "Sla het gewijzigde lege spoelgewicht op voordat u het gemeten totaalgewicht bijwerkt.",
+    "detailAdvancedActions": "Geavanceerde acties",
+    "detailOpenPrinters": "Printers openen",
+
     "labelPreviewFailed": "De etiketvoorvertoning kon niet worden gemaakt. Probeer het opnieuw.",
     "labelRetryPreview": "Voorvertoning opnieuw proberen",
     "labelOpenSavedFile": "Opgeslagen bestand openen",
@@ -937,6 +980,7 @@ export const nlNLDictionary: DictionaryNode = {
     "workspace": "Werkruimte"
   },
   "loans": {
+    person: "Persoon",
     "activeBorrowedIn": "Actief ingeleend",
     "activeLoans": "Actieve leningen",
     "activeRecords": "Actieve records",
@@ -1027,6 +1071,11 @@ export const nlNLDictionary: DictionaryNode = {
     "statistics": "Statistieken"
   },
   "printers": {
+      replaceRoll: "Rol vervangen",
+      selectRoll: "Rol kiezen",
+      linkObserved: "Waargenomen rol koppelen",
+      startedCandidatesFirst: "Bij even goede overeenkomsten verschijnen gebruikte rollen vóór volle rollen. Bevestig de rol voordat je deze koppelt.",
+
     "addBorrowedCatalogRollAndSaveRfid": "Ingeleend toevoegen + RFID opslaan",
     "addCatalogRollAndSaveRfid": "RFID toevoegen en opslaan",
     "amsSlot": "AMS Slot",
@@ -1176,6 +1225,25 @@ export const nlNLDictionary: DictionaryNode = {
     "withToolheads": "Multitoolkop"
   },
   "settings": {
+    themeGraySoft: "Grijs · Zacht",
+    themeGrayDeep: "Grijs · Diep",
+    themeBlueNight: "Blauw · Nacht",
+    themeLightClean: "Licht · Helder",
+    searchPrinterModels: "Printermodellen zoeken",
+    printerBrand: "Fabrikant",
+    customPrinterModel: "Eigen modelnaam",
+    printerModelsAll: "Alle",
+    printerModelsOther: "Andere",
+    printerModelsNoResults: "Geen resultaten",
+
+    "noMatchingSwatches": "Geen ontbrekende kleurstalen komen overeen met deze zoekopdracht.",
+    "autoSaveHint": "Wijzigingen op deze pagina worden automatisch opgeslagen.",
+    "changeLibraryRole": "Bibliotheekrol wijzigen",
+    "localDiagnosticsScope": "Dit apparaat · lokale database",
+    "unsavedChanges": "Niet-opgeslagen wijzigingen",
+    "filamentDefaultsSaveGroupHint": "Sla de standaardprijs van de groep op. Prijzen van bestaande spoelen veranderen pas als u de onderstaande prijs toepast.",
+    "swatchSearch": "Zoek op fabrikant, filament, kleur of ID",
+
     "catalogRefreshStatusUncertain": "De status kon niet worden bevestigd. Bekijk het vernieuwingslogboek; de update kan nog bezig zijn.",
     "catalogRefreshFailedNextStep": "De update is niet voltooid. Bekijk het vernieuwingslogboek voordat je een nieuwe update start.",
     "catalogRefreshInterruptedNextStep": "De update is onderbroken. Controleer de catalogus en het vernieuwingslogboek voordat je opnieuw begint.",

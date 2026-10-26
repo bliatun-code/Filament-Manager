@@ -18,7 +18,7 @@ test("InventorySpoolCollection shares focus treatment for roll buttons", () => {
   assert.match(source, /inventorySpoolRollButtonClassName\("single"\)/);
   assert.match(source, /inventorySpoolRollButtonClassName\("compact"\)/);
   assert.match(source, /inventorySpoolListButtonClassName\(listButtonState\)/);
-  assert.match(source, /focus-visible:border-sky-300/);
+  assert.match(source, /app-control-focus/);
   assert.doesNotMatch(
     source,
     /rounded-xl border px-3\.5 py-3 text-left transition hover:-translate-y-\[1px\]/,

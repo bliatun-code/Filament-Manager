@@ -15,12 +15,13 @@ const i18nValue: I18nContextValue = {
   t: (_key, fallback = "", params = {}) => formatMessage(fallback, params, "en"),
 };
 
-function renderNavigation(activeView: "STOCK" | "PURCHASES" | "LOCATIONS") {
+function renderNavigation(activeView: "STOCK" | "LOANS" | "PURCHASES" | "LOCATIONS") {
   return renderToStaticMarkup(
     <I18nContext.Provider value={i18nValue}>
       <InventoryWorkspaceNavigation
         activeView={activeView}
         inventoryCount={18}
+        loanCount={5}
         locationCount={3}
         onViewChange={() => {}}
         purchaseCount={4}
@@ -34,10 +35,12 @@ test("inventory workspace exposes stock, locations and purchases as one-click vi
 
   assert.match(html, /role="group"/);
   assert.match(html, /id="inventory-stock-tab"[^>]*aria-pressed="true"/);
-  assert.match(html, /id="inventory-stock-tab"[^>]*app-selected-control/);
+  assert.match(html, /id="inventory-loans-tab"[^>]*aria-pressed="false"/);
+  assert.match(html, />Loans &amp; borrowed-in</);
+  assert.match(html, />5</);
   assert.match(html, /id="inventory-purchases-tab"[^>]*aria-pressed="false"/);
   assert.match(html, /id="inventory-locations-tab"[^>]*aria-pressed="false"/);
-  assert.match(html, />Inventory</);
+  assert.match(html, />Spools</);
   assert.match(html, />18</);
   assert.match(html, />Locations</);
   assert.match(html, />3</);
@@ -58,4 +61,10 @@ test("location view owns the pressed navigation state", () => {
   assert.match(html, /id="inventory-stock-tab"[^>]*aria-pressed="false"/);
   assert.match(html, /id="inventory-locations-tab"[^>]*aria-pressed="true"/);
   assert.match(html, /id="inventory-purchases-tab"[^>]*aria-pressed="false"/);
+});
+
+test("loan view owns its own panel and pressed state", () => {
+ const html = renderNavigation("LOANS");
+ assert.match(html, /id="inventory-loans-tab"[^>]*aria-controls="inventory-loans-panel"[^>]*aria-pressed="true"/);
+ assert.match(html, /id="inventory-stock-tab"[^>]*aria-pressed="false"/);
 });

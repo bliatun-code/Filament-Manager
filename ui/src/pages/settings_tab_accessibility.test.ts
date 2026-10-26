@@ -27,7 +27,7 @@ test("settings tabs and active panel expose matching ARIA relationships", () => 
   assert.match(accessibilitySource, /key === "ArrowRight"/);
   assert.match(accessibilitySource, /key === "ArrowLeft"/);
   assert.match(outletSource, /role="tabpanel"/);
-  assert.match(outletSource, /aria-labelledby=\{settingsTabId\(activeTab\)\}/);
+  assert.match(outletSource, /aria-labelledby=\{settingsTabId\(tab\)\}/);
   assert.match(layoutSource, /<SettingsTabNav label=\{title\}/);
   assert.equal(settingsTabId("GENERAL"), "settings-tab-general");
   assert.equal(settingsTabPanelId("GENERAL"), "settings-panel-general");
@@ -41,34 +41,31 @@ test("settings tabs and active panel expose matching ARIA relationships", () => 
   );
 });
 
-test("settings tabs use balanced responsive columns instead of an orphaned wrapped tab", () => {
-  assert.match(
-    navSource,
-    /grid grid-cols-2 gap-1\.5 sm:grid-cols-3 min-\[1050px\]:grid-cols-6/,
-  );
-  assert.match(navSource, /min-w-0 w-full/);
-  assert.doesNotMatch(navSource, /flex flex-wrap gap-1\.5/);
+test("settings navigation uses a vertical sidebar with a compact narrow layout", () => {
+  assert.match(navSource, /settings-balanced-sidebar/);
+  assert.match(navSource, /aria-orientation="vertical"/);
+  assert.match(navSource, /settings-balanced-tab-active/);
+  assert.doesNotMatch(navSource, /min-\[1050px\]:grid-cols-6/);
 });
 
 test("compact settings tabs keep two columns at laptop widths", () => {
   assert.equal(
     settingsRouteOutletGridClass("FILAMENT_DEFAULTS"),
-    "mt-4 grid min-w-0 grid-cols-1 gap-6 lg:grid-cols-[minmax(0,2fr)_minmax(0,3fr)]",
+    "grid min-w-0 grid-cols-1",
   );
   assert.equal(
     settingsRouteOutletGridClass("GENERAL"),
-    "mt-4 grid min-w-0 grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]",
+    "grid min-w-0 grid-cols-1",
   );
-  assert.match(
-    settingsRouteOutletGridClass("PRINTERS"),
-    /xl:grid-cols-\[minmax\(0,1\.2fr\)_minmax\(0,1fr\)\]/,
-  );
+  assert.equal(settingsRouteOutletGridClass("PRINTERS"), "grid min-w-0 grid-cols-1");
 });
 
 test("settings tab keyboard navigation wraps and supports Home and End", () => {
   assert.equal(resolveSettingsTabNavigationIndex(0, 6, "ArrowRight"), 1);
   assert.equal(resolveSettingsTabNavigationIndex(5, 6, "ArrowRight"), 0);
   assert.equal(resolveSettingsTabNavigationIndex(0, 6, "ArrowLeft"), 5);
+  assert.equal(resolveSettingsTabNavigationIndex(5, 6, "ArrowDown"), 0);
+  assert.equal(resolveSettingsTabNavigationIndex(0, 6, "ArrowUp"), 5);
   assert.equal(resolveSettingsTabNavigationIndex(3, 6, "Home"), 0);
   assert.equal(resolveSettingsTabNavigationIndex(1, 6, "End"), 5);
   assert.equal(resolveSettingsTabNavigationIndex(1, 6, "Enter"), null);

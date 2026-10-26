@@ -93,17 +93,17 @@ export function normalizeCompanionScreenshotTheme(value) {
   }
   if (!requested) {
     throw new Error(
-      'Companion screenshot theme is required. Use "light", "dark", "auto", "bambu", or "prusa".',
+      'Companion screenshot theme is required. Use "light", "dark", "auto", "dark-deep", or "blue".',
     );
   }
   throw new Error(
-    `Unknown Companion screenshot theme "${value}". Use "light", "dark", "auto", "bambu", or "prusa".`,
+    `Unknown Companion screenshot theme "${value}". Use "light", "dark", "auto", "dark-deep", or "blue".`,
   );
 }
 
 export function companionScreenshotColorScheme(themeMode) {
   const normalized = normalizeCompanionScreenshotTheme(themeMode);
-  if (normalized === "bambu" || normalized === "prusa") {
+  if (normalized === "dark-deep" || normalized === "blue") {
     // Brand themes are intentionally dark regardless of the device preference.
     // Exercise them against a light OS in visual QA so accidental reliance on a
     // prefers-color-scheme: dark rule cannot pass unnoticed.
@@ -948,7 +948,7 @@ async function prepareAddSpoolScenario(page, timeoutMs) {
 }
 
 async function prepareLendSpoolScenario(page, timeoutMs) {
-  await page.locator('[data-root-flow="loans"]').click({ timeout: timeoutMs });
+  await page.locator('[data-action="set-root-flow"][data-root-flow="loans"]').click({ timeout: timeoutMs });
   await page.locator('[data-action="start-loan-picker"]').click({ timeout: timeoutMs });
   await page.waitForSelector(".task-sheet", { timeout: timeoutMs });
   const option = await chooseFirstNonBambuOption(page.locator(".loan-picker-option"));
@@ -959,7 +959,7 @@ async function prepareLendSpoolScenario(page, timeoutMs) {
 }
 
 async function prepareReturnLoanScenario(page, timeoutMs) {
-  await page.locator('[data-root-flow="loans"]').click({ timeout: timeoutMs });
+  await page.locator('[data-action="set-root-flow"][data-root-flow="loans"]').click({ timeout: timeoutMs });
   await page.waitForSelector(".loan-card", { timeout: timeoutMs });
   await page.locator('[data-action="toggle-loan-return"]').first().click({ timeout: timeoutMs });
   await page.waitForSelector(".loan-return-task-sheet", { timeout: timeoutMs });
@@ -971,7 +971,7 @@ async function prepareDetailScenario(page, timeoutMs) {
 }
 
 async function preparePrintersScenario(page, timeoutMs) {
-  await page.locator('[data-root-flow="printers"]').click({ timeout: timeoutMs });
+  await page.locator('[data-action="set-root-flow"][data-root-flow="printers"]').click({ timeout: timeoutMs });
   await page.waitForSelector(".slot-card", { timeout: timeoutMs });
   await waitForCompanionPrinterLiveData(page);
 }
@@ -992,7 +992,7 @@ export async function waitForCompanionPrinterLiveData(
 }
 
 async function prepareSettingsScenario(page, timeoutMs) {
-  await page.locator('[data-root-flow="settings"]').click({ timeout: timeoutMs });
+  await page.locator('[data-action="set-root-flow"][data-root-flow="settings"]').click({ timeout: timeoutMs });
   await page.waitForSelector(".settings-card", { timeout: timeoutMs });
 }
 
@@ -1009,7 +1009,7 @@ export async function resetCompanionScreenshotScenarioPage(page, timeoutMs) {
     await page.waitForTimeout(25);
   }
 
-  await page.locator('[data-root-flow="storage"]').first().click({ timeout: timeoutMs });
+  await page.locator('[data-action="set-root-flow"][data-root-flow="storage"]').click({ timeout: timeoutMs });
   await page.waitForSelector(".list-row", { state: "visible", timeout: timeoutMs });
   await page.evaluate(() => {
     window.scrollTo(0, 0);

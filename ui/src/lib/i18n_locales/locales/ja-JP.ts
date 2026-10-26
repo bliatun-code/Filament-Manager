@@ -1,6 +1,36 @@
 import type { DictionaryNode } from "../../i18n_types";
 
 export const jaJPDictionary: DictionaryNode = {
+    access: {
+      "title": "アクセスの更新が必要です",
+      "body": "このブラウザーを再承認するようホストに依頼してください。",
+      "deviceName": "デバイス名",
+      "nameHint": "この名前はホストがデバイスを見分けるためだけに使用します。",
+      "request": "アクセスを再申請",
+      "pendingTitle": "申請を送信しました",
+      "pendingBody": "ホストの Filament Manager でアクセスを承認する必要があります。",
+      "waiting": "ホストの承認待ち…",
+      "codeTitle": "ホストのコードを入力",
+      "codeLabel": "ワンタイムコード",
+      "codeHint": "6桁の数字です。有効期限は5分です。",
+      "confirm": "アクセスを確認",
+      "badCode": "コードが違います。残り {count} 回試行できます。",
+      "rejected": "申請は拒否されました。",
+      "expired": "申請の有効期限が切れました。再申請してください。",
+      "locked": "3回失敗しました。アクセスを再申請してください。",
+      "cancelled": "申請はキャンセルされました。",
+      "cancel": "申請をキャンセル",
+      "otherWay": "ペアリングリンクを使用",
+      "fallback": "ホストの「ライブラリとウェブアプリ」で新しいペアリングリンクを開くか、QRコードを読み取ってください。",
+      "banner": "ブラウザーアクセス申請: {count}",
+      "open": "申請を表示",
+      "hostTitle": "ブラウザーアクセス申請",
+      "trust": "名前はデバイスが提示したものです。知っているデバイスだけを承認してください。",
+      "actionFailed": "申請が変更されたか、サービスを利用できません。再試行してください。",
+      "reject": "拒否",
+      "approve": "アクセスを許可",
+      "shareCode": "このコードを申請元のデバイスを使用している人に伝えてください。"
+    },
   "app": {
     "title": "Filament Manager",
     "iconAlt": "Filament Managerアイコン",
@@ -305,6 +335,19 @@ export const jaJPDictionary: DictionaryNode = {
     "badgeNoPrinterSlots": "プリンター slots がまだ構成されていません。"
   },
   "inventory": {
+    labelsAction: "ラベル",
+    loansTab: "貸出・借入",
+    "detailWeight": "重量",
+    "detailPlacementOwnership": "場所と所有者",
+    "detailIdentityLabel": "識別情報とラベル",
+    "detailMorePurchase": "その他の購入情報",
+    "detailUsageHistory": "使用量と履歴",
+    "detailUpdateWeight": "重量を更新",
+    "detailShowUsageHistory": "グラフと履歴を表示",
+    "detailSaveTareFirst": "測定した総重量を更新する前に、変更した空スプール重量を保存してください。",
+    "detailAdvancedActions": "詳細操作",
+    "detailOpenPrinters": "プリンターを開く",
+
     "labelPreviewFailed": "ラベルのプレビューを準備できませんでした。もう一度お試しください。",
     "labelRetryPreview": "プレビューを再試行",
     "labelOpenSavedFile": "保存したファイルを開く",
@@ -1005,6 +1048,7 @@ export const jaJPDictionary: DictionaryNode = {
     }
   },
   "loans": {
+    person: "相手",
     "clientReadOnlyBanner": "このデバイスはクライアントとしてリンクされています。ローンの変更は今のところ host に残ります。",
     "clientReadOnlyAction": "このデバイスはクライアントとして接続されています。ローンの変更には host を使用します。",
     "clientReadOnlyBannerPaired": "このデバイスはクライアントとして接続されています。返品と返金は host に送信できますが、新しいローンの作成はそこに残ります。",
@@ -1087,6 +1131,11 @@ export const jaJPDictionary: DictionaryNode = {
     }
   },
   "printers": {
+      replaceRoll: "スプールを交換",
+      selectRoll: "スプールを選択",
+      linkObserved: "検出したスプールを関連付け",
+      startedCandidatesFirst: "一致度が同じ場合、使用途中のスプールを満量のスプールより先に表示します。関連付ける前にスプールを確認してください。",
+
     "subtitle": "slots とプリンターにリンクされたマテリアルの使用を管理します。",
     "desktopOnly": "プリンターの概要は、desktop アプリ ビルドで利用できます。",
     "clientReadOnlyBanner": "このデバイスはクライアントとしてリンクされています。プリンター割り当ての変更は、今のところ host に残ります。",
@@ -1420,6 +1469,25 @@ export const jaJPDictionary: DictionaryNode = {
     }
   },
   "settings": {
+    themeGraySoft: "グレー · ソフト",
+    themeGrayDeep: "グレー · ディープ",
+    themeBlueNight: "ブルー · ナイト",
+    themeLightClean: "ライト · クリーン",
+    searchPrinterModels: "プリンターモデルを検索",
+    printerBrand: "メーカー",
+    customPrinterModel: "カスタムモデル名",
+    printerModelsAll: "すべて",
+    printerModelsOther: "その他",
+    printerModelsNoResults: "結果なし",
+
+    "noMatchingSwatches": "検索条件に一致する未設定の色見本はありません。",
+    "autoSaveHint": "このページの変更は自動的に保存されます。",
+    "changeLibraryRole": "ライブラリの役割を変更",
+    "localDiagnosticsScope": "このデバイス · ローカルデータベース",
+    "unsavedChanges": "未保存の変更",
+    "filamentDefaultsSaveGroupHint": "グループの標準価格を保存します。既存のスプール価格は、下の価格を適用した場合にのみ変更されます。",
+    "swatchSearch": "メーカー、フィラメント、色、IDで検索",
+
     "catalogRefreshStatusUncertain": "状態を確認できませんでした。更新ログを確認してください。更新はまだ実行中の可能性があります。",
     "catalogRefreshFailedNextStep": "更新は完了しませんでした。別の更新を始める前に更新ログを確認してください。",
     "catalogRefreshInterruptedNextStep": "更新が中断されました。再開する前にカタログと更新ログを確認してください。",

@@ -1,3 +1,4 @@
+import { PrinterModelPicker } from "./printer_model_picker";
 import { useState, type FormEvent } from "react";
 import { inlineStatusSignalClass } from "../lib/chip_styles";
 import type { PrinterModelProfile } from "../lib/printer_profiles";
@@ -165,23 +166,13 @@ export function SettingsPrinterEditForm({
     >
       <div className="space-y-2">
         <div className="grid grid-cols-1 gap-3 min-[720px]:grid-cols-2 lg:grid-cols-[1.2fr_1fr_110px_130px]">
-          <label className="flex min-w-0 flex-col gap-1" htmlFor={modelInputId}>
-            <span className={settingsSectionLabelClass}>
+          <div className="flex min-w-0 flex-col gap-1">
+            <label className={settingsSectionLabelClass} htmlFor={modelInputId}>
               {t("settings.printerModel", "Printer model")}
-            </span>
-            <input
-              id={modelInputId}
-              type="text"
-              value={model}
-              onChange={(event) => onModelChange(event.target.value)}
-              list="printer-model-options"
-              aria-describedby={configurationHintId}
-              className={`${settingsFormControlClass} mt-auto`}
-              placeholder={t("settings.printerModel", "Printer model")}
-              disabled={disabled}
-              required
-            />
-          </label>
+            </label>
+            <PrinterModelPicker id={modelInputId} value={model} onChange={onModelChange}
+              describedBy={configurationHintId} disabled={disabled} allowCustom />
+          </div>
           <label className="flex min-w-0 flex-col gap-1" htmlFor={nameInputId}>
             <span className={settingsSectionLabelClass}>
               {t("settings.printerName", "Printer name")}

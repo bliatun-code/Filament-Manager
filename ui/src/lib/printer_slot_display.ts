@@ -112,7 +112,8 @@ export function derivePrinterSlotDisplayState(options: {
       (slot.live_is_active === true && liveIdentityFresh));
   const savedRfidTag = slot.spool_rfid_tag?.trim() ?? "";
   const liveIdentityLabel =
-    liveIdentityFresh && effectiveLiveTray?.matched_inventory_mode === "exact_rfid"
+    liveIdentityFresh && effectiveLiveTray?.matched_inventory_mode === "exact_rfid" &&
+      effectiveLiveTray.matched_inventory_spool_id === slot.spool_id
       ? t("printers.liveRfid", "Live RFID")
       : savedRfidTag
         ? t("inventory.rfidRegistered", "RFID registered")

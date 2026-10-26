@@ -36,7 +36,10 @@ export const noticeUrlForAppVersion: AppVersionUrlBuilder = () => {
 
 export function screenshotTourUrl(appVersion: string | null | undefined): string | null {
   const tag = releasedAppTag(appVersion);
-  return tag ? `${APP_REPOSITORY_URL}/blob/${tag}/docs/SCREENSHOTS.md` : null;
+  if (!tag) return null;
+  const [major, minor] = tag.slice(1).split(".").map(Number);
+  const path = major > 0 || minor >= 35 ? "README.md" : "docs/SCREENSHOTS.md";
+  return `${APP_REPOSITORY_URL}/blob/${tag}/${path}`;
 }
 
 export function latestReleaseUrl(): string {

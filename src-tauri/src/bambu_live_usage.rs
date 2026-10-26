@@ -8,8 +8,10 @@ use crate::backend::filament_database::{
     BambuLiveObservedStateRow, BambuLiveObservedTrayRow, FilamentDatabase, PrinterOverviewRow,
 };
 use crate::backend::printer_slot_live_mapping::bambu_live_slot_matches_tray;
+use crate::bambu_live_matching::live_material_families_match;
 use crate::bambu_live_matching::{
-    live_color_matches_swatch, live_identity_text, live_tray_identity_text,
+    find_inventory_candidates, live_color_matches_swatch, live_identity_text,
+    live_tray_identity_text,
 };
 use crate::bambu_live_observation::{
     is_credible_finished_print_state, is_probable_completed_carried_print_state,
@@ -147,6 +149,32 @@ fn auto_sync_live_slots(
             })
             .unwrap_or(false);
 
+        // Keep unidentifiable outgoing rolls assigned until a measured slot operation
+        // records their outgoing weight. This also covers replacement by exact RFID.
+        if let Some(current_id) = slot.and_then(|slot| slot.spool_id.as_deref()) {
+            let mutation = auto_clear_empty_signal
+                || auto_clear_unknown_replacement
+                || auto_clear_color_replacement
+                || (tray.matched_inventory_mode.as_deref() == Some("exact_rfid")
+                    && tray.matched_inventory_spool_id.as_deref() != Some(current_id));
+            if mutation {
+                let current = db.get_spool_with_master_by_id(current_id)?;
+                let can_unload_automatically = current.as_ref().is_some_and(|row| {
+                    row.master
+                        .vendor
+                        .trim()
+                        .to_ascii_lowercase()
+                        .starts_with("bambu")
+                        && row.spool.rfid_tag.as_deref().is_some_and(|tag| {
+                            !tag.trim().is_empty() && !tag.trim().chars().all(|c| c == '0')
+                        })
+                });
+                if !can_unload_automatically {
+                    continue;
+                }
+            }
+        }
+
         if auto_clear_empty_signal || auto_clear_unknown_replacement || auto_clear_color_replacement
         {
             if let Some(slot) = slot
@@ -186,6 +214,84 @@ fn auto_sync_live_slots(
                     }),
                 )?;
             }
+            continue;
+        }
+
+        if tray.matched_inventory_mode.as_deref() != Some("exact_rfid") {
+            if let Some(slot) = slot
+                && slot.spool_id.is_none()
+                && tray.loaded
+                && slot_present_from_exist_bits != Some(false)
+                && observed.online
+                && observed.mqtt_connected
+                && identity_is_recent(tray.last_identity_seen_at.as_deref(), 10)
+            {
+                db.assign_observed_spool_to_empty_slot(
+                    &overview.printer.id,
+                    &slot.slot_id,
+                    |db, current| {
+                        if live_identity_is_blocked_by_manual_clear(
+                            tray.last_identity_seen_at.as_deref(),
+                            current.live_cache_cleared_at.as_deref(),
+                        ) {
+                            return Ok(None);
+                        }
+                        let assigned: std::collections::HashSet<String> = db
+                            .list_printer_overview()?
+                            .into_iter()
+                            .flat_map(|printer| {
+                                printer.slots.into_iter().filter_map(|slot| slot.spool_id)
+                            })
+                            .collect();
+                        let loaned: std::collections::HashSet<String> = db
+                            .list_active_spool_loans()?
+                            .into_iter()
+                            .filter(|row| row.loan.loan_direction == "OUTBOUND")
+                            .map(|row| row.loan.spool_id)
+                            .collect();
+                        let rows: Vec<_> = db
+                            .list_all_spools_with_master()?
+                            .into_iter()
+                            .filter(|row| {
+                                crate::backend::inventory_domain::SpoolStatus::from_raw(Some(
+                                    &row.spool.status,
+                                )) == crate::backend::inventory_domain::SpoolStatus::InStock
+                                    && !assigned.contains(&row.spool.id)
+                                    && !loaned.contains(&row.spool.id)
+                                    && (live_tray_identity_text(tray).is_some()
+                                        || !row
+                                            .master
+                                            .vendor
+                                            .trim()
+                                            .to_ascii_lowercase()
+                                            .starts_with("bambu"))
+                            })
+                            .collect();
+                        let candidates = find_inventory_candidates(
+                            tray,
+                            &rows,
+                            live_tray_identity_text(tray).is_some(),
+                        );
+                        // Never turn a weaker name/material-only hint into an automatic
+                        // placement. Colour and material must corroborate the single roll.
+                        if candidates.len() != 1 {
+                            return Ok(None);
+                        }
+                        let row = candidates[0];
+                        if !live_material_families_match(
+                            tray.filament_type.as_deref(),
+                            &row.master.material,
+                        ) || !live_color_matches_swatch(
+                            tray.color_hex.as_deref(),
+                            row.master.hex_color.as_deref(),
+                        ) {
+                            return Ok(None);
+                        }
+                        Ok(Some(row.spool.id.clone()))
+                    },
+                )?;
+            }
+            // Metadata/preset signals never authorize RFID weight estimation.
             continue;
         }
 

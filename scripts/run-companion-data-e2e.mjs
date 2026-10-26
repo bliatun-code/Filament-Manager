@@ -299,7 +299,11 @@ async function openCompanion(page, baseUrl, timeoutMs) {
     waitUntil: "domcontentloaded",
   });
   try {
-    await page.locator('[data-root-flow="storage"]').waitFor({
+    await page.locator('[data-action="set-root-flow"][data-root-flow="storage"]').waitFor({
+      state: "visible",
+      timeout: timeoutMs,
+    });
+    await page.locator('[data-action="select-spool"]').first().waitFor({
       state: "visible",
       timeout: timeoutMs,
     });
@@ -313,16 +317,11 @@ async function openCompanion(page, baseUrl, timeoutMs) {
       { cause: error },
     );
   }
-  await page.waitForFunction(
-    () => !document.body.innerText.includes("Trusted-LAN browser companion"),
-    undefined,
-    { timeout: timeoutMs },
-  );
 }
 
 async function reloadCompanion(page, baseUrl, timeoutMs) {
   await openCompanion(page, baseUrl, timeoutMs);
-  await page.locator('[data-root-flow="storage"]').click();
+  await page.locator('[data-action="set-root-flow"][data-root-flow="storage"]').click();
   await page.locator('[data-action="select-spool"]').first().waitFor({
     state: "visible",
     timeout: timeoutMs,
@@ -586,7 +585,7 @@ async function loadSpoolIntoPrinterAndClear(
     dbPath,
     record,
   ).printerAssignments;
-  await page.locator('[data-root-flow="printers"]').click();
+  await page.locator('[data-action="set-root-flow"][data-root-flow="printers"]').click();
   const openSlot = page.locator(
     `[data-action="start-printer-slot-assignment"][data-printer-id="${COMPANION_E2E_PRINTER_TARGET.printerId}"][data-slot-id="${COMPANION_E2E_PRINTER_TARGET.slotId}"]`,
   );
@@ -781,7 +780,7 @@ async function loadSpoolIntoPrinterAndClear(
 }
 
 async function receiveWishlistFixture(page, timeoutMs, dbPath, record) {
-  await page.locator('[data-root-flow="storage"]').click();
+  await page.locator('[data-action="set-root-flow"][data-root-flow="storage"]').click();
   await page.locator('[data-action="toggle-add-spool-form"]').click();
   const sheet = page.locator(".task-sheet.add-filament-sheet");
   await sheet.waitFor({ state: "visible", timeout: timeoutMs });
@@ -930,7 +929,7 @@ async function receiveWishlistFixture(page, timeoutMs, dbPath, record) {
 }
 
 async function lendAndReturnSpool(page, baseUrl, timeoutMs, dbPath, spoolId, record) {
-  await page.locator('[data-root-flow="loans"]').click();
+  await page.locator('[data-action="set-root-flow"][data-root-flow="loans"]').click();
   await page.locator('[data-action="start-loan-picker"]').click();
   const option = page.locator(
     `[data-action="select-loan-spool"][data-spool-id="${spoolId}"]`,
@@ -1029,7 +1028,7 @@ async function lendAndReturnSpool(page, baseUrl, timeoutMs, dbPath, spoolId, rec
     record.returnMeasuredWeight,
     "Reloaded",
   );
-  await page.locator('[data-root-flow="loans"]').click();
+  await page.locator('[data-action="set-root-flow"][data-root-flow="loans"]').click();
   await page
     .locator('[data-action="set-loan-status"][data-loan-status="RETURNED"]')
     .click();
@@ -1100,7 +1099,7 @@ async function runCompanionDataPageWorkflows(page, options, pageErrors) {
     spoolId,
     record,
   );
-  await page.locator('[data-root-flow="storage"]').click();
+  await page.locator('[data-action="set-root-flow"][data-root-flow="storage"]').click();
   const reloadedRow = await verifySpoolInCurrentUi(
     page,
     timeoutMs,

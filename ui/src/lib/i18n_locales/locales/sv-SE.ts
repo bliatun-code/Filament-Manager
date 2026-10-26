@@ -1,6 +1,36 @@
 import type { DictionaryNode } from "../../i18n_types";
 
 export const svSEDictionary: DictionaryNode = {
+    access: {
+      "title": "Åtkomsten behöver förnyas",
+      "body": "Be värden godkänna den här webbläsaren igen.",
+      "deviceName": "Enhetens namn",
+      "nameHint": "Namnet hjälper bara värden att känna igen din enhet.",
+      "request": "Begär åtkomst igen",
+      "pendingTitle": "Förfrågan skickad",
+      "pendingBody": "Åtkomsten måste godkännas i Filament Manager på värddatorn.",
+      "waiting": "Väntar på värden…",
+      "codeTitle": "Ange koden från värden",
+      "codeLabel": "Engångskod",
+      "codeHint": "Sex siffror. Koden är giltig i fem minuter.",
+      "confirm": "Bekräfta åtkomst",
+      "badCode": "Fel kod. {count} försök återstår.",
+      "rejected": "Förfrågan avslogs.",
+      "expired": "Förfrågan har gått ut. Begär åtkomst igen.",
+      "locked": "Tre felaktiga försök. Begär åtkomst igen.",
+      "cancelled": "Förfrågan avbröts.",
+      "cancel": "Avbryt förfrågan",
+      "otherWay": "Använd en parkopplingslänk",
+      "fallback": "Öppna en ny parkopplingslänk eller skanna dess QR-kod under Bibliotek och webbapp på värden.",
+      "banner": "Förfrågningar om webbläsaråtkomst: {count}",
+      "open": "Visa förfrågningar",
+      "hostTitle": "Förfrågningar om webbläsaråtkomst",
+      "trust": "Namnet anges av enheten. Godkänn bara enheter som du känner igen.",
+      "actionFailed": "Förfrågan har ändrats eller tjänsten är otillgänglig. Försök igen.",
+      "reject": "Avslå",
+      "approve": "Ge åtkomst",
+      "shareCode": "Ge den här koden till personen som använder enheten som begärde åtkomst."
+    },
   "app": {
     "navigation": "Navigering",
     "skipToMainContent": "Hoppa till huvudinnehållet",
@@ -208,6 +238,7 @@ export const svSEDictionary: DictionaryNode = {
     }
   },
   "loans": {
+    person: "Person",
     "clientHostUnavailable": "Värdanslutningsdetaljer saknas för den här klientenheten.",
     "clientReadOnlyHost": "Värd",
     "clientReadOnlyUpdated": "Uppdaterad",
@@ -635,6 +666,11 @@ export const svSEDictionary: DictionaryNode = {
     "legacyLowStockFallback": "Reservvärde på 200 g för äldre värd"
   },
   "printers": {
+      replaceRoll: "Byt rulle",
+      selectRoll: "Välj rulle",
+      linkObserved: "Koppla observerad rulle",
+      startedCandidatesFirst: "Vid lika bra träffar visas påbörjade rullar före fulla. Bekräfta rullen innan den kopplas.",
+
     "clientHostUnavailable": "Värdanslutningsdetaljer saknas för den här klientenheten.",
     "clientReadOnlyHost": "Värd",
     "subtitle": "Hantera platser och skrivarlänkad materialanvändning.",
@@ -784,6 +820,19 @@ export const svSEDictionary: DictionaryNode = {
     }
   },
   "inventory": {
+    labelsAction: "Etiketter",
+    loansTab: "Utlåning och inlåning",
+    "detailWeight": "Vikt",
+    "detailPlacementOwnership": "Placering och ägarskap",
+    "detailIdentityLabel": "Identitet och etikett",
+    "detailMorePurchase": "Fler inköpsdetaljer",
+    "detailUsageHistory": "Förbrukning och historik",
+    "detailUpdateWeight": "Uppdatera vikt",
+    "detailShowUsageHistory": "Visa diagram och historik",
+    "detailSaveTareFirst": "Spara ändrad tomvikt innan du uppdaterar uppmätt totalvikt.",
+    "detailAdvancedActions": "Avancerade åtgärder",
+    "detailOpenPrinters": "Öppna skrivare",
+
     "labelPreviewFailed": "Det gick inte att förbereda etikettförhandsvisningen. Försök igen.",
     "labelRetryPreview": "Försök förhandsvisa igen",
     "labelOpenSavedFile": "Öppna sparad fil",
@@ -1420,6 +1469,25 @@ export const svSEDictionary: DictionaryNode = {
     }
   },
   "settings": {
+    themeGraySoft: "Grå · Mjuk",
+    themeGrayDeep: "Grå · Djup",
+    themeBlueNight: "Blå · Natt",
+    themeLightClean: "Ljus · Ren",
+    searchPrinterModels: "Sök skrivarmodeller",
+    printerBrand: "Tillverkare",
+    customPrinterModel: "Eget modellnamn",
+    printerModelsAll: "Alla",
+    printerModelsOther: "Andra",
+    printerModelsNoResults: "Inga träffar",
+
+    "noMatchingSwatches": "Inga saknade färgprover matchar sökningen.",
+    "autoSaveHint": "Ändringar på den här sidan sparas automatiskt.",
+    "changeLibraryRole": "Ändra biblioteksroll",
+    "localDiagnosticsScope": "Den här enheten · lokal databas",
+    "unsavedChanges": "Osparade ändringar",
+    "filamentDefaultsSaveGroupHint": "Spara gruppens standardpris. Priser på befintliga rullar ändras först när du tillämpar priset nedan.",
+    "swatchSearch": "Sök efter leverantör, filament, färg eller ID",
+
     "catalogRefreshStatusUncertain": "Status kunde inte bekräftas. Se uppdateringsloggen; uppdateringen kan fortfarande pågå.",
     "catalogRefreshFailedNextStep": "Uppdateringen slutfördes inte. Se uppdateringsloggen innan du startar en ny uppdatering.",
     "catalogRefreshInterruptedNextStep": "Uppdateringen avbröts. Kontrollera katalogen och uppdateringsloggen innan du börjar om.",

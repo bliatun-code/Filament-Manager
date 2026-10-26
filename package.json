@@ -2,7 +2,7 @@
   "name": "bambu-filament-manager",
   "private": true,
   "license": "AGPL-3.0-or-later",
-  "version": "0.34.0",
+  "version": "0.35.0",
   "type": "module",
   "engines": {
     "node": ">=24 <25",
@@ -25,6 +25,8 @@
     "check:seed-catalog": "node ./scripts/check-seed-catalog.mjs",
     "check:bambu-data": "node ./scripts/check-bambu-data.mjs",
     "check:printer-models": "node ./scripts/check-printer-models.mjs",
+    "generate:companion-visuals": "node ./scripts/generate-companion-visual-assets.mjs",
+    "check:companion-visuals": "node ./scripts/generate-printer-image-presentation.mjs --check && node ./scripts/generate-companion-visual-assets.mjs --check",
     "check:companion-routes": "node ./scripts/check-companion-routes.mjs",
     "check:companion-css-vars": "node ./scripts/check-companion-css-vars.mjs",
     "check:ui-css-vars": "node ./scripts/check-ui-css-vars.mjs",
@@ -41,7 +43,7 @@
     "export:i18n-review": "node ./scripts/export-i18n-review.mjs",
     "check:ui-bundle-chunks": "node ./scripts/check-ui-bundle-chunks.mjs",
     "check:ui-orphans": "node ./scripts/check-ui-orphans.mjs",
-    "check:contracts": "npm run check:version && npm run check:msi-version && npm run check:database-migrations && npm run check:shared-contracts && npm run check:github-actions-pinning && npm run check:public-readiness && npm run check:path-portability && npm run check:command-portability && npm run check:seed-catalog && npm run check:bambu-data && npm run check:printer-models && npm run check:tauri-invokes && npm run check:companion-routes && npm run check:css-vars && npm run check:ui-orphans && npm run check:ui-architecture && npm run check:i18n-fallbacks && npm run check:i18n-locales && npm run check:companion-i18n && npm run check:i18n-ui-copy && npm run check:i18n-readiness && npm run check:ui-bundle-chunks",
+    "check:contracts": "npm run check:version && npm run check:msi-version && npm run check:database-migrations && npm run check:shared-contracts && npm run check:github-actions-pinning && npm run check:public-readiness && npm run check:path-portability && npm run check:command-portability && npm run check:seed-catalog && npm run check:bambu-data && npm run check:printer-models && npm run check:tauri-invokes && npm run check:companion-routes && npm run check:companion-visuals && npm run check:css-vars && npm run check:ui-orphans && npm run check:ui-architecture && npm run check:i18n-fallbacks && npm run check:i18n-locales && npm run check:companion-i18n && npm run check:i18n-ui-copy && npm run check:i18n-readiness && npm run check:ui-bundle-chunks",
     "lint:ui": "npm --prefix ./ui run lint",
     "fmt:rust": "cargo fmt --all -- --check",
     "test:companion": "node ./scripts/run-companion-tests.mjs",
@@ -86,7 +88,9 @@
     "qa:visual:desktop:matrix": "node ./scripts/run-desktop-visual-matrix.mjs",
     "catalog:seed:export": "node ./scripts/export-seed-catalog.mjs",
     "tauri": "node ./scripts/run-tauri.mjs",
-    "test:loans:dialogs": "node ./scripts/run-loan-dialog-regressions.mjs"
+    "test:loans:dialogs": "node ./scripts/run-loan-dialog-regressions.mjs",
+    "qa:visual:companion:balanced": "node ./scripts/run-companion-balanced-qa.mjs",
+    "generate:printer-artwork": "node ./scripts/generate-printer-image-presentation.mjs"
   },
   "optionalDependencies": {
     "better-sqlite3": "^13.0.3"

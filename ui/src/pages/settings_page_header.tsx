@@ -5,11 +5,9 @@ type SettingsPageHeaderProps = {
 
 export function SettingsPageHeader({ subtitle, title }: SettingsPageHeaderProps) {
   return (
-    <div className="page-header">
-      <div className="page-header-copy">
-        <h1 className="page-title">{title}</h1>
-        <div className="page-subtitle">{subtitle}</div>
-      </div>
-    </div>
+    <header className="settings-balanced-header">
+      <h1 className="text-xl font-semibold tracking-tight text-slate-900 dark:text-slate-100">{title}</h1>
+      <p className="sr-only">{subtitle}</p>
+    </header>
   );
 }

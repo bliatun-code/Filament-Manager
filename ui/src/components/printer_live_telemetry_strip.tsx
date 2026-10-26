@@ -1,3 +1,4 @@
+import { Droplet, Heater, Thermometer } from "lucide-react";
 import type { ReactNode } from "react";
 import { useI18n } from "../lib/i18n";
 import type { PrinterLiveTelemetry } from "../lib/printer_live_telemetry";
@@ -6,49 +7,9 @@ type PrinterLiveTelemetryStripProps = {
   telemetry: PrinterLiveTelemetry;
 };
 
-function NozzleIcon() {
-  return (
-    <svg aria-hidden="true" viewBox="0 0 20 20" className="h-4 w-4" fill="none">
-      <path
-        d="M6.5 3.5h7l-.75 6.25L10 13.5 7.25 9.75 6.5 3.5Z"
-        stroke="currentColor"
-        strokeWidth="1.45"
-        strokeLinejoin="round"
-      />
-      <path d="M8.4 15.2h3.2" stroke="currentColor" strokeWidth="1.45" strokeLinecap="round" />
-      <path d="M7.2 17h5.6" stroke="currentColor" strokeWidth="1.45" strokeLinecap="round" />
-    </svg>
-  );
-}
-
-function BedIcon() {
-  return (
-    <svg aria-hidden="true" viewBox="0 0 20 20" className="h-4 w-4" fill="none">
-      <path d="M4 12.5h12" stroke="currentColor" strokeWidth="1.45" strokeLinecap="round" />
-      <path d="M5.5 15h9" stroke="currentColor" strokeWidth="1.45" strokeLinecap="round" />
-      <path
-        d="M6.5 4.2c-1 1.1-1 2.2 0 3.3M10 4.2c-1 1.1-1 2.2 0 3.3M13.5 4.2c-1 1.1-1 2.2 0 3.3"
-        stroke="currentColor"
-        strokeWidth="1.25"
-        strokeLinecap="round"
-      />
-    </svg>
-  );
-}
-
-function DropletIcon() {
-  return (
-    <svg aria-hidden="true" viewBox="0 0 20 20" className="h-4 w-4" fill="none">
-      <path
-        d="M10 2.75c2.9 3.35 4.4 5.75 4.4 8.1a4.4 4.4 0 0 1-8.8 0C5.6 8.5 7.1 6.1 10 2.75Z"
-        stroke="currentColor"
-        strokeWidth="1.45"
-        strokeLinejoin="round"
-      />
-      <path d="M7.8 11.15c.2 1.25 1.05 2 2.25 2.12" stroke="currentColor" strokeWidth="1.25" strokeLinecap="round" />
-    </svg>
-  );
-}
+function NozzleIcon() { return <Thermometer size={16} strokeWidth={1.7} aria-hidden="true" />; }
+function BedIcon() { return <Heater size={16} strokeWidth={1.7} aria-hidden="true" />; }
+function DropletIcon() { return <Droplet size={16} strokeWidth={1.7} aria-hidden="true" />; }
 
 function PrinterPulseIcon({ active }: { active: boolean }) {
   return (

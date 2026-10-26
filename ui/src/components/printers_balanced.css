@@ -1,0 +1,78 @@
+.printers-balanced-page { --printer-surface:var(--app-theme-data-card-base); --printer-line:var(--app-theme-subtle-border); --printer-muted:var(--app-theme-control-placeholder); --printer-text:var(--app-theme-control-text); --printer-hover:var(--app-theme-control-hover-background); --printer-subtle:var(--app-theme-subtle-background); --printer-warning:var(--app-status-warning); }
+.printers-balanced-page .page-title { font-size:1.4rem; line-height:1.4; }
+.printers-balanced-page .page-subtitle { display:none; }
+.printers-balanced-page .page-header { align-items:center; gap:1rem; }
+.printers-balanced-page .page-header-actions { margin:0; }
+.printers-balanced-page .app-primary-action { background:var(--app-theme-primary-action-background); border-color:var(--app-theme-primary-action-border); color:var(--app-theme-primary-action-text); }
+.printers-balanced-page .printer-balanced-card { padding:1rem; border:1px solid var(--printer-line); background:var(--printer-surface); border-radius:.6rem; color:var(--printer-text); box-shadow:none; }
+.printers-balanced-page .printer-balanced-header { display:grid; grid-template-columns:minmax(0,1fr) auto; gap:.3rem 1rem; align-items:center; }
+.printers-balanced-page .printer-balanced-identity { display:flex; gap:.85rem; align-items:center; min-width:0; }
+.printers-balanced-page .printer-balanced-identity img { height:3.3rem; }
+.printers-balanced-page .printer-balanced-identity > div:first-child > div { border:0; background:transparent; padding:0; }
+.printers-balanced-page .printer-balanced-metrics { display:flex; flex-wrap:wrap; gap:.4rem 1rem; align-items:center; justify-content:end; }
+.printers-balanced-page .printer-balanced-metric { display:flex; align-items:baseline; gap:.3rem; font-size:.75rem; }
+.printers-balanced-page .printer-metric-label { color:var(--printer-muted); order:2; }
+.printers-balanced-page .printer-metric-value { font-weight:600; font-variant-numeric:tabular-nums; }
+.printers-balanced-page .printer-balanced-telemetry { grid-column:1/-1; padding-left:6rem; }
+.printers-balanced-page .printer-slot-table-wrap { margin-top:.7rem; }
+.printers-balanced-page .printer-slot-table { width:100%; border-collapse:collapse; font-size:.78rem; text-align:left; table-layout:fixed; }
+.printers-balanced-page .printer-slot-table th { font-weight:500; }
+.printers-balanced-page .printer-slot-table thead th { background:var(--printer-subtle); padding:.45rem .65rem; color:var(--printer-muted); font-size:.72rem; }
+.printers-balanced-page .printer-slot-table thead th:nth-child(1) { width:15%; }
+.printers-balanced-page .printer-slot-table thead th:nth-child(2) { width:33%; }
+.printers-balanced-page .printer-slot-table thead th:nth-child(3) { width:16%; }
+.printers-balanced-page .printer-slot-table thead th:nth-child(4) { width:13%; }
+.printers-balanced-page .printer-slot-table thead th:nth-child(5) { width:23%; }
+.printers-balanced-page .printer-slot-row > th,.printers-balanced-page .printer-slot-row > td { padding:.35rem .65rem; border-top:1px solid var(--printer-line); vertical-align:middle; overflow-wrap:anywhere; }
+.printers-balanced-page .printer-filament-identity { display:flex; align-items:center; gap:.7rem; min-width:0; }
+.printers-balanced-page .printer-filament-spool { width:3rem; height:3.3rem; flex-shrink:0; }
+.printers-balanced-page .printer-empty-spool { width:3rem; text-align:center; color:var(--printer-muted); }
+.printers-balanced-page .printer-filament-text { min-width:0; }
+.printers-balanced-page .printer-filament-title { display:flex; align-items:center; gap:.5rem; font-weight:600; line-height:1.5; }
+.printers-balanced-page .printer-filament-title > span { flex-shrink:0; }
+.printers-balanced-page .printer-filament-title > span:last-child { flex-shrink:1; }
+.printers-balanced-page .printer-secondary { color:var(--printer-muted); font-size:.72rem; line-height:1.6; }
+.printers-balanced-page .printer-reference-cell,.printers-balanced-page .printer-weight-cell { font-variant-numeric:tabular-nums; }
+.printers-balanced-page .printer-weight-track { display:inline-block; width:3.7rem; max-width:100%; height:.4rem; margin-left:.6rem; border-radius:.2rem; background:var(--printer-line); overflow:hidden; vertical-align:middle; }
+.printers-balanced-page .printer-weight-track > span { display:block; height:100%; background:#788da0; border-radius:inherit; }
+.dark .printers-balanced-page .printer-weight-track > span { background:#b7c5d2; }
+.printers-balanced-page .printer-weight-track.is-low > span { background:var(--printer-warning); }
+.printers-balanced-page .printer-row-action,.printers-balanced-page .printer-compact-picker > button { display:inline-flex; width:auto; align-items:center; gap:.4rem; padding:.4rem .6rem; border:1px solid var(--printer-line); border-radius:.35rem; background:var(--printer-subtle); color:var(--printer-text); font-size:.72rem; line-height:1.4; box-shadow:none; }
+.printers-balanced-page .printer-row-action:disabled { opacity:.5; }
+.printers-balanced-page .printer-compact-picker { display:inline-block; margin:.15rem .35rem .15rem 0; }
+.printers-balanced-page .printer-compact-popup { right:0; width:min(28rem,calc(100vw - 4rem)); min-width:18rem; }
+.printers-balanced-page .printer-in-use { color:var(--printer-text); font-size:.72rem; }
+.printers-balanced-page .printer-observation-label { color:var(--printer-warning); font-size:.72rem; line-height:1.5; }
+.printers-balanced-page .printer-observation-row td { padding:.25rem .65rem .65rem; }
+.printers-balanced-page .printer-observation-details { border-left:2px solid var(--printer-warning); padding-left:.65rem; }
+.printers-balanced-page .printer-observation-details > summary { color:var(--printer-warning); font-size:.75rem; padding:.15rem 0; width:fit-content; }
+.printers-balanced-page .printer-observation-details > div { background:transparent; border-radius:0; padding:.35rem 0; }
+.printers-balanced-page .printer-candidate-list > div { flex-wrap:wrap; padding:.4rem 0; gap:.5rem; border-top:1px solid var(--printer-line); }
+.printers-balanced-page .printer-candidate-list > div > .truncate { white-space:normal; overflow:visible; }
+.printers-balanced-page .printer-candidate-weight { font-variant-numeric:tabular-nums; }
+.printers-balanced-page .printer-candidate-hint { color:var(--printer-muted); margin-top:.5rem; }
+@media(max-width:1100px) {
+ .printers-balanced-page .printer-balanced-metrics { gap:.4rem .8rem; }
+ .printers-balanced-page .printer-balanced-header { grid-template-columns:1fr; }
+ .printers-balanced-page .printer-balanced-metrics { justify-content:start; padding-left:6rem; }
+ .printers-balanced-page .printer-weight-track { display:block; margin:.35rem 0 0; }
+ .printers-balanced-page .printer-slot-table thead th:nth-child(2) { width:29%; }
+ .printers-balanced-page .printer-slot-table thead th:nth-child(5) { width:27%; }
+}
+@media(max-width:720px) {
+ .printers-balanced-page .printer-balanced-card { padding:.8rem; }
+ .printers-balanced-page .printer-balanced-telemetry,.printers-balanced-page .printer-balanced-metrics { padding-left:0; }
+ .printers-balanced-page .printer-slot-table,.printers-balanced-page .printer-slot-table tbody,.printers-balanced-page .printer-slot-table tr { display:block; }
+ .printers-balanced-page .printer-slot-table thead { display:none; }
+ .printers-balanced-page .printer-slot-table .printer-slot-row { display:grid; grid-template-columns:minmax(0,1fr) auto; padding:.65rem 0; border-top:1px solid var(--printer-line); gap:.3rem .5rem; }
+ .printers-balanced-page .printer-slot-row > th,.printers-balanced-page .printer-slot-row > td { display:block; padding:0; border:0; }
+ .printers-balanced-page .printer-slot-label { grid-column:1/-1; color:var(--printer-muted); }
+ .printers-balanced-page .printer-filament-cell { grid-column:1/-1; }
+ .printers-balanced-page .printer-filament-spool { width:2.7rem; height:3rem; }
+ .printers-balanced-page .printer-reference-cell { padding-left:3.4rem !important; }
+ .printers-balanced-page .printer-weight-cell { text-align:right; }
+ .printers-balanced-page .printer-weight-track { margin-left:auto; }
+ .printers-balanced-page .printer-slot-actions { grid-column:1/-1; text-align:right; }
+ .printers-balanced-page .printer-observation-row td { display:block; padding:0 0 .6rem; }
+ .printers-balanced-page .printer-compact-popup { right:0; min-width:0; width:min(26rem,calc(100vw - 4rem)); }
+}

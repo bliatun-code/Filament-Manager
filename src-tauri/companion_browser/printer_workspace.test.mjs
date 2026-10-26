@@ -207,7 +207,7 @@ test("printer workspace keeps a gray slot tint while its weight action stays vis
     }),
   });
   const updateButton = html.match(
-    /<button[^>]*data-action="start-printer-weight-update"[^>]*data-printer-task-mode="update"[^>]*>Update weight<\/button>/,
+    /<button[^>]*data-action="start-printer-weight-update"[^>]*data-printer-task-mode="update"[^>]*>[\s\S]*?Update weight<\/button>/,
   )?.[0];
 
   assert.match(html, /slot-card slot-card-loaded swatch-surface swatch-card-surface/);
@@ -365,7 +365,7 @@ test("printer workspace does not show stale job timing when only a loaded slot r
   });
 
   assert.match(html, /printer-live-strip/);
-  assert.match(html, /Active/);
+  assert.match(html, /Live/);
   assert.match(html, /44 °C/);
   assert.doesNotMatch(html, /Printing/);
   assert.doesNotMatch(html, /41%/);
@@ -986,4 +986,15 @@ test("printer workspace localizes slot labels in norwegian", () => {
     ),
     "AMS 1 · Spor 3",
   );
+});
+
+test('unlinked live spool uses a friendly observed name, not its internal profile code', () => {
+ const observed={slot_id:'s',ams_id:'a',slot_index:1,spool_id:null,live_loaded:true,live_filament_type:'ABS',live_filament_name:'ABS',live_tray_id_name:'B00-K0',live_color_hex:'#000000',live_match_status:'unknown_rfid'};
+ const html=renderBoard({state:{catalogMasters:[{vendor:'Bambu',material:'ABS',filament_name:'ABS',color_name:'Black (40101)',hex_color:'#000000'}]},activePrinter:createPrinterRow({slots:[observed]})});
+ assert.match(html,/ABS · Black/);
+ assert.match(html,/RFID not registered/);
+ assert.match(html,/class="secondary-button slot-button"[^>]*data-action="add-live-catalog-spool"/);
+ assert.doesNotMatch(html,/B00-K0/);
+ const withoutCatalog=renderBoard({activePrinter:createPrinterRow({slots:[observed]})});
+ assert.doesNotMatch(withoutCatalog,/B00-K0/);
 });

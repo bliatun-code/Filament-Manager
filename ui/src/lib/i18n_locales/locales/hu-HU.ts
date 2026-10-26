@@ -1,6 +1,36 @@
 import type { DictionaryNode } from "../../i18n_types";
 
 export const huHUDictionary: DictionaryNode = {
+    access: {
+      "title": "A hozzáférést meg kell újítani",
+      "body": "Kérd meg a gazdagépet, hogy ismét engedélyezze ezt a böngészőt.",
+      "deviceName": "Eszköz neve",
+      "nameHint": "A név csak az eszköz felismerésében segíti a gazdagépet.",
+      "request": "Hozzáférés újbóli kérése",
+      "pendingTitle": "Kérelem elküldve",
+      "pendingBody": "A hozzáférést a gazdagépen futó Filament Manager alkalmazásban kell engedélyezni.",
+      "waiting": "Várakozás a gazdagépre…",
+      "codeTitle": "Add meg a gazdagép kódját",
+      "codeLabel": "Egyszer használatos kód",
+      "codeHint": "Hat számjegy. A kód öt percig érvényes.",
+      "confirm": "Hozzáférés megerősítése",
+      "badCode": "Hibás kód. Hátralévő próbálkozások: {count}.",
+      "rejected": "A kérelmet elutasították.",
+      "expired": "A kérelem lejárt. Kérj ismét hozzáférést.",
+      "locked": "Három hibás próbálkozás. Kérj ismét hozzáférést.",
+      "cancelled": "A kérelmet visszavonták.",
+      "cancel": "Kérelem visszavonása",
+      "otherWay": "Párosítási hivatkozás használata",
+      "fallback": "Nyiss meg egy új párosítási hivatkozást, vagy olvasd be a QR-kódját a gazdagép Könyvtár és webalkalmazás részében.",
+      "banner": "Böngésző-hozzáférési kérelmek: {count}",
+      "open": "Kérelmek megtekintése",
+      "hostTitle": "Böngésző-hozzáférési kérelmek",
+      "trust": "A nevet az eszköz adja meg. Csak ismert eszközöket engedélyezz.",
+      "actionFailed": "A kérelem megváltozott, vagy a szolgáltatás nem érhető el. Próbáld újra.",
+      "reject": "Elutasítás",
+      "approve": "Hozzáférés engedélyezése",
+      "shareCode": "Add át ezt a kódot a kérelmező eszközt használó személynek."
+    },
   "app": {
     "navigation": "Navigáció",
     "loadingPage": "Oldal betöltése...",
@@ -369,6 +399,7 @@ export const huHUDictionary: DictionaryNode = {
     "legacyLowStockFallback": "200 g-os tartalékérték régebbi gazdagéphez"
   },
   "loans": {
+    person: "Személy",
     "clientReadOnlyHost": "Házigazda",
     "clientReadOnlyLive": "Élő házigazda-kölcsönök megjelenítése.",
     "clientReadOnlyUpdated": "Frissítve",
@@ -635,6 +666,11 @@ export const huHUDictionary: DictionaryNode = {
     }
   },
   "printers": {
+      replaceRoll: "Tekercs cseréje",
+      selectRoll: "Tekercs kiválasztása",
+      linkObserved: "Észlelt tekercs hozzárendelése",
+      startedCandidatesFirst: "Azonos egyezésnél a részben használt tekercsek a teliek előtt jelennek meg. Hozzárendelés előtt erősítse meg a tekercset.",
+
     "clientReadOnlyHost": "Házigazda",
     "clientReadOnlyAction": "Ez az eszköz kliensként csatlakozik. A nyomtató módosításához használja a gazdagépet.",
     "clientReadOnlyCached": "A gazdagép nem elérhető. Az utolsó gyorsítótárban lévő nyomtató pillanatkép megjelenítése.",
@@ -784,6 +820,19 @@ export const huHUDictionary: DictionaryNode = {
     }
   },
   "inventory": {
+    labelsAction: "Címkék",
+    loansTab: "Kölcsönadott és kölcsönvett",
+    "detailWeight": "Tömeg",
+    "detailPlacementOwnership": "Hely és tulajdon",
+    "detailIdentityLabel": "Azonosító és címke",
+    "detailMorePurchase": "További vásárlási adatok",
+    "detailUsageHistory": "Fogyasztás és előzmények",
+    "detailUpdateWeight": "Tömeg frissítése",
+    "detailShowUsageHistory": "Diagram és előzmények megjelenítése",
+    "detailSaveTareFirst": "A mért össztömeg frissítése előtt mentse az üres tekercs módosított tömegét.",
+    "detailAdvancedActions": "Speciális műveletek",
+    "detailOpenPrinters": "Nyomtatók megnyitása",
+
     "labelPreviewFailed": "Nem sikerült elkészíteni a címke előnézetét. Próbálja újra.",
     "labelRetryPreview": "Előnézet újrapróbálása",
     "labelOpenSavedFile": "Mentett fájl megnyitása",
@@ -1420,6 +1469,25 @@ export const huHUDictionary: DictionaryNode = {
     }
   },
   "settings": {
+    themeGraySoft: "Szürke · Lágy",
+    themeGrayDeep: "Szürke · Mély",
+    themeBlueNight: "Kék · Éjszaka",
+    themeLightClean: "Világos · Tiszta",
+    searchPrinterModels: "Nyomtatómodellek keresése",
+    printerBrand: "Gyártó",
+    customPrinterModel: "Egyéni modellnév",
+    printerModelsAll: "Összes",
+    printerModelsOther: "Egyéb",
+    printerModelsNoResults: "Nincs találat",
+
+    "noMatchingSwatches": "Nincs a keresésnek megfelelő hiányzó színminta.",
+    "autoSaveHint": "Az ezen az oldalon végzett módosítások automatikusan mentődnek.",
+    "changeLibraryRole": "Könyvtárszerep módosítása",
+    "localDiagnosticsScope": "Ez az eszköz · helyi adatbázis",
+    "unsavedChanges": "Nem mentett módosítások",
+    "filamentDefaultsSaveGroupHint": "Mentse a csoport alapértelmezett árát. A meglévő tekercsek ára csak az alábbi ár alkalmazásakor változik.",
+    "swatchSearch": "Gyártó, filament, szín vagy azonosító keresése",
+
     "catalogRefreshStatusUncertain": "Az állapot nem erősíthető meg. Ellenőrizze a frissítési naplót; a frissítés még folyamatban lehet.",
     "catalogRefreshFailedNextStep": "A frissítés nem fejeződött be. Új frissítés indítása előtt ellenőrizze a frissítési naplót.",
     "catalogRefreshInterruptedNextStep": "A frissítés megszakadt. Újrakezdés előtt ellenőrizze a katalógust és a frissítési naplót.",

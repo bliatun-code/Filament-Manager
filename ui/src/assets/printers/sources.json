@@ -1,0 +1,188 @@
+[
+  {
+    "file": "bambu-a1-mini.png",
+    "source": "https://github.com/bambulab/BambuStudio/blob/79df7ae309be398ed30c9f397c13c9911c2edc57/resources/profiles/BBL/Bambu%20Lab%20A1%20mini_cover.png",
+    "sha256": "ffdacb31241bc1c6d7e9289305e7b89b4df438c5f224a8b170d0abfd93f41169",
+    "license": "AGPL-3.0"
+  },
+  {
+    "file": "bambu-a1.png",
+    "source": "https://github.com/bambulab/BambuStudio/blob/79df7ae309be398ed30c9f397c13c9911c2edc57/resources/profiles/BBL/Bambu%20Lab%20A1_cover.png",
+    "sha256": "480c28ace97a1f378f303f72faf6c4b2543a1e0c1612a84b9b4d2bdf97d41f5e",
+    "license": "AGPL-3.0"
+  },
+  {
+    "file": "bambu-a2l.png",
+    "source": "https://github.com/bambulab/BambuStudio/blob/79df7ae309be398ed30c9f397c13c9911c2edc57/resources/profiles/BBL/Bambu%20Lab%20A2L_cover.png",
+    "sha256": "97723c77afab542df43bc3452561c66006dd8f88dc56678a2d4f1e4a363be28d",
+    "license": "AGPL-3.0"
+  },
+  {
+    "file": "bambu-h2c.png",
+    "source": "https://github.com/bambulab/BambuStudio/blob/79df7ae309be398ed30c9f397c13c9911c2edc57/resources/profiles/BBL/Bambu%20Lab%20H2C_cover.png",
+    "sha256": "3ca299f3680553d61e91864ae668369800f395f47a8aaa8980bc55711a430b2f",
+    "license": "AGPL-3.0"
+  },
+  {
+    "file": "bambu-h2d-pro.png",
+    "source": "https://github.com/bambulab/BambuStudio/blob/79df7ae309be398ed30c9f397c13c9911c2edc57/resources/profiles/BBL/Bambu%20Lab%20H2D%20Pro_cover.png",
+    "sha256": "08d7e7cb886864c57ae1e136e1b537ee2632248dc47012ce031b49d9f1b4c4f7",
+    "license": "AGPL-3.0"
+  },
+  {
+    "file": "bambu-h2d.png",
+    "source": "https://github.com/bambulab/BambuStudio/blob/79df7ae309be398ed30c9f397c13c9911c2edc57/resources/profiles/BBL/Bambu%20Lab%20H2D_cover.png",
+    "sha256": "79e84fa646df90179cd1aea7ad13c6affa9d97bacec1312b649ff9fecd560759",
+    "license": "AGPL-3.0"
+  },
+  {
+    "file": "bambu-h2s.png",
+    "source": "https://github.com/bambulab/BambuStudio/blob/79df7ae309be398ed30c9f397c13c9911c2edc57/resources/profiles/BBL/Bambu%20Lab%20H2S_cover.png",
+    "sha256": "4adce7f9ccef74ba5b5dcd433252451257c45534ffd5aee6ed5c5f207a91ffa1",
+    "license": "AGPL-3.0"
+  },
+  {
+    "file": "bambu-p1p.png",
+    "source": "https://github.com/bambulab/BambuStudio/blob/79df7ae309be398ed30c9f397c13c9911c2edc57/resources/profiles/BBL/Bambu%20Lab%20P1P_cover.png",
+    "sha256": "0e8818ff422376285f5b39893e104e89db3c1a5a20e5aa53b879532783108964",
+    "license": "AGPL-3.0"
+  },
+  {
+    "file": "bambu-p1s.png",
+    "source": "https://github.com/bambulab/BambuStudio/blob/79df7ae309be398ed30c9f397c13c9911c2edc57/resources/profiles/BBL/Bambu%20Lab%20P1S_cover.png",
+    "sha256": "4b06e5d9b6fb7d6b98e4ff7a52f5b0797c067e8aacd300d67f6e8b089bfc3bc0",
+    "license": "AGPL-3.0"
+  },
+  {
+    "file": "bambu-p2s.png",
+    "source": "https://github.com/bambulab/BambuStudio/blob/79df7ae309be398ed30c9f397c13c9911c2edc57/resources/profiles/BBL/Bambu%20Lab%20P2S_cover.png",
+    "sha256": "6807188e742cbb89f44e4e12b6260df2c3a3c7b381713ddea16cb3ab2c97cc3c",
+    "license": "AGPL-3.0"
+  },
+  {
+    "file": "bambu-x1-carbon.png",
+    "source": "https://github.com/bambulab/BambuStudio/blob/79df7ae309be398ed30c9f397c13c9911c2edc57/resources/profiles/BBL/Bambu%20Lab%20X1%20Carbon_cover.png",
+    "sha256": "1e7b4cb8f1b3e46de805d242e5aa1345cd63f253e5b06a95cc02cc062b9fd788",
+    "license": "AGPL-3.0"
+  },
+  {
+    "file": "bambu-x1e.png",
+    "source": "https://github.com/bambulab/BambuStudio/blob/79df7ae309be398ed30c9f397c13c9911c2edc57/resources/profiles/BBL/Bambu%20Lab%20X1E_cover.png",
+    "sha256": "46d849f75f80f77fbc6f979e33664ad02973a325682fa704f988c0f589166ffa",
+    "license": "AGPL-3.0"
+  },
+  {
+    "file": "bambu-x1.png",
+    "source": "https://github.com/bambulab/BambuStudio/blob/79df7ae309be398ed30c9f397c13c9911c2edc57/resources/profiles/BBL/Bambu%20Lab%20X1_cover.png",
+    "sha256": "2ffdf296c3d6bc359a29e6bd89c5d43917e2a30725bc9d06af9a91bcfcf5b792",
+    "license": "AGPL-3.0"
+  },
+  {
+    "file": "bambu-x2d.png",
+    "source": "https://github.com/bambulab/BambuStudio/blob/79df7ae309be398ed30c9f397c13c9911c2edc57/resources/profiles/BBL/Bambu%20Lab%20X2D_cover.png",
+    "sha256": "9ac33e3e44d06597758010387e922e17eba3f81a39a367c7ae251abbb6551ec6",
+    "license": "AGPL-3.0"
+  },
+  {
+    "file": "prusa-coreone.png",
+    "source": "https://github.com/prusa3d/PrusaSlicer/blob/version_2.9.4/resources/profiles/PrusaResearch/COREONE_thumbnail.png",
+    "sha256": "2fe519ef49c38e6a5cc60e1bd92daad56b8fb610d43d2adc2b45716e531261bb",
+    "license": "AGPL-3.0"
+  },
+  {
+    "file": "prusa-coreonemmu3.png",
+    "source": "https://github.com/prusa3d/PrusaSlicer/blob/version_2.9.4/resources/profiles/PrusaResearch/COREONEMMU3_thumbnail.png",
+    "sha256": "8bdcacd3f33e280d56e92cf39f3311b2f24faa1467ec1a1261c0b6c7de73f782",
+    "license": "AGPL-3.0"
+  },
+  {
+    "file": "prusa-coreonel.png",
+    "source": "https://github.com/prusa3d/PrusaSlicer/blob/version_2.9.4/resources/profiles/PrusaResearch/COREONEL_thumbnail.png",
+    "sha256": "b0abc263edbe9ef721d057d700d6f8fc4a4166c9e4515583720b0608da4d3b1a",
+    "license": "AGPL-3.0"
+  },
+  {
+    "file": "prusa-mk4s.png",
+    "source": "https://github.com/prusa3d/PrusaSlicer/blob/version_2.9.4/resources/profiles/PrusaResearch/MK4S_thumbnail.png",
+    "sha256": "80cffd120b73cb11697ba49113c194c4cced04169c3be245a56d128f6a637623",
+    "license": "AGPL-3.0"
+  },
+  {
+    "file": "prusa-mk4smmu3.png",
+    "source": "https://github.com/prusa3d/PrusaSlicer/blob/version_2.9.4/resources/profiles/PrusaResearch/MK4SMMU3_thumbnail.png",
+    "sha256": "523dbccf53e4d4653c9f7b6393257184ff7a6c6448bd85fad635b12b153d7356",
+    "license": "AGPL-3.0"
+  },
+  {
+    "file": "prusa-mk4.png",
+    "source": "https://github.com/prusa3d/PrusaSlicer/blob/version_2.9.4/resources/profiles/PrusaResearch/MK4_thumbnail.png",
+    "sha256": "c98324ea5e66ab04df0257cdd02a887fb0c395b26bc580fc07780da61b61b1ed",
+    "license": "AGPL-3.0"
+  },
+  {
+    "file": "prusa-mk4ismmu3.png",
+    "source": "https://github.com/prusa3d/PrusaSlicer/blob/version_2.9.4/resources/profiles/PrusaResearch/MK4ISMMU3_thumbnail.png",
+    "sha256": "e7a6abaf33a32f5fdb9f587850fcab6124dc988cf4badd85f0959a0dddeed844",
+    "license": "AGPL-3.0"
+  },
+  {
+    "file": "prusa-mk39is.png",
+    "source": "https://github.com/prusa3d/PrusaSlicer/blob/version_2.9.4/resources/profiles/PrusaResearch/MK39IS_thumbnail.png",
+    "sha256": "346f6648e358e7b7b7c2e8157be948ba82665a350afdd3c9a0aa2f0c0382193e",
+    "license": "AGPL-3.0"
+  },
+  {
+    "file": "prusa-mk3.9mmu3.png",
+    "source": "https://github.com/prusa3d/PrusaSlicer/blob/version_2.9.4/resources/profiles/PrusaResearch/MK3.9MMU3_thumbnail.png",
+    "sha256": "b1f7dd0c143bdea35bcf5feb4f150240c34ed4b185ad3db2df6aab2e88782b10",
+    "license": "AGPL-3.0"
+  },
+  {
+    "file": "prusa-mk35.png",
+    "source": "https://github.com/prusa3d/PrusaSlicer/blob/version_2.9.4/resources/profiles/PrusaResearch/MK35_thumbnail.png",
+    "sha256": "21ddf25a7924a5f06eea90e9c796f904574976fc417a1c673e60d077fb8141e1",
+    "license": "AGPL-3.0"
+  },
+  {
+    "file": "prusa-mk3.5mmu3.png",
+    "source": "https://github.com/prusa3d/PrusaSlicer/blob/version_2.9.4/resources/profiles/PrusaResearch/MK3.5MMU3_thumbnail.png",
+    "sha256": "b88d0eda57a9d399c5638e8e36900b110c958c182cbf3c08c21d17934330d2fe",
+    "license": "AGPL-3.0"
+  },
+  {
+    "file": "prusa-mini.png",
+    "source": "https://github.com/prusa3d/PrusaSlicer/blob/version_2.9.4/resources/profiles/PrusaResearch/MINI_thumbnail.png",
+    "sha256": "508b9cac04cb86336b571b31329e64c470234f18e54bfd939522ca0ec4e1c9a0",
+    "license": "AGPL-3.0"
+  },
+  {
+    "file": "prusa-mk3s.png",
+    "source": "https://github.com/prusa3d/PrusaSlicer/blob/version_2.9.4/resources/profiles/PrusaResearch/MK3S_thumbnail.png",
+    "sha256": "b21b519743a80f499a1ff316a977c550215510f7973ce4e6f28cf36331af899e",
+    "license": "AGPL-3.0"
+  },
+  {
+    "file": "prusa-mk3smmu3.png",
+    "source": "https://github.com/prusa3d/PrusaSlicer/blob/version_2.9.4/resources/profiles/PrusaResearch/MK3SMMU3_thumbnail.png",
+    "sha256": "4ab3cc4be0724a3dda9c3400fb3b9764436531435b5b4d09d33b5ef905ef1382",
+    "license": "AGPL-3.0"
+  },
+  {
+    "file": "prusa-xl.png",
+    "source": "https://github.com/prusa3d/PrusaSlicer/blob/version_2.9.4/resources/profiles/PrusaResearch/XL_thumbnail.png",
+    "sha256": "4eca9c1d8952df185a679e9eaebaa99b87d7bbbcf64eae9d4f0af539bf65304a",
+    "license": "AGPL-3.0"
+  },
+  {
+    "file": "prusa-xl2.png",
+    "source": "https://github.com/prusa3d/PrusaSlicer/blob/version_2.9.4/resources/profiles/PrusaResearch/XL2_thumbnail.png",
+    "sha256": "bb81dc3b0f9384a5ed02730c3f6e6bad494f485f2c481038b2f4fe53b7e10bcd",
+    "license": "AGPL-3.0"
+  },
+  {
+    "file": "prusa-xl5.png",
+    "source": "https://github.com/prusa3d/PrusaSlicer/blob/version_2.9.4/resources/profiles/PrusaResearch/XL5_thumbnail.png",
+    "sha256": "66d90d5152e96500ff827babc701a5e25f92901d8478ece057d82aa78ccea6df",
+    "license": "AGPL-3.0"
+  }
+]

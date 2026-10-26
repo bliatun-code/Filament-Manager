@@ -17,7 +17,6 @@ type UseSettingsBambuLiveDiagnosticsInput = {
 
 export function useSettingsBambuLiveDiagnostics({
   bambuLiveIntegrations,
-  expandedBambuDetailsPrinterId,
 }: UseSettingsBambuLiveDiagnosticsInput) {
   const [diagnosticCaptureByPrinterId, setDiagnosticCaptureByPrinterId] = useState<
     Record<string, DiagnosticCaptureSession>
@@ -36,27 +35,23 @@ export function useSettingsBambuLiveDiagnostics({
   >({});
 
   useEffect(() => {
-    if (!expandedBambuDetailsPrinterId) {
-      return;
-    }
-    if (!diagnosticCaptureActiveByPrinterId[expandedBambuDetailsPrinterId]) {
-      return;
-    }
-    const observedState = bambuLiveIntegrations[expandedBambuDetailsPrinterId]?.observed_state;
-    if (!observedState) {
-      return;
-    }
     setDiagnosticCaptureByPrinterId((current) => {
-      const updated = updateDiagnosticCaptureSessionFromObservedState({
-        session: current[expandedBambuDetailsPrinterId],
-        observedState,
-      });
-      if (!updated) {
-        return current;
+      let next = current;
+      for (const [printerId, active] of Object.entries(diagnosticCaptureActiveByPrinterId)) {
+        const observedState = bambuLiveIntegrations[printerId]?.observed_state;
+        if (!active || !observedState) continue;
+        const updated = updateDiagnosticCaptureSessionFromObservedState({
+          session: current[printerId],
+          observedState,
+        });
+        if (updated && updated !== current[printerId]) {
+          if (next === current) next = { ...current };
+          next[printerId] = updated;
+        }
       }
-      return { ...current, [expandedBambuDetailsPrinterId]: updated };
+      return next;
     });
-  }, [bambuLiveIntegrations, diagnosticCaptureActiveByPrinterId, expandedBambuDetailsPrinterId]);
+  }, [bambuLiveIntegrations, diagnosticCaptureActiveByPrinterId]);
 
   function ensureDiagnosticSession(printerId: string) {
     const liveConfig = bambuLiveIntegrations[printerId] ?? null;
@@ -93,24 +88,15 @@ export function useSettingsBambuLiveDiagnostics({
     }
 
     const liveConfig = bambuLiveIntegrations[printerId] ?? null;
-    const nextSession = buildDiagnosticCaptureSession(liveConfig?.observed_state ?? null);
-    setDiagnosticCaptureByPrinterId((current) => ({
+    // Starting after a pause resumes the same session rather than erasing it.
+    setDiagnosticCaptureByPrinterId((current) => current[printerId] ? current : ({
       ...current,
-      [printerId]: nextSession,
+      [printerId]: buildDiagnosticCaptureSession(liveConfig?.observed_state ?? null),
     }));
     setDiagnosticCaptureActiveByPrinterId((current) => ({
       ...current,
       [printerId]: true,
     }));
-    setDiagnosticChartFieldByPrinterId((current) => {
-      if (!current[printerId]) {
-        return current;
-      }
-      return {
-        ...current,
-        [printerId]: "",
-      };
-    });
   }
 
   return {

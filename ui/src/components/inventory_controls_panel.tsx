@@ -142,7 +142,7 @@ export function InventoryHeaderActions({
           responsive={false}
           disabled={labelSheetDisabled}
         >
-          {t("inventory.labelSheetAllAction", "Create label sheet for all stock")}
+          {t("inventory.labelsAction", "Labels")}
         </PageHeaderButton>
       </div>
     </div>
@@ -156,7 +156,7 @@ export function InventoryStockFilters({
   const { t } = useI18n();
   if (!showStockFilters) return null;
   return (
-      <div className="mt-3 flex w-full flex-col gap-3 min-[1280px]:flex-row min-[1280px]:items-center">
+      <div className="inventory-stock-filters">
         <input
           type="search"
           aria-label={t(
@@ -169,14 +169,14 @@ export function InventoryStockFilters({
           )}
           value={search}
           onChange={(event) => onSearchChange(event.target.value)}
-          className="app-form-control app-control-focus min-h-10 w-full rounded-lg border px-3 py-2 text-sm min-[1280px]:w-80 min-[1280px]:shrink-0"
+          className="inventory-stock-search app-form-control app-control-focus min-h-10 rounded-lg border px-3 py-2 text-sm"
         />
-        <div className="min-w-0 flex-1">
+        <div className="min-w-0">
           <div className="flex flex-col gap-2 min-[920px]:flex-row min-[920px]:items-center">
             <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400 sr-only">
               {t("inventory.status", "Status")}
             </div>
-            <div className="flex flex-wrap gap-1.5" role="group" aria-label={t("inventory.status", "Status")}>
+            <div className="inventory-status-filters" role="group" aria-label={t("inventory.status", "Status")}>
               <button
                 type="button"
                 aria-pressed={lowStockOnly}
@@ -237,40 +237,11 @@ export function InventoryControlsPanel({
       : t("inventory.spoolResults", "spools");
 
   return (
-      <div className="mt-4">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div className="flex min-w-0 flex-wrap items-center gap-3">
-            {navigation}
-            <div
-              className="text-sm font-semibold text-slate-800 dark:text-slate-100"
-              aria-live="polite"
-            >
-              <span className="tabular-nums">{visibleInventoryCount}</span> {resultLabel}
-            </div>
-            {activeFilterCount > 0 ? (
-              <span className="rounded-full border border-sky-300/65 bg-sky-50/70 px-2.5 py-1 text-[11px] font-semibold text-sky-700 dark:border-sky-400/35 dark:bg-sky-500/10 dark:text-sky-200">
-                {activeFilterCount} {t("inventory.activeFilters", "active")}
-              </span>
-            ) : null}
-            {locationFilter ? (
-              <button
-                id="inventory-location-filter-chip"
-                type="button"
-                aria-label={`${t("common.remove", "Remove")} ${t("inventory.location", "Location")}: ${locationFilter.name}`}
-                onClick={onLocationFilterClear}
-                className={neutralChipClass(
-                  true,
-                  "max-w-full gap-1 px-2.5 py-1 text-[11px]",
-                )}
-              >
-                <span className="truncate">
-                  {t("inventory.location", "Location")}: {locationFilter.name}
-                </span>
-                <span aria-hidden="true">×</span>
-              </button>
-            ) : null}
-          </div>
-          <div className="flex flex-wrap items-center gap-2 min-[920px]:justify-end">
+      <div>
+        {navigation}
+        <div className="inventory-toolbar">
+          {filters}
+          <div className="inventory-toolbar-actions">
             <button
               id="inventory-bulk-selection-mode-trigger"
               type="button"
@@ -305,17 +276,7 @@ export function InventoryControlsPanel({
                 : t("inventory.showAdvancedFilters", "More filters")}
             </button>
           </div>
-        </div>
-
-        {filters}
-
-        {advancedFiltersOpen ? (
-          <div
-            id="inventory-advanced-filters"
-            className="mt-3 space-y-2 border-t border-slate-200/70 pt-3 dark:border-slate-700/70"
-          >
-            <InventoryAdvancedFilterRow label={t("inventory.viewGroup", "View")}>
-              <div className="flex flex-wrap gap-1.5">
+              <div className="inventory-view-switch">
                 <button
                   type="button"
                   aria-pressed={inventoryView === "CARDS"}
@@ -333,7 +294,42 @@ export function InventoryControlsPanel({
                   {t("inventory.viewList", "List view")}
                 </button>
               </div>
-            </InventoryAdvancedFilterRow>
+        </div>
+        <div className="inventory-result-summary">
+            <div
+              className="text-sm font-semibold text-slate-800 dark:text-slate-100"
+              aria-live="polite"
+            >
+              <span className="tabular-nums">{visibleInventoryCount}</span> {resultLabel}
+            </div>
+            {activeFilterCount > 0 ? (
+              <span className="rounded-full border border-sky-300/65 bg-sky-50/70 px-2.5 py-1 text-[11px] font-semibold text-sky-700 dark:border-sky-400/35 dark:bg-sky-500/10 dark:text-sky-200">
+                {activeFilterCount} {t("inventory.activeFilters", "active")}
+              </span>
+            ) : null}
+            {locationFilter ? (
+              <button
+                id="inventory-location-filter-chip"
+                type="button"
+                aria-label={`${t("common.remove", "Remove")} ${t("inventory.location", "Location")}: ${locationFilter.name}`}
+                onClick={onLocationFilterClear}
+                className={neutralChipClass(
+                  true,
+                  "max-w-full gap-1 px-2.5 py-1 text-[11px]",
+                )}
+              >
+                <span className="truncate">
+                  {t("inventory.location", "Location")}: {locationFilter.name}
+                </span>
+                <span aria-hidden="true">×</span>
+              </button>
+            ) : null}
+        </div>
+        {advancedFiltersOpen ? (
+          <div
+            id="inventory-advanced-filters"
+            className="mt-3 space-y-2 border-t border-slate-200/70 pt-3 dark:border-slate-700/70"
+          >
             <InventoryAdvancedFilterRow label={t("inventory.ownershipGroup", "Ownership")}>
               <div className="flex flex-wrap gap-1.5">
                 {ownershipFilters.map((ownership) => (

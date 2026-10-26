@@ -11,6 +11,7 @@ const cargoTomlPath = resolve(repoRoot, "src-tauri", "Cargo.toml");
 const cargoLockPath = resolve(repoRoot, "Cargo.lock");
 const tauriConfigPath = resolve(repoRoot, "src-tauri", "tauri.conf.json");
 const readmePath = resolve(repoRoot, "README.md");
+const contributingPath = resolve(repoRoot, "CONTRIBUTING.md");
 const releaseNotesDirectory = resolve(repoRoot, "docs", "releases");
 
 function readJson(path) {
@@ -55,6 +56,7 @@ const cargoToml = readText(cargoTomlPath);
 const cargoLock = readText(cargoLockPath);
 const tauriConfig = readJson(tauriConfigPath);
 const readme = readText(readmePath);
+const contributing = readText(contributingPath);
 
 const versions = [
   ["package-lock root version", packageLock.version],
@@ -84,7 +86,7 @@ const versions = [
 ];
 
 const documentationVersions = [
-  ["README current version", requireMatch("README current version", readme, /Current version: `([^`]+)`/)],
+  ["README current version", requireMatch("README current version", readme, /Download latest release · v([0-9]+\.[0-9]+\.[0-9]+)/)],
 ];
 const mismatches = [];
 if (rootReleaseNotes.length > 0) {
@@ -98,22 +100,22 @@ if (retainedReleaseNotes.length > 3) {
   );
 }
 
-const readmeReleaseNotes = new Set(
+const contributingReleaseNotes = new Set(
   Array.from(
-    readme.matchAll(
+    contributing.matchAll(
       /^- \[v\d+\.\d+\.\d+\]\(docs\/releases\/(RELEASE_NOTES_v\d+\.\d+\.\d+\.md)\)$/gm,
     ),
     (match) => match[1],
   ),
 );
 for (const filename of retainedReleaseNotes) {
-  if (!readmeReleaseNotes.has(filename)) {
-    mismatches.push(`README release notes link is missing for ${filename}`);
+  if (!contributingReleaseNotes.has(filename)) {
+    mismatches.push(`CONTRIBUTING release notes link is missing for ${filename}`);
   }
 }
-for (const filename of readmeReleaseNotes) {
+for (const filename of contributingReleaseNotes) {
   if (!retainedReleaseNotes.includes(filename)) {
-    mismatches.push(`README links to missing release notes file ${filename}`);
+    mismatches.push(`CONTRIBUTING links to missing release notes file ${filename}`);
   }
 }
 
@@ -128,9 +130,18 @@ for (const [label, version] of documentationVersions) {
   }
 }
 
+const readmeLinkDestinations = Array.from(
+  readme.matchAll(/\]\(([^)\s]+)\)/g),
+  (match) => match[1],
+);
+if (!readmeLinkDestinations.some(
+  (destination) => destination === "https://github.com/bliatun-code/Filament-Manager/releases/latest",
+)) {
+  mismatches.push("README latest-release download link is missing");
+}
 const expectedReleaseNotesLink = `- [${releaseTag}](${releaseNotesRelativePath})`;
-if (!readme.split(/\r?\n/).includes(expectedReleaseNotesLink)) {
-  mismatches.push(`README release notes link is missing, expected ${expectedReleaseNotesLink}`);
+if (!contributing.split(/\r?\n/).includes(expectedReleaseNotesLink)) {
+  mismatches.push(`CONTRIBUTING release notes link is missing, expected ${expectedReleaseNotesLink}`);
 }
 
 if (!existsSync(releaseNotesPath)) {

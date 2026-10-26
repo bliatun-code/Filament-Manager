@@ -279,18 +279,23 @@ test("rendered printer weight operations keep the original roll and session", as
         "Weight updated from the current AMS estimate.");
     });
 
-    await scenario("replacement and empty-slot loading send original occupant and both gross weights", async page => {
+    await scenario("replacement measures only outgoing weight and an empty slot loads without a dialog", async page => {
       await page.getByRole("button", { name: "Load C", exact: true }).click();
+      await page.getByRole("button", { name: "Save", exact: true }).click();
+      assert.equal((await page.evaluate("printerWeight.snapshot()")).writes.length, 0);
+      assert.match((await page.evaluate("printerWeight.snapshot()")).error, /outgoing spool weight/);
+      await page.getByRole("spinbutton").first().fill("700");
       await save(page, 1);
       assert.deepEqual((await page.evaluate("printerWeight.snapshot()")).writes[0].payload.input,
-        { ...clearOperation, target_spool_id: "C", outgoing_measured_total_g: 700, incoming_measured_total_g: 700 });
+        { ...clearOperation, target_spool_id: "C", outgoing_measured_total_g: 700, incoming_measured_total_g: null });
       await complete(page);
       await page.evaluate("printerWeight.render({ current: null })");
       await page.getByRole("button", { name: "Load C", exact: true }).click();
-      await save(page, 2);
+      assert.equal(await page.getByRole("dialog").count(), 0);
+      await page.waitForFunction("printerWeight.snapshot().writes.length === 2");
       assert.deepEqual((await page.evaluate("printerWeight.snapshot()")).writes[1].payload.input,
         { ...clearOperation, expected_current_spool_id: null, target_spool_id: "C",
-          outgoing_measured_total_g: null, incoming_measured_total_g: 700 });
+          outgoing_measured_total_g: null, incoming_measured_total_g: null });
       await complete(page, 1);
     });
 
@@ -329,6 +334,8 @@ test("rendered printer weight operations keep the original roll and session", as
       await save(page, 1);
       await page.evaluate("printerWeight.reset()");
       await page.getByRole("button", { name: "Load C", exact: true }).click();
+      const outgoing = page.getByRole("spinbutton").first();
+      if (await outgoing.inputValue() === "") await outgoing.fill("700");
       await save(page, 2);
       await page.evaluate("printerWeight.completeWrite(0)");
       await page.waitForFunction("printerWeight.snapshot().settled === 1");

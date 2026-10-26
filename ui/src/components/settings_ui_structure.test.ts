@@ -63,10 +63,9 @@ test("settings section chrome is owned by shared primitives", () => {
   assert.match(source, /settingsNoticeToneClassNames/);
 });
 
-test("settings top-level tabs use the shared surface card primitive", () => {
+test("settings keeps existing tab cards while General uses quiet sections", () => {
   for (const panelSource of [
     catalogTabSource,
-    generalTabSource,
     libraryTabSource,
     maintenanceTabSource,
     readFileSync(new URL("./settings_printers_tab.tsx", import.meta.url), "utf8"),
@@ -74,6 +73,8 @@ test("settings top-level tabs use the shared surface card primitive", () => {
     assert.match(panelSource, /SettingsSurfaceCard/);
     assert.doesNotMatch(panelSource, /<section className="surface-card/);
   }
+  assert.match(generalTabSource, /settings-general-section/);
+  assert.doesNotMatch(generalTabSource, /SettingsSurfaceCard/);
 });
 
 test("settings library panels use shared wide group labels", () => {

@@ -1,6 +1,5 @@
 import { useId, useState, type Dispatch, type SetStateAction } from "react";
 import { useI18n } from "../lib/i18n";
-import { printerBrandSurfaceStyle } from "../lib/printer_branding";
 import {
   resolveLiveConnectionIndicator,
 } from "../lib/printer_live_display";
@@ -110,15 +109,9 @@ export function PrinterOverviewCard({
     printer.slots,
     t,
   );
-  const printerCardStyle = printerBrandSurfaceStyle(
-    printer.printer.model,
-    "card",
-    resolvedTheme,
-  );
   return (
     <section
-      className={`surface-card relative p-3.5 sm:p-4 ${hasOpenDropdown ? "z-40" : "z-0"}`}
-      style={printerCardStyle}
+      className={`surface-card printer-balanced-card relative ${hasOpenDropdown ? "z-40" : "z-0"}`}
     >
       <PrinterOverviewCardHeader
         printer={printer}
@@ -166,7 +159,15 @@ export function PrinterOverviewCard({
         ) : null}
       </div>
       {showSlots ? (
-        <div id={slotGridId} className="mt-3 grid grid-cols-1 gap-2.5 lg:grid-cols-2">
+        <div id={slotGridId} className="printer-slot-table-wrap">
+          <table className="printer-slot-table" aria-label={printer.printer.name}>
+            <thead><tr>
+              <th scope="col">{t("printers.slot", "Slot")}</th>
+              <th scope="col">{t("inventory.material", "Material")}</th>
+              <th scope="col">{t("inventory.reference", "Reference")}</th>
+              <th scope="col">{t("inventory.remaining", "Remaining")}</th>
+              <th scope="col">{t("common.actions", "Actions")}</th>
+            </tr></thead>
           {printer.slots.map((slot) => (
             <PrinterSlotCard
               key={slot.slot_id}
@@ -196,6 +197,7 @@ export function PrinterOverviewCard({
               openWeightPromptForDraft={openWeightPromptForDraft}
             />
           ))}
+          </table>
         </div>
       ) : null}
     </section>

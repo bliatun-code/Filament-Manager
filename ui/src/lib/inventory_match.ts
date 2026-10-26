@@ -457,6 +457,16 @@ function sortMetadataCandidates<Row extends SpoolWithMasterRow>(
     if (scoreDelta !== 0) {
       return scoreDelta;
     }
+    // A measured, partly used roll is more plausible than an otherwise equal full
+    // roll. This is a tie-breaker only; identity/material/colour remain stronger.
+    const started = (row: Row) => {
+      const initial = row.spool.initial_weight_g ?? row.master.default_weight;
+      const remaining = row.spool.remaining_g;
+      return initial != null && Number.isFinite(initial) && initial > 0 &&
+        remaining != null && Number.isFinite(remaining) && remaining > 0 && remaining < initial;
+    };
+    const startedDelta = Number(started(right)) - Number(started(left));
+    if (startedDelta) return startedDelta;
     return left.spool.id.localeCompare(right.spool.id, undefined, { numeric: true });
   });
 }
@@ -503,7 +513,7 @@ export function buildInventoryMatchResult<Row extends SpoolWithMasterRow>(
     return { kind: "none", candidates: [] };
   }
   const shouldUseNameAsFilter =
-    observedColors.length === 0 &&
+    (observedColors.length === 0 || options.onlyBambuMetadataCandidates === true) &&
     hasDistinctiveInventoryNameToken(inventoryNameTokens(observedFilamentName));
   const scoreById = new Map<string, number>();
 

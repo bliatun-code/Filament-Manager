@@ -193,10 +193,8 @@ test("SettingsGeneralTab exposes selected theme and language choices", () => {
   assert.ok(html.indexOf("Language") < html.indexOf("Program"));
   assert.equal((html.match(/aria-pressed="true"/g) ?? []).length, 1);
   assert.equal((html.match(/aria-pressed="false"/g) ?? []).length, 4);
-  assert.match(html, /theme-brand-choice-bambu/);
-  assert.match(html, /A playful dark theme inspired by Bambu green/);
-  assert.match(html, /theme-brand-choice-prusa/);
-  assert.match(html, /A colorful dark theme inspired by Prusa orange/);
+  for (const name of ["Gray · Soft", "Gray · Deep", "Blue · Night", "Light · Clean"]) assert.ok(html.includes(name));
+  assert.doesNotMatch(html, /theme-brand-choice-(bambu|prusa)/);
   assert.match(languageSelect, /<option value="de">Deutsch<\/option>/);
   assert.match(languageSelect, /<option value="fr">Français<\/option>/);
   assert.match(languageSelect, /<option value="es">Español<\/option>/);
@@ -307,7 +305,7 @@ test("SettingsGeneralTab disables close-to-tray when the tray is unavailable", (
     },
   });
   const backgroundStart = html.indexOf('id="settings-background-operation"');
-  const backgroundEnd = html.indexOf("Program", backgroundStart);
+  const backgroundEnd = html.indexOf('id="settings-update-check"', backgroundStart);
   const backgroundHtml = html.slice(backgroundStart, backgroundEnd);
   const checkboxes = backgroundHtml.match(/<input[^>]*type="checkbox"[^>]*>/g) ?? [];
 
@@ -332,7 +330,7 @@ test("SettingsGeneralTab isolates unavailable launch-at-login state", () => {
     },
   });
   const backgroundStart = html.indexOf('id="settings-background-operation"');
-  const backgroundEnd = html.indexOf("Program", backgroundStart);
+  const backgroundEnd = html.indexOf('id="settings-update-check"', backgroundStart);
   const backgroundHtml = html.slice(backgroundStart, backgroundEnd);
   const checkboxes = backgroundHtml.match(/<input[^>]*type="checkbox"[^>]*>/g) ?? [];
 

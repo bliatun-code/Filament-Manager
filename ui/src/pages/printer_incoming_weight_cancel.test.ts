@@ -57,9 +57,6 @@ const spool = (
     },
   }) as SpoolWithMasterRow;
 
-const resolveCurrentTare = (spoolId: string | null | undefined) =>
-  spoolId === "current" ? 200 : 0;
-
 test("cancelling an incoming-weight prompt discards only that slot's unsaved draft", () => {
   const current = {
     "slot-1": draft("replacement"),
@@ -86,7 +83,6 @@ test("closing a weight dialog clears its values and identifies its unsaved slot 
     "printer-1",
     slot("current", 500),
     spool("replacement", 700, 250),
-    resolveCurrentTare,
   );
 
   assert.deepEqual(buildClosedSlotWeightDialog(prepared.prompt), {
@@ -106,20 +102,19 @@ test("closing without an active weight dialog has no slot draft to discard", () 
   });
 });
 
-test("replacement preparation includes measured weights for both rolls", () => {
+test("replacement preparation requires only the outgoing measurement", () => {
   const prepared = prepareIncomingWeightDialog(
     "printer-1",
     slot("current", 500),
     spool("replacement", 700, 250),
-    resolveCurrentTare,
   );
 
   assert.equal(prepared.prompt.targetSpoolId, "replacement");
   assert.equal(prepared.prompt.expectedCurrentSpoolId, "current");
-  assert.equal(prepared.prompt.requiresIncomingWeight, true);
+  assert.equal(prepared.prompt.requiresIncomingWeight, false);
   assert.equal(prepared.prompt.requiresOutgoingWeight, true);
-  assert.equal(prepared.incomingWeightValue, "950");
-  assert.equal(prepared.outgoingWeightValue, "700");
+  assert.equal(prepared.incomingWeightValue, "");
+  assert.equal(prepared.outgoingWeightValue, "");
 });
 
 test("empty-slot preparation leaves outgoing weight blank", () => {
@@ -127,13 +122,12 @@ test("empty-slot preparation leaves outgoing weight blank", () => {
     "printer-1",
     slot(null, null),
     spool("incoming", 700, 250),
-    resolveCurrentTare,
   );
 
   assert.equal(prepared.prompt.targetSpoolId, "incoming");
   assert.equal(prepared.prompt.expectedCurrentSpoolId, null);
   assert.equal(prepared.prompt.requiresOutgoingWeight, false);
-  assert.equal(prepared.incomingWeightValue, "950");
+  assert.equal(prepared.incomingWeightValue, "");
   assert.equal(prepared.outgoingWeightValue, "");
 });
 
@@ -141,7 +135,6 @@ test("clear-occupied preparation only requests outgoing measured weight", () => 
   const prepared = prepareEmptySlotWeightDialog(
     "printer-1",
     slot("current", 500),
-    resolveCurrentTare,
   );
 
   assert.equal(prepared.prompt.targetSpoolId, null);
@@ -149,7 +142,7 @@ test("clear-occupied preparation only requests outgoing measured weight", () => 
   assert.equal(prepared.prompt.requiresIncomingWeight, false);
   assert.equal(prepared.prompt.requiresOutgoingWeight, true);
   assert.equal(prepared.incomingWeightValue, "");
-  assert.equal(prepared.outgoingWeightValue, "700");
+  assert.equal(prepared.outgoingWeightValue, "");
 });
 
 test("same-roll preparation does not create an outgoing weight draft", () => {
@@ -157,7 +150,6 @@ test("same-roll preparation does not create an outgoing weight draft", () => {
     "printer-1",
     slot("current", 500),
     spool("current", 500, 200),
-    resolveCurrentTare,
   );
 
   assert.equal(prepared.prompt.requiresIncomingWeight, true);

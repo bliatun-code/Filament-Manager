@@ -1,9 +1,9 @@
-import type { CSSProperties } from "react";
+import { useState, type CSSProperties } from "react";
 import { inlineStatusSignalClass, semanticChipClass } from "../lib/chip_styles";
 import { formatSpoolReference } from "../lib/display_format";
 import { useI18n } from "../lib/i18n";
 import { isBorrowedInOwnership } from "../lib/inventory_domain";
-import { liveTrayIdentity } from "../lib/printer_live_display";
+import { formatGrams, liveTrayIdentity } from "../lib/printer_live_display";
 import {
   buildLiveRfidCandidateRegistrationState,
   buildSlotCatalogOnboardingOpenState,
@@ -23,6 +23,7 @@ type PrinterSlotAssignmentStatusProps = {
   busy: boolean;
   displayState: PrinterSlotDisplayState;
   currentRollStyle?: CSSProperties;
+  selectCandidate?: (row: SpoolWithMasterRow) => void;
   openRfidOverrideDialog: (
     printer: PrinterOverviewRow,
     slot: PrinterAmsSlotRow,
@@ -63,11 +64,13 @@ export function PrinterSlotAssignmentStatus({
   busy,
   displayState,
   currentRollStyle,
+  selectCandidate,
   openRfidOverrideDialog,
   registerLiveRfidCandidate,
   createLiveBambuCatalogSpool,
 }: PrinterSlotAssignmentStatusProps) {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
+  const [candidateLimit, setCandidateLimit] = useState(4);
   const {
     effectiveLiveTray,
     liveSignalEnabled,
@@ -92,7 +95,8 @@ export function PrinterSlotAssignmentStatus({
     liveSignalEnabled &&
     effectiveLiveTray?.loaded &&
     (liveSuggestedInventoryMatch.kind === "metadata_single" ||
-      liveSuggestedInventoryMatch.kind === "metadata_multiple") &&
+      liveSuggestedInventoryMatch.kind === "metadata_multiple" ||
+      liveSuggestedInventoryMatch.kind === "rfid_exact") &&
     !liveIdentityLabel
       ? liveSuggestedInventoryMatch.candidates
       : [];
@@ -186,7 +190,7 @@ export function PrinterSlotAssignmentStatus({
     if (rows.length === 0) {
       return null;
     }
-    const visibleRows = rows.slice(0, 4);
+    const visibleRows = rows.slice(0, candidateLimit);
     const currentAssignmentMatched = Boolean(
       slot.spool_id && rows.some((row) => row.spool.id === slot.spool_id),
     );
@@ -233,7 +237,8 @@ export function PrinterSlotAssignmentStatus({
         <div className="font-medium text-slate-700 dark:text-slate-200">
           {unknownRfidSummary}
         </div>
-        <div className="mt-1 space-y-1">
+        <div className="printer-candidate-hint">{t("printers.startedCandidatesFirst", "Among equally good matches, partly used rolls appear before full rolls. Confirm the roll before linking.")}</div>
+        <div className="mt-1 space-y-1 printer-candidate-list">
           {visibleRows.map((row) => {
             const registrationState = effectiveLiveTray
               ? buildLiveRfidCandidateRegistrationState(slot, effectiveLiveTray, row, {
@@ -265,7 +270,7 @@ export function PrinterSlotAssignmentStatus({
                   tone="tiny"
                 />
                 <span className="truncate">
-                  {row.master.filament_name} · {row.master.color_name}
+                  {row.master.vendor} · {row.master.filament_name} · {row.master.color_name}
                 </span>
                 <span className="shrink-0 text-slate-400 dark:text-slate-500">
                   {formatSpoolReference(row.spool.id)}
@@ -277,6 +282,13 @@ export function PrinterSlotAssignmentStatus({
                   <span className="shrink-0 rounded-md border border-sky-200/80 bg-sky-50/80 px-1.5 py-0.5 text-[10px] font-medium text-sky-700 dark:border-sky-400/30 dark:bg-sky-500/10 dark:text-sky-200">
                     {t("inventory.borrowedIn", "Borrowed in")}
                   </span>
+                ) : null}
+                <span className="printer-candidate-weight">{formatGrams(row.spool.remaining_g, "dash", locale)}</span>
+                {selectCandidate && row.spool.id !== slot.spool_id && (!unknownLiveRfid || registrationState?.reason === "select_candidate_first") ? (
+                  <button type="button" className={printerSlotMiniActionButtonClassName("candidate")}
+                    disabled={busy} onClick={() => selectCandidate(row)}>
+                    {t("printers.selectRoll", "Select roll")}
+                  </button>
                 ) : null}
                 {unknownLiveRfid ? (
                   canRegisterCandidate ? (
@@ -305,7 +317,10 @@ export function PrinterSlotAssignmentStatus({
         </div>
         {rows.length > visibleRows.length ? (
           <div className="mt-1 text-slate-500 dark:text-slate-400">
-            {t("printers.liveCandidateMore", "More candidates exist in inventory.")}
+            <button type="button" className={printerSlotMiniActionButtonClassName("inline")}
+              onClick={() => setCandidateLimit(limit => limit + 20)}>
+              {t("inventory.showMoreHistory", "Show more")} · {visibleRows.length}/{rows.length}
+            </button>
           </div>
         ) : null}
       </div>

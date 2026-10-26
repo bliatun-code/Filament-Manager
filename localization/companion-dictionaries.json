@@ -231,7 +231,8 @@
         "noMatch": "No local spools matched the current search.",
         "hiddenSelectedTitle": "Selected spool hidden",
         "hiddenSelectedBody": "{title} stays selected for detail, slots, and loans.",
-        "clearSearch": "Clear search"
+        "clearSearch": "Clear search",
+        "searchShortPlaceholder": "Search inventory"
       },
       "loans": {
         "title": "Loans",
@@ -375,7 +376,11 @@
         "sourceCode": "Source code",
         "viewLicense": "View license",
         "viewNotices": "Notices",
-        "cachedData": "Some data could not be refreshed. Previously loaded values may be out of date. Refresh to try again."
+        "cachedData": "Some data could not be refreshed. Previously loaded values may be out of date. Refresh to try again.",
+        "themeGraySoft": "Gray · Soft",
+        "themeGrayDeep": "Gray · Deep",
+        "themeBlueNight": "Blue · Night",
+        "themeLightClean": "Light · Clean"
       },
       "trustedLan": {
         "title": "Trusted-LAN browser companion",
@@ -648,6 +653,36 @@
         "errorSupplierReferenceTooLong": "The supplier reference is too long.",
         "historyUpdated": "Purchase details updated",
         "historyRecorded": "Purchase receipt recorded"
+      },
+      "access": {
+        "title": "Access needs to be renewed",
+        "body": "Ask the Host to approve this browser again.",
+        "deviceName": "Device name",
+        "nameHint": "The name only helps the Host recognize your device.",
+        "request": "Request access again",
+        "pendingTitle": "Request sent",
+        "pendingBody": "Access must be approved in Filament Manager on the Host computer.",
+        "waiting": "Waiting for the Host…",
+        "codeTitle": "Enter the code from the Host",
+        "codeLabel": "One-time code",
+        "codeHint": "Six digits. The code is valid for five minutes.",
+        "confirm": "Confirm access",
+        "badCode": "Incorrect code. {count} attempts remain.",
+        "rejected": "The request was declined.",
+        "expired": "The request expired. Request access again.",
+        "locked": "Three incorrect attempts. Request access again.",
+        "cancelled": "The request was cancelled.",
+        "cancel": "Cancel request",
+        "otherWay": "Use a pairing link instead",
+        "fallback": "Open a new pairing link or scan its QR code from Library & web app on the Host.",
+        "banner": "Browser access requests: {count}",
+        "open": "View requests",
+        "hostTitle": "Browser access requests",
+        "trust": "The name is supplied by the device. Only approve devices you recognize.",
+        "actionFailed": "The request changed or the service is unavailable. Try again.",
+        "reject": "Decline",
+        "approve": "Allow access",
+        "shareCode": "Give this code to the person using the requesting device."
       }
     },
     "nb": {
@@ -880,7 +915,8 @@
         "noMatch": "Ingen lokale filamenter matchet dette søket.",
         "hiddenSelectedTitle": "Valgt spole er skjult",
         "hiddenSelectedBody": "{title} forblir valgt for detaljer, printerspor og utlån.",
-        "clearSearch": "Tøm søk"
+        "clearSearch": "Tøm søk",
+        "searchShortPlaceholder": "Søk i lageret"
       },
       "loans": {
         "title": "Utlån",
@@ -1024,7 +1060,11 @@
         "sourceCode": "Kildekode",
         "viewLicense": "Vis lisens",
         "viewNotices": "Notiser",
-        "cachedData": "Noen data kunne ikke oppdateres. Tidligere innlastede verdier kan være utdaterte. Trykk Oppdater for å prøve igjen."
+        "cachedData": "Noen data kunne ikke oppdateres. Tidligere innlastede verdier kan være utdaterte. Trykk Oppdater for å prøve igjen.",
+        "themeGraySoft": "Grå · Myk",
+        "themeGrayDeep": "Grå · Dyp",
+        "themeBlueNight": "Blå · Natt",
+        "themeLightClean": "Lys · Ren"
       },
       "trustedLan": {
         "title": "Trusted-LAN-nettleserkompanjong",
@@ -1297,6 +1337,36 @@
         "errorSupplierReferenceTooLong": "Leverandørreferansen er for lang.",
         "historyUpdated": "Innkjøpsdetaljer oppdatert",
         "historyRecorded": "Innkjøpskvittering registrert"
+      },
+      "access": {
+        "title": "Tilgangen må fornyes",
+        "body": "Be verten om å godkjenne denne nettleseren på nytt.",
+        "deviceName": "Navn på enheten",
+        "nameHint": "Navnet hjelper bare verten å kjenne igjen enheten.",
+        "request": "Be om tilgang på nytt",
+        "pendingTitle": "Forespørsel sendt",
+        "pendingBody": "Tilgang må godkjennes i Filament Manager på vertsmaskinen.",
+        "waiting": "Venter på verten…",
+        "codeTitle": "Skriv inn koden fra verten",
+        "codeLabel": "Engangskode",
+        "codeHint": "Seks sifre. Koden er gyldig i fem minutter.",
+        "confirm": "Bekreft tilgang",
+        "badCode": "Koden stemmer ikke. {count} forsøk gjenstår.",
+        "rejected": "Forespørselen ble avvist.",
+        "expired": "Forespørselen er utløpt. Be om tilgang på nytt.",
+        "locked": "Tre feil forsøk. Be om tilgang på nytt.",
+        "cancelled": "Forespørselen ble avbrutt.",
+        "cancel": "Avbryt forespørsel",
+        "otherWay": "Bruk en parringslenke i stedet",
+        "fallback": "Åpne en ny parringslenke eller skann QR-koden under Bibliotek og webapp på verten.",
+        "banner": "Forespørsler om nettlesertilgang: {count}",
+        "open": "Se forespørsler",
+        "hostTitle": "Forespørsler om nettlesertilgang",
+        "trust": "Navnet er oppgitt av enheten. Godta bare enheter du kjenner.",
+        "actionFailed": "Forespørselen er endret, eller tjenesten er utilgjengelig. Prøv igjen.",
+        "reject": "Avvis",
+        "approve": "Gi tilgang",
+        "shareCode": "Gi denne koden til personen som bruker enheten som ba om tilgang."
       }
     },
     "de": {
@@ -1529,7 +1599,8 @@
         "noMatch": "Keine lokalen Rollen entsprechen der aktuellen Suche.",
         "hiddenSelectedTitle": "Ausgewählte Rolle ausgeblendet",
         "hiddenSelectedBody": "{title} bleibt für Details, Plätze und Ausleihen ausgewählt.",
-        "clearSearch": "Suche löschen"
+        "clearSearch": "Suche löschen",
+        "searchShortPlaceholder": "Bestand durchsuchen"
       },
       "loans": {
         "title": "Ausleihen",
@@ -1673,7 +1744,11 @@
         "sourceCode": "Quellcode",
         "viewLicense": "Lizenz anzeigen",
         "viewNotices": "Hinweise",
-        "cachedData": "Einige Daten konnten nicht aktualisiert werden. Zuvor geladene Werte sind möglicherweise veraltet. Zum erneuten Versuch aktualisieren."
+        "cachedData": "Einige Daten konnten nicht aktualisiert werden. Zuvor geladene Werte sind möglicherweise veraltet. Zum erneuten Versuch aktualisieren.",
+        "themeGraySoft": "Grau · Sanft",
+        "themeGrayDeep": "Grau · Tief",
+        "themeBlueNight": "Blau · Nacht",
+        "themeLightClean": "Hell · Klar"
       },
       "trustedLan": {
         "title": "Trusted-LAN-Browser-Companion",
@@ -1946,6 +2021,36 @@
         "errorSupplierReferenceTooLong": "Die Lieferantenreferenz ist zu lang.",
         "historyUpdated": "Kaufdetails aktualisiert",
         "historyRecorded": "Kaufbeleg erfasst"
+      },
+      "access": {
+        "title": "Der Zugriff muss erneuert werden",
+        "body": "Bitte den Host, diesen Browser erneut zu genehmigen.",
+        "deviceName": "Gerätename",
+        "nameHint": "Der Name hilft dem Host nur, dein Gerät zu erkennen.",
+        "request": "Zugriff erneut anfordern",
+        "pendingTitle": "Anfrage gesendet",
+        "pendingBody": "Der Zugriff muss in Filament Manager auf dem Host genehmigt werden.",
+        "waiting": "Warten auf den Host…",
+        "codeTitle": "Code vom Host eingeben",
+        "codeLabel": "Einmalcode",
+        "codeHint": "Sechs Ziffern. Der Code ist fünf Minuten gültig.",
+        "confirm": "Zugriff bestätigen",
+        "badCode": "Falscher Code. Noch {count} Versuche.",
+        "rejected": "Die Anfrage wurde abgelehnt.",
+        "expired": "Die Anfrage ist abgelaufen. Fordere den Zugriff erneut an.",
+        "locked": "Drei Fehlversuche. Fordere den Zugriff erneut an.",
+        "cancelled": "Die Anfrage wurde abgebrochen.",
+        "cancel": "Anfrage abbrechen",
+        "otherWay": "Stattdessen einen Kopplungslink verwenden",
+        "fallback": "Öffne einen neuen Kopplungslink oder scanne dessen QR-Code unter Bibliothek und Web-App auf dem Host.",
+        "banner": "Browser-Zugriffsanfragen: {count}",
+        "open": "Anfragen anzeigen",
+        "hostTitle": "Browser-Zugriffsanfragen",
+        "trust": "Der Name wird vom Gerät angegeben. Genehmige nur Geräte, die du kennst.",
+        "actionFailed": "Die Anfrage wurde geändert oder der Dienst ist nicht verfügbar. Versuche es erneut.",
+        "reject": "Ablehnen",
+        "approve": "Zugriff erlauben",
+        "shareCode": "Gib diesen Code an die Person weiter, die das anfragende Gerät verwendet."
       }
     },
     "fr": {
@@ -2178,7 +2283,8 @@
         "noMatch": "Aucune bobine locale ne correspond à la recherche.",
         "hiddenSelectedTitle": "Bobine sélectionnée masquée",
         "hiddenSelectedBody": "{title} reste sélectionnée pour les détails, les emplacements et les prêts.",
-        "clearSearch": "Effacer la recherche"
+        "clearSearch": "Effacer la recherche",
+        "searchShortPlaceholder": "Rechercher dans le stock"
       },
       "loans": {
         "title": "Prêts",
@@ -2419,7 +2525,11 @@
         "sourceCode": "Code source",
         "viewLicense": "Afficher la licence",
         "viewNotices": "Mentions",
-        "cachedData": "Certaines données n’ont pas pu être actualisées. Les valeurs précédemment chargées peuvent être obsolètes. Actualisez pour réessayer."
+        "cachedData": "Certaines données n’ont pas pu être actualisées. Les valeurs précédemment chargées peuvent être obsolètes. Actualisez pour réessayer.",
+        "themeGraySoft": "Gris · Doux",
+        "themeGrayDeep": "Gris · Profond",
+        "themeBlueNight": "Bleu · Nuit",
+        "themeLightClean": "Clair · Pur"
       },
       "trustedLan": {
         "title": "Companion navigateur Trusted-LAN",
@@ -2595,6 +2705,36 @@
         "errorSupplierReferenceTooLong": "La référence fournisseur est trop longue.",
         "historyUpdated": "Détails d’achat mis à jour",
         "historyRecorded": "Reçu d’achat enregistré"
+      },
+      "access": {
+        "title": "L’accès doit être renouvelé",
+        "body": "Demandez à l’hôte d’autoriser à nouveau ce navigateur.",
+        "deviceName": "Nom de l’appareil",
+        "nameHint": "Le nom aide uniquement l’hôte à reconnaître votre appareil.",
+        "request": "Redemander l’accès",
+        "pendingTitle": "Demande envoyée",
+        "pendingBody": "L’accès doit être autorisé dans Filament Manager sur l’ordinateur hôte.",
+        "waiting": "En attente de l’hôte…",
+        "codeTitle": "Saisissez le code de l’hôte",
+        "codeLabel": "Code à usage unique",
+        "codeHint": "Six chiffres. Le code est valable cinq minutes.",
+        "confirm": "Confirmer l’accès",
+        "badCode": "Code incorrect. Il reste {count} tentatives.",
+        "rejected": "La demande a été refusée.",
+        "expired": "La demande a expiré. Redemandez l’accès.",
+        "locked": "Trois tentatives incorrectes. Redemandez l’accès.",
+        "cancelled": "La demande a été annulée.",
+        "cancel": "Annuler la demande",
+        "otherWay": "Utiliser plutôt un lien d’association",
+        "fallback": "Ouvrez un nouveau lien d’association ou scannez son code QR dans Bibliothèque et application web sur l’hôte.",
+        "banner": "Demandes d’accès au navigateur: {count}",
+        "open": "Voir les demandes",
+        "hostTitle": "Demandes d’accès au navigateur",
+        "trust": "Le nom est fourni par l’appareil. N’autorisez que les appareils que vous reconnaissez.",
+        "actionFailed": "La demande a changé ou le service est indisponible. Réessayez.",
+        "reject": "Refuser",
+        "approve": "Autoriser l’accès",
+        "shareCode": "Communiquez ce code à la personne utilisant l’appareil à l’origine de la demande."
       }
     },
     "es": {
@@ -2793,7 +2933,8 @@
         "hiddenSelectedBody": "{title} sigue seleccionada para detalles, ranuras y préstamos.",
         "clearSearch": "Borrar búsqueda",
         "optionalDetailsBorrowedMeta": "Contacto del propietario, proveedor, muestra, ubicación, nota",
-        "registerBorrowedInHelp": "Registre este bobina como prestado mientras mantiene el mismo flujo de catálogo y lista de deseos que en el escritorio."
+        "registerBorrowedInHelp": "Registre este bobina como prestado mientras mantiene el mismo flujo de catálogo y lista de deseos que en el escritorio.",
+        "searchShortPlaceholder": "Buscar en el inventario"
       },
       "loans": {
         "title": "Préstamos",
@@ -3045,7 +3186,11 @@
         "spoolCountMany": "{count} bobinas",
         "spoolCountOne": "{count} bobina",
         "trustedLanDesktopInCharge": "La aplicación de escritorio y SQLite permanecen a cargo. El acceso a Trusted-LAN sigue estando controlado por el escritorio y no está cifrado en la red.",
-        "cachedData": "No se pudieron actualizar algunos datos. Los valores cargados anteriormente pueden estar desactualizados. Actualiza para volver a intentarlo."
+        "cachedData": "No se pudieron actualizar algunos datos. Los valores cargados anteriormente pueden estar desactualizados. Actualiza para volver a intentarlo.",
+        "themeGraySoft": "Gris · Suave",
+        "themeGrayDeep": "Gris · Profundo",
+        "themeBlueNight": "Azul · Noche",
+        "themeLightClean": "Claro · Limpio"
       },
       "format": {
         "unknown": "Desconocido",
@@ -3244,6 +3389,36 @@
         "errorSupplierReferenceTooLong": "La referencia del proveedor es demasiado larga.",
         "historyUpdated": "Datos de compra actualizados",
         "historyRecorded": "Compra registrada"
+      },
+      "access": {
+        "title": "Es necesario renovar el acceso",
+        "body": "Pide al anfitrión que vuelva a autorizar este navegador.",
+        "deviceName": "Nombre del dispositivo",
+        "nameHint": "El nombre solo ayuda al anfitrión a reconocer tu dispositivo.",
+        "request": "Volver a solicitar acceso",
+        "pendingTitle": "Solicitud enviada",
+        "pendingBody": "El acceso debe autorizarse en Filament Manager en el equipo anfitrión.",
+        "waiting": "Esperando al anfitrión…",
+        "codeTitle": "Introduce el código del anfitrión",
+        "codeLabel": "Código de un solo uso",
+        "codeHint": "Seis dígitos. El código es válido durante cinco minutos.",
+        "confirm": "Confirmar acceso",
+        "badCode": "Código incorrecto. Quedan {count} intentos.",
+        "rejected": "La solicitud fue rechazada.",
+        "expired": "La solicitud ha caducado. Vuelve a solicitar acceso.",
+        "locked": "Tres intentos incorrectos. Vuelve a solicitar acceso.",
+        "cancelled": "La solicitud fue cancelada.",
+        "cancel": "Cancelar solicitud",
+        "otherWay": "Usar un enlace de vinculación",
+        "fallback": "Abre un nuevo enlace de vinculación o escanea su código QR en Biblioteca y aplicación web en el anfitrión.",
+        "banner": "Solicitudes de acceso del navegador: {count}",
+        "open": "Ver solicitudes",
+        "hostTitle": "Solicitudes de acceso del navegador",
+        "trust": "El dispositivo proporciona el nombre. Autoriza solo dispositivos que reconozcas.",
+        "actionFailed": "La solicitud ha cambiado o el servicio no está disponible. Inténtalo de nuevo.",
+        "reject": "Rechazar",
+        "approve": "Permitir acceso",
+        "shareCode": "Da este código a la persona que utiliza el dispositivo que solicitó acceso."
       }
     },
     "pt-BR": {
@@ -3658,7 +3833,11 @@
         "trustedLanDesktopInCharge": "O aplicativo Desktop e SQLite permanecem no comando. O acesso Trusted-LAN ainda é controlado por desktop e não é criptografado na rede.",
         "viewLicense": "Ver licença",
         "viewNotices": "Avisos",
-        "cachedData": "Alguns dados não puderam ser atualizados. Os valores carregados anteriormente podem estar desatualizados. Atualize para tentar novamente."
+        "cachedData": "Alguns dados não puderam ser atualizados. Os valores carregados anteriormente podem estar desatualizados. Atualize para tentar novamente.",
+        "themeGraySoft": "Cinza · Suave",
+        "themeGrayDeep": "Cinza · Profundo",
+        "themeBlueNight": "Azul · Noite",
+        "themeLightClean": "Claro · Limpo"
       },
       "shell": {
         "close": "Fechar",
@@ -3860,7 +4039,8 @@
         "vendorPlaceholder": "Bambu, eSUN, genérico...",
         "wishlist": "Lista de desejos",
         "wishlistQueue": "Lista de desejos/fila de pedidos",
-        "wishlistQueueHelp": "Mova itens entre lista de desejos, pedidos e recebidos ou armazene-os diretamente agora."
+        "wishlistQueueHelp": "Mova itens entre lista de desejos, pedidos e recebidos ou armazene-os diretamente agora.",
+        "searchShortPlaceholder": "Pesquisar no estoque"
       },
       "trustedLan": {
         "awaiting": "Aguardando um link de emparelhamento de LAN confiável.",
@@ -3893,6 +4073,36 @@
         "detailHint": "As alterações se aplicam a esta bobina. Limpe todos os campos para remover os dados da compra.",
         "legacyPriceHint": "Este preço antigo pode permanecer sem moeda até que o preço seja alterado.",
         "errorInvalid": "Revise os dados da compra antes de salvar."
+      },
+      "access": {
+        "title": "O acesso precisa ser renovado",
+        "body": "Peça ao anfitrião para autorizar este navegador novamente.",
+        "deviceName": "Nome do dispositivo",
+        "nameHint": "O nome apenas ajuda o anfitrião a reconhecer seu dispositivo.",
+        "request": "Solicitar acesso novamente",
+        "pendingTitle": "Solicitação enviada",
+        "pendingBody": "O acesso deve ser autorizado no Filament Manager no computador anfitrião.",
+        "waiting": "Aguardando o anfitrião…",
+        "codeTitle": "Digite o código do anfitrião",
+        "codeLabel": "Código de uso único",
+        "codeHint": "Seis dígitos. O código é válido por cinco minutos.",
+        "confirm": "Confirmar acesso",
+        "badCode": "Código incorreto. Restam {count} tentativas.",
+        "rejected": "A solicitação foi recusada.",
+        "expired": "A solicitação expirou. Solicite acesso novamente.",
+        "locked": "Três tentativas incorretas. Solicite acesso novamente.",
+        "cancelled": "A solicitação foi cancelada.",
+        "cancel": "Cancelar solicitação",
+        "otherWay": "Usar um link de pareamento",
+        "fallback": "Abra um novo link de pareamento ou leia o código QR em Biblioteca e aplicativo web no anfitrião.",
+        "banner": "Solicitações de acesso do navegador: {count}",
+        "open": "Ver solicitações",
+        "hostTitle": "Solicitações de acesso do navegador",
+        "trust": "O nome é fornecido pelo dispositivo. Autorize apenas dispositivos que você reconhece.",
+        "actionFailed": "A solicitação mudou ou o serviço está indisponível. Tente novamente.",
+        "reject": "Recusar",
+        "approve": "Permitir acesso",
+        "shareCode": "Informe este código à pessoa que usa o dispositivo que solicitou acesso."
       }
     },
     "it-IT": {
@@ -4307,7 +4517,11 @@
         "trustedLanDesktopInCharge": "L'app Desktop e SQLite rimangono al comando. L'accesso Trusted-LAN è ancora controllato da desktop e non crittografato sulla rete.",
         "viewLicense": "Visualizza licenza",
         "viewNotices": "Avvisi",
-        "cachedData": "Non è stato possibile aggiornare alcuni dati. I valori caricati in precedenza potrebbero non essere aggiornati. Aggiorna per riprovare."
+        "cachedData": "Non è stato possibile aggiornare alcuni dati. I valori caricati in precedenza potrebbero non essere aggiornati. Aggiorna per riprovare.",
+        "themeGraySoft": "Grigio · Morbido",
+        "themeGrayDeep": "Grigio · Profondo",
+        "themeBlueNight": "Blu · Notte",
+        "themeLightClean": "Chiaro · Pulito"
       },
       "shell": {
         "close": "Vicino",
@@ -4509,7 +4723,8 @@
         "vendorPlaceholder": "Bambu, eSUN, Generico...",
         "wishlist": "Lista dei desideri",
         "wishlistQueue": "Lista dei desideri/coda degli ordini",
-        "wishlistQueueHelp": "Sposta gli articoli tra la lista dei desideri, in ordine e ricevuti oppure immagazzinali direttamente adesso."
+        "wishlistQueueHelp": "Sposta gli articoli tra la lista dei desideri, in ordine e ricevuti oppure immagazzinali direttamente adesso.",
+        "searchShortPlaceholder": "Cerca nell’inventario"
       },
       "trustedLan": {
         "awaiting": "In attesa di un collegamento di accoppiamento LAN attendibile.",
@@ -4542,6 +4757,36 @@
         "legacyPriceHint": "Questo prezzo precedente può rimanere senza valuta finché il prezzo non cambia.",
         "errorInvalid": "Controlla i dettagli di acquisto prima di salvare.",
         "errorSupplierReferenceTooLong": "Il riferimento del fornitore è troppo lungo."
+      },
+      "access": {
+        "title": "L’accesso deve essere rinnovato",
+        "body": "Chiedi all’host di autorizzare nuovamente questo browser.",
+        "deviceName": "Nome del dispositivo",
+        "nameHint": "Il nome serve solo ad aiutare l’host a riconoscere il dispositivo.",
+        "request": "Richiedi nuovamente l’accesso",
+        "pendingTitle": "Richiesta inviata",
+        "pendingBody": "L’accesso deve essere autorizzato in Filament Manager sul computer host.",
+        "waiting": "In attesa dell’host…",
+        "codeTitle": "Inserisci il codice dell’host",
+        "codeLabel": "Codice monouso",
+        "codeHint": "Sei cifre. Il codice è valido per cinque minuti.",
+        "confirm": "Conferma accesso",
+        "badCode": "Codice errato. Restano {count} tentativi.",
+        "rejected": "La richiesta è stata rifiutata.",
+        "expired": "La richiesta è scaduta. Richiedi nuovamente l’accesso.",
+        "locked": "Tre tentativi errati. Richiedi nuovamente l’accesso.",
+        "cancelled": "La richiesta è stata annullata.",
+        "cancel": "Annulla richiesta",
+        "otherWay": "Usa un link di abbinamento",
+        "fallback": "Apri un nuovo link di abbinamento o scansiona il suo codice QR in Libreria e app web sull’host.",
+        "banner": "Richieste di accesso del browser: {count}",
+        "open": "Visualizza richieste",
+        "hostTitle": "Richieste di accesso del browser",
+        "trust": "Il nome è fornito dal dispositivo. Autorizza solo dispositivi che riconosci.",
+        "actionFailed": "La richiesta è cambiata o il servizio non è disponibile. Riprova.",
+        "reject": "Rifiuta",
+        "approve": "Consenti accesso",
+        "shareCode": "Comunica questo codice alla persona che usa il dispositivo che ha richiesto l’accesso."
       }
     },
     "pl-PL": {
@@ -4956,7 +5201,11 @@
         "trustedLanDesktopInCharge": "Aplikacja Desktop i SQLite pozostają pod kontrolą. Dostęp Trusted-LAN jest nadal kontrolowany przez desktop i nie jest szyfrowany w sieci.",
         "viewLicense": "Zobacz licencję",
         "viewNotices": "Uwagi",
-        "cachedData": "Nie udało się odświeżyć części danych. Wcześniej wczytane wartości mogą być nieaktualne. Odśwież, aby spróbować ponownie."
+        "cachedData": "Nie udało się odświeżyć części danych. Wcześniej wczytane wartości mogą być nieaktualne. Odśwież, aby spróbować ponownie.",
+        "themeGraySoft": "Szary · Łagodny",
+        "themeGrayDeep": "Szary · Głęboki",
+        "themeBlueNight": "Niebieski · Noc",
+        "themeLightClean": "Jasny · Czysty"
       },
       "shell": {
         "close": "Zamknij",
@@ -5158,7 +5407,8 @@
         "vendorPlaceholder": "Bambu, eSUN, ogólne...",
         "wishlist": "Lista życzeń",
         "wishlistQueue": "Lista życzeń / kolejka zamówień",
-        "wishlistQueueHelp": "Przenoś produkty pomiędzy listą życzeń, zamówionymi i otrzymanymi lub przechowuj je bezpośrednio w magazynie."
+        "wishlistQueueHelp": "Przenoś produkty pomiędzy listą życzeń, zamówionymi i otrzymanymi lub przechowuj je bezpośrednio w magazynie.",
+        "searchShortPlaceholder": "Szukaj w magazynie"
       },
       "trustedLan": {
         "awaiting": "Oczekiwanie na łącze parujące z zaufaną siecią LAN.",
@@ -5191,6 +5441,36 @@
         "detailHint": "Zmiany dotyczą tej szpuli. Wyczyść wszystkie pola, aby usunąć jej dane zakupu.",
         "legacyPriceHint": "Ta starsza cena może pozostać bez waluty, dopóki cena się nie zmieni.",
         "errorInvalid": "Przed zapisaniem sprawdź dane zakupu."
+      },
+      "access": {
+        "title": "Dostęp wymaga odnowienia",
+        "body": "Poproś hosta o ponowne zatwierdzenie tej przeglądarki.",
+        "deviceName": "Nazwa urządzenia",
+        "nameHint": "Nazwa pomaga hostowi jedynie rozpoznać urządzenie.",
+        "request": "Poproś ponownie o dostęp",
+        "pendingTitle": "Wysłano prośbę",
+        "pendingBody": "Dostęp musi zostać zatwierdzony w Filament Manager na komputerze hosta.",
+        "waiting": "Oczekiwanie na hosta…",
+        "codeTitle": "Wpisz kod z hosta",
+        "codeLabel": "Kod jednorazowy",
+        "codeHint": "Sześć cyfr. Kod jest ważny przez pięć minut.",
+        "confirm": "Potwierdź dostęp",
+        "badCode": "Nieprawidłowy kod. Pozostało prób: {count}.",
+        "rejected": "Prośba została odrzucona.",
+        "expired": "Prośba wygasła. Poproś ponownie o dostęp.",
+        "locked": "Trzy błędne próby. Poproś ponownie o dostęp.",
+        "cancelled": "Prośba została anulowana.",
+        "cancel": "Anuluj prośbę",
+        "otherWay": "Użyj linku parowania",
+        "fallback": "Otwórz nowy link parowania lub zeskanuj jego kod QR w sekcji Biblioteka i aplikacja internetowa na hoście.",
+        "banner": "Prośby o dostęp przeglądarki: {count}",
+        "open": "Zobacz prośby",
+        "hostTitle": "Prośby o dostęp przeglądarki",
+        "trust": "Nazwę podaje urządzenie. Zatwierdzaj tylko rozpoznawane urządzenia.",
+        "actionFailed": "Prośba uległa zmianie lub usługa jest niedostępna. Spróbuj ponownie.",
+        "reject": "Odrzuć",
+        "approve": "Zezwól na dostęp",
+        "shareCode": "Przekaż ten kod osobie korzystającej z urządzenia, które poprosiło o dostęp."
       }
     },
     "nl-NL": {
@@ -5605,7 +5885,11 @@
         "trustedLanDesktopInCharge": "De Desktop-app en SQLite blijven de baas. De toegang tot Trusted-LAN wordt nog steeds door desktop beheerd en is niet gecodeerd op het netwerk.",
         "viewLicense": "Licentie bekijken",
         "viewNotices": "Mededelingen",
-        "cachedData": "Sommige gegevens konden niet worden vernieuwd. Eerder geladen waarden kunnen verouderd zijn. Vernieuw om het opnieuw te proberen."
+        "cachedData": "Sommige gegevens konden niet worden vernieuwd. Eerder geladen waarden kunnen verouderd zijn. Vernieuw om het opnieuw te proberen.",
+        "themeGraySoft": "Grijs · Zacht",
+        "themeGrayDeep": "Grijs · Diep",
+        "themeBlueNight": "Blauw · Nacht",
+        "themeLightClean": "Licht · Helder"
       },
       "shell": {
         "close": "Sluiten",
@@ -5807,7 +6091,8 @@
         "vendorPlaceholder": "Bambu, eSUN, Generiek...",
         "wishlist": "Verlanglijst",
         "wishlistQueue": "Verlanglijst / bestelwachtrij",
-        "wishlistQueueHelp": "Verplaats artikelen tussen verlanglijst, in bestelling en ontvangen, of sla ze nu direct op."
+        "wishlistQueueHelp": "Verplaats artikelen tussen verlanglijst, in bestelling en ontvangen, of sla ze nu direct op.",
+        "searchShortPlaceholder": "Zoek in voorraad"
       },
       "trustedLan": {
         "awaiting": "Wachten op een vertrouwde LAN-koppelingslink.",
@@ -5840,6 +6125,36 @@
         "detailHint": "Wijzigingen gelden voor deze rol. Wis alle velden om de aankoopgegevens te verwijderen.",
         "legacyPriceHint": "Deze oudere prijs kan zonder valuta blijven staan totdat de prijs wordt gewijzigd.",
         "errorInvalid": "Controleer de aankoopgegevens voordat u opslaat."
+      },
+      "access": {
+        "title": "De toegang moet worden vernieuwd",
+        "body": "Vraag de host om deze browser opnieuw goed te keuren.",
+        "deviceName": "Apparaatnaam",
+        "nameHint": "De naam helpt de host alleen om je apparaat te herkennen.",
+        "request": "Opnieuw toegang aanvragen",
+        "pendingTitle": "Aanvraag verzonden",
+        "pendingBody": "De toegang moet worden goedgekeurd in Filament Manager op de hostcomputer.",
+        "waiting": "Wachten op de host…",
+        "codeTitle": "Voer de code van de host in",
+        "codeLabel": "Eenmalige code",
+        "codeHint": "Zes cijfers. De code is vijf minuten geldig.",
+        "confirm": "Toegang bevestigen",
+        "badCode": "Onjuiste code. Nog {count} pogingen over.",
+        "rejected": "De aanvraag is afgewezen.",
+        "expired": "De aanvraag is verlopen. Vraag opnieuw toegang aan.",
+        "locked": "Drie onjuiste pogingen. Vraag opnieuw toegang aan.",
+        "cancelled": "De aanvraag is geannuleerd.",
+        "cancel": "Aanvraag annuleren",
+        "otherWay": "Een koppelingslink gebruiken",
+        "fallback": "Open een nieuwe koppelingslink of scan de QR-code bij Bibliotheek en webapp op de host.",
+        "banner": "Aanvragen voor browsertoegang: {count}",
+        "open": "Aanvragen bekijken",
+        "hostTitle": "Aanvragen voor browsertoegang",
+        "trust": "De naam wordt door het apparaat opgegeven. Keur alleen apparaten goed die je herkent.",
+        "actionFailed": "De aanvraag is gewijzigd of de dienst is niet beschikbaar. Probeer het opnieuw.",
+        "reject": "Afwijzen",
+        "approve": "Toegang toestaan",
+        "shareCode": "Geef deze code aan de persoon die het aanvragende apparaat gebruikt."
       }
     },
     "cs-CZ": {
@@ -6254,7 +6569,11 @@
         "trustedLanDesktopInCharge": "Aplikace Desktop a SQLite zůstávají pod kontrolou. Přístup Trusted-LAN je stále řízen desktop a není v síti šifrován.",
         "viewLicense": "Zobrazit licenci",
         "viewNotices": "Oznámení",
-        "cachedData": "Některá data se nepodařilo aktualizovat. Dříve načtené hodnoty mohou být zastaralé. Zkuste je znovu aktualizovat."
+        "cachedData": "Některá data se nepodařilo aktualizovat. Dříve načtené hodnoty mohou být zastaralé. Zkuste je znovu aktualizovat.",
+        "themeGraySoft": "Šedá · Jemná",
+        "themeGrayDeep": "Šedá · Hluboká",
+        "themeBlueNight": "Modrá · Noční",
+        "themeLightClean": "Světlá · Čistá"
       },
       "shell": {
         "close": "Zavřít",
@@ -6456,7 +6775,8 @@
         "vendorPlaceholder": "Bambu, eSUN, Obecný...",
         "wishlist": "Seznam přání",
         "wishlistQueue": "Seznam přání / fronta objednávek",
-        "wishlistQueueHelp": "Přesouvejte položky mezi seznamem přání, na objednávku a přijatými, nebo je rovnou skladujte."
+        "wishlistQueueHelp": "Přesouvejte položky mezi seznamem přání, na objednávku a přijatými, nebo je rovnou skladujte.",
+        "searchShortPlaceholder": "Hledat ve skladu"
       },
       "trustedLan": {
         "awaiting": "Čeká se na spojení s důvěryhodnou sítí LAN.",
@@ -6489,6 +6809,36 @@
         "detailHint": "Změny se vztahují na tuto cívku. Vymazáním všech polí odstraníte její údaje o nákupu.",
         "legacyPriceHint": "Tato starší cena může zůstat bez měny, dokud se cena nezmění.",
         "errorInvalid": "Před uložením zkontrolujte údaje o nákupu."
+      },
+      "access": {
+        "title": "Přístup je třeba obnovit",
+        "body": "Požádejte hostitele o opětovné schválení tohoto prohlížeče.",
+        "deviceName": "Název zařízení",
+        "nameHint": "Název pouze pomáhá hostiteli rozpoznat vaše zařízení.",
+        "request": "Znovu požádat o přístup",
+        "pendingTitle": "Žádost odeslána",
+        "pendingBody": "Přístup musí být schválen ve Filament Manager na hostitelském počítači.",
+        "waiting": "Čekání na hostitele…",
+        "codeTitle": "Zadejte kód od hostitele",
+        "codeLabel": "Jednorázový kód",
+        "codeHint": "Šest číslic. Kód platí pět minut.",
+        "confirm": "Potvrdit přístup",
+        "badCode": "Nesprávný kód. Zbývající pokusy: {count}.",
+        "rejected": "Žádost byla zamítnuta.",
+        "expired": "Platnost žádosti vypršela. Požádejte znovu o přístup.",
+        "locked": "Tři nesprávné pokusy. Požádejte znovu o přístup.",
+        "cancelled": "Žádost byla zrušena.",
+        "cancel": "Zrušit žádost",
+        "otherWay": "Použít odkaz pro párování",
+        "fallback": "Otevřete nový odkaz pro párování nebo naskenujte jeho QR kód v části Knihovna a webová aplikace na hostiteli.",
+        "banner": "Žádosti o přístup prohlížeče: {count}",
+        "open": "Zobrazit žádosti",
+        "hostTitle": "Žádosti o přístup prohlížeče",
+        "trust": "Název poskytlo zařízení. Schvalujte pouze zařízení, která znáte.",
+        "actionFailed": "Žádost se změnila nebo služba není dostupná. Zkuste to znovu.",
+        "reject": "Zamítnout",
+        "approve": "Povolit přístup",
+        "shareCode": "Sdělte tento kód osobě, která používá žádající zařízení."
       }
     },
     "zh-CN": {
@@ -6903,7 +7253,11 @@
         "trustedLanDesktopInCharge": "Desktop 应用程序和 SQLite 继续负责。 Trusted-LAN 访问仍然受 desktop 控制，并且在网络上未加密。",
         "viewLicense": "查看许可证",
         "viewNotices": "通知",
-        "cachedData": "部分数据无法刷新。之前加载的值可能已过时。请刷新重试。"
+        "cachedData": "部分数据无法刷新。之前加载的值可能已过时。请刷新重试。",
+        "themeGraySoft": "灰色 · 柔和",
+        "themeGrayDeep": "灰色 · 深邃",
+        "themeBlueNight": "蓝色 · 夜幕",
+        "themeLightClean": "浅色 · 清爽"
       },
       "shell": {
         "close": "关闭",
@@ -7105,7 +7459,8 @@
         "vendorPlaceholder": "Bambu、eSUN易生、通用...",
         "wishlist": "愿望清单",
         "wishlistQueue": "愿望清单/订单队列",
-        "wishlistQueueHelp": "在心愿单、已订购和已收到商品之间移动商品，或者立即直接入库。"
+        "wishlistQueueHelp": "在心愿单、已订购和已收到商品之间移动商品，或者立即直接入库。",
+        "searchShortPlaceholder": "搜索库存"
       },
       "trustedLan": {
         "awaiting": "等待可信 LAN 配对链接。",
@@ -7138,6 +7493,36 @@
         "detailHint": "更改仅应用于此耗材卷。清空所有字段可移除其购买详情。",
         "legacyPriceHint": "在价格变更前，此旧价格可不设置货币。",
         "errorInvalid": "保存前请检查购买详情。"
+      },
+      "access": {
+        "title": "需要重新授权",
+        "body": "请主机重新批准此浏览器的访问。",
+        "deviceName": "设备名称",
+        "nameHint": "此名称仅用于帮助主机识别您的设备。",
+        "request": "重新申请访问",
+        "pendingTitle": "请求已发送",
+        "pendingBody": "必须在主机上的 Filament Manager 中批准访问。",
+        "waiting": "正在等待主机…",
+        "codeTitle": "输入主机提供的代码",
+        "codeLabel": "一次性代码",
+        "codeHint": "六位数字。代码有效期为五分钟。",
+        "confirm": "确认访问",
+        "badCode": "代码不正确。还可尝试 {count} 次。",
+        "rejected": "请求已被拒绝。",
+        "expired": "请求已过期。请重新申请访问。",
+        "locked": "三次尝试均不正确。请重新申请访问。",
+        "cancelled": "请求已取消。",
+        "cancel": "取消请求",
+        "otherWay": "改用配对链接",
+        "fallback": "打开新的配对链接，或扫描主机上“库与网页应用”中的二维码。",
+        "banner": "浏览器访问请求: {count}",
+        "open": "查看请求",
+        "hostTitle": "浏览器访问请求",
+        "trust": "名称由设备提供。仅批准您认识的设备。",
+        "actionFailed": "请求已更改或服务不可用。请重试。",
+        "reject": "拒绝",
+        "approve": "允许访问",
+        "shareCode": "将此代码告知使用申请设备的人员。"
       }
     },
     "ja-JP": {
@@ -7552,7 +7937,11 @@
         "trustedLanDesktopInCharge": "Desktop アプリと SQLite が引き続き担当します。 Trusted-LAN アクセスは依然として desktop によって制御されており、ネットワーク上で暗号化されていません。",
         "viewLicense": "ライセンスを表示する",
         "viewNotices": "お知らせ",
-        "cachedData": "一部のデータを更新できませんでした。以前読み込んだ値は古い可能性があります。更新して再試行してください。"
+        "cachedData": "一部のデータを更新できませんでした。以前読み込んだ値は古い可能性があります。更新して再試行してください。",
+        "themeGraySoft": "グレー · ソフト",
+        "themeGrayDeep": "グレー · ディープ",
+        "themeBlueNight": "ブルー · ナイト",
+        "themeLightClean": "ライト · クリーン"
       },
       "shell": {
         "close": "閉じる",
@@ -7754,7 +8143,8 @@
         "vendorPlaceholder": "Bambu、eSUN、汎用...",
         "wishlist": "ウィッシュリスト",
         "wishlistQueue": "ウィッシュリスト/注文キュー",
-        "wishlistQueueHelp": "アイテムをウィッシュリスト、注文中、入荷済みの間で移動したり、今すぐ在庫に追加したりできます。"
+        "wishlistQueueHelp": "アイテムをウィッシュリスト、注文中、入荷済みの間で移動したり、今すぐ在庫に追加したりできます。",
+        "searchShortPlaceholder": "在庫を検索"
       },
       "trustedLan": {
         "awaiting": "トラステッド LAN ペアリング リンクを待機しています。",
@@ -7787,6 +8177,36 @@
         "detailHint": "変更はこのロールに適用されます。購入情報を削除するには、すべてのフィールドを空にしてください。",
         "legacyPriceHint": "この既存価格は、価格を変更するまで通貨未設定のままにできます。",
         "errorInvalid": "保存する前に購入情報を確認してください。"
+      },
+      "access": {
+        "title": "アクセスの更新が必要です",
+        "body": "このブラウザーを再承認するようホストに依頼してください。",
+        "deviceName": "デバイス名",
+        "nameHint": "この名前はホストがデバイスを見分けるためだけに使用します。",
+        "request": "アクセスを再申請",
+        "pendingTitle": "申請を送信しました",
+        "pendingBody": "ホストの Filament Manager でアクセスを承認する必要があります。",
+        "waiting": "ホストの承認待ち…",
+        "codeTitle": "ホストのコードを入力",
+        "codeLabel": "ワンタイムコード",
+        "codeHint": "6桁の数字です。有効期限は5分です。",
+        "confirm": "アクセスを確認",
+        "badCode": "コードが違います。残り {count} 回試行できます。",
+        "rejected": "申請は拒否されました。",
+        "expired": "申請の有効期限が切れました。再申請してください。",
+        "locked": "3回失敗しました。アクセスを再申請してください。",
+        "cancelled": "申請はキャンセルされました。",
+        "cancel": "申請をキャンセル",
+        "otherWay": "ペアリングリンクを使用",
+        "fallback": "ホストの「ライブラリとウェブアプリ」で新しいペアリングリンクを開くか、QRコードを読み取ってください。",
+        "banner": "ブラウザーアクセス申請: {count}",
+        "open": "申請を表示",
+        "hostTitle": "ブラウザーアクセス申請",
+        "trust": "名前はデバイスが提示したものです。知っているデバイスだけを承認してください。",
+        "actionFailed": "申請が変更されたか、サービスを利用できません。再試行してください。",
+        "reject": "拒否",
+        "approve": "アクセスを許可",
+        "shareCode": "このコードを申請元のデバイスを使用している人に伝えてください。"
       }
     },
     "ko-KR": {
@@ -8201,7 +8621,11 @@
         "trustedLanDesktopInCharge": "Desktop 앱과 SQLite가 계속 담당합니다. Trusted-LAN 액세스는 여전히 desktop에 의해 제어되며 네트워크에서 암호화되지 않습니다.",
         "viewLicense": "라이선스 보기",
         "viewNotices": "공지사항",
-        "cachedData": "일부 데이터를 새로 고치지 못했습니다. 이전에 불러온 값이 오래되었을 수 있습니다. 새로 고침하여 다시 시도하세요."
+        "cachedData": "일부 데이터를 새로 고치지 못했습니다. 이전에 불러온 값이 오래되었을 수 있습니다. 새로 고침하여 다시 시도하세요.",
+        "themeGraySoft": "회색 · 부드러운",
+        "themeGrayDeep": "회색 · 깊은",
+        "themeBlueNight": "파랑 · 밤",
+        "themeLightClean": "밝음 · 깔끔한"
       },
       "shell": {
         "close": "닫기",
@@ -8403,7 +8827,8 @@
         "vendorPlaceholder": "Bambu, eSUN, 일반...",
         "wishlist": "위시리스트",
         "wishlistQueue": "위시리스트/주문 대기열",
-        "wishlistQueueHelp": "위시리스트, 주문 중, 수령 간 항목을 이동하거나 지금 바로 재고를 확보하세요."
+        "wishlistQueueHelp": "위시리스트, 주문 중, 수령 간 항목을 이동하거나 지금 바로 재고를 확보하세요.",
+        "searchShortPlaceholder": "재고 검색"
       },
       "trustedLan": {
         "awaiting": "신뢰할 수 있는 LAN 페어링 링크를 기다리는 중입니다.",
@@ -8436,6 +8861,36 @@
         "detailHint": "변경 사항은 이 스풀에 적용됩니다. 모든 필드를 비우면 구매 정보를 삭제할 수 있습니다.",
         "legacyPriceHint": "가격을 변경하기 전까지 기존 가격은 통화 없이 유지할 수 있습니다.",
         "errorInvalid": "저장하기 전에 구매 정보를 확인하세요."
+      },
+      "access": {
+        "title": "접근 권한을 갱신해야 합니다",
+        "body": "호스트에 이 브라우저의 접근을 다시 승인해 달라고 요청하세요.",
+        "deviceName": "기기 이름",
+        "nameHint": "이름은 호스트가 기기를 알아보는 데만 사용됩니다.",
+        "request": "접근 권한 다시 요청",
+        "pendingTitle": "요청을 보냈습니다",
+        "pendingBody": "호스트 컴퓨터의 Filament Manager에서 접근을 승인해야 합니다.",
+        "waiting": "호스트 승인 대기 중…",
+        "codeTitle": "호스트의 코드 입력",
+        "codeLabel": "일회용 코드",
+        "codeHint": "숫자 6자리입니다. 코드는 5분간 유효합니다.",
+        "confirm": "접근 확인",
+        "badCode": "코드가 올바르지 않습니다. {count}회 더 시도할 수 있습니다.",
+        "rejected": "요청이 거절되었습니다.",
+        "expired": "요청이 만료되었습니다. 접근 권한을 다시 요청하세요.",
+        "locked": "3회 실패했습니다. 접근 권한을 다시 요청하세요.",
+        "cancelled": "요청이 취소되었습니다.",
+        "cancel": "요청 취소",
+        "otherWay": "페어링 링크 사용",
+        "fallback": "호스트의 라이브러리 및 웹 앱에서 새 페어링 링크를 열거나 QR 코드를 스캔하세요.",
+        "banner": "브라우저 접근 요청: {count}",
+        "open": "요청 보기",
+        "hostTitle": "브라우저 접근 요청",
+        "trust": "이름은 기기가 제공한 정보입니다. 아는 기기만 승인하세요.",
+        "actionFailed": "요청이 변경되었거나 서비스를 사용할 수 없습니다. 다시 시도하세요.",
+        "reject": "거절",
+        "approve": "접근 허용",
+        "shareCode": "이 코드를 요청한 기기를 사용하는 사람에게 알려 주세요."
       }
     },
     "zh-TW": {
@@ -8850,7 +9305,11 @@
         "trustedLanDesktopInCharge": "Desktop 應用程式和 SQLite 繼續負責。 Trusted-LAN 存取仍受 desktop 控制，且在網路上未加密。",
         "viewLicense": "檢視許可證",
         "viewNotices": "通知",
-        "cachedData": "部分資料無法重新整理。先前載入的值可能已過時。請重新整理以重試。"
+        "cachedData": "部分資料無法重新整理。先前載入的值可能已過時。請重新整理以重試。",
+        "themeGraySoft": "灰色 · 柔和",
+        "themeGrayDeep": "灰色 · 深邃",
+        "themeBlueNight": "藍色 · 夜幕",
+        "themeLightClean": "淺色 · 清爽"
       },
       "shell": {
         "close": "關閉",
@@ -9052,7 +9511,8 @@
         "vendorPlaceholder": "Bambu、eSUN易生、通用...",
         "wishlist": "願望清單",
         "wishlistQueue": "願望清單/訂單佇列",
-        "wishlistQueueHelp": "在願望清單、已訂購和已收到商品之間移動商品，或立即直接入庫。"
+        "wishlistQueueHelp": "在願望清單、已訂購和已收到商品之間移動商品，或立即直接入庫。",
+        "searchShortPlaceholder": "搜尋庫存"
       },
       "trustedLan": {
         "awaiting": "等待可信 LAN 配對連結。",
@@ -9085,6 +9545,36 @@
         "detailHint": "變更只會套用至此耗材捲。清空所有欄位即可移除其購買詳細資料。",
         "legacyPriceHint": "在價格變更前，此舊價格可不設定貨幣。",
         "errorInvalid": "儲存前請檢查購買詳細資料。"
+      },
+      "access": {
+        "title": "需要重新授權",
+        "body": "請主機重新核准此瀏覽器的存取。",
+        "deviceName": "裝置名稱",
+        "nameHint": "此名稱僅用於協助主機辨識您的裝置。",
+        "request": "重新申請存取",
+        "pendingTitle": "請求已送出",
+        "pendingBody": "必須在主機上的 Filament Manager 中核准存取。",
+        "waiting": "正在等待主機…",
+        "codeTitle": "輸入主機提供的代碼",
+        "codeLabel": "一次性代碼",
+        "codeHint": "六位數字。代碼有效期限為五分鐘。",
+        "confirm": "確認存取",
+        "badCode": "代碼不正確。還可嘗試 {count} 次。",
+        "rejected": "請求已遭拒絕。",
+        "expired": "請求已過期。請重新申請存取。",
+        "locked": "三次嘗試皆不正確。請重新申請存取。",
+        "cancelled": "請求已取消。",
+        "cancel": "取消請求",
+        "otherWay": "改用配對連結",
+        "fallback": "開啟新的配對連結，或掃描主機上「資料庫與網頁應用程式」中的 QR 碼。",
+        "banner": "瀏覽器存取請求: {count}",
+        "open": "查看請求",
+        "hostTitle": "瀏覽器存取請求",
+        "trust": "名稱由裝置提供。僅核准您認識的裝置。",
+        "actionFailed": "請求已變更或服務無法使用。請重試。",
+        "reject": "拒絕",
+        "approve": "允許存取",
+        "shareCode": "將此代碼告知使用申請裝置的人員。"
       }
     },
     "tr-TR": {
@@ -9499,7 +9989,11 @@
         "trustedLanDesktopInCharge": "Desktop uygulaması ve SQLite sorumlu kalır. Trusted-LAN erişimi hâlâ desktop kontrollüdür ve ağ üzerinde şifrelenmez.",
         "viewLicense": "Lisansı görüntüle",
         "viewNotices": "Bildirimler",
-        "cachedData": "Bazı veriler yenilenemedi. Önceden yüklenen değerler güncel olmayabilir. Tekrar denemek için yenileyin."
+        "cachedData": "Bazı veriler yenilenemedi. Önceden yüklenen değerler güncel olmayabilir. Tekrar denemek için yenileyin.",
+        "themeGraySoft": "Gri · Yumuşak",
+        "themeGrayDeep": "Gri · Derin",
+        "themeBlueNight": "Mavi · Gece",
+        "themeLightClean": "Açık · Sade"
       },
       "shell": {
         "close": "Kapat",
@@ -9701,7 +10195,8 @@
         "vendorPlaceholder": "Bambu, eSUN, Genel...",
         "wishlist": "İstek listesi",
         "wishlistQueue": "İstek listesi / sipariş kuyruğu",
-        "wishlistQueueHelp": "Öğeleri istek listesi, sipariş üzerine ve alınanlar arasında taşıyın veya doğrudan şimdi stoklayın."
+        "wishlistQueueHelp": "Öğeleri istek listesi, sipariş üzerine ve alınanlar arasında taşıyın veya doğrudan şimdi stoklayın.",
+        "searchShortPlaceholder": "Stokta ara"
       },
       "trustedLan": {
         "awaiting": "Güvenilir LAN eşleştirme bağlantısı bekleniyor.",
@@ -9734,6 +10229,36 @@
         "detailHint": "Değişiklikler bu makaraya uygulanır. Satın alma ayrıntılarını kaldırmak için tüm alanları temizleyin.",
         "legacyPriceHint": "Bu eski fiyat, fiyat değişene kadar para birimi olmadan kalabilir.",
         "errorInvalid": "Kaydetmeden önce satın alma ayrıntılarını gözden geçirin."
+      },
+      "access": {
+        "title": "Erişimin yenilenmesi gerekiyor",
+        "body": "Sunucudan bu tarayıcıyı yeniden onaylamasını isteyin.",
+        "deviceName": "Cihaz adı",
+        "nameHint": "Ad, yalnızca sunucunun cihazınızı tanımasına yardımcı olur.",
+        "request": "Yeniden erişim iste",
+        "pendingTitle": "İstek gönderildi",
+        "pendingBody": "Erişim, sunucu bilgisayardaki Filament Manager üzerinden onaylanmalıdır.",
+        "waiting": "Sunucu bekleniyor…",
+        "codeTitle": "Sunucudaki kodu girin",
+        "codeLabel": "Tek kullanımlık kod",
+        "codeHint": "Altı rakam. Kod beş dakika geçerlidir.",
+        "confirm": "Erişimi onayla",
+        "badCode": "Yanlış kod. {count} deneme kaldı.",
+        "rejected": "İstek reddedildi.",
+        "expired": "İsteğin süresi doldu. Yeniden erişim isteyin.",
+        "locked": "Üç yanlış deneme. Yeniden erişim isteyin.",
+        "cancelled": "İstek iptal edildi.",
+        "cancel": "İsteği iptal et",
+        "otherWay": "Eşleştirme bağlantısı kullan",
+        "fallback": "Sunucudaki Kitaplık ve web uygulaması bölümünden yeni bir eşleştirme bağlantısı açın veya QR kodunu tarayın.",
+        "banner": "Tarayıcı erişim istekleri: {count}",
+        "open": "İstekleri görüntüle",
+        "hostTitle": "Tarayıcı erişim istekleri",
+        "trust": "Ad, cihaz tarafından belirtilmiştir. Yalnızca tanıdığınız cihazları onaylayın.",
+        "actionFailed": "İstek değişti veya hizmet kullanılamıyor. Yeniden deneyin.",
+        "reject": "Reddet",
+        "approve": "Erişime izin ver",
+        "shareCode": "Bu kodu, istekte bulunan cihazı kullanan kişiye iletin."
       }
     },
     "uk-UA": {
@@ -10148,7 +10673,11 @@
         "trustedLanDesktopInCharge": "Додаток Desktop і SQLite залишаються відповідальними. Доступ Trusted-LAN все ще контролюється desktop і не шифрується в мережі.",
         "viewLicense": "Переглянути ліцензію",
         "viewNotices": "Повідомлення",
-        "cachedData": "Не вдалося оновити частину даних. Раніше завантажені значення можуть бути застарілими. Оновіть, щоб спробувати знову."
+        "cachedData": "Не вдалося оновити частину даних. Раніше завантажені значення можуть бути застарілими. Оновіть, щоб спробувати знову.",
+        "themeGraySoft": "Сірий · М’який",
+        "themeGrayDeep": "Сірий · Глибокий",
+        "themeBlueNight": "Синій · Ніч",
+        "themeLightClean": "Світлий · Чистий"
       },
       "shell": {
         "close": "Закрити",
@@ -10350,7 +10879,8 @@
         "vendorPlaceholder": "Bambu, eSUN, загальний...",
         "wishlist": "Бажання",
         "wishlistQueue": "Бажання",
-        "wishlistQueueHelp": "Черга замовлень"
+        "wishlistQueueHelp": "Черга замовлень",
+        "searchShortPlaceholder": "Пошук у запасах"
       },
       "trustedLan": {
         "awaiting": "Очікування зв’язку з довіреною локальною мережею.",
@@ -10383,6 +10913,36 @@
         "detailHint": "Зміни застосовуються до цієї котушки. Очистьте всі поля, щоб видалити дані про її покупку.",
         "legacyPriceHint": "Ця попередня ціна може залишатися без валюти, доки ціну не буде змінено.",
         "errorInvalid": "Перевірте дані про покупку перед збереженням."
+      },
+      "access": {
+        "title": "Доступ потрібно поновити",
+        "body": "Попросіть хост знову схвалити цей браузер.",
+        "deviceName": "Назва пристрою",
+        "nameHint": "Назва лише допомагає хосту впізнати ваш пристрій.",
+        "request": "Знову запитати доступ",
+        "pendingTitle": "Запит надіслано",
+        "pendingBody": "Доступ потрібно схвалити у Filament Manager на комп’ютері хоста.",
+        "waiting": "Очікування хоста…",
+        "codeTitle": "Введіть код від хоста",
+        "codeLabel": "Одноразовий код",
+        "codeHint": "Шість цифр. Код дійсний протягом п’яти хвилин.",
+        "confirm": "Підтвердити доступ",
+        "badCode": "Неправильний код. Залишилося спроб: {count}.",
+        "rejected": "Запит відхилено.",
+        "expired": "Термін дії запиту минув. Запитайте доступ знову.",
+        "locked": "Три невдалі спроби. Запитайте доступ знову.",
+        "cancelled": "Запит скасовано.",
+        "cancel": "Скасувати запит",
+        "otherWay": "Скористатися посиланням сполучення",
+        "fallback": "Відкрийте нове посилання сполучення або відскануйте його QR-код у розділі Бібліотека та вебзастосунок на хості.",
+        "banner": "Запити на доступ браузера: {count}",
+        "open": "Переглянути запити",
+        "hostTitle": "Запити на доступ браузера",
+        "trust": "Назву вказує пристрій. Схвалюйте лише пристрої, які ви впізнаєте.",
+        "actionFailed": "Запит змінився або служба недоступна. Спробуйте знову.",
+        "reject": "Відхилити",
+        "approve": "Надати доступ",
+        "shareCode": "Повідомте цей код людині, яка користується пристроєм, що надіслав запит."
       }
     },
     "ru-RU": {
@@ -10600,7 +11160,11 @@
         "licenseHelp": "Условия открытого исходного кода для этого сопутствующего браузера.",
         "desktopInCharge": "Настольное приложение и SQLite остаются за вами.",
         "trustedLanDesktopInCharge": "Настольное приложение и SQLite остаются за вами. Доступ к Trusted-LAN по-прежнему контролируется настольным компьютером и не шифруется в сети.",
-        "cachedData": "Не удалось обновить часть данных. Ранее загруженные значения могут устареть. Обновите, чтобы повторить попытку."
+        "cachedData": "Не удалось обновить часть данных. Ранее загруженные значения могут устареть. Обновите, чтобы повторить попытку.",
+        "themeGraySoft": "Серый · Мягкий",
+        "themeGrayDeep": "Серый · Глубокий",
+        "themeBlueNight": "Синий · Ночь",
+        "themeLightClean": "Светлый · Чистый"
       },
       "trustedLan": {
         "pairingHint": "Настройки рабочего стола создают кратковременные одноразовые ссылки для доступа человека к браузеру.",
@@ -10790,7 +11354,8 @@
         "hiddenSelectedBody": "{title} остается выбранным для просмотра деталей, слотов и кредитов.",
         "wishlistQueueHelp": "Перемещайте товары между списком желаний, заказанными и полученными или храните их прямо сейчас.",
         "registerBorrowedInHelp": "Зарегистрируйте эту катушку как заимствованную, сохранив при этом тот же каталог и список желаний, что и на настольном компьютере.",
-        "addToWishlistHelp": "Используйте тот же выбор, чтобы сохранить список желаний и отслеживание заказов в оболочке браузера."
+        "addToWishlistHelp": "Используйте тот же выбор, чтобы сохранить список желаний и отслеживание заказов в оболочке браузера.",
+        "searchShortPlaceholder": "Поиск в запасах"
       },
       "detail": {
         "spoolHeading": "катушка",
@@ -11032,6 +11597,36 @@
         "detailHint": "Изменения применяются к этой катушке. Очистите все поля, чтобы удалить данные о покупке.",
         "legacyPriceHint": "Эта устаревшая цена может оставаться без валюты до следующего изменения цены.",
         "errorInvalid": "Проверьте данные о покупке перед сохранением."
+      },
+      "access": {
+        "title": "Доступ необходимо продлить",
+        "body": "Попросите хост повторно одобрить этот браузер.",
+        "deviceName": "Название устройства",
+        "nameHint": "Название помогает хосту только узнать ваше устройство.",
+        "request": "Снова запросить доступ",
+        "pendingTitle": "Запрос отправлен",
+        "pendingBody": "Доступ необходимо одобрить в Filament Manager на компьютере хоста.",
+        "waiting": "Ожидание хоста…",
+        "codeTitle": "Введите код с хоста",
+        "codeLabel": "Одноразовый код",
+        "codeHint": "Шесть цифр. Код действителен пять минут.",
+        "confirm": "Подтвердить доступ",
+        "badCode": "Неверный код. Осталось попыток: {count}.",
+        "rejected": "Запрос отклонён.",
+        "expired": "Срок действия запроса истёк. Запросите доступ снова.",
+        "locked": "Три неверные попытки. Запросите доступ снова.",
+        "cancelled": "Запрос отменён.",
+        "cancel": "Отменить запрос",
+        "otherWay": "Использовать ссылку сопряжения",
+        "fallback": "Откройте новую ссылку сопряжения или отсканируйте её QR-код в разделе Библиотека и веб-приложение на хосте.",
+        "banner": "Запросы на доступ браузера: {count}",
+        "open": "Посмотреть запросы",
+        "hostTitle": "Запросы на доступ браузера",
+        "trust": "Название указано устройством. Одобряйте только знакомые вам устройства.",
+        "actionFailed": "Запрос изменился или служба недоступна. Повторите попытку.",
+        "reject": "Отклонить",
+        "approve": "Разрешить доступ",
+        "shareCode": "Сообщите этот код человеку, использующему устройство, отправившее запрос."
       }
     },
     "hu-HU": {
@@ -11281,7 +11876,11 @@
         "trustedLanDesktopInCharge": "Az asztali alkalmazás és a SQLite továbbra is a felelős. A Trusted-LAN hozzáférést továbbra is asztali számítógép vezérli, és nincs titkosítva a hálózaton.",
         "desktopInCharge": "Az asztali alkalmazás és a SQLite továbbra is a felelős.",
         "trustedLanConnected": "Trusted-LAN csatlakoztatva",
-        "cachedData": "Néhány adatot nem sikerült frissíteni. A korábban betöltött értékek elavultak lehetnek. Próbálja újra a frissítést."
+        "cachedData": "Néhány adatot nem sikerült frissíteni. A korábban betöltött értékek elavultak lehetnek. Próbálja újra a frissítést.",
+        "themeGraySoft": "Szürke · Lágy",
+        "themeGrayDeep": "Szürke · Mély",
+        "themeBlueNight": "Kék · Éjszaka",
+        "themeLightClean": "Világos · Tiszta"
       },
       "inventory": {
         "rfidButton": "RFID",
@@ -11416,7 +12015,8 @@
         "noMatch": "Egyetlen helyi sor sem felel meg az aktuális keresésnek.",
         "noWishlistMatch": "Egyetlen kívánságlista elem sem felel meg ennek a szűrőnek.",
         "stockNow": "Raktáron most",
-        "hiddenSelectedBody": "A {title} kiválasztva marad a részletek, a résidők és a kölcsönök tekintetében."
+        "hiddenSelectedBody": "A {title} kiválasztva marad a részletek, a résidők és a kölcsönök tekintetében.",
+        "searchShortPlaceholder": "Keresés a készletben"
       },
       "loans": {
         "title": "Kölcsönök",
@@ -11681,6 +12281,36 @@
         "rfidLiveCandidateStale": "Frissítse a kísérő adatokat; az élő slot identitás megváltozott, mielőtt a RFID elmenthető lett volna.",
         "borrowedInHandingBack": "A kölcsönzött orsó visszaadása...",
         "borrowedInHandedBack": "Kölcsönzött orsó visszaadva."
+      },
+      "access": {
+        "title": "A hozzáférést meg kell újítani",
+        "body": "Kérd meg a gazdagépet, hogy ismét engedélyezze ezt a böngészőt.",
+        "deviceName": "Eszköz neve",
+        "nameHint": "A név csak az eszköz felismerésében segíti a gazdagépet.",
+        "request": "Hozzáférés újbóli kérése",
+        "pendingTitle": "Kérelem elküldve",
+        "pendingBody": "A hozzáférést a gazdagépen futó Filament Manager alkalmazásban kell engedélyezni.",
+        "waiting": "Várakozás a gazdagépre…",
+        "codeTitle": "Add meg a gazdagép kódját",
+        "codeLabel": "Egyszer használatos kód",
+        "codeHint": "Hat számjegy. A kód öt percig érvényes.",
+        "confirm": "Hozzáférés megerősítése",
+        "badCode": "Hibás kód. Hátralévő próbálkozások: {count}.",
+        "rejected": "A kérelmet elutasították.",
+        "expired": "A kérelem lejárt. Kérj ismét hozzáférést.",
+        "locked": "Három hibás próbálkozás. Kérj ismét hozzáférést.",
+        "cancelled": "A kérelmet visszavonták.",
+        "cancel": "Kérelem visszavonása",
+        "otherWay": "Párosítási hivatkozás használata",
+        "fallback": "Nyiss meg egy új párosítási hivatkozást, vagy olvasd be a QR-kódját a gazdagép Könyvtár és webalkalmazás részében.",
+        "banner": "Böngésző-hozzáférési kérelmek: {count}",
+        "open": "Kérelmek megtekintése",
+        "hostTitle": "Böngésző-hozzáférési kérelmek",
+        "trust": "A nevet az eszköz adja meg. Csak ismert eszközöket engedélyezz.",
+        "actionFailed": "A kérelem megváltozott, vagy a szolgáltatás nem érhető el. Próbáld újra.",
+        "reject": "Elutasítás",
+        "approve": "Hozzáférés engedélyezése",
+        "shareCode": "Add át ezt a kódot a kérelmező eszközt használó személynek."
       }
     },
     "sv-SE": {
@@ -11898,7 +12528,11 @@
         "connectionHelp": "Uppdaterings- och sessionskontroller.",
         "licenseHelp": "Termer med öppen källkod för denna webbläsare.",
         "trustedLanDesktopInCharge": "Desktop-appen och SQLite har ansvaret. Trusted-LAN-åtkomst är fortfarande skrivbordskontrollerad och inte krypterad i nätverket.",
-        "cachedData": "Vissa data kunde inte uppdateras. Tidigare inlästa värden kan vara inaktuella. Tryck på Uppdatera för att försöka igen."
+        "cachedData": "Vissa data kunde inte uppdateras. Tidigare inlästa värden kan vara inaktuella. Tryck på Uppdatera för att försöka igen.",
+        "themeGraySoft": "Grå · Mjuk",
+        "themeGrayDeep": "Grå · Djup",
+        "themeBlueNight": "Blå · Natt",
+        "themeLightClean": "Ljus · Ren"
       },
       "trustedLan": {
         "title": "Trusted-LAN webbläsare",
@@ -12088,7 +12722,8 @@
         "notePlaceholder": "Returtidpunkt eller annat sammanhang",
         "noWishlistMatch": "Inga objekt på önskelistan matchar detta filter.",
         "stockNow": "Lager nu",
-        "hiddenSelectedBody": "{title} förblir utvald för detaljer, slots och lån."
+        "hiddenSelectedBody": "{title} förblir utvald för detaljer, slots och lån.",
+        "searchShortPlaceholder": "Sök i lagret"
       },
       "detail": {
         "spoolHeading": "Spole",
@@ -12330,6 +12965,36 @@
         "detailHint": "Ändringarna gäller den här rullen. Rensa alla fält för att ta bort inköpsuppgifterna.",
         "legacyPriceHint": "Det här äldre priset kan stå kvar utan valuta tills priset ändras.",
         "errorInvalid": "Granska inköpsuppgifterna innan du sparar."
+      },
+      "access": {
+        "title": "Åtkomsten behöver förnyas",
+        "body": "Be värden godkänna den här webbläsaren igen.",
+        "deviceName": "Enhetens namn",
+        "nameHint": "Namnet hjälper bara värden att känna igen din enhet.",
+        "request": "Begär åtkomst igen",
+        "pendingTitle": "Förfrågan skickad",
+        "pendingBody": "Åtkomsten måste godkännas i Filament Manager på värddatorn.",
+        "waiting": "Väntar på värden…",
+        "codeTitle": "Ange koden från värden",
+        "codeLabel": "Engångskod",
+        "codeHint": "Sex siffror. Koden är giltig i fem minuter.",
+        "confirm": "Bekräfta åtkomst",
+        "badCode": "Fel kod. {count} försök återstår.",
+        "rejected": "Förfrågan avslogs.",
+        "expired": "Förfrågan har gått ut. Begär åtkomst igen.",
+        "locked": "Tre felaktiga försök. Begär åtkomst igen.",
+        "cancelled": "Förfrågan avbröts.",
+        "cancel": "Avbryt förfrågan",
+        "otherWay": "Använd en parkopplingslänk",
+        "fallback": "Öppna en ny parkopplingslänk eller skanna dess QR-kod under Bibliotek och webbapp på värden.",
+        "banner": "Förfrågningar om webbläsaråtkomst: {count}",
+        "open": "Visa förfrågningar",
+        "hostTitle": "Förfrågningar om webbläsaråtkomst",
+        "trust": "Namnet anges av enheten. Godkänn bara enheter som du känner igen.",
+        "actionFailed": "Förfrågan har ändrats eller tjänsten är otillgänglig. Försök igen.",
+        "reject": "Avslå",
+        "approve": "Ge åtkomst",
+        "shareCode": "Ge den här koden till personen som använder enheten som begärde åtkomst."
       }
     },
     "da-DK": {
@@ -12547,7 +13212,11 @@
         "connectionHelp": "Opdateringer og sessionskontrol.",
         "licenseHelp": "Open Source-vilkår for denne browser.",
         "trustedLanDesktopInCharge": "Desktop-appen og SQLite er ansvarlige. Trusted-LAN-adgang er stadig skrivebordsstyret og ikke krypteret på netværket.",
-        "cachedData": "Nogle data kunne ikke opdateres. Tidligere indlæste værdier kan være forældede. Tryk på Opdater for at prøve igen."
+        "cachedData": "Nogle data kunne ikke opdateres. Tidligere indlæste værdier kan være forældede. Tryk på Opdater for at prøve igen.",
+        "themeGraySoft": "Grå · Blød",
+        "themeGrayDeep": "Grå · Dyb",
+        "themeBlueNight": "Blå · Nat",
+        "themeLightClean": "Lys · Ren"
       },
       "trustedLan": {
         "title": "Trusted-LAN browser",
@@ -12737,7 +13406,8 @@
         "notePlaceholder": "Returtid eller anden sammenhæng",
         "noWishlistMatch": "Ingen ønskelisteelementer matcher dette filter.",
         "stockNow": "Lager nu",
-        "hiddenSelectedBody": "{title} forbliver fremhævet for detaljer, slots og lån."
+        "hiddenSelectedBody": "{title} forbliver fremhævet for detaljer, slots og lån.",
+        "searchShortPlaceholder": "Søg på lageret"
       },
       "detail": {
         "spoolHeading": "Spole",
@@ -12979,6 +13649,36 @@
         "detailHint": "Ændringerne gælder denne rulle. Ryd alle felter for at fjerne dens købsoplysninger.",
         "legacyPriceHint": "Denne ældre pris kan stå uden valuta, indtil prisen ændres.",
         "errorInvalid": "Gennemgå købsoplysningerne, før du gemmer."
+      },
+      "access": {
+        "title": "Adgangen skal fornyes",
+        "body": "Bed værten om at godkende denne browser igen.",
+        "deviceName": "Enhedens navn",
+        "nameHint": "Navnet hjælper kun værten med at genkende din enhed.",
+        "request": "Anmod om adgang igen",
+        "pendingTitle": "Anmodning sendt",
+        "pendingBody": "Adgangen skal godkendes i Filament Manager på værtscomputeren.",
+        "waiting": "Venter på værten…",
+        "codeTitle": "Indtast koden fra værten",
+        "codeLabel": "Engangskode",
+        "codeHint": "Seks cifre. Koden er gyldig i fem minutter.",
+        "confirm": "Bekræft adgang",
+        "badCode": "Forkert kode. {count} forsøg tilbage.",
+        "rejected": "Anmodningen blev afvist.",
+        "expired": "Anmodningen er udløbet. Anmod om adgang igen.",
+        "locked": "Tre forkerte forsøg. Anmod om adgang igen.",
+        "cancelled": "Anmodningen blev annulleret.",
+        "cancel": "Annuller anmodning",
+        "otherWay": "Brug et parringslink i stedet",
+        "fallback": "Åbn et nyt parringslink, eller scan QR-koden under Bibliotek og webapp på værten.",
+        "banner": "Anmodninger om browseradgang: {count}",
+        "open": "Se anmodninger",
+        "hostTitle": "Anmodninger om browseradgang",
+        "trust": "Navnet er angivet af enheden. Godkend kun enheder, du kender.",
+        "actionFailed": "Anmodningen er ændret, eller tjenesten er utilgængelig. Prøv igen.",
+        "reject": "Afvis",
+        "approve": "Giv adgang",
+        "shareCode": "Giv denne kode til personen, der bruger enheden, som anmodede om adgang."
       }
     },
     "fi-FI": {
@@ -13196,7 +13896,11 @@
         "connectionHelp": "Päivitys ja istunnon hallinta.",
         "licenseHelp": "Avoimen lähdekoodin ehdot tälle selaimelle.",
         "trustedLanDesktopInCharge": "Työpöytäsovellus ja SQLite ovat vastuussa. Trusted-LAN-käyttö on edelleen työpöytäohjattu, eikä sitä ole salattu verkossa.",
-        "cachedData": "Joitakin tietoja ei voitu päivittää. Aiemmin ladatut arvot voivat olla vanhentuneita. Yritä uudelleen päivittämällä."
+        "cachedData": "Joitakin tietoja ei voitu päivittää. Aiemmin ladatut arvot voivat olla vanhentuneita. Yritä uudelleen päivittämällä.",
+        "themeGraySoft": "Harmaa · Pehmeä",
+        "themeGrayDeep": "Harmaa · Syvä",
+        "themeBlueNight": "Sininen · Yö",
+        "themeLightClean": "Vaalea · Selkeä"
       },
       "trustedLan": {
         "title": "Trusted-LAN selain",
@@ -13386,7 +14090,8 @@
         "notePlaceholder": "Paluuaika tai muu konteksti",
         "noWishlistMatch": "Yksikään toivelista ei vastaa tätä suodatinta.",
         "stockNow": "Varastossa nyt",
-        "hiddenSelectedBody": "{title} pysyy esillä yksityiskohtien, lähtö- ja lainojen osalta."
+        "hiddenSelectedBody": "{title} pysyy esillä yksityiskohtien, lähtö- ja lainojen osalta.",
+        "searchShortPlaceholder": "Hae varastosta"
       },
       "detail": {
         "spoolHeading": "Kela",
@@ -13628,6 +14333,36 @@
         "detailHint": "Muutokset koskevat tätä kelaa. Poista sen ostotiedot tyhjentämällä kaikki kentät.",
         "legacyPriceHint": "Tämä aiempi hinta voi jäädä ilman valuuttaa, kunnes hintaa muutetaan.",
         "errorInvalid": "Tarkista ostotiedot ennen tallentamista."
+      },
+      "access": {
+        "title": "Käyttöoikeus on uusittava",
+        "body": "Pyydä isäntää hyväksymään tämä selain uudelleen.",
+        "deviceName": "Laitteen nimi",
+        "nameHint": "Nimi auttaa isäntää vain tunnistamaan laitteesi.",
+        "request": "Pyydä käyttöoikeutta uudelleen",
+        "pendingTitle": "Pyyntö lähetetty",
+        "pendingBody": "Käyttöoikeus on hyväksyttävä isäntäkoneen Filament Managerissa.",
+        "waiting": "Odotetaan isäntää…",
+        "codeTitle": "Anna isännän koodi",
+        "codeLabel": "Kertakäyttöinen koodi",
+        "codeHint": "Kuusi numeroa. Koodi on voimassa viisi minuuttia.",
+        "confirm": "Vahvista käyttöoikeus",
+        "badCode": "Virheellinen koodi. Yrityksiä jäljellä: {count}.",
+        "rejected": "Pyyntö hylättiin.",
+        "expired": "Pyyntö on vanhentunut. Pyydä käyttöoikeutta uudelleen.",
+        "locked": "Kolme virheellistä yritystä. Pyydä käyttöoikeutta uudelleen.",
+        "cancelled": "Pyyntö peruttiin.",
+        "cancel": "Peru pyyntö",
+        "otherWay": "Käytä parituslinkkiä",
+        "fallback": "Avaa uusi parituslinkki tai skannaa sen QR-koodi isännän Kirjasto ja verkkosovellus -osiossa.",
+        "banner": "Selaimen käyttöoikeuspyynnöt: {count}",
+        "open": "Näytä pyynnöt",
+        "hostTitle": "Selaimen käyttöoikeuspyynnöt",
+        "trust": "Nimen on antanut laite. Hyväksy vain tunnistamasi laitteet.",
+        "actionFailed": "Pyyntö muuttui tai palvelu ei ole käytettävissä. Yritä uudelleen.",
+        "reject": "Hylkää",
+        "approve": "Salli käyttöoikeus",
+        "shareCode": "Anna tämä koodi henkilölle, joka käyttää pyynnön lähettänyttä laitetta."
       }
     }
   }

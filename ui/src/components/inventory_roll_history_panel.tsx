@@ -20,6 +20,7 @@ type InventoryRollHistoryPanelProps = {
   resolvedTheme: ResolvedTheme;
   showRollHistory: boolean;
   spoolHexColor?: string | null;
+  neutral?: boolean;
   visibleHistoryRows: SpoolHistoryEventRow[];
 };
 
@@ -35,6 +36,7 @@ export function InventoryRollHistoryPanel({
   resolvedTheme,
   showRollHistory,
   spoolHexColor,
+  neutral = false,
   visibleHistoryRows,
 }: InventoryRollHistoryPanelProps) {
   const { locale, t } = useI18n();
@@ -61,7 +63,7 @@ export function InventoryRollHistoryPanel({
     <div
       id="inventory-roll-history-panel"
       className={inventoryDetailPanelClassName}
-      style={inventorySwatchPanelStyle(spoolHexColor, resolvedTheme)}
+      style={neutral ? undefined : inventorySwatchPanelStyle(spoolHexColor, resolvedTheme)}
     >
       <div className="flex items-center justify-between gap-3">
         <div className="flex min-w-0 flex-wrap items-center gap-2">

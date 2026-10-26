@@ -64,6 +64,11 @@ export function routeCompanionClickAction(action, target, handlers) {
     return true;
   }
 
+  if (action === "add-live-catalog-spool") {
+    handlers.openLiveCatalogSpool(readAttr(target, "data-printer-id"), readAttr(target, "data-slot-id"));
+    return true;
+  }
+
   if (action === "set-filament-ownership") {
     handlers.setFilamentOwnership(readAttr(target, "data-ownership-type") || "OWNED");
     return true;

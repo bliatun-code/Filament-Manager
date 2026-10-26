@@ -1,6 +1,36 @@
 import type { DictionaryNode } from "../../i18n_types";
 
 export const fiFIDictionary: DictionaryNode = {
+    access: {
+      "title": "Käyttöoikeus on uusittava",
+      "body": "Pyydä isäntää hyväksymään tämä selain uudelleen.",
+      "deviceName": "Laitteen nimi",
+      "nameHint": "Nimi auttaa isäntää vain tunnistamaan laitteesi.",
+      "request": "Pyydä käyttöoikeutta uudelleen",
+      "pendingTitle": "Pyyntö lähetetty",
+      "pendingBody": "Käyttöoikeus on hyväksyttävä isäntäkoneen Filament Managerissa.",
+      "waiting": "Odotetaan isäntää…",
+      "codeTitle": "Anna isännän koodi",
+      "codeLabel": "Kertakäyttöinen koodi",
+      "codeHint": "Kuusi numeroa. Koodi on voimassa viisi minuuttia.",
+      "confirm": "Vahvista käyttöoikeus",
+      "badCode": "Virheellinen koodi. Yrityksiä jäljellä: {count}.",
+      "rejected": "Pyyntö hylättiin.",
+      "expired": "Pyyntö on vanhentunut. Pyydä käyttöoikeutta uudelleen.",
+      "locked": "Kolme virheellistä yritystä. Pyydä käyttöoikeutta uudelleen.",
+      "cancelled": "Pyyntö peruttiin.",
+      "cancel": "Peru pyyntö",
+      "otherWay": "Käytä parituslinkkiä",
+      "fallback": "Avaa uusi parituslinkki tai skannaa sen QR-koodi isännän Kirjasto ja verkkosovellus -osiossa.",
+      "banner": "Selaimen käyttöoikeuspyynnöt: {count}",
+      "open": "Näytä pyynnöt",
+      "hostTitle": "Selaimen käyttöoikeuspyynnöt",
+      "trust": "Nimen on antanut laite. Hyväksy vain tunnistamasi laitteet.",
+      "actionFailed": "Pyyntö muuttui tai palvelu ei ole käytettävissä. Yritä uudelleen.",
+      "reject": "Hylkää",
+      "approve": "Salli käyttöoikeus",
+      "shareCode": "Anna tämä koodi henkilölle, joka käyttää pyynnön lähettänyttä laitetta."
+    },
   "app": {
     "title": "Filament Manager",
     "iconAlt": "Filament Manager-kuvake",
@@ -305,6 +335,19 @@ export const fiFIDictionary: DictionaryNode = {
     "badgeNoPrinterSlots": "Tulostinpaikkoja ei ole vielä määritetty."
   },
   "inventory": {
+    labelsAction: "Etiketit",
+    loansTab: "Lainatut ja lainaksi otetut",
+    "detailWeight": "Paino",
+    "detailPlacementOwnership": "Sijainti ja omistus",
+    "detailIdentityLabel": "Tunniste ja etiketti",
+    "detailMorePurchase": "Lisää ostotietoja",
+    "detailUsageHistory": "Kulutus ja historia",
+    "detailUpdateWeight": "Päivitä paino",
+    "detailShowUsageHistory": "Näytä kaavio ja historia",
+    "detailSaveTareFirst": "Tallenna muutettu tyhjän kelan paino ennen mitatun kokonaispainon päivittämistä.",
+    "detailAdvancedActions": "Lisätoiminnot",
+    "detailOpenPrinters": "Avaa tulostimet",
+
     "labelPreviewFailed": "Tarran esikatselua ei voitu valmistella. Yritä uudelleen.",
     "labelRetryPreview": "Yritä esikatselua uudelleen",
     "labelOpenSavedFile": "Avaa tallennettu tiedosto",
@@ -1005,6 +1048,7 @@ export const fiFIDictionary: DictionaryNode = {
     }
   },
   "loans": {
+    person: "Henkilö",
     "clientReadOnlyBanner": "Tämä laite on linkitetty asiakkaaksi. Lainamuutokset pysyvät isännässä toistaiseksi.",
     "clientReadOnlyAction": "Tämä laite on yhdistetty asiakkaana. Käytä arvoja lainan muokkauksiin.",
     "clientReadOnlyBannerPaired": "Tämä laite on yhdistetty asiakkaana. Palautukset ja käsipalautukset voidaan lähettää isännöitsijälle, kun taas uusien lainojen luominen pysähtyy siihen.",
@@ -1087,6 +1131,11 @@ export const fiFIDictionary: DictionaryNode = {
     }
   },
   "printers": {
+      replaceRoll: "Vaihda kela",
+      selectRoll: "Valitse kela",
+      linkObserved: "Yhdistä havaittu kela",
+      startedCandidatesFirst: "Yhtä hyvistä osumista osittain käytetyt kelat näytetään ennen täysiä. Vahvista kela ennen yhdistämistä.",
+
     "subtitle": "Hallitse paikkoja ja tulostimiin liittyvää materiaalinkulutusta.",
     "desktopOnly": "Tulostimen yleiskuvaus on saatavilla työpöytäsovelluksessa.",
     "clientReadOnlyBanner": "Tämä laite on linkitetty asiakkaaksi. Tulostinmäärityksiin tehdyt muutokset pysyvät isännässä toistaiseksi.",
@@ -1420,6 +1469,25 @@ export const fiFIDictionary: DictionaryNode = {
     }
   },
   "settings": {
+    themeGraySoft: "Harmaa · Pehmeä",
+    themeGrayDeep: "Harmaa · Syvä",
+    themeBlueNight: "Sininen · Yö",
+    themeLightClean: "Vaalea · Selkeä",
+    searchPrinterModels: "Hae tulostinmalleja",
+    printerBrand: "Valmistaja",
+    customPrinterModel: "Oma mallinimi",
+    printerModelsAll: "Kaikki",
+    printerModelsOther: "Muut",
+    printerModelsNoResults: "Ei tuloksia",
+
+    "noMatchingSwatches": "Hakua vastaavia puuttuvia värinäytteitä ei löytynyt.",
+    "autoSaveHint": "Tämän sivun muutokset tallennetaan automaattisesti.",
+    "changeLibraryRole": "Vaihda kirjaston roolia",
+    "localDiagnosticsScope": "Tämä laite · paikallinen tietokanta",
+    "unsavedChanges": "Tallentamattomia muutoksia",
+    "filamentDefaultsSaveGroupHint": "Tallenna ryhmän oletushinta. Nykyisten kelojen hinnat muuttuvat vasta, kun otat alla olevan hinnan käyttöön.",
+    "swatchSearch": "Hae valmistajaa, filamenttia, väriä tai tunnusta",
+
     "catalogRefreshStatusUncertain": "Tilaa ei voitu vahvistaa. Tarkista päivitysloki; päivitys saattaa olla yhä käynnissä.",
     "catalogRefreshFailedNextStep": "Päivitys ei valmistunut. Tarkista päivitysloki ennen uuden päivityksen aloittamista.",
     "catalogRefreshInterruptedNextStep": "Päivitys keskeytyi. Tarkista katalogi ja päivitysloki ennen uudelleen aloittamista.",

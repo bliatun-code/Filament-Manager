@@ -1,6 +1,36 @@
 import type { DictionaryNode } from "../../i18n_types";
 
 export const itITDictionary: DictionaryNode = {
+    access: {
+      "title": "L’accesso deve essere rinnovato",
+      "body": "Chiedi all’host di autorizzare nuovamente questo browser.",
+      "deviceName": "Nome del dispositivo",
+      "nameHint": "Il nome serve solo ad aiutare l’host a riconoscere il dispositivo.",
+      "request": "Richiedi nuovamente l’accesso",
+      "pendingTitle": "Richiesta inviata",
+      "pendingBody": "L’accesso deve essere autorizzato in Filament Manager sul computer host.",
+      "waiting": "In attesa dell’host…",
+      "codeTitle": "Inserisci il codice dell’host",
+      "codeLabel": "Codice monouso",
+      "codeHint": "Sei cifre. Il codice è valido per cinque minuti.",
+      "confirm": "Conferma accesso",
+      "badCode": "Codice errato. Restano {count} tentativi.",
+      "rejected": "La richiesta è stata rifiutata.",
+      "expired": "La richiesta è scaduta. Richiedi nuovamente l’accesso.",
+      "locked": "Tre tentativi errati. Richiedi nuovamente l’accesso.",
+      "cancelled": "La richiesta è stata annullata.",
+      "cancel": "Annulla richiesta",
+      "otherWay": "Usa un link di abbinamento",
+      "fallback": "Apri un nuovo link di abbinamento o scansiona il suo codice QR in Libreria e app web sull’host.",
+      "banner": "Richieste di accesso del browser: {count}",
+      "open": "Visualizza richieste",
+      "hostTitle": "Richieste di accesso del browser",
+      "trust": "Il nome è fornito dal dispositivo. Autorizza solo dispositivi che riconosci.",
+      "actionFailed": "La richiesta è cambiata o il servizio non è disponibile. Riprova.",
+      "reject": "Rifiuta",
+      "approve": "Consenti accesso",
+      "shareCode": "Comunica questo codice alla persona che usa il dispositivo che ha richiesto l’accesso."
+    },
   app: {
     iconAlt: "Icona Filament Manager",
     loadingPage: "Caricamento pagina...",
@@ -348,6 +378,19 @@ export const itITDictionary: DictionaryNode = {
     unauthorized: "È richiesta l'autenticazione.",
   },
   inventory: {
+    labelsAction: "Etichette",
+    loansTab: "Prestiti in uscita e in entrata",
+    "detailWeight": "Peso",
+    "detailPlacementOwnership": "Posizione e proprietà",
+    "detailIdentityLabel": "Identità ed etichetta",
+    "detailMorePurchase": "Altri dettagli d’acquisto",
+    "detailUsageHistory": "Consumo e cronologia",
+    "detailUpdateWeight": "Aggiorna peso",
+    "detailShowUsageHistory": "Mostra grafico e cronologia",
+    "detailSaveTareFirst": "Salva il peso modificato della bobina vuota prima di aggiornare il peso totale misurato.",
+    "detailAdvancedActions": "Azioni avanzate",
+    "detailOpenPrinters": "Apri stampanti",
+
     "labelPreviewFailed": "Impossibile preparare l’anteprima dell’etichetta. Riprova.",
     "labelRetryPreview": "Riprova anteprima",
     "labelOpenSavedFile": "Apri file salvato",
@@ -1147,6 +1190,7 @@ export const itITDictionary: DictionaryNode = {
     workspace: "Spazio di lavoro",
   },
   loans: {
+    person: "Persona",
     activeBorrowedIn: "Ricevute attive",
     activeLoans: "Prestiti attivi",
     activeRecords: "Record attivi",
@@ -1252,6 +1296,11 @@ export const itITDictionary: DictionaryNode = {
     statistics: "Statistiche",
   },
   printers: {
+      replaceRoll: "Cambia bobina",
+      selectRoll: "Scegli bobina",
+      linkObserved: "Collega bobina rilevata",
+      startedCandidatesFirst: "A parità di corrispondenza, le bobine parzialmente usate precedono quelle piene. Conferma la bobina prima di collegarla.",
+
     addBorrowedCatalogRollAndSaveRfid:
       "Aggiungi preso in prestito + salva RFID",
     addCatalogRollAndSaveRfid: "Aggiungi + salva RFID",
@@ -1450,6 +1499,25 @@ export const itITDictionary: DictionaryNode = {
     withToolheads: "Testa multiutensile",
   },
   settings: {
+    themeGraySoft: "Grigio · Morbido",
+    themeGrayDeep: "Grigio · Profondo",
+    themeBlueNight: "Blu · Notte",
+    themeLightClean: "Chiaro · Pulito",
+    searchPrinterModels: "Cerca modelli di stampante",
+    printerBrand: "Produttore",
+    customPrinterModel: "Nome modello personalizzato",
+    printerModelsAll: "Tutti",
+    printerModelsOther: "Altri",
+    printerModelsNoResults: "Nessun risultato",
+
+    "noMatchingSwatches": "Nessun campione di colore mancante corrisponde alla ricerca.",
+    "autoSaveHint": "Le modifiche in questa pagina vengono salvate automaticamente.",
+    "changeLibraryRole": "Cambia ruolo della libreria",
+    "localDiagnosticsScope": "Questo dispositivo · database locale",
+    "unsavedChanges": "Modifiche non salvate",
+    "filamentDefaultsSaveGroupHint": "Salva il prezzo predefinito del gruppo. I prezzi delle bobine esistenti cambiano solo applicando il prezzo qui sotto.",
+    "swatchSearch": "Cerca produttore, filamento, colore o ID",
+
     "catalogRefreshStatusUncertain": "Impossibile confermare lo stato. Controlla il registro di aggiornamento: l’aggiornamento potrebbe essere ancora in corso.",
     "catalogRefreshFailedNextStep": "L’aggiornamento non è stato completato. Controlla il registro prima di avviare un altro aggiornamento.",
     "catalogRefreshInterruptedNextStep": "L’aggiornamento è stato interrotto. Controlla il catalogo e il registro di aggiornamento prima di ricominciare.",

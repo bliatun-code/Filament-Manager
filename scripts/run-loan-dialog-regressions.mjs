@@ -83,8 +83,9 @@ async function runCase(browser, url, base, name, check) {
       return resolveUiBrowserPerformanceInvoke(data, command, payload);
     });
     await page.goto(`${url}/?bfm_locale=en`, { waitUntil: "domcontentloaded" });
-    await page.getByRole("button", { name: "Loans", exact: true }).click();
-    await page.getByRole("button", { name: "Return", exact: true }).waitFor();
+    await page.getByRole("navigation", { name: "Navigation", exact: true }).getByRole("button", { name: "Inventory", exact: true }).click();
+    await page.locator("#inventory-loans-tab").click();
+    await page.getByRole("button", { name: /^Return ·/ }).waitFor();
     const fallback = (command, payload) => resolveUiBrowserPerformanceInvoke(fixture, command, payload);
     await check({ page, fixture, calls, state, fallback });
     assert.deepEqual(errors, [], `${name}: unexpected browser errors`);
@@ -219,7 +220,7 @@ async function checkLendPending({ page, calls, state, fallback }) {
 
 async function checkReturn({ page, calls, state, fallback }, inbound) {
   const command = inbound ? "return_inbound_spool_loan" : "return_spool_loan";
-  await page.getByRole("button", { name: inbound ? "Hand back" : "Return", exact: true }).click();
+  await page.getByRole("button", { name: inbound ? /^Hand back ·/ : /^Return ·/ }).click();
   const dialog = page.getByRole("dialog");
   const grams = dialog.getByRole("spinbutton");
   const note = dialog.getByLabel("Return note (optional)");

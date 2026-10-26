@@ -1,0 +1,26 @@
+.settings-filament-balanced { min-width:0; display:grid; gap:1.25rem; }
+.settings-filament-balanced [hidden] { display:none; }
+.settings-filament-summary { display:flex; flex-wrap:wrap; gap:2rem; border-bottom:1px solid var(--app-theme-subtle-border); padding-bottom:1.25rem; }
+.settings-filament-summary span { display:block; font-size:.75rem; color:var(--app-theme-control-placeholder); }
+.settings-filament-summary strong { display:block; margin-top:.25rem; font-size:1.125rem; font-weight:600; }
+.settings-filament-sections { display:flex; flex-wrap:wrap; gap:1rem; border-bottom:1px solid var(--app-theme-subtle-border); }
+.settings-filament-section-button { padding:.625rem 0; border-bottom:2px solid transparent; font-size:.875rem; text-align:start; }
+.settings-filament-section-button[aria-pressed=true] { color:var(--app-theme-control-text); border-color:var(--app-theme-accent); }
+.settings-filament-vendors { display:flex; flex-wrap:wrap; gap:.5rem; padding:.5rem 0; }
+.settings-filament-vendor { display:flex; flex-wrap:wrap; align-items:center; gap:.5rem; border:1px solid var(--app-theme-subtle-border); border-radius:.5rem; padding:.5rem .75rem; font-size:.875rem; }
+.settings-filament-vendor[aria-pressed=true], .settings-filament-group[aria-pressed=true] { background:var(--app-theme-nav-active-background); border-color:var(--app-theme-nav-active-border); color:var(--app-theme-nav-active-text); }
+.settings-filament-workspace { display:grid; grid-template-columns:minmax(10rem, .8fr) minmax(0,1.7fr); gap:1.25rem; align-items:start; }
+.settings-filament-groups { border:1px solid var(--app-theme-subtle-border); border-radius:.625rem; overflow:hidden; }
+.settings-filament-group { display:flex; flex-direction:column; gap:.375rem; width:100%; text-align:start; border-bottom:1px solid var(--app-theme-subtle-border); padding:.875rem; overflow-wrap:anywhere; }
+.settings-filament-group:last-child { border-bottom:0; }
+.settings-filament-editor { min-width:0; border:1px solid var(--app-theme-subtle-border); border-radius:.625rem; overflow:hidden; }
+.settings-filament-editor-header { padding:1rem; }
+.settings-filament-spools { border-top:1px solid var(--app-theme-subtle-border); padding-top:.75rem; }
+.settings-filament-spools summary { font-size:.875rem; cursor:pointer; margin-bottom:.75rem; }
+@media(max-width:1000px) { .settings-filament-workspace { grid-template-columns:1fr; } .settings-filament-groups { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); } }
+@media(max-width:500px) { .settings-filament-groups { grid-template-columns:1fr; } }
+.settings-filament-pricing { padding:0; background:transparent; border:0; box-shadow:none; }
+.settings-filament-editor [role=radiogroup] { grid-template-columns:1fr; }
+
+.settings-filament-group-select { display:none; }
+@media(max-width:1000px) { .settings-filament-groups { display:none; } .settings-filament-group-select { display:block; } }

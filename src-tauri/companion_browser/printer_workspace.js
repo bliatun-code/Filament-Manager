@@ -1,3 +1,5 @@
+import { companionIcon } from "./companion_icons.js";
+import { renderFilamentSpool, renderPrinterImage } from "./companion_visuals.js";
 import {
   formatInventoryDisplayTitle,
   formatPlacementLabel,
@@ -15,6 +17,7 @@ import {
 import {
   buildLiveInventoryCandidateRows,
   liveSlotObservedRfid,
+  rowMatchesLiveBambuSlot,
 } from "./companion_live_rfid_candidates.js";
 import { formatPrinterSlotLabelForModel } from "./printer_slot_labels.js";
 import {
@@ -146,7 +149,7 @@ function buildPrinterLiveTelemetry(activePrinter, locale) {
   }
   const stateLabel = showJobTiming
     ? t(locale, "printers.liveTelemetryPrinting", "Printing")
-    : t(locale, "printers.liveTelemetryActive", "Active");
+    : t(locale, "printers.liveBadge", "Live");
 
   return {
     amsTemp,
@@ -176,25 +179,25 @@ function renderPrinterLiveTelemetry(telemetry, locale, escapeHtml) {
     {
       label: t(locale, "printers.liveTelemetryNozzle", "Nozzle"),
       value: telemetry.nozzle,
-      icon: "⌬",
+      icon: companionIcon("nozzle"),
     },
     {
       label: t(locale, "printers.liveTelemetryBed", "Bed"),
       value: telemetry.bed,
-      icon: "≋",
+      icon: companionIcon("bed"),
     },
   ].filter((item) => item.value);
 
   return `
     <div class="printer-live-strip">
-      <span class="printer-live-state">${escapeHtml(telemetry.stateLabel)}</span>
+      ${progressParts ? `<span class="printer-live-state">${escapeHtml(telemetry.stateLabel)}</span>` : ""}
       ${progressParts ? `<span class="printer-live-muted">${escapeHtml(progressParts)}</span>` : ""}
       ${metrics
         .map(
           (metric) => `
             <span class="printer-live-divider" aria-hidden="true"></span>
             <span class="printer-live-metric">
-              <span class="printer-live-icon" aria-hidden="true">${escapeHtml(metric.icon)}</span>
+              <span class="printer-live-icon" aria-hidden="true">${metric.icon}</span>
               <span class="printer-live-label">${escapeHtml(metric.label)}</span>
               <strong>${escapeHtml(metric.value)}</strong>
             </span>
@@ -206,7 +209,7 @@ function renderPrinterLiveTelemetry(telemetry, locale, escapeHtml) {
           ? `
             <span class="printer-live-divider" aria-hidden="true"></span>
             <span class="printer-live-metric printer-live-humidity">
-              <span class="printer-live-icon" aria-hidden="true">♢</span>
+              <span class="printer-live-icon" aria-hidden="true">${companionIcon("humidity")}</span>
               <span class="printer-live-label">${escapeHtml(t(locale, "printers.liveTelemetryAmsHumidityShort", "AMS"))}</span>
               <strong>${escapeHtml(telemetry.humidity.letter)}</strong>
               <span class="printer-live-muted">${escapeHtml(telemetry.humidity.tone)}</span>
@@ -499,6 +502,7 @@ export function renderPrinterRoster(printers, activePrinterId, escapeHtml, local
           data-active="${active ? "true" : "false"}"
           ${brandToneStyle ? `style="${escapeHtml(brandToneStyle)}"` : ""}
         >
+          ${renderPrinterImage(row.printer.model, (row.slots || []).some(slot => !String(slot.ams_id).endsWith("_ext")))}
           <div class="printer-roster-inline">
             <div class="printer-roster-inline-main">
               <span class="printer-roster-name">${escapeHtml(row.printer.name)}</span>
@@ -604,6 +608,21 @@ function renderLiveInventoryCandidateRows(slot, spoolRows, activePrinter, locale
   `;
 }
 
+function observedCatalogColorName(slot, masters) {
+  const labels = new Map();
+  for (const master of masters || []) {
+    if (!rowMatchesLiveBambuSlot(slot, {spool:{status:"IN_STOCK",rfid_tag:null},master})) continue;
+    let label = String(master.color_name || "").replace(/\s*\(\d{4,}\)\s*/g, "").trim();
+    const profile = String(master.filament_name || "").trim();
+    if (profile && label.toLowerCase().startsWith(`${profile.toLowerCase()} `)) {
+      label = label.slice(profile.length).trim();
+    }
+    if (label) labels.set(label.toLowerCase(),label);
+  }
+  // Colour is a visual hint; it does not identify or register a physical roll.
+  return labels.size === 1 ? [...labels.values()][0] : "";
+}
+
 function renderSlotCards(options) {
   const { activePrinter, state, printerSpoolOptions = [], escapeHtml, formatGrams } = options;
   const locale = state.locale || "en";
@@ -645,7 +664,7 @@ function renderSlotCards(options) {
       const liveMaterialBits = formatInventoryDisplayTitle(
         slot.live_filament_type,
         slot.live_filament_name,
-        slot.live_tray_id_name,
+        observedCatalogColorName(slot, state.catalogMasters),
         locale,
       );
       const slotContentTitle = slot.spool_id
@@ -709,14 +728,22 @@ function renderSlotCards(options) {
             </div>
             <span class="inline-signal slot-card-state" data-tone="${escapeHtml(slotStateTone)}">${escapeHtml(slotStateLabel)}</span>
           </div>
-          ${slotUsesSwatchSurface ? `<div class="slot-content-line swatch-line">
+          <div class="slot-filament-body">
+          ${slotUsesSwatchSurface ? renderFilamentSpool(slotSwatch) : ""}
+          <div class="slot-filament-copy">${slotUsesSwatchSurface ? `<div class="slot-content-line swatch-line">
             ${slotUsesSwatchSurface ? `<span class="swatch-dot" style="background:${escapeHtml(slotContentColor)}"></span>` : ""}
             <span>${escapeHtml(slotContentTitle)}</span>
           </div>` : ""}
           ${slotUsesSwatchSurface || slotIsPendingTarget ? `<div class="muted slot-card-subtitle">${escapeHtml(slotSummary)}</div>` : ""}
           <div class="meta-line slot-card-meta">${escapeHtml(slotMeta)}</div>
+          </div></div>
           ${candidateRows}
           <div class="slot-actions">
+          ${slotHasLiveLoaded && !slot.spool_id && slot.live_match_status === "unknown_rfid" ? renderCompanionActionButton({
+            variant:"secondary", className:"slot-button", escapeHtml,
+            label:t(locale,"storage.addSpool","Add spool"),
+            attributes:{"data-action":"add-live-catalog-spool", "data-printer-id":activePrinter.printer.id,"data-slot-id":slot.slot_id},
+          }) : ""}
             ${
               slot.spool_id
                 ? `
@@ -805,6 +832,7 @@ export function renderPrinterBoard(options) {
 
   return `
     <div class="printer-board-header">
+      ${renderPrinterImage(activePrinter.printer.model, activePrinterSlots.some(slot => !String(slot.ams_id).endsWith("_ext")))}
       <div class="printer-board-heading">
         <h3>${escapeHtml(activePrinter.printer.name)}</h3>
         <p class="section-copy">${escapeHtml(activePrinter.printer.model)}</p>

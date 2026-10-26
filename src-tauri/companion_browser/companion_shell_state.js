@@ -1,3 +1,4 @@
+import { rowMatchesLiveBambuSlot, liveSlotHasLoadedRoll } from "./companion_live_rfid_candidates.js";
 import { formatPrinterSlotLabelForModel } from "./printer_slot_labels.js";
 import { resolveSpoolRowTareWeight } from "./companion_spool_weight.js";
 import { normalizeOwnershipType } from "./companion_domain.js";
@@ -182,6 +183,30 @@ export function createCompanionShellState(options) {
   function toggleBorrowedInForm() {
     const nextTaskSheet = state.activeTaskSheet?.type === "storage-add" ? null : { type: "storage-add" };
     setActiveTaskSheet(nextTaskSheet);
+  }
+
+  function openLiveCatalogSpool(printerId, slotId) {
+    const printer = state.printers?.find(row => row.printer?.id === printerId);
+    const slot = printer?.slots?.find(row => row.slot_id === slotId);
+    if (!slot || slot.spool_id || !liveSlotHasLoadedRoll(slot)) return;
+    const matches = (state.catalogMasters || []).filter(master => rowMatchesLiveBambuSlot(slot, {
+      spool: {status:"IN_STOCK",rfid_tag:null}, master,
+    }));
+    const profile = String(slot.live_filament_name || "").trim().toLowerCase();
+    const selected = [...matches].sort((left, right) =>
+      Number(String(right.filament_name || "").trim().toLowerCase() === profile) -
+      Number(String(left.filament_name || "").trim().toLowerCase() === profile) ||
+      Number(Boolean(left.is_discontinued)) - Number(Boolean(right.is_discontinued))
+    )[0] || null;
+    state.borrowedInDraft = {...state.borrowedInDraft,
+      source:"bambu", ownershipType:"OWNED", ownerName:"", ownerContact:"", note:"",
+      selectedMasterId:selected?.id || "", catalogStatusFilter:selected?.is_discontinued ? "ALL" : "ACTIVE",
+      catalogSearch:String(slot.live_filament_name || slot.live_filament_type || ""),
+      initialWeight:String(selected?.default_weight || 1000),
+    };
+    // Creation adds stock only. The user confirms the live RFID separately,
+    // using the normal identity checks after returning to this printer.
+    setActiveTaskSheet({type:"storage-add",returnFlow:"printers",printerId,slotId});
   }
 
   function setFilamentOwnership(nextOwnershipType) {
@@ -531,6 +556,7 @@ export function createCompanionShellState(options) {
     showMoreLoanPicker,
     syncLegacySectionState,
     toggleBorrowedInForm,
+    openLiveCatalogSpool,
     toggleLoanReturn,
   };
 }

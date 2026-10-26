@@ -348,3 +348,14 @@ test("settings swatch error messages return stable fallback copy", () => {
     labels.saveSwatchFailed,
   );
 });
+
+
+test("swatch search combines with vendor filters and scopes the bulk target list", () => {
+  const input = {bambuDiscoveredMaterials:[],bambuRefreshMaterial:null,catalogVendor:"Bambu" as const,esunDiscoveredMaterials:[],esunRefreshMaterial:null,swatchVendorFilter:"ALL",
+    catalogMasters:[catalogMaster({id:"white",hex_color:null,color_name:"White"}),catalogMaster({id:"black",hex_color:null,color_name:"Black"}),catalogMaster({id:"esun",hex_color:null,vendor:"eSUN",color_name:"White"}),catalogMaster({id:"saved",hex_color:"#FFFFFF",color_name:"White"})]};
+  assert.deepEqual(buildSettingsCatalogState({...input,swatchSearch:"  wHiTe  "}).visibleMissingSwatchMasters.map(r=>r.id),["white","esun"]);
+  assert.deepEqual(buildSettingsCatalogState({...input,swatchSearch:"white",swatchVendorFilter:"Bambu Lab"}).visibleMissingSwatchMasters.map(r=>r.id),["white"]);
+  assert.deepEqual(buildSettingsCatalogState({...input,swatchSearch:"esun"}).visibleMissingSwatchMasters.map(r=>r.id),["esun"]);
+  assert.deepEqual(buildSettingsCatalogState({...input,swatchSearch:"no matches"}).visibleMissingSwatchMasters,[]);
+  assert.equal(buildSettingsCatalogState({...input,swatchSearch:""}).visibleMissingSwatchMasters.length,3);
+});

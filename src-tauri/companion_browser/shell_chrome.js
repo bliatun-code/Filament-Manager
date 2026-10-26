@@ -1,3 +1,6 @@
+import { companionIcon } from "./companion_icons.js";
+import { renderFilamentSpool } from "./companion_visuals.js";
+import { renderAccessRecovery } from "./companion_access_recovery.js";
 import { formatInventoryDisplayTitle } from "./formatters.js";
 import { t } from "./companion_i18n.js";
 import { buildPurchaseReceiptMetadataDraft } from "./companion_domain.js";
@@ -35,7 +38,7 @@ function renderRootFlowButton(activeRootFlow, item, escapeHtml, semantics = "nav
       data-root-flow="${escapeHtml(item.flow)}"
       data-active="${active ? "true" : "false"}"${tabAttributes}
     >
-      <span class="root-flow-label">${escapeHtml(item.label)}</span>
+      ${companionIcon(item.flow)}<span class="root-flow-label">${escapeHtml(item.label)}</span>
       <span class="root-flow-meta">${escapeHtml(item.meta)}</span>
     </button>
   `;
@@ -108,7 +111,8 @@ export function renderCompanionActionButton(options) {
     },
     escape,
   );
-  return `<button class="${escape(classes)}"${renderedAttributes ? ` ${renderedAttributes}` : ""}>${escape(label)}</button>`;
+  const actionIcon = { "toggle-add-spool-form": "plus", "add-live-catalog-spool": "plus", refresh: "refresh", "close-detail": "close", "start-printer-weight-update": "weight", "start-printer-load": "plus", "start-printer-swap": "swap" }[attributes["data-action"]];
+  return `<button class="${escape(classes)}"${renderedAttributes ? ` ${renderedAttributes}` : ""}>${actionIcon ? companionIcon(actionIcon) : ""}${escape(actionIcon ? String(label).replace(/^[⚖↔⇄＋+]\s*/u, "") : label)}</button>`;
 }
 
 export function renderCompanionActionLink(options) {
@@ -201,7 +205,8 @@ export function renderFilterChipButton(options) {
     },
     escape,
   );
-  return `<button class="${escape(classes)}"${renderedAttributes ? ` ${renderedAttributes}` : ""}>${escape(label)}</button>`;
+  const actionIcon = { "toggle-add-spool-form": "plus", "add-live-catalog-spool": "plus", refresh: "refresh", "close-detail": "close", "start-printer-weight-update": "weight", "start-printer-load": "plus", "start-printer-swap": "swap" }[attributes["data-action"]];
+  return `<button class="${escape(classes)}"${renderedAttributes ? ` ${renderedAttributes}` : ""}>${actionIcon ? companionIcon(actionIcon) : ""}${escape(actionIcon ? String(label).replace(/^[⚖↔⇄＋+]\s*/u, "") : label)}</button>`;
 }
 
 export function renderDetailField(options) {
@@ -500,6 +505,8 @@ export function renderSwatchListRow(options) {
     title,
     type = "button",
     weight = "",
+    remainingRatio = null,
+    showSpool = false,
   } = options;
   const escape = typeof escapeHtml === "function" ? escapeHtml : (value) => String(value ?? "");
   const cleanedMeta = meta.filter(Boolean).map((value) => escape(value));
@@ -508,6 +515,7 @@ export function renderSwatchListRow(options) {
     "list-row",
     "dense-list-row",
     "spool-list-row",
+    showSpool ? "with-physical-spool" : "",
     "swatch-surface",
     className,
   ]
@@ -529,6 +537,7 @@ export function renderSwatchListRow(options) {
     weight || cleanedBadges.length > 0
       ? `
         <div class="dense-list-side">
+          ${Number.isFinite(remainingRatio) ? `<span class="companion-remaining-track" aria-hidden="true"><span style="width:${Math.max(0,Math.min(100,Math.round(remainingRatio*100)))}%"></span></span>` : ""}
           ${weight ? `<div class="spool-row-weight">${escape(weight)}</div>` : ""}
           ${
             cleanedBadges.length > 0
@@ -541,6 +550,7 @@ export function renderSwatchListRow(options) {
 
   return `
     <button class="${escape(classes)}"${renderedAttributes ? ` ${renderedAttributes}` : ""}>
+      ${showSpool ? renderFilamentSpool(swatch) : ""}
       <div class="dense-list-main">
         <div class="swatch-line spool-row-title">
           <span class="swatch-dot" style="background:${escape(swatchCssBackground(swatch))};"></span>
@@ -567,8 +577,8 @@ export function renderDesktopRail(options) {
   return `
     <aside class="desktop-rail surface-panel">
       <div class="desktop-rail-top">
-        <p class="eyebrow">${escapeHtml(t(locale, "rail.eyebrow", "Browser Companion"))}</p>
         <div class="desktop-rail-title">${escapeHtml(t(locale, "rail.title", "Filament Manager"))}</div>
+        <p class="desktop-rail-subtitle">Companion</p>
       </div>
       <nav class="desktop-rail-nav" aria-label="${escapeHtml(t(locale, "nav.primaryFlowsAria", "Primary flows"))}">
         ${rootFlowItems.map((item) => renderRootFlowButton(activeRootFlow, item, escapeHtml, "navigation")).join("")}
@@ -596,7 +606,7 @@ export function renderPhoneBottomNav(options) {
               data-active="${activeRootFlow === item.flow ? "true" : "false"}"
               ${activeRootFlow === item.flow ? 'aria-current="page"' : ""}
             >
-              <span>${escapeHtml(item.label)}</span>
+              ${companionIcon(item.flow)}<span>${escapeHtml(item.label)}</span>
             </button>
           `,
         )
@@ -619,10 +629,10 @@ export function renderTopbar(options) {
   } = options;
   const flowLabel = activeRootFlowItem?.label || "Inventory";
   const flowMeta = activeRootFlowItem?.meta || "Trusted-LAN workflow";
-  const showHeading = layoutMode === "phone";
+  const showHeading = layoutMode === "phone" && activeRootFlow !== "storage";
 
   return `
-    <header class="app-topbar surface-panel" data-layout="${escapeHtml(layoutMode)}">
+    <header class="app-topbar surface-panel" data-layout="${escapeHtml(layoutMode)}" data-root-flow="${escapeHtml(activeRootFlow)}">
       <div class="app-topbar-main" data-layout="${escapeHtml(layoutMode)}">
         ${
           showHeading
@@ -759,53 +769,5 @@ export function renderTaskSheetShell(options) {
 }
 
 export function renderTrustedLanPairingApp(options) {
-  const { busy, statusTone, statusMessage, escapeHtml, locale = "en" } = options;
-
-  return `
-    <div class="companion-shell">
-      <div class="companion-frame pairing-frame">
-        <section class="hero-card pairing-card">
-          <div>
-            <p class="eyebrow">${escapeHtml(t(locale, "rail.title", "Filament Manager"))}</p>
-            <h1 class="hero-title">${escapeHtml(t(locale, "trustedLan.title", "Trusted-LAN browser companion"))}</h1>
-            <p class="hero-copy">
-              ${escapeHtml(
-                t(
-                  locale,
-                  "trustedLan.copy",
-                  "This browser is using the trusted-LAN companion path. Open a pairing link from desktop Settings to approve this browser. Trusted-LAN traffic is not encrypted, so only use it on a network you trust.",
-                ),
-              )}
-            </p>
-          </div>
-          <div class="stack">
-            ${renderCompanionStateCard({
-              escapeHtml,
-              message: t(
-                locale,
-                "trustedLan.pairingHint",
-                "Desktop Settings creates short-lived, single-use pairing links for human browser access.",
-              ),
-              tone: "info",
-            })}
-            <div class="status-line" data-tone="${escapeHtml(statusTone)}">${escapeHtml(
-              statusMessage ||
-                t(
-                  locale,
-                  "trustedLan.awaiting",
-                  "Waiting for a trusted-LAN pairing link.",
-                ),
-            )}</div>
-            ${renderCompanionActionButton({
-              variant: "ghost",
-              attributes: { "data-action": "refresh" },
-              disabled: busy,
-              escapeHtml,
-              label: t(locale, "shell.refresh", "Refresh"),
-            })}
-          </div>
-        </section>
-      </div>
-    </div>
-  `;
+  return renderAccessRecovery(options);
 }

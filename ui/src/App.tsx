@@ -12,6 +12,7 @@ import {
   APP_PAGE_LABEL_FALLBACKS,
   APP_PAGE_ORDER,
   resolveInitialPageFromSearch,
+  resolveAppNavigationDestination,
   type InventoryNavigationIntent,
   type PageKey,
 } from "./lib/app_navigation_model";
@@ -42,6 +43,8 @@ import {
 } from "./lib/tauri_visual_qa_client";
 import type { SettingsTabKey } from "./pages/settings_page_model";
 import { AppUpdateBanner } from "./components/app_update_banner";
+import { CompanionAccessRequestBanner } from "./components/companion_access_request_banner";
+import { CompanionAccessRequestsContext, useCompanionAccessRequestState } from "./lib/companion_access_requests";
 import type { SettingsFilamentDefaultsFocusTarget } from "./components/settings_filament_defaults_tab";
 import type { FilamentPriceBatchReceipt } from "./lib/settings_filament_defaults_model";
 import type { InventoryNavigationGuard } from "./lib/use_inventory_unsaved_changes_guard";
@@ -51,7 +54,6 @@ import brandIconLight from "./assets/logo_variants/logo-v3-10-light-static.svg";
 
 const DashboardPage = lazy(() => import("./pages/dashboard"));
 const InventoryPage = lazy(() => import("./pages/inventory"));
-const LoansPage = lazy(() => import("./pages/loans"));
 const PrintersPage = lazy(() => import("./pages/printers"));
 const SettingsPage = lazy(() => import("./pages/settings"));
 const StatisticsPage = lazy(() => import("./pages/statistics"));
@@ -71,6 +73,7 @@ function initialSettingsTabFromUrl(): SettingsTabKey | null {
 }
 
 export default function App() {
+  const companionAccess = useCompanionAccessRequestState();
   const { locale, t } = useI18n();
   const appUpdate = useAppUpdateContext();
   const [activePage, setActivePage] = useState<PageKey>(() => initialPageFromUrl());
@@ -175,7 +178,7 @@ export default function App() {
         import.meta.env.DEV &&
         typeof window !== "undefined" &&
         desktopVisualQaInitialPage(window.location.search) &&
-        (themeMode === "bambu" || themeMode === "prusa")
+        (themeMode === "dark-deep" || themeMode === "blue")
       ) {
         const accent = getComputedStyle(document.documentElement)
           .getPropertyValue("--app-theme-accent")
@@ -218,7 +221,7 @@ export default function App() {
 
   const pages = useMemo(
     () =>
-      APP_PAGE_ORDER.map((key) => ({
+      APP_PAGE_ORDER.filter(key => key !== "loans").map((key) => ({
         key,
         label: t(`nav.${key}`, APP_PAGE_LABEL_FALLBACKS[key]),
       })),
@@ -226,7 +229,7 @@ export default function App() {
   );
 
   useEffect(() => {
-    const currentPage = pages.find((page) => page.key === activePage);
+    const currentPage = pages.find((page) => page.key === (activePage === "loans" ? "inventory" : activePage));
     const title = currentPage?.label ?? t("app.title", "Filament Manager");
     void setWindowTitle(title);
   }, [activePage, pages, t]);
@@ -240,22 +243,23 @@ export default function App() {
     });
   }, [activePage]);
 
-  const activePageLabel = pages.find((page) => page.key === activePage)?.label ?? t("app.title", "Filament Manager");
+  const activePageLabel = pages.find((page) => page.key === (activePage === "loans" ? "inventory" : activePage))?.label ?? t("app.title", "Filament Manager");
   const availableUpdate =
     appUpdate.showUpdateNotification && appUpdate.state.status === "SUCCESS"
       ? appUpdate.state.result
       : null;
 
   const navigateToPage = (page: PageKey, nextInventoryIntent: InventoryNavigationIntent = null) => {
+    const { page: targetPage, inventoryIntent: targetIntent } = resolveAppNavigationDestination(page, nextInventoryIntent);
     const completeNavigation = () => {
       startTransition(() => {
-        setInventoryNavigationIntent(nextInventoryIntent);
+        setInventoryNavigationIntent(targetIntent);
         if (page !== "settings") {
           setSettingsInitialTab(null);
           setSettingsInitialPrinterId(null);
           setSettingsFilamentDefaultsFocusTarget(null);
         }
-        setActivePage(page);
+        setActivePage(targetPage);
       });
     };
     if (
@@ -330,13 +334,15 @@ export default function App() {
       case "inventory":
         return (
           <InventoryPage
+            onOpenPrinters={() => navigateToPage("printers")}
             navigationIntent={inventoryNavigationIntent}
             onConsumeNavigationIntent={() => setInventoryNavigationIntent(null)}
             onNavigationGuardChange={handleInventoryNavigationGuardChange}
           />
         );
       case "loans":
-        return <LoansPage />;
+        return <InventoryPage initialWorkspaceView="LOANS" onOpenPrinters={() => navigateToPage("printers")}
+          onNavigationGuardChange={handleInventoryNavigationGuardChange} />;
       case "printers":
         return <PrintersPage />;
       case "statistics":
@@ -369,6 +375,7 @@ export default function App() {
       default:
         return (
           <InventoryPage
+            onOpenPrinters={() => navigateToPage("printers")}
             navigationIntent={inventoryNavigationIntent}
             onConsumeNavigationIntent={() => setInventoryNavigationIntent(null)}
             onNavigationGuardChange={handleInventoryNavigationGuardChange}
@@ -378,6 +385,7 @@ export default function App() {
   })();
 
   return (
+    <CompanionAccessRequestsContext.Provider value={companionAccess}>
     <div>
       <a className="app-skip-link" href="#app-main-content">
         {t("app.skipToMainContent", "Skip to main content")}
@@ -400,14 +408,14 @@ export default function App() {
             {pages.map((page) => (
               <button
                 key={page.key}
-                ref={activePage === page.key ? activeNavButtonRef : undefined}
+                ref={(activePage === "loans" ? "inventory" : activePage) === page.key ? activeNavButtonRef : undefined}
                 type="button"
-                aria-current={activePage === page.key ? "page" : undefined}
+                aria-current={(activePage === "loans" ? "inventory" : activePage) === page.key ? "page" : undefined}
                 onClick={() => {
                   navigateToPage(page.key);
                 }}
                 className={`app-nav-button ${
-                  activePage === page.key ? "app-nav-button-active" : "app-nav-button-idle"
+                  (activePage === "loans" ? "inventory" : activePage) === page.key ? "app-nav-button-active" : "app-nav-button-idle"
                 }`}
               >
                 {page.label}
@@ -426,6 +434,11 @@ export default function App() {
           }}
         />
       ) : null}
+      <CompanionAccessRequestBanner onOpen={() => {
+        const open = () => { companionAccess.setReviewRequested(true); openSettingsTab("LIBRARY"); };
+        if (inventoryNavigationGuardRef.current && !inventoryNavigationGuardRef.current(open)) return;
+        open();
+      }} />
       <main id="app-main-content" tabIndex={-1}>
         <Suspense
           fallback={
@@ -438,5 +451,6 @@ export default function App() {
         </Suspense>
       </main>
     </div>
+    </CompanionAccessRequestsContext.Provider>
   );
 }

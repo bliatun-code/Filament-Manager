@@ -1,6 +1,36 @@
 import type { DictionaryNode } from "../../i18n_types";
 
 export const esDictionary: DictionaryNode = {
+    access: {
+      "title": "Es necesario renovar el acceso",
+      "body": "Pide al anfitrión que vuelva a autorizar este navegador.",
+      "deviceName": "Nombre del dispositivo",
+      "nameHint": "El nombre solo ayuda al anfitrión a reconocer tu dispositivo.",
+      "request": "Volver a solicitar acceso",
+      "pendingTitle": "Solicitud enviada",
+      "pendingBody": "El acceso debe autorizarse en Filament Manager en el equipo anfitrión.",
+      "waiting": "Esperando al anfitrión…",
+      "codeTitle": "Introduce el código del anfitrión",
+      "codeLabel": "Código de un solo uso",
+      "codeHint": "Seis dígitos. El código es válido durante cinco minutos.",
+      "confirm": "Confirmar acceso",
+      "badCode": "Código incorrecto. Quedan {count} intentos.",
+      "rejected": "La solicitud fue rechazada.",
+      "expired": "La solicitud ha caducado. Vuelve a solicitar acceso.",
+      "locked": "Tres intentos incorrectos. Vuelve a solicitar acceso.",
+      "cancelled": "La solicitud fue cancelada.",
+      "cancel": "Cancelar solicitud",
+      "otherWay": "Usar un enlace de vinculación",
+      "fallback": "Abre un nuevo enlace de vinculación o escanea su código QR en Biblioteca y aplicación web en el anfitrión.",
+      "banner": "Solicitudes de acceso del navegador: {count}",
+      "open": "Ver solicitudes",
+      "hostTitle": "Solicitudes de acceso del navegador",
+      "trust": "El dispositivo proporciona el nombre. Autoriza solo dispositivos que reconozcas.",
+      "actionFailed": "La solicitud ha cambiado o el servicio no está disponible. Inténtalo de nuevo.",
+      "reject": "Rechazar",
+      "approve": "Permitir acceso",
+      "shareCode": "Da este código a la persona que utiliza el dispositivo que solicitó acceso."
+    },
   app: {
     title: "Filament Manager",
     iconAlt: "Icono de Filament Manager",
@@ -386,6 +416,19 @@ export const esDictionary: DictionaryNode = {
     legacyLowStockFallback: "Valor alternativo de 200 g para hosts antiguos",
   },
   inventory: {
+    labelsAction: "Etiquetas",
+    loansTab: "Préstamos y material prestado",
+    "detailWeight": "Peso",
+    "detailPlacementOwnership": "Ubicación y propiedad",
+    "detailIdentityLabel": "Identidad y etiqueta",
+    "detailMorePurchase": "Más detalles de compra",
+    "detailUsageHistory": "Consumo e historial",
+    "detailUpdateWeight": "Actualizar peso",
+    "detailShowUsageHistory": "Mostrar gráfico e historial",
+    "detailSaveTareFirst": "Guarda el cambio de peso de la bobina vacía antes de actualizar el peso total medido.",
+    "detailAdvancedActions": "Acciones avanzadas",
+    "detailOpenPrinters": "Abrir impresoras",
+
     "labelPreviewFailed": "No se pudo preparar la vista previa de la etiqueta. Inténtalo de nuevo.",
     "labelRetryPreview": "Reintentar vista previa",
     "labelOpenSavedFile": "Abrir archivo guardado",
@@ -1244,6 +1287,7 @@ export const esDictionary: DictionaryNode = {
     },
   },
   loans: {
+    person: "Persona",
     subtitle: "Gestiona préstamos activos, bobinas de terceros y devoluciones.",
     exportCsv: "Exportar préstamos a CSV",
     activeLoans: "Préstamos activos",
@@ -1339,6 +1383,11 @@ export const esDictionary: DictionaryNode = {
     },
   },
   printers: {
+      replaceRoll: "Cambiar bobina",
+      selectRoll: "Elegir bobina",
+      linkObserved: "Vincular bobina detectada",
+      startedCandidatesFirst: "A igual coincidencia, las bobinas parcialmente usadas aparecen antes que las llenas. Confirma la bobina antes de vincularla.",
+
     subtitle: "Gestiona ranuras y consumo de material vinculado a impresoras.",
     desktopOnly:
       "La vista de impresoras está disponible en la aplicación de escritorio.",
@@ -1739,6 +1788,25 @@ export const esDictionary: DictionaryNode = {
     },
   },
   settings: {
+    themeGraySoft: "Gris · Suave",
+    themeGrayDeep: "Gris · Profundo",
+    themeBlueNight: "Azul · Noche",
+    themeLightClean: "Claro · Limpio",
+    searchPrinterModels: "Buscar modelos de impresora",
+    printerBrand: "Fabricante",
+    customPrinterModel: "Nombre de modelo personalizado",
+    printerModelsAll: "Todos",
+    printerModelsOther: "Otros",
+    printerModelsNoResults: "Sin resultados",
+
+    "noMatchingSwatches": "Ninguna muestra de color faltante coincide con esta búsqueda.",
+    "autoSaveHint": "Los cambios de esta página se guardan automáticamente.",
+    "changeLibraryRole": "Cambiar el rol de la biblioteca",
+    "localDiagnosticsScope": "Este dispositivo · base de datos local",
+    "unsavedChanges": "Cambios sin guardar",
+    "filamentDefaultsSaveGroupHint": "Guarda el precio predeterminado del grupo. Los precios de las bobinas existentes solo cambian al aplicar el precio de abajo.",
+    "swatchSearch": "Buscar fabricante, filamento, color o ID",
+
     "catalogRefreshStatusUncertain": "No se pudo confirmar el estado. Consulta el registro de actualización; puede que la actualización siga en curso.",
     "catalogRefreshFailedNextStep": "La actualización no se completó. Consulta el registro antes de iniciar otra actualización.",
     "catalogRefreshInterruptedNextStep": "La actualización se interrumpió. Revisa el catálogo y el registro de actualización antes de volver a empezar.",

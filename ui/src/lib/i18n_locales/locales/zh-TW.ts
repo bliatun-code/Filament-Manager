@@ -1,6 +1,36 @@
 import type { DictionaryNode } from "../../i18n_types";
 
 export const zhTWDictionary: DictionaryNode = {
+    access: {
+      "title": "需要重新授權",
+      "body": "請主機重新核准此瀏覽器的存取。",
+      "deviceName": "裝置名稱",
+      "nameHint": "此名稱僅用於協助主機辨識您的裝置。",
+      "request": "重新申請存取",
+      "pendingTitle": "請求已送出",
+      "pendingBody": "必須在主機上的 Filament Manager 中核准存取。",
+      "waiting": "正在等待主機…",
+      "codeTitle": "輸入主機提供的代碼",
+      "codeLabel": "一次性代碼",
+      "codeHint": "六位數字。代碼有效期限為五分鐘。",
+      "confirm": "確認存取",
+      "badCode": "代碼不正確。還可嘗試 {count} 次。",
+      "rejected": "請求已遭拒絕。",
+      "expired": "請求已過期。請重新申請存取。",
+      "locked": "三次嘗試皆不正確。請重新申請存取。",
+      "cancelled": "請求已取消。",
+      "cancel": "取消請求",
+      "otherWay": "改用配對連結",
+      "fallback": "開啟新的配對連結，或掃描主機上「資料庫與網頁應用程式」中的 QR 碼。",
+      "banner": "瀏覽器存取請求: {count}",
+      "open": "查看請求",
+      "hostTitle": "瀏覽器存取請求",
+      "trust": "名稱由裝置提供。僅核准您認識的裝置。",
+      "actionFailed": "請求已變更或服務無法使用。請重試。",
+      "reject": "拒絕",
+      "approve": "允許存取",
+      "shareCode": "將此代碼告知使用申請裝置的人員。"
+    },
   "app": {
     "title": "Filament Manager",
     "iconAlt": "Filament Manager 圖示",
@@ -305,6 +335,19 @@ export const zhTWDictionary: DictionaryNode = {
     "badgeNoPrinterSlots": "尚未配置印表機插槽。"
   },
   "inventory": {
+    labelsAction: "標籤",
+    loansTab: "借出與借入",
+    "detailWeight": "重量",
+    "detailPlacementOwnership": "位置與所有權",
+    "detailIdentityLabel": "識別資訊與標籤",
+    "detailMorePurchase": "更多購買詳情",
+    "detailUsageHistory": "用量與歷史",
+    "detailUpdateWeight": "更新重量",
+    "detailShowUsageHistory": "顯示圖表與歷史",
+    "detailSaveTareFirst": "更新測量總重前，請先儲存變更後的空料盤重量。",
+    "detailAdvancedActions": "進階操作",
+    "detailOpenPrinters": "開啟印表機",
+
     "labelPreviewFailed": "無法準備標籤預覽。請重試。",
     "labelRetryPreview": "重試預覽",
     "labelOpenSavedFile": "開啟已儲存的檔案",
@@ -1005,6 +1048,7 @@ export const zhTWDictionary: DictionaryNode = {
     }
   },
   "loans": {
+    person: "人員",
     "clientReadOnlyBanner": "該裝置作為客戶端連結。貸款變更目前保留在 host 上。",
     "clientReadOnlyAction": "該裝置作為客戶端連線。使用 host 進行貸款變更。",
     "clientReadOnlyBannerPaired": "該裝置作為客戶端連線。退貨和返還可以傳送到 host，而新的貸款建立仍保留在那裡。",
@@ -1087,6 +1131,11 @@ export const zhTWDictionary: DictionaryNode = {
     }
   },
   "printers": {
+      replaceRoll: "更換料盤",
+      selectRoll: "選擇料盤",
+      linkObserved: "關聯偵測到的料盤",
+      startedCandidatesFirst: "匹配程度相同時，部分使用過的料盤排在滿盤之前。關聯前請確認料盤。",
+
     "subtitle": "管理插槽和印表機連結材料的使用。",
     "desktopOnly": "印表機概述可在 desktop 應用程式版本中找到。",
     "clientReadOnlyBanner": "該裝置作為客戶端連結。印表機分配變更目前保留在 host 上。",
@@ -1420,6 +1469,25 @@ export const zhTWDictionary: DictionaryNode = {
     }
   },
   "settings": {
+    themeGraySoft: "灰色 · 柔和",
+    themeGrayDeep: "灰色 · 深邃",
+    themeBlueNight: "藍色 · 夜幕",
+    themeLightClean: "淺色 · 清爽",
+    searchPrinterModels: "搜尋印表機型號",
+    printerBrand: "製造商",
+    customPrinterModel: "自訂型號名稱",
+    printerModelsAll: "全部",
+    printerModelsOther: "其他",
+    printerModelsNoResults: "沒有結果",
+
+    "noMatchingSwatches": "沒有符合此搜尋條件的缺失色樣。",
+    "autoSaveHint": "此頁面上的變更會自動儲存。",
+    "changeLibraryRole": "變更資料庫角色",
+    "localDiagnosticsScope": "此裝置 · 本機資料庫",
+    "unsavedChanges": "未儲存的變更",
+    "filamentDefaultsSaveGroupHint": "儲存群組的預設價格。現有料卷的價格僅在套用下方價格時才會變更。",
+    "swatchSearch": "搜尋廠商、耗材、顏色或 ID",
+
     "catalogRefreshStatusUncertain": "無法確認狀態。請檢查重新整理記錄；更新可能仍在進行。",
     "catalogRefreshFailedNextStep": "更新未完成。請先檢查重新整理記錄，再開始另一次更新。",
     "catalogRefreshInterruptedNextStep": "更新已中斷。請先檢查目錄和重新整理記錄，再重新開始。",

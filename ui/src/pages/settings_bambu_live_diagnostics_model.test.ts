@@ -248,7 +248,7 @@ test("buildSettingsBambuLiveDiagnosticsModel centralizes chart, tray and summary
     "18 min",
     "Tray 1",
     "AMS humidity 3",
-    "Job state 4",
+    "Job state: Unknown",
     "AMS status 3/1",
   ]);
   assert.deepEqual(model.fallbackSummaryParts, [
@@ -256,7 +256,7 @@ test("buildSettingsBambuLiveDiagnosticsModel centralizes chart, tray and summary
     "17 min",
     "Tray 1",
     "AMS humidity 3",
-    "Job state 4",
+    "Job state: Unknown",
     "AMS status 3/1",
   ]);
   assert.deepEqual(
@@ -370,7 +370,7 @@ test("Bambu live summary builders keep display order and omit missing values", (
 
   assert.deepEqual(
     buildSettingsBambuLiveObservedSummaryParts(liveConfig.observed_state ?? null, t),
-    ["42%", "18 min", "Tray 1", "AMS humidity 3", "Job state 4", "AMS status 3/1"],
+    ["42%", "18 min", "Tray 1", "AMS humidity 3", "Job state: Unknown", "AMS status 3/1"],
   );
   assert.deepEqual(
     buildSettingsBambuLiveObservedSummaryParts(
@@ -378,7 +378,7 @@ test("Bambu live summary builders keep display order and omit missing values", (
       t,
       "nb",
     ),
-    ["42\u00a0%", "18 min", "Tray 1", "AMS humidity 3", "Job state 4", "AMS status 3/1"],
+    ["42\u00a0%", "18 min", "Tray 1", "AMS humidity 3", "Job state: Unknown", "AMS status 3/1"],
   );
   assert.deepEqual(buildSettingsBambuLiveObservedSummaryParts(null, t), []);
 
@@ -389,7 +389,7 @@ test("Bambu live summary builders keep display order and omit missing values", (
   }
   assert.deepEqual(
     buildSettingsBambuLiveObservedSummaryParts(indexedLiveConfig.observed_state ?? null, t),
-    ["42%", "18 min", "AMS 2 · Slot 1", "AMS humidity 3", "Job state 4", "AMS status 3/1"],
+    ["42%", "18 min", "AMS 2 · Slot 1", "AMS humidity 3", "Job state: Unknown", "AMS status 3/1"],
   );
 
   const diagnosticSession = updateDiagnosticCaptureSessionFromPayload({
@@ -411,7 +411,7 @@ test("Bambu live summary builders keep display order and omit missing values", (
 
   assert.deepEqual(
     buildSettingsBambuLiveFallbackSummaryParts(diagnosticSession?.fields ?? [], t),
-    ["55%", "Job state 4", "AMS status 3/1"],
+    ["55%", "Job state: Unknown", "AMS status 3/1"],
   );
 
   const rawStatusSession = updateDiagnosticCaptureSessionFromPayload({
@@ -426,7 +426,7 @@ test("Bambu live summary builders keep display order and omit missing values", (
   });
   assert.deepEqual(
     buildSettingsBambuLiveFallbackSummaryParts(rawStatusSession?.fields ?? [], t),
-    ["Job state 2", "AMS status 3/1"],
+    ["Job state: Unknown", "AMS status 3/1"],
   );
 
   const indexedTraySession = updateDiagnosticCaptureSessionFromPayload({
@@ -449,7 +449,7 @@ test("Bambu live summary builders keep display order and omit missing values", (
   }
   assert.deepEqual(
     buildSettingsBambuLiveObservedSummaryParts(externalLiveConfig.observed_state ?? null, t),
-    ["42%", "18 min", "External tray", "AMS humidity 3", "Job state 4", "AMS status 3/1"],
+    ["42%", "18 min", "External tray", "AMS humidity 3", "Job state: Unknown", "AMS status 3/1"],
   );
 
   const externalTraySession = updateDiagnosticCaptureSessionFromPayload({
@@ -1981,4 +1981,12 @@ test("Bambu live diagnostic tray cards resolve snapshots per display tray", () =
     trayCards.map((card) => card.matchLabel),
     ["PLA Basic · Orange", "PETG Basic · Blue"],
   );
+});
+
+
+test("printer job summaries use reported states and keep unknown numeric codes in diagnostics", () => {
+  for (const [gcode_state,label] of [["RUNNING","Printing"],["PAUSE","Paused"],["PREPARE","Preparing"],["FINISH","Completed"],["FAILED","Failed"],["IDLE","Idle"],["NEW_STATE","Unknown"]]) {
+    const summary = buildSettingsBambuLiveObservedSummaryParts({online:true,mqtt_connected:true,trays:[],gcode_state,job_state_code:12345},t);
+    assert.deepEqual(summary,[`Job state: ${label}`]);
+  }
 });

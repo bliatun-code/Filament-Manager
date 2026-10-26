@@ -172,9 +172,13 @@ modification times.
 - Do not commit local databases, logs, `.env` files, private pairing URLs, or
   screenshots containing LAN addresses, printer serials, access codes, full
   RFID values, scannable private QR targets, names, or other personal data.
-- Use the committed sanitized visual-QA fixture for screenshots intended for
-  documentation or a pull request. Keep captures from a real printer or live
-  library local unless every private field has been reviewed and removed.
+- Use the committed sanitized visual-QA fixture for repeatable QA. Public
+  product screenshots may use a separate, de-identified library copy with real
+  stock and live printer readings after every visible private field is reviewed
+  and removed. Never publish the library copy or its connection settings.
+- Use English screenshots in the README and English guide, and Norwegian
+  screenshots in the Norwegian guide. Device frames may surround real captures;
+  do not synthesize app content or printer readings.
 
 Participation is also covered by [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md).
 
@@ -202,7 +206,8 @@ the new source fingerprint before release.
 
 The app currently publishes complete catalogs for 21 languages. Most of the
 new catalogs are community-review candidates rather than translations with a
-named native reviewer. Focused corrections are welcome: identify the locale,
+named native reviewer. Use the [translation correction form](https://github.com/bliatun-code/Filament-Manager/issues/new?template=translation.yml)
+for focused corrections: identify the locale,
 message or screen, expected wording, and—when layout is involved—include a
 screenshot. Run the locale checks and the relevant data-backed screenshot
 scenario before submitting the change.
@@ -212,3 +217,34 @@ scenario before submitting the change.
 For dependency updates, include the reason for the update and run relevant
 tests. Scanner-related dependency updates should include at least one manual
 camera/image scan check before release.
+
+## Project Documentation
+
+Filament Manager uses a Tauri desktop shell, a React interface and a Rust core.
+The core owns library rules and SQLite data; the desktop shell also serves the
+paired Companion browsers. Start with these references for technical work:
+
+- [Architecture and workspace layout](docs/ARCHITECTURE.md)
+- [English user guide](docs/USER_GUIDE.md) and [Norwegian user guide](docs/BRUKERVEILEDNING.md)
+- [Implementation plan](docs/IMPROVEMENT_PLAN.md)
+- [Quality gates](docs/QUALITY_GATES.md)
+- [Localization](docs/LOCALIZATION.md)
+- [macOS distribution and verification](docs/MACOS_DISTRIBUTION.md)
+- [Release integrity and SBOM](docs/SUPPLY_CHAIN.md)
+- [Security policy](SECURITY.md) and [community standards](CODE_OF_CONDUCT.md)
+
+The workspace contains `src/backend/` for the shared core, `src-tauri/` for the
+native shell and Companion service, `ui/` for the desktop interface, and
+`scripts/` for builds and validation. Node.js 24, npm 10 or newer and the checked-in
+Rust toolchain are required for development. macOS builds also need Xcode and
+its command-line tools. End users can install the published DMG or MSI without
+these development tools.
+
+## Recent Release Notes
+
+- [v0.35.0](docs/releases/RELEASE_NOTES_v0.35.0.md)
+- [v0.34.0](docs/releases/RELEASE_NOTES_v0.34.0.md)
+- [v0.33.0](docs/releases/RELEASE_NOTES_v0.33.0.md)
+
+The three newest release-note files stay in the working tree. Older notes and
+source remain available under their published Git tags and GitHub releases.

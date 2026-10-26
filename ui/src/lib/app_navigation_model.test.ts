@@ -115,3 +115,11 @@ test("initial page resolver opens the page requested by fixtures and visual QA s
   assert.equal(resolveInitialPageFromSearch(""), "dashboard");
   assert.equal(resolveInitialPageFromSearch(null), "dashboard");
 });
+
+test("existing loan shortcuts open the integrated inventory view and preserve unrelated intents", async () => {
+ const {resolveAppNavigationDestination}=await import("./app_navigation_model");
+ assert.deepEqual(resolveAppNavigationDestination("loans",null,17),{page:"inventory",inventoryIntent:{kind:"LOANS",seq:17}});
+ const intent={kind:"SPOOL_DETAIL" as const,seq:18,spoolId:"current-spool"};
+ assert.deepEqual(resolveAppNavigationDestination("inventory",intent),{page:"inventory",inventoryIntent:intent});
+ assert.deepEqual(resolveAppNavigationDestination("printers"),{page:"printers",inventoryIntent:null});
+});

@@ -42,6 +42,7 @@ function librarySyncValidationFeedbackTone(
 
 type SettingsLibraryClientPanelProps = {
   appVersion?: string | null;
+  hideAdvanced?: boolean;
   librarySyncBusy: boolean;
   librarySyncDeviceNameDirty: boolean;
   librarySyncDeviceNameDraft: string;
@@ -74,6 +75,7 @@ type SettingsLibraryClientPanelProps = {
 
 export function SettingsLibraryClientPanel({
   appVersion = null,
+  hideAdvanced = false,
   librarySyncBusy,
   librarySyncDeviceNameDirty,
   librarySyncDeviceNameDraft,
@@ -121,30 +123,20 @@ export function SettingsLibraryClientPanel({
     setInvalidPairingLink(false);
     onPairHost();
   }
-  const lastValidationMessage = visibleLibrarySyncValidationMessage(
-    librarySyncSettings?.last_validation_message,
-  );
   return (
-    <div className="space-y-4">
-      <SettingsDeviceVersionPanel
-        appVersion={appVersion}
-        busy={librarySyncBusy || librarySyncSnapshotBusy || librarySyncValidationBusy}
-        onRefreshHost={onFetchSnapshot}
-        settings={librarySyncSettings}
-        t={t}
-        tauri={tauri}
-        validation={librarySyncValidation}
-      />
-      <div className={settingsSurfacePanelClass}>
+    <div className="settings-library-client">
+      <div className={`settings-library-connection ${settingsSurfacePanelClass}`}>
         <div className="font-semibold text-slate-900 dark:text-slate-100">
           {t("settings.librarySyncClientAuthTitle", "Desktop client pairing")}
         </div>
+        {!settingsClientHostWritePaired ? (
         <div className="mt-1 text-sm leading-6 text-slate-600 dark:text-slate-300">
           {t(
             "settings.librarySyncClientPairingFlowHint",
             "Start with a short-lived pairing link from the host. The client uses that link to detect, verify and connect to the correct host automatically.",
           )}
         </div>
+        ) : null}
         <div className="mt-3">
           <SettingsLibraryDeviceNameField
             disabled={librarySyncBusy}
@@ -261,7 +253,7 @@ export function SettingsLibraryClientPanel({
         {librarySyncValidation ? (
           <FeedbackBanner
             tone={librarySyncValidationFeedbackTone(librarySyncValidation)}
-            className="mt-3"
+            className={`settings-library-validation mt-3 ${librarySyncValidationFeedbackTone(librarySyncValidation) === "success" ? "settings-library-validation-success" : ""}`}
           >
             <div className="font-semibold">
               {!librarySyncValidation.reachable
@@ -284,6 +276,41 @@ export function SettingsLibraryClientPanel({
         ) : null}
       </div>
 
+      <div className="settings-library-versions">
+      <SettingsDeviceVersionPanel
+        appVersion={appVersion}
+        busy={librarySyncBusy || librarySyncSnapshotBusy || librarySyncValidationBusy}
+        onRefreshHost={onFetchSnapshot}
+        settings={librarySyncSettings}
+        t={t}
+        tauri={tauri}
+        validation={librarySyncValidation}
+      />
+      </div>
+      {!hideAdvanced ? <SettingsLibraryClientAdvanced
+        librarySyncBusy={librarySyncBusy} librarySyncHostBaseUrlDraft={librarySyncHostBaseUrlDraft}
+        librarySyncSettings={librarySyncSettings} librarySyncSnapshot={librarySyncSnapshot}
+        librarySyncSnapshotBusy={librarySyncSnapshotBusy} librarySyncValidation={librarySyncValidation}
+        librarySyncValidationBusy={librarySyncValidationBusy} libraryVisibility={libraryVisibility}
+        locale={locale} showLibraryClientAdvanced={showLibraryClientAdvanced} tauri={tauri} t={t}
+        onFetchSnapshot={onFetchSnapshot} onToggleAdvanced={onToggleAdvanced}
+      /> : null}
+    </div>
+  );
+}
+
+export function SettingsLibraryClientAdvanced({
+  librarySyncBusy, librarySyncHostBaseUrlDraft, librarySyncSettings, librarySyncSnapshot,
+  librarySyncSnapshotBusy, librarySyncValidation, librarySyncValidationBusy, libraryVisibility,
+  locale, showLibraryClientAdvanced, tauri, t, onFetchSnapshot, onToggleAdvanced,
+}: Pick<SettingsLibraryClientPanelProps,
+  "librarySyncBusy" | "librarySyncHostBaseUrlDraft" | "librarySyncSettings" | "librarySyncSnapshot" |
+  "librarySyncSnapshotBusy" | "librarySyncValidation" | "librarySyncValidationBusy" | "libraryVisibility" |
+  "locale" | "showLibraryClientAdvanced" | "tauri" | "t" | "onFetchSnapshot" | "onToggleAdvanced"
+>) {
+  const advancedId = useId();
+  const lastValidationMessage = visibleLibrarySyncValidationMessage(librarySyncSettings?.last_validation_message);
+  return (
       <div className={settingsSurfacePanelClass}>
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
@@ -300,6 +327,8 @@ export function SettingsLibraryClientPanel({
           <button
             type="button"
             onClick={onToggleAdvanced}
+            aria-expanded={showLibraryClientAdvanced}
+            aria-controls={advancedId}
             className={settingsActionButtonClass(showLibraryClientAdvanced ? "accent" : "neutral")}
             disabled={!tauri || librarySyncBusy}
           >
@@ -310,7 +339,7 @@ export function SettingsLibraryClientPanel({
         </div>
 
         {showLibraryClientAdvanced ? (
-          <div className="mt-4 space-y-4">
+          <div id={advancedId} className="mt-4 space-y-4">
             <div className={settingsSurfacePanelClass}>
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div className="min-w-0 flex-1">
@@ -412,6 +441,5 @@ export function SettingsLibraryClientPanel({
           </div>
         ) : null}
       </div>
-    </div>
   );
 }

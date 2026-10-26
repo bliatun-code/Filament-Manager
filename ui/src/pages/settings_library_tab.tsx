@@ -3,9 +3,10 @@ import { SettingsTrustedLanBrowsersPanel } from "../components/settings_trusted_
 import { SettingsTrustedLanPairingPanel } from "../components/settings_trusted_lan_pairing_panel";
 import { SettingsTrustedLanServerPanel } from "../components/settings_trusted_lan_server_panel";
 import { SettingsSurfaceCard } from "../components/settings_ui";
-import { SettingsLibraryClientPanel } from "./settings_library_client_panel";
+import { SettingsLibraryClientPanel, SettingsLibraryClientAdvanced } from "./settings_library_client_panel";
 import { SettingsLibraryRolePanel } from "./settings_library_role_panel";
 import { SettingsLibraryWebappControl } from "./settings_library_webapp_control";
+import { SettingsCompanionAccessRequests } from "../components/settings_companion_access_requests";
 
 export type SettingsLibraryTabProps = {
   browsersPanel: ComponentProps<typeof SettingsTrustedLanBrowsersPanel>;
@@ -33,14 +34,19 @@ export function SettingsLibraryTab({
   webappControl,
 }: SettingsLibraryTabProps) {
   return (
-    <SettingsSurfaceCard className="xl:col-span-2 space-y-4" eyebrow={title}>
-      <div className="surface-subtle space-y-5 p-4">
+    <SettingsSurfaceCard className="settings-library-balanced space-y-0">
+      <span className="sr-only">{title}</span>
+      {showClientPanel ? <SettingsLibraryClientPanel {...clientPanel} hideAdvanced /> : null}
+      <section className="settings-library-section settings-library-role">
         <SettingsLibraryRolePanel {...libraryRolePanel} />
+      </section>
+      <section className="settings-library-section settings-library-webapp">
         <SettingsLibraryWebappControl {...webappControl} />
         {showServerPanel ? <SettingsTrustedLanServerPanel {...serverPanel} /> : null}
-        {showClientPanel ? <SettingsLibraryClientPanel {...clientPanel} /> : null}
-      </div>
+      </section>
+      {showClientPanel ? <section className="settings-library-section settings-library-advanced"><SettingsLibraryClientAdvanced {...clientPanel} /></section> : null}
 
+      {showHostPanels ? <SettingsCompanionAccessRequests /> : null}
       {showHostPanels ? <SettingsTrustedLanPairingPanel {...pairingPanel} /> : null}
       {showHostPanels ? <SettingsTrustedLanBrowsersPanel {...browsersPanel} /> : null}
     </SettingsSurfaceCard>

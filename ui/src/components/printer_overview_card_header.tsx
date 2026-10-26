@@ -1,5 +1,4 @@
 import { useI18n } from "../lib/i18n";
-import { printerBrandSurfaceStyle } from "../lib/printer_branding";
 import { buildPrinterLiveTelemetry } from "../lib/printer_live_telemetry";
 import {
   describeConfiguredPrinterSetup,
@@ -37,7 +36,6 @@ export function PrinterOverviewCardHeader({
   hasMultiMaterial,
   liveConnectionIndicator,
   liveConfig,
-  resolvedTheme,
 }: PrinterOverviewCardHeaderProps) {
   const { locale, t } = useI18n();
   const configuredSetup = describeConfiguredPrinterSetup(
@@ -45,19 +43,14 @@ export function PrinterOverviewCardHeader({
     printer.printer.model,
     printer.slots,
   );
-  const printerMetricStyle = printerBrandSurfaceStyle(
-    printer.printer.model,
-    "compact",
-    resolvedTheme,
-  );
   const usageMetrics = buildPrinterUsageMetrics(printer.usage, t, locale);
   const liveTelemetry = buildPrinterLiveTelemetry(liveConfig, t, locale);
 
   return (
-    <div className="flex flex-wrap items-start justify-between gap-3">
-      <div className="order-1 flex min-w-0 flex-1 items-start gap-3">
+    <div className="printer-balanced-header">
+      <div className="printer-balanced-identity">
         <div className="shrink-0">
-          <PrinterModelPreview model={printer.printer.model} hasMultiMaterial={hasMultiMaterial} />
+          <PrinterModelPreview model={printer.printer.model} hasMultiMaterial={hasMultiMaterial} compact />
         </div>
         <div className="min-w-0 space-y-0.5">
           <div className="[overflow-wrap:anywhere] text-base font-semibold text-slate-900 dark:text-slate-50">
@@ -82,24 +75,23 @@ export function PrinterOverviewCardHeader({
           </div>
         </div>
       </div>
-      <div className="order-3 grid w-full grid-cols-4 gap-2 min-[1080px]:order-2 min-[1080px]:w-auto min-[1080px]:min-w-[18rem]">
+      <div className="printer-balanced-metrics">
         {usageMetrics.map((metric) => (
           <div
             key={metric.key}
-            className="rounded-lg border px-2.5 py-2 shadow-sm dark:shadow-none"
-            style={printerMetricStyle}
+            className="printer-balanced-metric"
           >
-            <div className="text-[10px] uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400">
+            <div className="printer-metric-label">
               {metric.label}
             </div>
-            <div className={`mt-0.5 text-base font-semibold ${metric.valueClassName}`}>
+            <div className="printer-metric-value">
               {metric.value}
             </div>
           </div>
         ))}
       </div>
       {liveTelemetry ? (
-        <div className="order-2 w-full min-[640px]:-mt-8 min-[640px]:pl-[10.25rem] min-[1080px]:order-3">
+        <div className="printer-balanced-telemetry">
           <PrinterLiveTelemetryStrip telemetry={liveTelemetry} />
         </div>
       ) : null}

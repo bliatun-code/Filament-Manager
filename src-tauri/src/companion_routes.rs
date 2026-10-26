@@ -1,3 +1,4 @@
+use crate::companion_access_recovery_api::*;
 use crate::companion_api::*;
 use crate::companion_catalog_batch_api::handle_create_catalog_spool_batch;
 use crate::companion_catalog_job_api::{
@@ -212,6 +213,22 @@ fn build_router_with_security_config(
         .route("/api/v1/auth/session", get(handle_session_status))
         .route("/api/v1/auth/pair", post(handle_pair_session))
         .route("/api/v1/auth/renew", post(handle_renew_session))
+        .route(
+            "/api/v1/auth/recovery/request",
+            post(handle_create_access_request),
+        )
+        .route(
+            "/api/v1/auth/recovery/status",
+            post(handle_access_request_status),
+        )
+        .route(
+            "/api/v1/auth/recovery/cancel",
+            post(handle_cancel_access_request),
+        )
+        .route(
+            "/api/v1/auth/recovery/confirm",
+            post(handle_confirm_access_request),
+        )
         .route("/api/v1/qa/session", get(handle_qa_session))
         .route("/api/v1/qa/expire-session", post(handle_qa_expire_session))
         .with_state(state)

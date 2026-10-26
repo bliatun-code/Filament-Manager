@@ -13,6 +13,7 @@ type UseSettingsCatalogDerivedStateOptions = {
   esunDiscoveredMaterials: string[];
   esunRefreshMaterial: string | null;
   swatchVendorFilter: string;
+  swatchSearch?: string;
 };
 
 export function useSettingsCatalogDerivedState({
@@ -23,6 +24,7 @@ export function useSettingsCatalogDerivedState({
   esunDiscoveredMaterials,
   esunRefreshMaterial,
   swatchVendorFilter,
+  swatchSearch,
 }: UseSettingsCatalogDerivedStateOptions) {
   const catalogState = useMemo(
     () =>
@@ -34,6 +36,7 @@ export function useSettingsCatalogDerivedState({
         esunDiscoveredMaterials,
         esunRefreshMaterial,
         swatchVendorFilter,
+        swatchSearch,
       }),
     [
       bambuDiscoveredMaterials,
@@ -43,6 +46,7 @@ export function useSettingsCatalogDerivedState({
       esunDiscoveredMaterials,
       esunRefreshMaterial,
       swatchVendorFilter,
+      swatchSearch,
     ],
   );
 

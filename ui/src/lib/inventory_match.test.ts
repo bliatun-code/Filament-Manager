@@ -775,3 +775,24 @@ test("translateObservedMatchNote localizes known notes and preserves unknown not
   assert.equal(translateObservedMatchNote("Custom note", t), "Custom note");
   assert.equal(translateObservedMatchNote("  ", t), null);
 });
+
+test("equally plausible candidates put a partly used roll before a full roll without changing identity ranking", () => {
+  const full = createRow("a-full");
+  const used = createRow("z-used");
+  full.spool.initial_weight_g = used.spool.initial_weight_g = 1000;
+  full.spool.remaining_g = 1000; used.spool.remaining_g = 824;
+  const observed = {material:"PLA", colorHex:"#2563EB"};
+  assert.deepEqual(buildInventoryMatchResult([full,used],observed).candidates.map(r=>r.spool.id),["z-used","a-full"]);
+  assert.deepEqual(buildInventoryMatchResult([full,used],observed,{preferredSpoolId:"a-full"}).candidates.map(r=>r.spool.id),["a-full","z-used"]);
+  full.spool.rfid_tag = "EXACT";
+  assert.deepEqual(buildInventoryMatchResult([full,used],{...observed,rfid:"EXACT"}).candidates.map(r=>r.spool.id),["a-full"]);
+  assert.equal(full.spool.remaining_g,1000);
+});
+
+test("unknown and invalid weights are not treated as partly used and a better colour remains stronger", () => {
+ const full=createRow("a-full"), invalid=createRow("z-invalid");
+ full.spool.remaining_g=1000; invalid.spool.remaining_g=Number.NaN;
+ assert.deepEqual(buildInventoryMatchResult([invalid,full],{material:"PLA",colorHex:"#2563EB"}).candidates.map(r=>r.spool.id),["a-full","z-invalid"]);
+ invalid.spool.remaining_g=824; invalid.master.hex_color="#3060E0";
+ assert.equal(buildInventoryMatchResult([invalid,full],{material:"PLA",colorHex:"#2563EB"}).candidates[0].spool.id,"a-full");
+});

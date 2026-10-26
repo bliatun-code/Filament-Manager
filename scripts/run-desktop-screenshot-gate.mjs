@@ -38,8 +38,8 @@ export const DESKTOP_VISUAL_QA_READINESS_PREFIX =
 export const DESKTOP_VISUAL_QA_THEME_PREFIX =
   "FILAMENT_MANAGER_VISUAL_QA_THEME:";
 export const DESKTOP_BRAND_THEME_EVIDENCE = Object.freeze({
-  bambu: Object.freeze({ accent: "#00AE42", resolvedTheme: "dark" }),
-  prusa: Object.freeze({ accent: "#FD5000", resolvedTheme: "dark" }),
+  "dark-deep": Object.freeze({ accent: "#60AEFF", resolvedTheme: "dark" }),
+  blue: Object.freeze({ accent: "#60AEFF", resolvedTheme: "dark" }),
 });
 const VISUAL_QA_SCENARIO_ENV_VAR = "FILAMENT_MANAGER_VISUAL_QA_SCENARIO";
 const VISUAL_QA_LOCALE_ENV_VAR = "FILAMENT_MANAGER_VISUAL_QA_LOCALE";
@@ -316,18 +316,18 @@ export function normalizeDesktopVisualQaTheme(value) {
     normalized === "light" ||
     normalized === "dark" ||
     normalized === "auto" ||
-    normalized === "bambu" ||
-    normalized === "prusa"
+    normalized === "dark-deep" ||
+    normalized === "blue"
   ) {
     return normalized;
   }
   if (!normalized) {
     throw new Error(
-      'Desktop visual QA theme is required. Use "light", "dark", "auto", "bambu", or "prusa".',
+      'Desktop visual QA theme is required. Use "light", "dark", "auto", "dark-deep", or "blue".',
     );
   }
   throw new Error(
-    `Unknown desktop visual QA theme "${value}". Use "light", "dark", "auto", "bambu", or "prusa".`,
+    `Unknown desktop visual QA theme "${value}". Use "light", "dark", "auto", "dark-deep", or "blue".`,
   );
 }
 
@@ -481,7 +481,7 @@ export function parseDesktopVisualQaThemeEvidence(output) {
   for (const line of lines) {
     const match = line
       .trim()
-      .match(/^FILAMENT_MANAGER_VISUAL_QA_THEME:(bambu|prusa):(dark):(#[0-9A-F]{6})$/);
+      .match(/^FILAMENT_MANAGER_VISUAL_QA_THEME:(dark-deep|blue):(dark):(#[0-9A-F]{6})$/);
     if (match) {
       return {
         accent: match[3],
@@ -539,9 +539,10 @@ export function desktopVisualQaExpectedWindowTitles(scenario, locale) {
     return [];
   }
   const normalizedLocale = normalizeVisualQaLocale(locale);
+  const page = definition.page === "loans" ? "inventory" : definition.page;
   const title =
-    DESKTOP_VISUAL_QA_PAGE_TITLES[normalizedLocale]?.[definition.page] ??
-    DESKTOP_VISUAL_QA_PAGE_TITLES[DEFAULT_LOCALE]?.[definition.page];
+    DESKTOP_VISUAL_QA_PAGE_TITLES[normalizedLocale]?.[page] ??
+    DESKTOP_VISUAL_QA_PAGE_TITLES[DEFAULT_LOCALE]?.[page];
   return title ? [title] : [];
 }
 
@@ -1389,7 +1390,7 @@ export function validateDesktopScreenshotMetrics(metric, minimums = {}) {
 
 export function validateDesktopScreenshotTheme(metric, themeMode) {
   const resolvedTheme =
-    themeMode === "bambu" || themeMode === "prusa" ? "dark" : themeMode;
+    themeMode === "dark-deep" || themeMode === "blue" ? "dark" : themeMode;
   if (resolvedTheme !== "light" && resolvedTheme !== "dark") {
     return [];
   }

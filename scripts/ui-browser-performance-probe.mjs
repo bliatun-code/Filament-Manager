@@ -27,7 +27,7 @@ const PERFORMANCE_APP_VERSION = JSON.parse(
 const PERFORMANCE_PAGE_SPECS = Object.freeze([
   Object.freeze({
     criticalCommand: "list_spools",
-    heading: "Spools",
+    heading: "Inventory",
     key: "inventory",
     label: "Inventory",
   }),

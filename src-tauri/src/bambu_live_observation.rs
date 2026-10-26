@@ -102,6 +102,26 @@ pub(crate) fn merge_idle_observation(
     next.ams_status_sub = next.ams_status_sub.or(previous.ams_status_sub);
     if next.raw_payload_json.is_none() {
         next.raw_payload_json = previous.raw_payload_json.clone();
+    } else if let Some(previous_fields) = previous
+        .raw_payload_json
+        .as_ref()
+        .and_then(|payload| payload.get("_bfm_observed_fields"))
+        .and_then(Value::as_object)
+        && let Some(payload) = next
+            .raw_payload_json
+            .as_mut()
+            .and_then(Value::as_object_mut)
+    {
+        let fields = payload
+            .entry("_bfm_observed_fields")
+            .or_insert_with(|| Value::Object(Map::new()));
+        if let Some(fields) = fields.as_object_mut() {
+            // Keep the actual observation time of carried values. An unrelated
+            // heartbeat must neither forget that time nor make old data fresh.
+            for (key, value) in previous_fields {
+                fields.entry(key.clone()).or_insert_with(|| value.clone());
+            }
+        }
     }
     next.trays = merge_tray_snapshots(&previous.trays, &next.trays);
     next
@@ -130,8 +150,17 @@ fn next_looks_like_cold_jobless_stop(
     previous: &BambuLiveObservedStateRow,
     next: &BambuLiveObservedStateRow,
 ) -> bool {
+    // Bed probing can hold a hot ABS bed while the nozzle rests around
+    // 140 C. Below extrusion temperature is not evidence of a stopped job.
+    let preparing_or_paused = matches!(
+        normalized_carried_print_state(previous.gcode_state.as_deref()).as_deref(),
+        Some("PREPARE" | "PREPARING" | "SLICING" | "PAUSE" | "PAUSED")
+    );
     is_live_print_running(previous)
-        && next.nozzle_temp_c.is_some_and(is_below_extrusion_temp)
+        && !preparing_or_paused
+        && next
+            .nozzle_temp_c
+            .is_some_and(|temperature| temperature < 80.0)
         && raw_payload_has_no_current_job_fields(next)
 }
 

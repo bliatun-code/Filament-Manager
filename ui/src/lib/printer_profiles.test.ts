@@ -115,3 +115,21 @@ test("summarizeEffectivePrinterSlots uses EXT as readiness target for single-mat
   assert.equal(loadedSummary.loadedSlots, 1);
   assert.equal(loadedSummary.totalSlots, 1);
 });
+
+test("new Prusa generations use the correct single-material and INDX tool capacities", () => {
+  const models = listSupportedPrinterModels();
+  for (const model of ["Prusa CORE One L", "Prusa CORE One L+", "Prusa CORE One+ (Gen 2)", "Prusa XL+"]) assert.ok(models.includes(model));
+  for (const base of ["Prusa CORE One+ (Gen 2)", "Prusa CORE One L+"]) {
+    for (const count of [4, 8]) {
+      const profile = resolvePrinterModelProfile(`${base} INDX (${count} tools)`);
+      assert.equal(profile.systemKind, "TOOLHEADS");
+      assert.equal(profile.defaultUnits, 1);
+      assert.equal(profile.defaultSlotsPerUnit, count);
+      assert.equal(profile.maxSlotsPerUnit, 8);
+    }
+  }
+  for (const model of ["Prusa CORE One L", "Prusa CORE One L+"]) {
+    assert.equal(resolvePrinterModelProfile(model).systemKind, "NONE");
+    assert.equal(resolvePrinterModelProfile(model).maxUnits, 0);
+  }
+});

@@ -1,6 +1,36 @@
 import type { DictionaryNode } from "../../i18n_types";
 
 export const ukUADictionary: DictionaryNode = {
+    access: {
+      "title": "Доступ потрібно поновити",
+      "body": "Попросіть хост знову схвалити цей браузер.",
+      "deviceName": "Назва пристрою",
+      "nameHint": "Назва лише допомагає хосту впізнати ваш пристрій.",
+      "request": "Знову запитати доступ",
+      "pendingTitle": "Запит надіслано",
+      "pendingBody": "Доступ потрібно схвалити у Filament Manager на комп’ютері хоста.",
+      "waiting": "Очікування хоста…",
+      "codeTitle": "Введіть код від хоста",
+      "codeLabel": "Одноразовий код",
+      "codeHint": "Шість цифр. Код дійсний протягом п’яти хвилин.",
+      "confirm": "Підтвердити доступ",
+      "badCode": "Неправильний код. Залишилося спроб: {count}.",
+      "rejected": "Запит відхилено.",
+      "expired": "Термін дії запиту минув. Запитайте доступ знову.",
+      "locked": "Три невдалі спроби. Запитайте доступ знову.",
+      "cancelled": "Запит скасовано.",
+      "cancel": "Скасувати запит",
+      "otherWay": "Скористатися посиланням сполучення",
+      "fallback": "Відкрийте нове посилання сполучення або відскануйте його QR-код у розділі Бібліотека та вебзастосунок на хості.",
+      "banner": "Запити на доступ браузера: {count}",
+      "open": "Переглянути запити",
+      "hostTitle": "Запити на доступ браузера",
+      "trust": "Назву вказує пристрій. Схвалюйте лише пристрої, які ви впізнаєте.",
+      "actionFailed": "Запит змінився або служба недоступна. Спробуйте знову.",
+      "reject": "Відхилити",
+      "approve": "Надати доступ",
+      "shareCode": "Повідомте цей код людині, яка користується пристроєм, що надіслав запит."
+    },
   "app": {
     "title": "Filament Manager",
     "iconAlt": "Піктограма Filament Manager",
@@ -305,6 +335,19 @@ export const ukUADictionary: DictionaryNode = {
     "badgeNoPrinterSlots": "Ще не налаштовано жодного слота для принтера."
   },
   "inventory": {
+    labelsAction: "Етикетки",
+    loansTab: "Видані та позичені котушки",
+    "detailWeight": "Вага",
+    "detailPlacementOwnership": "Розташування та власність",
+    "detailIdentityLabel": "Ідентифікація та етикетка",
+    "detailMorePurchase": "Додаткові відомості про купівлю",
+    "detailUsageHistory": "Витрати та історія",
+    "detailUpdateWeight": "Оновити вагу",
+    "detailShowUsageHistory": "Показати графік та історію",
+    "detailSaveTareFirst": "Збережіть змінену вагу порожньої котушки перед оновленням виміряної загальної ваги.",
+    "detailAdvancedActions": "Додаткові дії",
+    "detailOpenPrinters": "Відкрити принтери",
+
     "labelPreviewFailed": "Не вдалося підготувати попередній перегляд етикетки. Спробуйте ще раз.",
     "labelRetryPreview": "Повторити попередній перегляд",
     "labelOpenSavedFile": "Відкрити збережений файл",
@@ -1005,6 +1048,7 @@ export const ukUADictionary: DictionaryNode = {
     }
   },
   "loans": {
+    person: "Особа",
     "clientReadOnlyBanner": "Цей пристрій підключено як клієнт. Зміни позики поки що залишаються на host.",
     "clientReadOnlyAction": "Цей пристрій підключається як клієнт. Використовуйте host для змін позики.",
     "clientReadOnlyBannerPaired": "Цей пристрій підключається як клієнт. Повернення та повернення можна надсилати на host, тоді як створення нової позики залишається там.",
@@ -1087,6 +1131,11 @@ export const ukUADictionary: DictionaryNode = {
     }
   },
   "printers": {
+      replaceRoll: "Замінити котушку",
+      selectRoll: "Вибрати котушку",
+      linkObserved: "Пов’язати виявлену котушку",
+      startedCandidatesFirst: "За однакового збігу частково використані котушки показуються перед повними. Підтвердьте котушку перед пов’язуванням.",
+
     "subtitle": "Керуйте слотами та використанням матеріалів, пов’язаних із принтером.",
     "desktopOnly": "Огляд принтера доступний у збірці програми desktop.",
     "clientReadOnlyBanner": "Цей пристрій підключено як клієнт. Зміни призначення принтера поки що залишаються на host.",
@@ -1420,6 +1469,25 @@ export const ukUADictionary: DictionaryNode = {
     }
   },
   "settings": {
+    themeGraySoft: "Сірий · М’який",
+    themeGrayDeep: "Сірий · Глибокий",
+    themeBlueNight: "Синій · Ніч",
+    themeLightClean: "Світлий · Чистий",
+    searchPrinterModels: "Пошук моделей принтерів",
+    printerBrand: "Виробник",
+    customPrinterModel: "Власна назва моделі",
+    printerModelsAll: "Усі",
+    printerModelsOther: "Інші",
+    printerModelsNoResults: "Нічого не знайдено",
+
+    "noMatchingSwatches": "За цим запитом немає відсутніх зразків кольору.",
+    "autoSaveHint": "Зміни на цій сторінці зберігаються автоматично.",
+    "changeLibraryRole": "Змінити роль бібліотеки",
+    "localDiagnosticsScope": "Цей пристрій · локальна база даних",
+    "unsavedChanges": "Незбережені зміни",
+    "filamentDefaultsSaveGroupHint": "Збережіть типову ціну групи. Ціни наявних котушок зміняться лише після застосування ціни нижче.",
+    "swatchSearch": "Пошук за виробником, філаментом, кольором або ID",
+
     "catalogRefreshStatusUncertain": "Не вдалося підтвердити стан. Перевірте журнал оновлення; оновлення ще може тривати.",
     "catalogRefreshFailedNextStep": "Оновлення не завершено. Перевірте журнал оновлення, перш ніж починати нове оновлення.",
     "catalogRefreshInterruptedNextStep": "Оновлення перервано. Перевірте каталог і журнал оновлення, перш ніж починати знову.",

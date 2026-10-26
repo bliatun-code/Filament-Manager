@@ -36,6 +36,8 @@ mod companion_server_lifecycle_tests;
 #[path = "companion_borrowed_catalog_create_tests.rs"]
 mod companion_borrowed_catalog_create_tests;
 
+#[path = "companion_access_recovery_tests.rs"]
+mod companion_access_recovery_tests;
 #[path = "companion_catalog_batch_tests.rs"]
 mod companion_catalog_batch_tests;
 

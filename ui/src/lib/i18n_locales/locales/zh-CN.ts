@@ -1,6 +1,36 @@
 import type { DictionaryNode } from "../../i18n_types";
 
 export const zhCNDictionary: DictionaryNode = {
+    access: {
+      "title": "需要重新授权",
+      "body": "请主机重新批准此浏览器的访问。",
+      "deviceName": "设备名称",
+      "nameHint": "此名称仅用于帮助主机识别您的设备。",
+      "request": "重新申请访问",
+      "pendingTitle": "请求已发送",
+      "pendingBody": "必须在主机上的 Filament Manager 中批准访问。",
+      "waiting": "正在等待主机…",
+      "codeTitle": "输入主机提供的代码",
+      "codeLabel": "一次性代码",
+      "codeHint": "六位数字。代码有效期为五分钟。",
+      "confirm": "确认访问",
+      "badCode": "代码不正确。还可尝试 {count} 次。",
+      "rejected": "请求已被拒绝。",
+      "expired": "请求已过期。请重新申请访问。",
+      "locked": "三次尝试均不正确。请重新申请访问。",
+      "cancelled": "请求已取消。",
+      "cancel": "取消请求",
+      "otherWay": "改用配对链接",
+      "fallback": "打开新的配对链接，或扫描主机上“库与网页应用”中的二维码。",
+      "banner": "浏览器访问请求: {count}",
+      "open": "查看请求",
+      "hostTitle": "浏览器访问请求",
+      "trust": "名称由设备提供。仅批准您认识的设备。",
+      "actionFailed": "请求已更改或服务不可用。请重试。",
+      "reject": "拒绝",
+      "approve": "允许访问",
+      "shareCode": "将此代码告知使用申请设备的人员。"
+    },
   "app": {
     "title": "Filament Manager",
     "iconAlt": "Filament Manager 图标",
@@ -305,6 +335,19 @@ export const zhCNDictionary: DictionaryNode = {
     "badgeNoPrinterSlots": "尚未配置打印机 slots。"
   },
   "inventory": {
+    labelsAction: "标签",
+    loansTab: "借出与借入",
+    "detailWeight": "重量",
+    "detailPlacementOwnership": "位置与所有权",
+    "detailIdentityLabel": "身份与标签",
+    "detailMorePurchase": "更多购买详情",
+    "detailUsageHistory": "用量与历史",
+    "detailUpdateWeight": "更新重量",
+    "detailShowUsageHistory": "显示图表与历史",
+    "detailSaveTareFirst": "更新测量总重前，请先保存更改后的空料盘重量。",
+    "detailAdvancedActions": "高级操作",
+    "detailOpenPrinters": "打开打印机",
+
     "labelPreviewFailed": "无法准备标签预览。请重试。",
     "labelRetryPreview": "重试预览",
     "labelOpenSavedFile": "打开已保存的文件",
@@ -1005,6 +1048,7 @@ export const zhCNDictionary: DictionaryNode = {
     }
   },
   "loans": {
+    person: "人员",
     "clientReadOnlyBanner": "该设备作为客户端链接。贷款变更目前保留在 host 上。",
     "clientReadOnlyAction": "该设备作为客户端连接。使用 host 进行贷款变更。",
     "clientReadOnlyBannerPaired": "该设备作为客户端连接。退货和返还可以发送到 host，而新的贷款创建仍保留在那里。",
@@ -1087,6 +1131,11 @@ export const zhCNDictionary: DictionaryNode = {
     }
   },
   "printers": {
+      replaceRoll: "更换料盘",
+      selectRoll: "选择料盘",
+      linkObserved: "关联检测到的料盘",
+      startedCandidatesFirst: "匹配程度相同时，部分使用过的料盘排在满盘之前。关联前请确认料盘。",
+
     "subtitle": "管理 slots 和打印机链接材料的使用。",
     "desktopOnly": "打印机概述可在 desktop 应用程序版本中找到。",
     "clientReadOnlyBanner": "该设备作为客户端链接。打印机分配更改目前保留在 host 上。",
@@ -1420,6 +1469,25 @@ export const zhCNDictionary: DictionaryNode = {
     }
   },
   "settings": {
+    themeGraySoft: "灰色 · 柔和",
+    themeGrayDeep: "灰色 · 深邃",
+    themeBlueNight: "蓝色 · 夜幕",
+    themeLightClean: "浅色 · 清爽",
+    searchPrinterModels: "搜索打印机型号",
+    printerBrand: "制造商",
+    customPrinterModel: "自定义型号名称",
+    printerModelsAll: "全部",
+    printerModelsOther: "其他",
+    printerModelsNoResults: "无结果",
+
+    "noMatchingSwatches": "没有符合此搜索条件的缺失色样。",
+    "autoSaveHint": "此页面上的更改会自动保存。",
+    "changeLibraryRole": "更改库角色",
+    "localDiagnosticsScope": "此设备 · 本地数据库",
+    "unsavedChanges": "未保存的更改",
+    "filamentDefaultsSaveGroupHint": "保存组的默认价格。现有料卷的价格仅在应用下方价格时才会更改。",
+    "swatchSearch": "搜索厂商、耗材、颜色或 ID",
+
     "catalogRefreshStatusUncertain": "无法确认状态。请检查刷新日志；更新可能仍在进行。",
     "catalogRefreshFailedNextStep": "更新未完成。请先检查刷新日志，再开始另一次更新。",
     "catalogRefreshInterruptedNextStep": "更新已中断。请先检查目录和刷新日志，再重新开始。",

@@ -1,6 +1,36 @@
 import type { DictionaryNode } from "../../i18n_types";
 
 export const daDKDictionary: DictionaryNode = {
+    access: {
+      "title": "Adgangen skal fornyes",
+      "body": "Bed værten om at godkende denne browser igen.",
+      "deviceName": "Enhedens navn",
+      "nameHint": "Navnet hjælper kun værten med at genkende din enhed.",
+      "request": "Anmod om adgang igen",
+      "pendingTitle": "Anmodning sendt",
+      "pendingBody": "Adgangen skal godkendes i Filament Manager på værtscomputeren.",
+      "waiting": "Venter på værten…",
+      "codeTitle": "Indtast koden fra værten",
+      "codeLabel": "Engangskode",
+      "codeHint": "Seks cifre. Koden er gyldig i fem minutter.",
+      "confirm": "Bekræft adgang",
+      "badCode": "Forkert kode. {count} forsøg tilbage.",
+      "rejected": "Anmodningen blev afvist.",
+      "expired": "Anmodningen er udløbet. Anmod om adgang igen.",
+      "locked": "Tre forkerte forsøg. Anmod om adgang igen.",
+      "cancelled": "Anmodningen blev annulleret.",
+      "cancel": "Annuller anmodning",
+      "otherWay": "Brug et parringslink i stedet",
+      "fallback": "Åbn et nyt parringslink, eller scan QR-koden under Bibliotek og webapp på værten.",
+      "banner": "Anmodninger om browseradgang: {count}",
+      "open": "Se anmodninger",
+      "hostTitle": "Anmodninger om browseradgang",
+      "trust": "Navnet er angivet af enheden. Godkend kun enheder, du kender.",
+      "actionFailed": "Anmodningen er ændret, eller tjenesten er utilgængelig. Prøv igen.",
+      "reject": "Afvis",
+      "approve": "Giv adgang",
+      "shareCode": "Giv denne kode til personen, der bruger enheden, som anmodede om adgang."
+    },
   "app": {
     "navigation": "Navigation",
     "skipToMainContent": "Spring til hovedindhold",
@@ -208,6 +238,7 @@ export const daDKDictionary: DictionaryNode = {
     }
   },
   "loans": {
+    person: "Person",
     "clientHostUnavailable": "Værtsforbindelsesoplysninger mangler for denne klientenhed.",
     "clientReadOnlyHost": "vært",
     "clientReadOnlyUpdated": "Opdateret",
@@ -635,6 +666,11 @@ export const daDKDictionary: DictionaryNode = {
     "legacyLowStockFallback": "Reserveværdi på 200 g for ældre vært"
   },
   "printers": {
+      replaceRoll: "Skift rulle",
+      selectRoll: "Vælg rulle",
+      linkObserved: "Tilknyt observeret rulle",
+      startedCandidatesFirst: "Ved lige gode match vises påbegyndte ruller før fulde. Bekræft rullen før tilknytning.",
+
     "clientHostUnavailable": "Værtsforbindelsesoplysninger mangler for denne klientenhed.",
     "clientReadOnlyHost": "vært",
     "subtitle": "Administrer pladser og printertilknyttet materialeforbrug.",
@@ -784,6 +820,19 @@ export const daDKDictionary: DictionaryNode = {
     }
   },
   "inventory": {
+    labelsAction: "Etiketter",
+    loansTab: "Udlån og indlån",
+    "detailWeight": "Vægt",
+    "detailPlacementOwnership": "Placering og ejerskab",
+    "detailIdentityLabel": "Identitet og etiket",
+    "detailMorePurchase": "Flere købsdetaljer",
+    "detailUsageHistory": "Forbrug og historik",
+    "detailUpdateWeight": "Opdater vægt",
+    "detailShowUsageHistory": "Vis diagram og historik",
+    "detailSaveTareFirst": "Gem ændret tomvægt, før du opdaterer målt totalvægt.",
+    "detailAdvancedActions": "Avancerede handlinger",
+    "detailOpenPrinters": "Åbn printere",
+
     "labelPreviewFailed": "Kunne ikke klargøre etiketforhåndsvisningen. Prøv igen.",
     "labelRetryPreview": "Prøv forhåndsvisning igen",
     "labelOpenSavedFile": "Åbn gemt fil",
@@ -1420,6 +1469,25 @@ export const daDKDictionary: DictionaryNode = {
     }
   },
   "settings": {
+    themeGraySoft: "Grå · Blød",
+    themeGrayDeep: "Grå · Dyb",
+    themeBlueNight: "Blå · Nat",
+    themeLightClean: "Lys · Ren",
+    searchPrinterModels: "Søg efter printermodeller",
+    printerBrand: "Producent",
+    customPrinterModel: "Brugerdefineret modelnavn",
+    printerModelsAll: "Alle",
+    printerModelsOther: "Andre",
+    printerModelsNoResults: "Ingen resultater",
+
+    "noMatchingSwatches": "Ingen manglende farveprøver matcher søgningen.",
+    "autoSaveHint": "Ændringer på denne side gemmes automatisk.",
+    "changeLibraryRole": "Skift biblioteksrolle",
+    "localDiagnosticsScope": "Denne enhed · lokal database",
+    "unsavedChanges": "Ikke-gemte ændringer",
+    "filamentDefaultsSaveGroupHint": "Gem gruppens standardpris. Priser på eksisterende ruller ændres først, når du anvender prisen nedenfor.",
+    "swatchSearch": "Søg efter leverandør, filament, farve eller ID",
+
     "catalogRefreshStatusUncertain": "Status kunne ikke bekræftes. Se opdateringsloggen; opdateringen kan stadig være i gang.",
     "catalogRefreshFailedNextStep": "Opdateringen blev ikke fuldført. Se opdateringsloggen, før du starter en ny opdatering.",
     "catalogRefreshInterruptedNextStep": "Opdateringen blev afbrudt. Kontrollér kataloget og opdateringsloggen, før du starter igen.",

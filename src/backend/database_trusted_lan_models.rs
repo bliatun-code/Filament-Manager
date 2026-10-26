@@ -1,4 +1,5 @@
 use serde::{Deserialize, Serialize};
+pub const TRUSTED_LAN_DEVICE_MAX_AGE_SECONDS: u64 = 365 * 24 * 60 * 60;
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct TrustedLanSettingsRow {

@@ -1,6 +1,36 @@
 import type { DictionaryNode } from "../../i18n_types";
 
 export const deDictionary: DictionaryNode = {
+    access: {
+      "title": "Der Zugriff muss erneuert werden",
+      "body": "Bitte den Host, diesen Browser erneut zu genehmigen.",
+      "deviceName": "Gerätename",
+      "nameHint": "Der Name hilft dem Host nur, dein Gerät zu erkennen.",
+      "request": "Zugriff erneut anfordern",
+      "pendingTitle": "Anfrage gesendet",
+      "pendingBody": "Der Zugriff muss in Filament Manager auf dem Host genehmigt werden.",
+      "waiting": "Warten auf den Host…",
+      "codeTitle": "Code vom Host eingeben",
+      "codeLabel": "Einmalcode",
+      "codeHint": "Sechs Ziffern. Der Code ist fünf Minuten gültig.",
+      "confirm": "Zugriff bestätigen",
+      "badCode": "Falscher Code. Noch {count} Versuche.",
+      "rejected": "Die Anfrage wurde abgelehnt.",
+      "expired": "Die Anfrage ist abgelaufen. Fordere den Zugriff erneut an.",
+      "locked": "Drei Fehlversuche. Fordere den Zugriff erneut an.",
+      "cancelled": "Die Anfrage wurde abgebrochen.",
+      "cancel": "Anfrage abbrechen",
+      "otherWay": "Stattdessen einen Kopplungslink verwenden",
+      "fallback": "Öffne einen neuen Kopplungslink oder scanne dessen QR-Code unter Bibliothek und Web-App auf dem Host.",
+      "banner": "Browser-Zugriffsanfragen: {count}",
+      "open": "Anfragen anzeigen",
+      "hostTitle": "Browser-Zugriffsanfragen",
+      "trust": "Der Name wird vom Gerät angegeben. Genehmige nur Geräte, die du kennst.",
+      "actionFailed": "Die Anfrage wurde geändert oder der Dienst ist nicht verfügbar. Versuche es erneut.",
+      "reject": "Ablehnen",
+      "approve": "Zugriff erlauben",
+      "shareCode": "Gib diesen Code an die Person weiter, die das anfragende Gerät verwendet."
+    },
   app: {
     title: "Filament Manager",
     iconAlt: "Filament-Manager-Symbol",
@@ -375,6 +405,19 @@ export const deDictionary: DictionaryNode = {
     badgeNoPrinterSlots: "Noch keine Druckerplätze konfiguriert.",
   },
   inventory: {
+    labelsAction: "Etiketten",
+    loansTab: "Ausleihen und Entleihen",
+    "detailWeight": "Gewicht",
+    "detailPlacementOwnership": "Standort und Eigentum",
+    "detailIdentityLabel": "Identität und Etikett",
+    "detailMorePurchase": "Weitere Kaufdetails",
+    "detailUsageHistory": "Verbrauch und Verlauf",
+    "detailUpdateWeight": "Gewicht aktualisieren",
+    "detailShowUsageHistory": "Diagramm und Verlauf anzeigen",
+    "detailSaveTareFirst": "Speichern Sie das geänderte Leergewicht, bevor Sie das gemessene Gesamtgewicht aktualisieren.",
+    "detailAdvancedActions": "Erweiterte Aktionen",
+    "detailOpenPrinters": "Drucker öffnen",
+
     "labelPreviewFailed": "Die Etikettenvorschau konnte nicht erstellt werden. Versuchen Sie es erneut.",
     "labelRetryPreview": "Vorschau erneut versuchen",
     "labelOpenSavedFile": "Gespeicherte Datei öffnen",
@@ -1169,6 +1212,7 @@ export const deDictionary: DictionaryNode = {
     },
   },
   loans: {
+    person: "Person",
     subtitle: "Aktive Ausleihen, geliehene Rollen und Rückgaben verwalten.",
     activeLoans: "Aktive Ausleihen",
     activeBorrowedIn: "Aktiv geliehen",
@@ -1256,6 +1300,11 @@ export const deDictionary: DictionaryNode = {
     },
   },
   printers: {
+      replaceRoll: "Rolle wechseln",
+      selectRoll: "Rolle auswählen",
+      linkObserved: "Beobachtete Rolle zuordnen",
+      startedCandidatesFirst: "Bei gleich guten Treffern werden angebrochene Rollen vor vollen angezeigt. Bestätigen Sie die Rolle vor der Zuordnung.",
+
     desktopOnly: "Die Druckerübersicht ist in der Desktop-App verfügbar.",
     clientReadOnlyBanner:
       "Dieses Gerät ist als Client verknüpft. Änderungen an Druckerzuweisungen bleiben vorerst auf dem Host.",
@@ -1644,6 +1693,25 @@ export const deDictionary: DictionaryNode = {
     },
   },
   settings: {
+    themeGraySoft: "Grau · Sanft",
+    themeGrayDeep: "Grau · Tief",
+    themeBlueNight: "Blau · Nacht",
+    themeLightClean: "Hell · Klar",
+    searchPrinterModels: "Druckermodelle suchen",
+    printerBrand: "Hersteller",
+    customPrinterModel: "Eigener Modellname",
+    printerModelsAll: "Alle",
+    printerModelsOther: "Andere",
+    printerModelsNoResults: "Keine Treffer",
+
+    "noMatchingSwatches": "Keine fehlenden Farbmuster entsprechen dieser Suche.",
+    "autoSaveHint": "Änderungen auf dieser Seite werden automatisch gespeichert.",
+    "changeLibraryRole": "Bibliotheksrolle ändern",
+    "localDiagnosticsScope": "Dieses Gerät · lokale Datenbank",
+    "unsavedChanges": "Ungespeicherte Änderungen",
+    "filamentDefaultsSaveGroupHint": "Speichern Sie den wiederverwendbaren Gruppenstandard. Preise vorhandener Spulen ändern sich erst, wenn Sie den Preis unten anwenden.",
+    "swatchSearch": "Nach Hersteller, Filament, Farbe oder ID suchen",
+
     "catalogRefreshStatusUncertain": "Der Status konnte nicht bestätigt werden. Prüfen Sie das Aktualisierungsprotokoll; die Aktualisierung läuft möglicherweise noch.",
     "catalogRefreshFailedNextStep": "Die Aktualisierung wurde nicht abgeschlossen. Prüfen Sie das Aktualisierungsprotokoll, bevor Sie eine weitere Aktualisierung starten.",
     "catalogRefreshInterruptedNextStep": "Die Aktualisierung wurde unterbrochen. Prüfen Sie den Katalog und das Aktualisierungsprotokoll, bevor Sie erneut starten.",

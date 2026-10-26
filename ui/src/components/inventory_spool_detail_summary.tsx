@@ -1,4 +1,3 @@
-import { VendorBadge } from "./vendor_badge";
 import { CloseButton } from "./close_button";
 import {
   InventoryDetailFactCard,
@@ -20,7 +19,6 @@ import {
 } from "../lib/inventory_list_model";
 import { formatCaptureTimestamp, formatObservedAge } from "../lib/inventory_rfid_capture";
 import { inventorySwatchInsetStyle } from "../lib/inventory_swatch_style";
-import { materialTone } from "../lib/material_theme";
 import type { ResolvedTheme } from "../lib/theme_mode";
 import { formatGrams } from "../lib/weight_display";
 
@@ -32,6 +30,7 @@ type InventorySpoolDetailHeaderProps = {
   spool: InventorySpool;
   statusLabel: string;
   statusTone: InventorySemanticTone;
+  assignedSlot?: InventorySpoolDetailAssignedSlot | null;
 };
 
 type InventorySpoolIdentityPanelProps = {
@@ -40,6 +39,7 @@ type InventorySpoolIdentityPanelProps = {
   rfidBindingMeta: { className: string; hint: string; label: string };
   resolvedTheme: ResolvedTheme;
   spool: InventorySpool;
+  neutral?: boolean;
 };
 
 export type InventorySpoolDetailAssignedSlot = InventorySpoolAmsSightingSlot & {
@@ -50,13 +50,11 @@ export function InventorySpoolDetailHeader({
   displayTitle,
   onClose,
   ownershipLabel,
-  ownershipTone,
   spool,
   statusLabel,
-  statusTone,
+  assignedSlot,
 }: InventorySpoolDetailHeaderProps) {
-  const { locale, t } = useI18n();
-  const currentMaterialTone = materialTone(spool.material);
+  const { t } = useI18n();
 
   return (
     <div className="app-modal-header sticky top-0 z-10 flex items-start justify-between gap-4 border-b px-5 py-4 backdrop-blur-xl sm:px-6">
@@ -73,25 +71,15 @@ export function InventorySpoolDetailHeader({
           {displayTitle}
         </div>
         <div className="mt-2 flex flex-wrap items-center gap-2">
-          <VendorBadge vendor={spool.vendor} compact />
-          <span
-            className={`rounded-full px-2.5 py-1 text-[11px] font-semibold ${currentMaterialTone.badge} ${currentMaterialTone.badgeText}`}
-          >
-            {spool.material}
-          </span>
-          <span className={inlineStatusSignalClass(ownershipTone)}>
-            {ownershipLabel}
-          </span>
+          <span>{spool.vendor}</span><span aria-hidden="true">·</span>
+          <span>{spool.material}</span><span aria-hidden="true">·</span>
+          <span>{ownershipLabel}</span><span aria-hidden="true">·</span>
+          <span>{formatRollReference(spool)}</span>
         </div>
       </SwatchSelectionPreviewHeader>
       <div className="flex shrink-0 items-start gap-2">
         <div className="flex flex-wrap justify-end gap-2">
-          <span className={inlineStatusSignalClass(statusTone, "text-xs")}>
-            {statusLabel}
-          </span>
-          <span className="text-sm font-semibold tabular-nums text-slate-900 dark:text-slate-100">
-            {formatGrams(spool.remainingGrams, "dash", locale)}
-          </span>
+          <span className="text-sm font-medium text-slate-700 dark:text-slate-200">{statusLabel}{assignedSlot ? ` · ${assignedSlot.printerName}` : ""}</span>
         </div>
         <CloseButton label={t("common.close", "Close")} onClick={onClose} />
       </div>
@@ -105,6 +93,7 @@ export function InventorySpoolIdentityPanel({
   rfidBindingMeta,
   resolvedTheme,
   spool,
+  neutral = false,
 }: InventorySpoolIdentityPanelProps) {
   const { locale, t } = useI18n();
   const amsSighting = buildInventorySpoolAmsSighting(spool, assignedSlot);
@@ -115,7 +104,7 @@ export function InventorySpoolIdentityPanel({
   return (
     <InventoryDetailTintPanel
       className="p-3.5"
-      style={inventorySwatchInsetStyle(spool.hexColor, resolvedTheme)}
+      style={neutral ? undefined : inventorySwatchInsetStyle(spool.hexColor, resolvedTheme)}
     >
       <div className="grid gap-3 min-[760px]:grid-cols-2">
         <InventoryDetailFactCard

@@ -12,10 +12,6 @@ import type {
   SpoolWithMasterRow,
 } from "../lib/tauri_client";
 
-type ResolveSpoolTareWeightById = (
-  spoolId: string | null | undefined,
-) => number;
-
 export type PreparedSlotWeightDialog = {
   prompt: IncomingWeightPrompt;
   incomingWeightValue: string;
@@ -56,41 +52,28 @@ export function prepareIncomingWeightDialog(
   printerId: string,
   slot: PrinterAmsSlotRow,
   row: SpoolWithMasterRow,
-  resolveSpoolTareWeightById: ResolveSpoolTareWeightById,
   liveTray?: BambuLiveObservedTray | null,
   nowMs = Date.now(),
 ): PreparedSlotWeightDialog {
   const prompt = buildIncomingWeightPrompt(printerId, slot, row, liveTray, nowMs);
   return {
     prompt,
-    incomingWeightValue: buildMeasuredTotalWeightDraft(
+    incomingWeightValue: prompt.requiresIncomingWeight ? buildMeasuredTotalWeightDraft(
       row.spool.remaining_g,
       resolveSpoolTareWeightForRow(row),
-    ),
-    outgoingWeightValue:
-      prompt.requiresOutgoingWeight && slot.spool_remaining_g != null
-        ? buildMeasuredTotalWeightDraft(
-            slot.spool_remaining_g,
-            resolveSpoolTareWeightById(slot.spool_id ?? null),
-          )
-        : "",
+    ) : "",
+    // The stored weight is a baseline, not a fresh measurement of an unloaded roll.
+    outgoingWeightValue: "",
   };
 }
 
 export function prepareEmptySlotWeightDialog(
   printerId: string,
   slot: PrinterAmsSlotRow,
-  resolveSpoolTareWeightById: ResolveSpoolTareWeightById,
 ): PreparedSlotWeightDialog {
   return {
     prompt: buildEmptySlotWeightPrompt(printerId, slot),
     incomingWeightValue: "",
-    outgoingWeightValue:
-      slot.spool_remaining_g != null
-        ? buildMeasuredTotalWeightDraft(
-            slot.spool_remaining_g,
-            resolveSpoolTareWeightById(slot.spool_id ?? null),
-          )
-        : "",
+    outgoingWeightValue: "",
   };
 }

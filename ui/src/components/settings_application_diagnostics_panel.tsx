@@ -1,5 +1,4 @@
 import {
-  SettingsMetricTile,
   SettingsNotice,
   SettingsSectionBody,
   SettingsSectionControls,
@@ -76,7 +75,7 @@ export function SettingsApplicationDiagnosticsPanel({
   const health = diagnostics ? applicationDiagnosticsHealth(diagnostics) : "unavailable";
 
   return (
-    <SettingsSectionPanel id="settings-application-diagnostics-panel" className="mt-6">
+    <SettingsSectionPanel id="settings-application-diagnostics-panel" className="settings-maintenance-diagnostics mt-6">
       <SettingsSectionHeader
         eyebrow={t("settings.applicationDiagnosticsTitle", "Application diagnostics")}
         description={t(
@@ -91,6 +90,7 @@ export function SettingsApplicationDiagnosticsPanel({
           ) : null
         }
       >
+        <p className="mb-3 text-sm font-medium text-slate-700 dark:text-slate-200">{t("settings.localDiagnosticsScope", "This device · local database")}</p>
         {diagnosticsStatus === "loading" ? (
           <div className="mt-3 text-xs text-slate-500 dark:text-slate-400" role="status">
             {t("common.loading", "Loading...")}
@@ -116,21 +116,13 @@ export function SettingsApplicationDiagnosticsPanel({
       <SettingsSectionBody className="space-y-4 p-5">
         {diagnostics ? (
           <>
-            <div className="grid gap-3 sm:grid-cols-3">
-              <SettingsMetricTile
-                label={t("settings.version", "Version")}
-                value={diagnostics.app_version}
-              />
-              <SettingsMetricTile
-                label={t("settings.diagnosticsSchema", "Schema current / supported")}
-                value={`${diagnostics.database.schema_version ?? "—"} / ${diagnostics.database.supported_schema_version}`}
-              />
-              <SettingsMetricTile
-                label={t("settings.diagnosticsDatabaseSize", "Database size")}
-                value={formatDiagnosticBytes(diagnostics.database.size_bytes, locale)}
-              />
-            </div>
-
+            <dl className="settings-diagnostics-summary">
+              <div><dt>{t("settings.version", "Version")}</dt><dd>{diagnostics.app_version}</dd></div>
+              <div><dt>{t("settings.diagnosticsSchema", "Schema current / supported")}</dt><dd>{diagnostics.database.schema_version ?? "—"} / {diagnostics.database.supported_schema_version}</dd></div>
+              <div><dt>{t("settings.diagnosticsDatabaseSize", "Database size")}</dt><dd>{formatDiagnosticBytes(diagnostics.database.size_bytes,locale)}</dd></div>
+            </dl>
+            <details className="settings-diagnostics-technical" open={health !== "healthy" ? true : undefined}>
+              <summary className="app-control-focus">{t("settings.bambuLiveTechnicalDetails", "Technical details")}</summary>
             <div className="grid gap-3 md:grid-cols-3">
               <SettingsSectionControls>
                 <div className="section-eyebrow">
@@ -175,6 +167,7 @@ export function SettingsApplicationDiagnosticsPanel({
               <div className="mt-3 break-all border-t border-slate-200 pt-3 font-mono text-xs leading-5 text-slate-700 dark:border-slate-700 dark:text-slate-300">
                 {diagnostics.database.local_db_path}
               </div>
+            </details>
             </details>
           </>
         ) : diagnosticsStatus !== "loading" ? (

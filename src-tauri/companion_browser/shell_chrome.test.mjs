@@ -546,7 +546,8 @@ test("trusted-LAN shell renders the pairing handoff state", () => {
     escapeHtml: (value) => String(value ?? ""),
   });
 
-  assert.match(html, /Trusted-LAN browser companion/);
-  assert.match(html, /trusted-LAN pairing link/i);
+  assert.match(html, /Access needs to be renewed/);
+  assert.match(html, /Request access again/);
+  assert.match(html, /data-access-form="request"/);
   assert.doesNotMatch(html, /Bootstrap token/);
 });

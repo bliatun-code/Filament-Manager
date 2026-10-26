@@ -171,3 +171,31 @@ test("card and list placements use printer metadata for opaque slot IDs", () => 
     }
   }
 });
+
+test("remaining meters consistently follow the configured low-stock threshold for every filament colour", () => {
+  const cases = [
+    {remainingGrams:70, lowStockThresholdGrams:50, status:"IN_STOCK", low:false},
+    {remainingGrams:260, lowStockThresholdGrams:300, status:"IN_STOCK", low:true},
+    {remainingGrams:200, lowStockThresholdGrams:200, status:"ASSIGNED", low:true},
+    {remainingGrams:201, lowStockThresholdGrams:200, status:"ASSIGNED", low:false},
+    {remainingGrams:0, lowStockThresholdGrams:200, status:"EMPTY", low:false},
+    {remainingGrams:70, lowStockThresholdGrams:200, status:"BORROWED", low:false},
+  ] as const;
+  for(const inventoryView of ["CARDS","LIST"] as const) {
+    for(const color of ["#000000","#FFFFFF","#FFC72C","#DA281F","#407EDB","multi(#E6005C,#2266FF)"]) {
+      for(const scenario of cases) {
+        const spool:InventorySpool={id:"meter-spool",masterId:"meter-master",vendor:"Generic",material:"PLA",filamentName:"Test",colorName:"Test",hexColor:color,initialWeightGrams:1000,ownershipType:"OWNED",...scenario};
+        const html=renderToStaticMarkup(<I18nContext.Provider value={i18nValue}>
+          <InventorySpoolCollection addSpoolDisabled={false} bulkSelectionActive={false} bulkSelectionDisabled={false}
+            filteredSpools={[spool]} groupedSpools={groupInventorySpools([spool])} inventoryView={inventoryView}
+            loading={false} onAddSpool={()=>{}} onBulkSelectionChange={()=>{}} onResetFilters={()=>{}} onSelectRoll={()=>{}}
+            recentlyAddedSpoolId={null} resolvedTheme="dark" selectedSpoolId={null} selectedBulkSpoolIds={new Set()} totalSpoolCount={1}/>
+        </I18nContext.Provider>);
+        const meter=html.match(/<div class="inventory-remaining-fill[^>]+>/)?.[0];
+        assert.ok(meter);
+        assert.equal(/\bis-low\b/.test(meter),scenario.low,`${inventoryView}: ${color}, ${scenario.remainingGrams}g, limit ${scenario.lowStockThresholdGrams}g`);
+        assert.doesNotMatch(meter,/background|#[a-f0-9]{3,8}/i);
+      }
+    }
+  }
+});

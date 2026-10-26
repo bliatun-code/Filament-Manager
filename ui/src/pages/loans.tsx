@@ -4,7 +4,7 @@ import {
   isTauri,
 } from "../lib/tauri_client";
 import { FeedbackBanner } from "../components/feedback_banner";
-import { LoanHistoryCard } from "../components/loan_history_card";
+import { LoanHistoryTable } from "../components/loan_history_table";
 import { LoanOutModal } from "../components/loan_out_modal";
 import { LoanReturnModal } from "../components/loan_return_modal";
 import { PageDataFallbackBanner } from "../components/page_data_fallback_banner";
@@ -40,7 +40,13 @@ import { useClientWriteGuards } from "../lib/use_client_write_guards";
 import { parseNonNegativeWeight } from "../lib/weight_display";
 import { useLibrarySyncState } from "./use_library_sync_state";
 
-export default function LoansPage() {
+type LoansPageProps = {
+  embedded?: boolean;
+  onDataChanged?: () => void;
+  onOpenSpool?: (spoolId: string) => void;
+};
+
+export default function LoansPage({ embedded = false, onDataChanged, onOpenSpool }: LoansPageProps = {}) {
   const { t, locale } = useI18n();
   const tauri = isTauri();
   const {
@@ -323,6 +329,7 @@ export default function LoansPage() {
       setReturnModalGrams("");
       setReturnModalNote("");
       await reload();
+      onDataChanged?.();
       setInfo(
         isInbound
           ? `${t("loans.markedHandedBackTo", "Marked borrowed-in spool as handed back to")} ${returnModalLoan.loan.counterparty_name ?? returnModalLoan.loan.borrower_name}.`
@@ -348,7 +355,7 @@ export default function LoansPage() {
   );
 
   return (
-    <div className="page-shell">
+    <div className={embedded ? "inventory-loans-workspace" : "page-shell inventory-balanced-page"}>
       <div className="page-header">
         <div className="page-header-copy">
           <h1 className="page-title">{t("nav.loans", "Loans")}</h1>
@@ -527,22 +534,10 @@ export default function LoansPage() {
       ) : null}
 
       <div className="content-section">
-        <section className="surface-card space-y-4">
-          <div className="flex items-start justify-between gap-3">
-            <div>
-              <div className="text-xs uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400">
-                {t("loans.history", "Loan history")}
-              </div>
-              <div className="mt-2 text-sm leading-6 text-slate-600 dark:text-slate-300">
-                {t(
-                  "loans.historyHint",
-                  "Open rows can be returned or handed back here, while completed rows stay searchable for reference.",
-                )}
-              </div>
-            </div>
-            <span className="count-pill tabular-nums" aria-live="polite">
-              {loanResultCount}
-            </span>
+        <section>
+          <div className="inventory-loan-summary">
+            <p>{t("loans.historyHint", "Open rows can be returned or handed back here, while completed rows stay searchable for reference.")}</p>
+            <span className="count-pill tabular-nums" aria-live="polite">{loanResultCount}</span>
           </div>
 
           {loading && !librarySyncError ? (
@@ -556,16 +551,7 @@ export default function LoansPage() {
             </div>
           ) : null}
 
-          <div className="grid grid-cols-1 items-start gap-3 min-[760px]:grid-cols-2 xl:grid-cols-4">
-            {filteredLoans.map((loan) => (
-              <LoanHistoryCard
-                key={loan.loan.id}
-                busy={busy}
-                loan={loan}
-                onReturn={openReturnModal}
-              />
-            ))}
-          </div>
+          {filteredLoans.length > 0 ? <LoanHistoryTable loans={filteredLoans} busy={busy} onReturn={openReturnModal} onOpenSpool={onOpenSpool} /> : null}
         </section>
       </div>
 
@@ -579,6 +565,7 @@ export default function LoansPage() {
         clientTargetGeneration={clientTargetGeneration}
         onLoanCreated={async () => {
           await reload();
+          onDataChanged?.();
           setInfo(t("inventory.loanCreated", "Loan created."));
         }}
       />

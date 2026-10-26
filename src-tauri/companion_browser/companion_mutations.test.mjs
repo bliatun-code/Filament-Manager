@@ -1277,3 +1277,15 @@ test("weight mutations reject exponent and fractional drafts before sending requ
     assert.ok(harness.statusCalls.every(call => call.tone === "error"));
   }
 });
+
+test('catalog creation from a printer returns there without silently binding an RFID', async () => {
+  const requests=[];
+  const harness=createMutationHarness({state:{activeTaskSheet:{type:'storage-add',returnFlow:'printers'},
+    catalogMasters:[{id:'tough',material:'PLA',filament_name:'PLA Tough+',color_name:'White',vendor:'Bambu',default_weight:1000}]},
+    fetchJson:async(path)=>{requests.push(path);return {spool_id:'new-roll'};}});
+  await harness.mutations.submitManualSpoolRegistration({source:'bambu',masterId:'tough',ownershipType:'OWNED',initialWeight:'1000'});
+  assert.deepEqual(requests,['/api/v1/spools/owned']);
+  assert.equal(harness.state.activeRootFlow,'printers');
+  assert.equal(harness.state.detailOpen,false);
+  assert.equal(harness.state.activeTaskSheet,null);
+});

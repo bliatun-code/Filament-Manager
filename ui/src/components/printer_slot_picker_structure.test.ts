@@ -36,7 +36,8 @@ test("PrinterSlotPicker gives light selectors and options explicit hover semanti
 test("PrinterSlotPicker names its slot-specific popup and visible search field", () => {
   assert.match(source, /aria-controls=\{popupId\}/);
   assert.match(source, /aria-haspopup="dialog"/);
-  assert.match(source, /aria-label=\{`\$\{t\("printers\.chooseRollForSlot"/);
+  assert.match(source, /className="sr-only">\{`\$\{t\("printers\.chooseRollForSlot"/);
+  assert.doesNotMatch(source.slice(source.indexOf("ref={selectorButtonRef}"), source.indexOf("{compact ? <span>")), /aria-label=/);
   assert.match(source, /role="dialog"/);
   assert.match(source, /htmlFor=\{searchInputId\}/);
   assert.match(source, /id=\{searchInputId\}/);

@@ -10,11 +10,10 @@ import {
 } from "react";
 import { InventoryPageWorkspace } from "../components/inventory_page_workspace";
 import { InventoryLocationDatalist } from "../components/inventory_location_datalist";
-import { InventoryLoadSpoolModal } from "../components/inventory_load_spool_modal";
 import type { InventoryWorkspaceView } from "../components/inventory_workspace_navigation";
 import { InventoryRfidCaptureModal } from "../components/inventory_rfid_capture_modal";
 import { InventoryLabelSheetModal } from "../components/inventory_label_sheet_modal";
-import { LoanOutModal } from "../components/loan_out_modal";
+
 import type { InventoryNavigationIntent } from "../lib/app_navigation_model";
 import { useInventoryMarkEmptyAction } from "../lib/use_inventory_mark_empty_action";
 import { useI18n } from "../lib/i18n";
@@ -74,6 +73,14 @@ import {
 } from "../lib/use_inventory_unsaved_changes_guard";
 import { isTauri } from "../lib/tauri_client";
 
+const LoanOutModal = lazy(() => import("../components/loan_out_modal").then(module => ({ default: module.LoanOutModal })));
+
+const LoansPage = lazy(() => import("./loans"));
+
+const InventoryLoadSpoolModal = lazy(() =>
+  import("../components/inventory_load_spool_modal").then(module => ({ default: module.InventoryLoadSpoolModal })),
+);
+
 const InventorySpoolDetailModal = lazy(() =>
   import("../components/inventory_spool_detail_modal").then((module) => ({
     default: module.InventorySpoolDetailModal,
@@ -81,12 +88,16 @@ const InventorySpoolDetailModal = lazy(() =>
 );
 
 type InventoryPageProps = {
+  onOpenPrinters?: () => void;
+  initialWorkspaceView?: InventoryWorkspaceView;
   navigationIntent?: InventoryNavigationIntent;
   onConsumeNavigationIntent?: () => void;
   onNavigationGuardChange?: (guard: InventoryNavigationGuard | null) => void;
 };
 
 export default function InventoryPage({
+  onOpenPrinters,
+  initialWorkspaceView = "STOCK",
   navigationIntent = null,
   onConsumeNavigationIntent,
   onNavigationGuardChange,
@@ -101,7 +112,7 @@ export default function InventoryPage({
   const desktopVisualQaScenario = useMemo(() => resolveDesktopVisualQaScenario(), []);
   const [error, setError] = useState<string | null>(null);
   const [activeWorkspaceView, setActiveWorkspaceView] =
-    useState<InventoryWorkspaceView>("STOCK");
+    useState<InventoryWorkspaceView>(initialWorkspaceView);
   const [rfidCaptureFieldsBySlotId, setRfidCaptureFieldsBySlotId] = useState<
     Record<string, RfidCaptureField[]>
   >({});
@@ -340,7 +351,9 @@ export default function InventoryPage({
     if (!navigationIntent) {
       return;
     }
-    if (navigationIntent.kind === "SPOOL_DETAIL") {
+    if (navigationIntent.kind === "LOANS") {
+      setActiveWorkspaceView("LOANS");
+    } else if (navigationIntent.kind === "SPOOL_DETAIL") {
       if (!librarySyncReady || loading) {
         return;
       }
@@ -1238,8 +1251,8 @@ export default function InventoryPage({
   ]);
 
   return (
-    <div className="page-shell">
-      <LoanOutModal
+    <div className="page-shell inventory-balanced-page">
+      {showLoanTrackingModal ? <Suspense fallback={null}><LoanOutModal
         open={showLoanTrackingModal}
         onClose={closeLoanTrackingModal}
         preferredSpoolId={loanTrackingSpoolId}
@@ -1249,8 +1262,9 @@ export default function InventoryPage({
         clientLibraryId={clientLibraryId}
         clientTargetGeneration={clientTargetGeneration}
         onLoanCreated={handleLoanCreated}
-      />
+      /></Suspense> : null}
 
+      {showLoadSpoolModal ? <Suspense fallback={null}>
       <InventoryLoadSpoolModal
         busy={manageBusy}
         error={loadSpoolError}
@@ -1261,6 +1275,7 @@ export default function InventoryPage({
         slots={availableLoadSlots}
         spool={selectedSpool}
       />
+      </Suspense> : null}
 
       <InventoryLabelSheetModal {...inventoryLabelSheetModalProps} />
 
@@ -1325,6 +1340,7 @@ export default function InventoryPage({
             onClose={closeSelectedSpoolDetailModal}
             onConfirmDiscard={confirmSelectedSpoolDiscard}
             onDelete={() => { clearWeightError(); clearStatusError(); void handleDeleteSelected(); }}
+            onOpenPrinters={onOpenPrinters}
             onLoadInPrinter={openLoadSpoolModal}
             onLoanOut={() => openLoanTrackingModal(selectedSpool)}
             onMarkEmpty={() => { clearWeightError(); void handleMarkEmpty(); }}
@@ -1401,6 +1417,11 @@ export default function InventoryPage({
 
       <InventoryPageWorkspace
         activeView={activeWorkspaceView}
+        totalLoanCount={activeLoans.length + spools.filter(spool => spool.ownershipType === "BORROWED_IN").length}
+        loansPanel={<Suspense fallback={<div role="status">{t("loans.loading", "Loading loans...")}</div>}>
+          <LoansPage embedded onDataChanged={() => { void refreshInventoryData({}); }}
+            onOpenSpool={selectRollForManage} />
+        </Suspense>}
         addModalActive={addModalActive}
         addModalProps={inventoryAddModalProps}
         bulkActionsProps={inventoryBulkActionsProps}

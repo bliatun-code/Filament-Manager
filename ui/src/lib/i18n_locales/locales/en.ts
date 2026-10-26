@@ -1,6 +1,36 @@
 import type { DictionaryNode } from "../../i18n_types";
 
 export const enDictionary: DictionaryNode = {
+    access: {
+      "title": "Access needs to be renewed",
+      "body": "Ask the Host to approve this browser again.",
+      "deviceName": "Device name",
+      "nameHint": "The name only helps the Host recognize your device.",
+      "request": "Request access again",
+      "pendingTitle": "Request sent",
+      "pendingBody": "Access must be approved in Filament Manager on the Host computer.",
+      "waiting": "Waiting for the Host…",
+      "codeTitle": "Enter the code from the Host",
+      "codeLabel": "One-time code",
+      "codeHint": "Six digits. The code is valid for five minutes.",
+      "confirm": "Confirm access",
+      "badCode": "Incorrect code. {count} attempts remain.",
+      "rejected": "The request was declined.",
+      "expired": "The request expired. Request access again.",
+      "locked": "Three incorrect attempts. Request access again.",
+      "cancelled": "The request was cancelled.",
+      "cancel": "Cancel request",
+      "otherWay": "Use a pairing link instead",
+      "fallback": "Open a new pairing link or scan its QR code from Library & web app on the Host.",
+      "banner": "Browser access requests: {count}",
+      "open": "View requests",
+      "hostTitle": "Browser access requests",
+      "trust": "The name is supplied by the device. Only approve devices you recognize.",
+      "actionFailed": "The request changed or the service is unavailable. Try again.",
+      "reject": "Decline",
+      "approve": "Allow access",
+      "shareCode": "Give this code to the person using the requesting device."
+    },
     app: {
       title: "Filament Manager",
       iconAlt: "Filament Manager icon",
@@ -368,6 +398,19 @@ export const enDictionary: DictionaryNode = {
       badgeNoPrinterSlots: "No printer slots configured yet.",
     },
     inventory: {
+      loansTab: "Loans & borrowed-in",
+      labelsAction: "Labels",
+      "detailWeight": "Weight",
+      "detailPlacementOwnership": "Placement and ownership",
+      "detailIdentityLabel": "Identity and label",
+      "detailMorePurchase": "More purchase details",
+      "detailUsageHistory": "Usage and history",
+      "detailUpdateWeight": "Update weight",
+      "detailShowUsageHistory": "Show chart and history",
+      "detailSaveTareFirst": "Save changes to empty spool weight before updating measured total.",
+      "detailAdvancedActions": "Advanced actions",
+      "detailOpenPrinters": "Open printers",
+
       "labelPreviewFailed": "Could not prepare the label preview. Try again.",
       "labelRetryPreview": "Try preview again",
       "labelOpenSavedFile": "Open saved file",
@@ -1185,6 +1228,7 @@ export const enDictionary: DictionaryNode = {
       },
     },
     loans: {
+      person: "Person",
       clientReadOnlyBanner:
         "This device is linked as a client. Loan changes stay on the host for now.",
       clientReadOnlyAction:
@@ -1277,6 +1321,11 @@ export const enDictionary: DictionaryNode = {
       },
     },
     printers: {
+      replaceRoll: "Replace roll",
+      selectRoll: "Select roll",
+      linkObserved: "Link observed roll",
+      startedCandidatesFirst: "Among equally good matches, partly used rolls appear before full rolls. Confirm the roll before linking.",
+
       subtitle: "Manage slots and printer-linked material use.",
       desktopOnly: "Printer overview is available in the desktop app build.",
       clientReadOnlyBanner:
@@ -1663,6 +1712,25 @@ export const enDictionary: DictionaryNode = {
       },
     },
     settings: {
+    themeGraySoft: "Gray · Soft",
+    themeGrayDeep: "Gray · Deep",
+    themeBlueNight: "Blue · Night",
+    themeLightClean: "Light · Clean",
+    searchPrinterModels: "Search printer models",
+    printerBrand: "Manufacturer",
+    customPrinterModel: "Custom model name",
+    printerModelsAll: "All",
+    printerModelsOther: "Other",
+    printerModelsNoResults: "No results",
+
+      "noMatchingSwatches": "No missing color samples match this search.",
+      "autoSaveHint": "Changes on this page are saved automatically.",
+      "changeLibraryRole": "Change library role",
+      "localDiagnosticsScope": "This device · local database",
+      "unsavedChanges": "Unsaved changes",
+      "filamentDefaultsSaveGroupHint": "Save the reusable group standard. Existing spool prices change only when you apply the price below.",
+      "swatchSearch": "Search vendor, filament, color or ID",
+
       "catalogRefreshStatusUncertain": "Status could not be confirmed. Check the refresh log; the update may still be running.",
       "catalogRefreshFailedNextStep": "The update was not completed. Check the refresh log before starting another update.",
       "catalogRefreshInterruptedNextStep": "The update was interrupted. Check the catalog and refresh log before starting again.",

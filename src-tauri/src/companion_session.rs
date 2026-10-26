@@ -1,3 +1,4 @@
+use crate::backend::database_trusted_lan_models::TRUSTED_LAN_DEVICE_MAX_AGE_SECONDS as COMPANION_TRUSTED_LAN_DEVICE_MAX_AGE_SECONDS;
 use crate::backend::filament_database::{FilamentDatabase, TrustedLanPairedBrowserRow};
 use crate::companion_error::CompanionApiError;
 use crate::companion_http::cookie_value_from_headers;
@@ -16,7 +17,6 @@ use zeroize::Zeroize;
 pub(crate) const COMPANION_SESSION_COOKIE: &str = "bfm_companion_session";
 pub(crate) const COMPANION_TRUSTED_LAN_DEVICE_COOKIE: &str = "bfm_trusted_lan_device";
 const COMPANION_SESSION_MAX_AGE_SECONDS: u64 = 8 * 60 * 60;
-const COMPANION_TRUSTED_LAN_DEVICE_MAX_AGE_SECONDS: u64 = 30 * 24 * 60 * 60;
 const COMPANION_SESSION_CAPACITY: usize = 512;
 
 #[derive(Clone)]
@@ -193,7 +193,7 @@ pub(crate) fn session_id_from_headers(headers: &HeaderMap) -> Option<String> {
     cookie_value_from_headers(headers, COMPANION_SESSION_COOKIE)
 }
 
-fn trusted_lan_device_token_from_headers(headers: &HeaderMap) -> Option<String> {
+pub(crate) fn trusted_lan_device_token_from_headers(headers: &HeaderMap) -> Option<String> {
     cookie_value_from_headers(headers, COMPANION_TRUSTED_LAN_DEVICE_COOKIE)
 }
 

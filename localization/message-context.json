@@ -1041,6 +1041,240 @@
       "key": "settings.catalogHostUnavailableNextStep",
       "meaning": "A Client could not obtain the Host catalog. The next step is to check the configured Host connection in the existing Library & web app settings tab before retrying. The translated tab name should match settings.tabLibrary.",
       "screenshot": "docs/screenshots/settings-catalog.jpg"
+    },
+    {
+      "surface": "desktop",
+      "key": "settings.autoSaveHint",
+      "meaning": "General settings only: appearance, language, background operation and update preferences save immediately. This is not a promise of autosave for the rest of Settings.",
+      "screenshot": "docs/screenshots/settings-general.jpg"
+    },
+    {
+      "surface": "desktop",
+      "key": "settings.changeLibraryRole",
+      "meaning": "Disclosure that opens role-changing controls for Standalone, Host and Client. Role changes still require the existing confirmation flow.",
+      "screenshot": "docs/screenshots/settings-library-network.jpg"
+    },
+    {
+      "surface": "desktop",
+      "key": "settings.localDiagnosticsScope",
+      "meaning": "Labels the database health result as belonging to this device. On a Client it is the local database, not a health check of the paired Host database.",
+      "screenshot": "docs/screenshots/settings-maintenance.jpg"
+    },
+    {
+      "surface": "desktop",
+      "key": "settings.unsavedChanges",
+      "meaning": "A draft setting differs from its persisted value. Drafts remain available when switching Settings sidebar sections; this label does not mean a save failed.",
+      "screenshot": "docs/screenshots/settings-filament-defaults.jpg"
+    },
+    {
+      "surface": "desktop",
+      "key": "settings.filamentDefaultsSaveGroupHint",
+      "meaning": "Distinguishes saving a reusable filament group price standard from the separate explicit action that writes prices to selected existing inventory rolls.",
+      "screenshot": "docs/screenshots/settings-filament-defaults.jpg"
+    },
+    {
+      "surface": "desktop",
+      "key": "settings.swatchSearch",
+      "meaning": "Search field for missing catalog color samples. Matches vendor, material, filament name, color name or catalog ID; combines with the vendor filter. Bulk auto-fill targets all matched entries.",
+      "screenshot": "docs/screenshots/settings-catalog.jpg"
+    },
+    {
+      "surface": "desktop",
+      "key": "settings.noMatchingSwatches",
+      "meaning": "Empty search results among missing color samples. Other missing samples may still exist outside the current search and vendor filter.",
+      "screenshot": "docs/screenshots/settings-catalog.jpg"
+    },
+    {
+      "surface": "desktop",
+      "key": "inventory.detailWeight",
+      "meaning": "Heading for the selected inventory roll weight editor. Measured total includes empty-spool tare; remaining filament excludes tare.",
+      "screenshot": "docs/screenshots/inventory.jpg"
+    },
+    {
+      "surface": "desktop",
+      "key": "inventory.detailPlacementOwnership",
+      "meaning": "Selected roll properties, including its home storage location and whether it is owned or borrowed in. Loaded printer placement is managed on the Printers page.",
+      "screenshot": "docs/screenshots/inventory.jpg"
+    },
+    {
+      "surface": "desktop",
+      "key": "inventory.detailIdentityLabel",
+      "meaning": "Entry points for QR labels, RFID identity and locked shared catalog data. Not a new identity or authentication feature.",
+      "screenshot": "docs/screenshots/inventory.jpg"
+    },
+    {
+      "surface": "desktop",
+      "key": "inventory.detailMorePurchase",
+      "meaning": "Disclosure containing batch code, supplier reference and protection of an individual roll price from group updates. It does not hide purchase price from reports.",
+      "screenshot": "docs/screenshots/inventory.jpg"
+    },
+    {
+      "surface": "desktop",
+      "key": "inventory.detailUsageHistory",
+      "meaning": "Disclosure containing the selected roll consumption chart and chronological events. Opening it makes the existing history controls available.",
+      "screenshot": "docs/screenshots/inventory.jpg"
+    },
+    {
+      "surface": "desktop",
+      "key": "inventory.detailUpdateWeight",
+      "meaning": "Saves measured total roll weight through the existing guarded weight action; this is separate from saving other roll properties.",
+      "screenshot": "docs/screenshots/inventory.jpg"
+    },
+    {
+      "surface": "desktop",
+      "key": "inventory.detailShowUsageHistory",
+      "meaning": "Opens the consumption chart and event history within the current roll dialog.",
+      "screenshot": "docs/screenshots/inventory.jpg"
+    },
+    {
+      "surface": "desktop",
+      "key": "inventory.detailSaveTareFirst",
+      "meaning": "The empty-spool tare draft differs from the saved tare. Save roll properties first, then update measured total weight using the saved tare. Do not imply that measured total is filament-only weight.",
+      "screenshot": "docs/screenshots/inventory.jpg"
+    },
+    {
+      "surface": "desktop",
+      "key": "inventory.detailAdvancedActions",
+      "meaning": "Collapsed group for lost, empty, restore, delete and permanent purge actions. Existing confirmations and permissions remain required.",
+      "screenshot": "docs/screenshots/inventory.jpg"
+    },
+    {
+      "surface": "desktop",
+      "key": "inventory.detailOpenPrinters",
+      "meaning": "Navigates from an already assigned roll to the Printers page. Existing unsaved-roll navigation confirmation still applies.",
+      "screenshot": "docs/screenshots/inventory.jpg"
+    },
+    {
+      "surface": "desktop",
+      "key": "inventory.loansTab",
+      "meaning": "Inventory workspace tab containing outbound loans to other people AND rolls borrowed from others; includes active records and completed history. The badge is active loan records, not people.",
+      "screenshot": "docs/screenshots/inventory.jpg"
+    },
+    {
+      "surface": "desktop",
+      "key": "inventory.labelsAction",
+      "meaning": "Short inventory toolbar action opening the existing printable label sheet for the entire inventory; individual labels remain in roll properties.",
+      "screenshot": "docs/screenshots/inventory.jpg"
+    },
+    {
+      "surface": "desktop",
+      "key": "loans.person",
+      "meaning": "Loan table column for the other person: the borrower for an outbound loan, or the owner for a borrowed-in roll. Use a neutral person label covering both directions.",
+      "screenshot": "docs/screenshots/loans.jpg"
+    },
+    {
+      "surface": "desktop",
+      "meaning": "Compact printer-slot action that opens the existing roll picker. Replacing an occupied slot requires an outgoing measured weight before the atomic slot operation. The incoming roll keeps its stored weight.",
+      "screenshot": "docs/screenshots/printers.jpg",
+      "key": "printers.replaceRoll"
+    },
+    {
+      "surface": "desktop",
+      "meaning": "Choose this inventory roll explicitly. An empty destination loads immediately with stored weight. Replacing an occupied slot opens outgoing-weight confirmation; it does not save RFID on third-party rolls.",
+      "screenshot": "docs/screenshots/printers.jpg",
+      "key": "printers.selectRoll"
+    },
+    {
+      "surface": "desktop",
+      "meaning": "Disclosure for linking the observed AMS material to a physical inventory roll. Supports exact RFID, unknown Bambu RFID and material/color candidates without RFID; a single eligible material/color candidate can be placed automatically in an empty slot without saving an RFID tag.",
+      "screenshot": "docs/screenshots/printers.jpg",
+      "key": "printers.linkObserved"
+    },
+    {
+      "surface": "desktop",
+      "meaning": "Explains a tie-breaker only: a positive remaining weight below the initial weight ranks before a full roll when material/color scores are equal. It does not claim the packaging is open or choose automatically.",
+      "screenshot": "docs/screenshots/printers.jpg",
+      "key": "printers.startedCandidatesFirst"
+    },
+    {
+      "surface": "desktop",
+      "key": "settings.themeGraySoft",
+      "meaning": "Name of the default neutral dark appearance. Soft describes the gentler contrast; it is not a filament color or material finish. Preserve the centered dot separator.",
+      "screenshot": "docs/screenshots/settings-general.jpg"
+    },
+    {
+      "surface": "companion",
+      "key": "settings.themeGraySoft",
+      "meaning": "Name of the default neutral dark appearance. Soft describes the gentler contrast; it is not a filament color or material finish. Preserve the centered dot separator.",
+      "screenshot": "docs/screenshots/settings-general.jpg"
+    },
+    {
+      "surface": "desktop",
+      "key": "settings.themeGrayDeep",
+      "meaning": "Name of the darker neutral appearance. Deep describes the darker background; it is not a filament color. Preserve the centered dot separator.",
+      "screenshot": "docs/screenshots/settings-general.jpg"
+    },
+    {
+      "surface": "companion",
+      "key": "settings.themeGrayDeep",
+      "meaning": "Name of the darker neutral appearance. Deep describes the darker background; it is not a filament color. Preserve the centered dot separator.",
+      "screenshot": "docs/screenshots/settings-general.jpg"
+    },
+    {
+      "surface": "desktop",
+      "key": "settings.themeBlueNight",
+      "meaning": "Name of the optional blue dark appearance. Night describes the dark interface. Preserve the centered dot separator.",
+      "screenshot": "docs/screenshots/settings-general.jpg"
+    },
+    {
+      "surface": "companion",
+      "key": "settings.themeBlueNight",
+      "meaning": "Name of the optional blue dark appearance. Night describes the dark interface. Preserve the centered dot separator.",
+      "screenshot": "docs/screenshots/settings-general.jpg"
+    },
+    {
+      "surface": "desktop",
+      "key": "settings.themeLightClean",
+      "meaning": "Name of the neutral light appearance. Clean describes the uncluttered visual style. Preserve the centered dot separator.",
+      "screenshot": "docs/screenshots/settings-general.jpg"
+    },
+    {
+      "surface": "companion",
+      "key": "settings.themeLightClean",
+      "meaning": "Name of the neutral light appearance. Clean describes the uncluttered visual style. Preserve the centered dot separator.",
+      "screenshot": "docs/screenshots/settings-general.jpg"
+    },
+    {
+      "surface": "desktop",
+      "key": "settings.searchPrinterModels",
+      "meaning": "Search the model catalog by manufacturer or model name before configuring a printer. This does not search inventory or discover devices on the network.",
+      "screenshot": "docs/screenshots/add-printer.jpg"
+    },
+    {
+      "surface": "desktop",
+      "key": "settings.printerBrand",
+      "meaning": "Manufacturer filter for the printer model catalog, not filament brand or theme color.",
+      "screenshot": "docs/screenshots/add-printer.jpg"
+    },
+    {
+      "surface": "desktop",
+      "key": "settings.customPrinterModel",
+      "meaning": "Editable model name for a printer not represented in the bundled catalog. Changing it edits the draft and does not discover or create a printer.",
+      "screenshot": "docs/screenshots/add-printer.jpg"
+    },
+    {
+      "surface": "desktop",
+      "key": "settings.printerModelsAll",
+      "meaning": "Show models from every manufacturer in the printer model picker.",
+      "screenshot": "docs/screenshots/add-printer.jpg"
+    },
+    {
+      "surface": "desktop",
+      "key": "settings.printerModelsOther",
+      "meaning": "Show printer models from manufacturers other than Bambu Lab and Prusa in the model picker.",
+      "screenshot": "docs/screenshots/add-printer.jpg"
+    },
+    {
+      "surface": "desktop",
+      "key": "settings.printerModelsNoResults",
+      "meaning": "Empty filtered printer model list. Change the model search or manufacturer filter; this does not mean no printers are configured.",
+      "screenshot": "docs/screenshots/add-printer.jpg"
+    },
+    {
+      "surface": "companion",
+      "key": "storage.searchShortPlaceholder",
+      "meaning": "Short inventory search placeholder in the compact toolbar, especially on narrow phones. Searches filament, colour, owner and placement; the longer associated accessible label explains the fields. Keep short enough to fit a 320 px viewport.",
+      "screenshot": "docs/screenshots/companion-phone-inventory.jpg"
     }
   ],
   "groups": [
@@ -1493,6 +1727,18 @@
       "keyPrefix": "errors.unavailable",
       "meaning": "Fail-closed response shown when this process is configured as a Client and therefore cannot serve protected Host-library routes.",
       "screenshot": "docs/screenshots/companion-phone-inventory.jpg"
+    },
+    {
+      "surface": "desktop",
+      "keyPrefix": "access.",
+      "meaning": "Browser access recovery. Host means the computer running Companion, not another desktop Client. Device names and browser hints are untrusted suggestions, never proof of identity. Approval in the native Host app precedes entry of a six-digit, five-minute, three-attempt code on the requesting browser; the code alone cannot grant access. Pairing links remain an alternative.",
+      "screenshot": "docs/screenshots/settings-library-pairing.jpg"
+    },
+    {
+      "surface": "companion",
+      "keyPrefix": "access.",
+      "meaning": "Browser access recovery. Host means the computer running Companion, not another desktop Client. Device names and browser hints are untrusted suggestions, never proof of identity. Approval in the native Host app precedes entry of a six-digit, five-minute, three-attempt code on the requesting browser; the code alone cannot grant access. Pairing links remain an alternative.",
+      "screenshot": "docs/screenshots/companion-phone-settings.jpg"
     }
   ],
   "trivialGroups": [

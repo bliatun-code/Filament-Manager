@@ -27,6 +27,7 @@ import {
 type TranslateFn = ReturnType<typeof useI18n>["t"];
 
 type SettingsCatalogRefreshPanelProps = {
+  compact?: boolean;
   activeCatalogMasterCount: number;
   activeCatalogMaterialOptions: string[];
   activeCatalogRefreshMaterial: string | null;
@@ -58,6 +59,7 @@ type SettingsCatalogRefreshPanelProps = {
 };
 
 export function SettingsCatalogRefreshPanel({
+  compact = false,
   activeCatalogMasterCount,
   activeCatalogMaterialOptions,
   activeCatalogRefreshMaterial,
@@ -107,41 +109,22 @@ export function SettingsCatalogRefreshPanel({
   });
 
   return (
-    <SettingsSectionPanel className="mt-4">
+    <SettingsSectionPanel className="settings-catalog-refresh mt-4">
       <SettingsSectionHeader
         eyebrow={t("settings.catalogRefreshTitle", "Vendor catalog updates")}
         description={t(
           "settings.catalogDiscoveryHelp",
           "Check the store to update which material types can be fetched. This check does not download products or change the filament catalog.",
         )}
-        status={
-          <div className={inlineStatusSignalClass("neutral", "text-sm")}>
-            {t("settings.totalCatalog", "Catalog")}:{" "}
-            {catalogRowsAvailable ? formatDisplayInteger(catalogCount, locale) : "—"}
-          </div>
-        }
-        metrics={
-          <>
-            <SettingsMetricTile
-              label={t("settings.totalCatalog", "Catalog")}
-              value={catalogRowsAvailable ? catalogCount : "—"}
-            />
-            <SettingsMetricTile
-              label={catalogVendor}
-              value={catalogRowsAvailable ? activeCatalogMasterCount : "—"}
-            />
-            <SettingsMetricTile
-              label={t("inventory.materialGroup", "Material")}
-              value={activeCatalogMaterialOptions.length}
-              hint={
-                activeCatalogRefreshMaterial ??
-                t("settings.selectOneMaterial", "Select one material type")
-              }
-            />
-          </>
-        }
+        status={compact ? undefined : <div className={inlineStatusSignalClass("neutral", "text-sm")}>{t("settings.totalCatalog", "Catalog")}: {catalogRowsAvailable ? formatDisplayInteger(catalogCount,locale) : "—"}</div>}
+        metrics={compact ? <div className="settings-catalog-counts"><span>{catalogVendor}: <strong>{catalogRowsAvailable ? formatDisplayInteger(activeCatalogMasterCount,locale) : "—"}</strong></span><span>{t("inventory.materialGroup", "Material")}: <strong>{catalogRowsAvailable ? formatDisplayInteger(activeCatalogMaterialOptions.length,locale) : "—"}</strong></span></div> : <>
+          <SettingsMetricTile label={t("settings.totalCatalog", "Catalog")} value={catalogRowsAvailable ? catalogCount : "—"}/>
+          <SettingsMetricTile label={catalogVendor} value={catalogRowsAvailable ? activeCatalogMasterCount : "—"}/>
+          <SettingsMetricTile label={t("inventory.materialGroup", "Material")} value={activeCatalogMaterialOptions.length} hint={activeCatalogRefreshMaterial ?? t("settings.selectOneMaterial", "Select one material type")}/>
+        </>}
+
       >
-        {settingsClientReadOnly ? (
+        {settingsClientReadOnly && !compact ? (
           <SettingsNotice className="mt-3" tone="info">
             {t(
               "settings.catalogRefreshClientHostOnly",
@@ -161,7 +144,7 @@ export function SettingsCatalogRefreshPanel({
 
       <SettingsSectionBody>
         <SettingsSectionControls>
-          <div className="grid gap-4 lg:grid-cols-[0.7fr_1.3fr]">
+          <div className="settings-catalog-choices grid gap-5">
             <div>
               <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">
                 {t("inventory.vendorGroup", "Vendor")}
@@ -173,6 +156,7 @@ export function SettingsCatalogRefreshPanel({
                     type="button"
                     onClick={() => onSetCatalogVendor(vendor)}
                     className={chipButtonClass(catalogVendor === vendor)}
+                    aria-pressed={catalogVendor === vendor}
                   >
                     {vendor}
                   </button>
@@ -245,6 +229,8 @@ export function SettingsCatalogRefreshPanel({
               type="button"
               className={settingsActionButtonClass()}
               onClick={onToggleCatalogRefreshLog}
+              aria-expanded={showCatalogRefreshLog}
+              aria-controls="settings-catalog-refresh-log"
               disabled={!catalogRefreshLog.trim()}
             >
               {showCatalogRefreshLog
@@ -378,7 +364,7 @@ export function SettingsCatalogRefreshPanel({
         ) : null}
 
         {showCatalogRefreshLog ? (
-          <div className="mt-4 rounded-lg border border-slate-200 bg-white/80 p-4 shadow-sm shadow-slate-200/35 dark:border-slate-700 dark:bg-slate-900/60 dark:shadow-none">
+          <div id="settings-catalog-refresh-log" className="mt-4 rounded-lg border border-slate-200 bg-white/80 p-4 shadow-sm shadow-slate-200/35 dark:border-slate-700 dark:bg-slate-900/60 dark:shadow-none">
             <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">
               {catalogRefreshVendor} {t("wishlist.refreshLog", "refresh log")}
             </div>

@@ -263,7 +263,7 @@ export function SettingsTrustedLanBrowsersPanel({
           {!confirmingAll ? (
             <button
               type="button"
-              aria-label={revokeAllAriaLabel}
+              aria-label={`${t("settings.trustedLanRevokeAllWithCount", "Revoke all ({count})", {count: activeBrowsers.length})} · ${revokeAllAriaLabel}`}
               className={settingsActionButtonClass("dangerQuiet")}
               disabled={revokeRequestDisabled || activeBrowsers.length === 0}
               onClick={() => setRevokeConfirmation({ kind: "all" })}

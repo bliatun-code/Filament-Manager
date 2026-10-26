@@ -182,6 +182,10 @@ export function formatPrinterSlotTokenLabel(
 }
 
 function formatFreeformPlacementLabel(t: TranslateFn, label: string): string {
+  const loanedTo = label.match(/^Loaned to:\s*(.+)$/i);
+  if (loanedTo) {
+    return `${t("dashboard.loanedTo", "Loaned to")}: ${loanedTo[1]}`;
+  }
   const rawPrinterSlotMatch = label.match(
     /printer_[A-Za-z0-9_]+(?:_ams_\d+_slot_\d+|(?:_ext|_external)(?:_slot(?:_\d+)?)?|_mmu3?_(?:channel|slot)_\d+|_toolhead_\d+)/i,
   );
