@@ -170,10 +170,12 @@ async fn access_recovery_http_approval_confirmation_sliding_year_and_revocation(
     .await;
     assert_eq!(replay["status"], "completed");
     let db = FilamentDatabase::open(&path).unwrap();
-    let Ok(mut browsers) = db.list_trusted_lan_paired_browsers() else {
+    let Ok(browsers) = db.list_trusted_lan_paired_browsers() else {
         panic!("Could not list approved test browsers");
     };
-    let browser = browsers.remove(0);
+    let [browser] = browsers.as_slice() else {
+        panic!("Expected exactly one approved test browser");
+    };
     db.revoke_trusted_lan_paired_browser(&browser.id).unwrap();
     let denied = router
         .clone()
