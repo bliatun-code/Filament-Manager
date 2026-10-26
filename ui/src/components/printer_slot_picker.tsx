@@ -207,7 +207,6 @@ export function PrinterSlotPicker({
         aria-controls={popupId}
         aria-expanded={isDropdownOpen}
         aria-haspopup="dialog"
-        aria-label={`${t("printers.chooseRollForSlot", "Choose roll for slot")} ${slotLabel}`}
         onMouseEnter={() => setSelectorHovered(true)}
         onMouseLeave={() => setSelectorHovered(false)}
         onClick={() => {
@@ -252,7 +251,8 @@ export function PrinterSlotPicker({
           </span>
         </span>
         }
-        <span className="text-xs text-slate-500 dark:text-slate-400">▾</span>
+        <span className="sr-only">{`${t("printers.chooseRollForSlot", "Choose roll for slot")} ${slotLabel}`}</span>
+        <span aria-hidden="true" className="text-xs text-slate-500 dark:text-slate-400">▾</span>
       </button>
 
       {isDropdownOpen ? (
