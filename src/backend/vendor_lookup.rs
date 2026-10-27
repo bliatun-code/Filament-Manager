@@ -432,36 +432,29 @@ fn validate_esun_graphql_http_response(
     let looks_html = content_type.to_ascii_lowercase().contains("text/html")
         || body_lower.trim_start().starts_with("<!doctype html")
         || body_lower.trim_start().starts_with("<html");
-    let looks_challenged = [
-        "just a moment",
-        "cf-mitigated",
-        "cloudflare",
-        "attention required",
-        "captcha",
-        "access denied",
-        "verify you are human",
-        "too many requests",
-        "rate limit",
-    ]
-    .iter()
-    .any(|marker| body_lower.contains(marker));
-
-    if matches!(status_code, 403 | 429 | 503) || looks_challenged || looks_html {
+    if is_anti_bot_response(status_code, &body_lower) {
         return Err(EsunGraphqlHttpError::Blocked(format!(
             "eSUN GraphQL request was blocked or challenged (HTTP {status_code}); no retry was attempted and local catalog data stays unchanged."
         )));
+    }
+    if status_code == 404 {
+        return Err(EsunGraphqlHttpError::Failed(
+            "The eSUN catalog endpoint returned HTTP 404 (Not Found). This response does not start an access cooldown. Local catalog data stays unchanged."
+                .to_string(),
+        ));
     }
     if !(200..300).contains(&status_code) {
         return Err(EsunGraphqlHttpError::Failed(format!(
             "eSUN GraphQL request failed with HTTP {status_code}; no retry was attempted and local catalog data stays unchanged."
         )));
     }
-    if !content_type
-        .to_ascii_lowercase()
-        .contains("application/json")
+    if looks_html
+        || !content_type
+            .to_ascii_lowercase()
+            .contains("application/json")
     {
         return Err(EsunGraphqlHttpError::Failed(format!(
-            "eSUN GraphQL returned an unexpected content type ({content_type}); local catalog data stays unchanged."
+            "eSUN GraphQL returned an unexpected response format (HTTP {status_code}, content type: {content_type}); expected catalog JSON. Local catalog data stays unchanged."
         )));
     }
     if body.trim().is_empty() {
@@ -1158,7 +1151,8 @@ fn is_anti_bot_response(status_code: u16, body_lower: &str) -> bool {
     matches!(status_code, 403 | 429 | 503)
         || body_lower.contains("just a moment")
         || body_lower.contains("cf-mitigated")
-        || body_lower.contains("cloudflare")
+        || body_lower.contains("cf-chl-")
+        || body_lower.contains("/cdn-cgi/challenge-platform/")
         || body_lower.contains("attention required")
         || body_lower.contains("access denied")
         || body_lower.contains("captcha")

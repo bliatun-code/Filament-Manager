@@ -247,6 +247,52 @@ fn http_validation_treats_html_challenges_and_rate_limits_as_blocking() {
 }
 
 #[test]
+fn ordinary_html_errors_do_not_trigger_an_access_cooldown() {
+    // A Cloudflare footer also appears on ordinary error pages; it is not a challenge.
+    let not_found =
+        "<!doctype html><html><title>404 Not Found</title><footer>Cloudflare</footer></html>";
+    let error = validate_esun_graphql_http_response(404, "text/html", not_found)
+        .expect_err("a missing endpoint must fail");
+    assert!(matches!(error, EsunGraphqlHttpError::Failed(_)));
+    let message = error.into_message();
+    assert!(message.contains("HTTP 404 (Not Found)"));
+    assert!(message.contains("does not start an access cooldown"));
+    assert!(!is_anti_bot_response(404, &not_found.to_ascii_lowercase()));
+
+    for status in [400, 405, 500, 502] {
+        assert!(matches!(
+            validate_esun_graphql_http_response(status, "text/html", "<html>Server error</html>"),
+            Err(EsunGraphqlHttpError::Failed(_))
+        ));
+    }
+}
+
+#[test]
+fn successful_html_is_a_format_error_unless_it_contains_a_challenge() {
+    for content_type in ["text/html", "application/json"] {
+        assert!(matches!(
+            validate_esun_graphql_http_response(
+                200,
+                content_type,
+                "<!doctype html><html>eSUN store</html>"
+            ),
+            Err(EsunGraphqlHttpError::Failed(_))
+        ));
+    }
+    for status in [200, 404] {
+        for body in [
+            "<html><title>Just a moment</title></html>",
+            "<script src=\"/cdn-cgi/challenge-platform/scripts/jsd/main.js\"></script>",
+        ] {
+            assert!(matches!(
+                validate_esun_graphql_http_response(status, "text/html", body),
+                Err(EsunGraphqlHttpError::Blocked(_))
+            ));
+        }
+    }
+}
+
+#[test]
 fn material_inference_covers_all_official_families_longest_first() {
     let cases = [
         ("eSUN eTPU-95A Filament", "TPU"),
