@@ -239,6 +239,7 @@ export const plPLDictionary: DictionaryNode = {
     "hideLowStockSuggestionAria": "Ukryj sugestię dla „{name}” na tym urządzeniu",
     "hideLowStockSuggestion": "Ukryj sugestię",
     "noVisibleLowStockSuggestions": "Brak widocznych sugestii zakupów.",
+    "openInventory": "Otwórz magazyn",
     "openLowStockInventory": "Otwórz magazyn z niskim stanem",
     "lowStockSuggestionsOptional": "Te sugestie są opcjonalne i można je ukryć na tym urządzeniu.",
     "hiddenLowStockSuggestionsTitle": "Ukryte sugestie",

@@ -656,6 +656,7 @@ export const ruRUDictionary: DictionaryNode = {
     "hideLowStockSuggestionAria": "Скрыть предложение для {name} на этом устройстве",
     "hideLowStockSuggestion": "Скрыть предложение",
     "noVisibleLowStockSuggestions": "Нет видимых предложений о покупке.",
+    "openInventory": "Открыть склад",
     "openLowStockInventory": "Открыть инвентарь с низкими остатками",
     "lowStockSuggestionsOptional": "Эти предложения необязательны, и их можно скрыть на этом устройстве.",
     "hiddenLowStockSuggestionsTitle": "Скрытые предложения",

@@ -405,6 +405,7 @@ export const esDictionary: DictionaryNode = {
       "Ocultar la sugerencia de {name} en este dispositivo",
     hideLowStockSuggestion: "Ocultar sugerencia",
     noVisibleLowStockSuggestions: "No hay sugerencias de compra visibles.",
+    openInventory: "Abrir inventario",
     openLowStockInventory: "Abrir inventario con existencias bajas",
     lowStockSuggestionsOptional:
       "Estas sugerencias son opcionales y pueden ocultarse en este dispositivo.",

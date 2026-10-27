@@ -224,6 +224,7 @@ export const zhTWDictionary: DictionaryNode = {
     "hideLowStockSuggestionAria": "在此裝置上隱藏 {name} 的建議",
     "hideLowStockSuggestion": "隱藏建議",
     "noVisibleLowStockSuggestions": "沒有可見的購買建議。",
+    "openInventory": "開啟庫存",
     "openLowStockInventory": "開啟低庫存清單",
     "lowStockSuggestionsOptional": "這些建議是可選的，並且可以在此裝置上隱藏。",
     "hiddenLowStockSuggestionsTitle": "隱藏建議",

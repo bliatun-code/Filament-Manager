@@ -389,6 +389,7 @@ export const huHUDictionary: DictionaryNode = {
     "hideLowStockSuggestionAria": "A(z) {name} javaslatának elrejtése ezen az eszközön",
     "hideLowStockSuggestion": "Javaslat elrejtése",
     "noVisibleLowStockSuggestions": "Nincs megjeleníthető vásárlási javaslat.",
+    "openInventory": "Készlet megnyitása",
     "openLowStockInventory": "Alacsony készletű tételek megnyitása",
     "lowStockSuggestionsOptional": "Ezek a javaslatok opcionálisak, és elrejthetők ezen az eszközön.",
     "hiddenLowStockSuggestionsTitle": "Rejtett javaslatok",

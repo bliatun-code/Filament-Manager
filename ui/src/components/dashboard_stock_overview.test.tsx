@@ -47,5 +47,5 @@ test("low-stock overview distinguishes confirmed empty stock from unavailable Ho
   assert.doesNotMatch(render(true), /Details are unavailable/);
   assert.match(render(false), /Details are unavailable/);
   assert.doesNotMatch(render(false), /No low-stock spools/);
-  assert.match(render(true), /aria-label="Open low-stock inventory"/);
+  assert.match(render(true), />Open inventory /);
 });

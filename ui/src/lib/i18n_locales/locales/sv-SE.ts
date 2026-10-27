@@ -656,6 +656,7 @@ export const svSEDictionary: DictionaryNode = {
     "hideLowStockSuggestionAria": "Dölj förslaget för {name} på den här enheten",
     "hideLowStockSuggestion": "Dölj förslag",
     "noVisibleLowStockSuggestions": "Inga synliga inköpsförslag.",
+    "openInventory": "Öppna lager",
     "openLowStockInventory": "Öppna lager med låg lagernivå",
     "lowStockSuggestionsOptional": "Förslagen är valfria och kan döljas var för sig på den här enheten.",
     "hiddenLowStockSuggestionsTitle": "Dolda förslag",

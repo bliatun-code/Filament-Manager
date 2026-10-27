@@ -224,6 +224,7 @@ export const zhCNDictionary: DictionaryNode = {
     "hideLowStockSuggestionAria": "隐藏此设备上的 {name} 建议",
     "hideLowStockSuggestion": "隐藏建议",
     "noVisibleLowStockSuggestions": "没有可见的购买建议。",
+    "openInventory": "打开库存",
     "openLowStockInventory": "打开低库存列表",
     "lowStockSuggestionsOptional": "这些建议是可选的，并且可以在此设备上隐藏。",
     "hiddenLowStockSuggestionsTitle": "隐藏的建议",

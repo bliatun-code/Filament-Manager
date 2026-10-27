@@ -143,6 +143,7 @@ export const itITDictionary: DictionaryNode = {
     hideLowStockSuggestionAria: "Nascondi il suggerimento per {name} su questo dispositivo",
     hideLowStockSuggestion: "Nascondi",
     noVisibleLowStockSuggestions: "Tutti i suggerimenti per scorte basse sono nascosti.",
+    openInventory: "Apri inventario",
     openLowStockInventory: "Apri l'inventario con scorte basse",
     lowStockSuggestionsOptional:
       "Le scorte basse non implicano che tu debba ricomprare lo stesso filamento.",

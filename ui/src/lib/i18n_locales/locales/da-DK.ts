@@ -656,6 +656,7 @@ export const daDKDictionary: DictionaryNode = {
     "hideLowStockSuggestionAria": "Skjul forslaget for {name} på denne enhed",
     "hideLowStockSuggestion": "Skjul forslag",
     "noVisibleLowStockSuggestions": "Ingen synlige købsforslag.",
+    "openInventory": "Åbn lager",
     "openLowStockInventory": "Åbn lager med lav beholdning",
     "lowStockSuggestionsOptional": "Forslagene er valgfrie og kan skjules enkeltvis på denne enhed.",
     "hiddenLowStockSuggestionsTitle": "Skjulte forslag",

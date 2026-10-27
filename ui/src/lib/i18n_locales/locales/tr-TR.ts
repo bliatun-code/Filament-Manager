@@ -135,6 +135,7 @@ export const trTRDictionary: DictionaryNode = {
     "hideLowStockSuggestionAria": "{name} önerisini bu cihazda gizle",
     "hideLowStockSuggestion": "Öneriyi gizle",
     "noVisibleLowStockSuggestions": "Görünür satın alma önerisi yok.",
+    "openInventory": "Stoku aç",
     "openLowStockInventory": "Düşük stok envanterini aç",
     "lowStockSuggestionsOptional": "Bu öneriler isteğe bağlıdır ve bu cihazda gizlenebilir.",
     "hiddenLowStockSuggestionsTitle": "Gizli öneriler",

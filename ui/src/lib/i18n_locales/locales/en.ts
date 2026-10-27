@@ -275,6 +275,7 @@ export const enDictionary: DictionaryNode = {
         "Hide the suggestion for {name} on this device",
       hideLowStockSuggestion: "Hide suggestion",
       noVisibleLowStockSuggestions: "No visible purchase suggestions.",
+      openInventory: "Open inventory",
       openLowStockInventory: "Open low-stock inventory",
       lowStockSuggestionsOptional:
         "These suggestions are optional and can be hidden on this device.",

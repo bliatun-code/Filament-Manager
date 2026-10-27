@@ -224,6 +224,7 @@ export const jaJPDictionary: DictionaryNode = {
     "hideLowStockSuggestionAria": "このデバイスの{name}の提案を非表示にする",
     "hideLowStockSuggestion": "提案を非表示にする",
     "noVisibleLowStockSuggestions": "購入の提案が見つかりません。",
+    "openInventory": "在庫を開く",
     "openLowStockInventory": "在庫が少ない在庫を開放する",
     "lowStockSuggestionsOptional": "これらの提案は任意であり、このデバイスでは非表示にすることができます。",
     "hiddenLowStockSuggestionsTitle": "隠された提案",

@@ -3,6 +3,12 @@
   "messages": [
     {
       "surface": "desktop",
+      "key": "dashboard.openInventory",
+      "meaning": "Short navigation action beside the Low Stock heading. Opens inventory filtered to low-stock rolls. Match the concise action wording of Open printers.",
+      "screenshot": "docs/images/v0.35.0/overview.png"
+    },
+    {
+      "surface": "desktop",
       "key": "dashboard.spoolsOnHand",
       "meaning": "Headline count of physical rolls currently on hand, including rolls loaded in printers and rolls borrowed from others. Excludes rolls loaned out, empty or lost. Do not translate as total lifetime roll count.",
       "screenshot": "docs/images/v0.35.0/overview.png"

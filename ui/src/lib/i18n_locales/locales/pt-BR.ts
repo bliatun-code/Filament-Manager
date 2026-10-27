@@ -273,6 +273,7 @@ export const ptBRDictionary: DictionaryNode = {
       "Ocultar a sugestão para {name} neste dispositivo",
     hideLowStockSuggestion: "Ocultar sugestão",
     noVisibleLowStockSuggestions: "Nenhuma sugestão de compra visível.",
+    openInventory: "Abrir estoque",
     openLowStockInventory: "Abrir inventário com estoque baixo",
     lowStockSuggestionsOptional:
       "Estas sugestões são opcionais e podem ser ocultadas individualmente neste dispositivo.",

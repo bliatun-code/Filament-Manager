@@ -239,6 +239,7 @@ export const csCZDictionary: DictionaryNode = {
     "hideLowStockSuggestionAria": "Skrýt návrh pro „{name}“ na tomto zařízení",
     "hideLowStockSuggestion": "Skrýt návrh",
     "noVisibleLowStockSuggestions": "Žádné viditelné návrhy nákupu.",
+    "openInventory": "Otevřít sklad",
     "openLowStockInventory": "Otevřít sklad s nízkým stavem",
     "lowStockSuggestionsOptional": "Tyto návrhy jsou volitelné a lze je na tomto zařízení skrýt.",
     "hiddenLowStockSuggestionsTitle": "Skryté návrhy",

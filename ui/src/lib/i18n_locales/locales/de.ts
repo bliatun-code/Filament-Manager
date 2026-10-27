@@ -281,6 +281,7 @@ export const deDictionary: DictionaryNode = {
       "Den Vorschlag für {name} auf diesem Gerät ausblenden",
     hideLowStockSuggestion: "Vorschlag ausblenden",
     noVisibleLowStockSuggestions: "Keine sichtbaren Kaufvorschläge.",
+    openInventory: "Lager öffnen",
     openLowStockInventory: "Bestand mit niedrigem Füllstand öffnen",
     lowStockSuggestionsOptional:
       "Diese Vorschläge sind optional und können auf diesem Gerät einzeln ausgeblendet werden.",

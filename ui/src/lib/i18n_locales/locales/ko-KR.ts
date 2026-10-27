@@ -224,6 +224,7 @@ export const koKRDictionary: DictionaryNode = {
     "hideLowStockSuggestionAria": "이 기기의 {name}에 대한 제안을 숨기세요.",
     "hideLowStockSuggestion": "제안 숨기기",
     "noVisibleLowStockSuggestions": "보이는 구매 제안이 없습니다.",
+    "openInventory": "재고 열기",
     "openLowStockInventory": "재고 부족 목록 열기",
     "lowStockSuggestionsOptional": "이러한 제안은 선택 사항이며 이 장치에서 숨길 수 있습니다.",
     "hiddenLowStockSuggestionsTitle": "숨겨진 제안",

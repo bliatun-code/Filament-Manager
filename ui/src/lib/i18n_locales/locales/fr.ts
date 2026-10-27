@@ -282,6 +282,7 @@ export const frDictionary: DictionaryNode = {
       "Masquer la suggestion pour {name} sur cet appareil",
     hideLowStockSuggestion: "Masquer la suggestion",
     noVisibleLowStockSuggestions: "Aucune suggestion d’achat visible.",
+    openInventory: "Ouvrir le stock",
     openLowStockInventory: "Ouvrir le stock faible",
     lowStockSuggestionsOptional:
       "Ces suggestions sont facultatives et peuvent être masquées sur cet appareil.",

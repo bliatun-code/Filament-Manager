@@ -276,6 +276,7 @@ export const nbDictionary: DictionaryNode = {
         "Skjul forslaget for {name} på denne enheten",
       hideLowStockSuggestion: "Skjul forslag",
       noVisibleLowStockSuggestions: "Ingen synlige kjøpsforslag.",
+      openInventory: "Åpne lager",
       openLowStockInventory: "Åpne lager med lav beholdning",
       lowStockSuggestionsOptional:
         "Forslagene er valgfrie og kan skjules enkeltvis på denne enheten.",

@@ -239,6 +239,7 @@ export const nlNLDictionary: DictionaryNode = {
     "hideLowStockSuggestionAria": "De suggestie voor {name} op dit apparaat verbergen",
     "hideLowStockSuggestion": "Suggestie verbergen",
     "noVisibleLowStockSuggestions": "Geen zichtbare aankoopsuggesties.",
+    "openInventory": "Voorraad openen",
     "openLowStockInventory": "Voorraad met lage voorraad openen",
     "lowStockSuggestionsOptional": "Deze suggesties zijn optioneel en kunnen afzonderlijk op dit apparaat worden verborgen.",
     "hiddenLowStockSuggestionsTitle": "Verborgen suggesties",

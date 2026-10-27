@@ -224,6 +224,7 @@ export const fiFIDictionary: DictionaryNode = {
     "hideLowStockSuggestionAria": "Piilota ehdotus {name} tälle laitteelle",
     "hideLowStockSuggestion": "Piilota ehdotus",
     "noVisibleLowStockSuggestions": "Ei näkyviä ostosehdotuksia.",
+    "openInventory": "Avaa varasto",
     "openLowStockInventory": "Avoin vähävarastotilanne",
     "lowStockSuggestionsOptional": "Nämä ehdotukset ovat valinnaisia ja ne voidaan piilottaa tältä laitteelta.",
     "hiddenLowStockSuggestionsTitle": "Piilotetut ehdotukset",

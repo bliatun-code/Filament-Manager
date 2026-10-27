@@ -224,6 +224,7 @@ export const ukUADictionary: DictionaryNode = {
     "hideLowStockSuggestionAria": "Приховати пропозицію для {name} на цьому пристрої",
     "hideLowStockSuggestion": "Приховати пропозицію",
     "noVisibleLowStockSuggestions": "Немає видимих пропозицій щодо покупки.",
+    "openInventory": "Відкрити склад",
     "openLowStockInventory": "Відкрити низький склад",
     "lowStockSuggestionsOptional": "Ці пропозиції є необхідними і можуть бути приховані на цьому пристрої.",
     "hiddenLowStockSuggestionsTitle": "Приховані пропозиції",
