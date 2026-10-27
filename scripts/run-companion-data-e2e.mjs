@@ -631,15 +631,9 @@ async function loadSpoolIntoPrinterAndClear(
       );
     }
   }
-  await spoolOption.click();
-
   const operationForm = page.locator(
     '.printer-weight-sheet [data-action="printer-slot-operation-form"]',
   );
-  await operationForm.waitFor({ state: "visible", timeout: timeoutMs });
-  const incomingInput = operationForm.locator('input[name="incoming-grams"]');
-  await incomingInput.waitFor({ state: "visible", timeout: timeoutMs });
-  await incomingInput.fill(String(record.initialWeight));
   const operationPath = `/api/v1/printers/${encodeURIComponent(target.printerId)}/slots/${encodeURIComponent(target.slotId)}/operation`;
   const slotMutationRequests = [];
   const captureSlotMutation = (request) => {
@@ -663,14 +657,16 @@ async function loadSpoolIntoPrinterAndClear(
       new URL(request.url()).pathname === operationPath,
     { timeout: timeoutMs },
   );
-  await operationForm.locator('button[type="submit"]').click();
+  // Loading a roll uses its recorded weight without an incoming weigh-in.
+  // Observe the request before selecting because the operation starts immediately.
+  await spoolOption.click();
   const operationRequest = await operationRequestPromise;
   const operationBody = operationRequest.postDataJSON();
   if (
     operationBody?.expected_current_spool_id !== null ||
     operationBody?.target_spool_id !== spoolId ||
     operationBody?.outgoing_measured_total_g !== null ||
-    operationBody?.incoming_measured_total_g !== record.initialWeight
+    operationBody?.incoming_measured_total_g !== null
   ) {
     throw new Error(
       `Companion printer load sent invalid atomic operation ${JSON.stringify(operationBody)}.`,
@@ -684,6 +680,8 @@ async function loadSpoolIntoPrinterAndClear(
       candidate.printerAssignment?.slot_id === target.slotId &&
       candidate.printerAssignment?.spool_id === spoolId &&
       candidate.spool?.status === "ASSIGNED" &&
+      candidate.spool?.remaining_g === record.initialWeight &&
+      candidate.spool?.current_weight_g === record.initialWeight &&
       candidate.history.some((event) => event.event_type === "ASSIGNED_TO_AMS"),
     { record, timeoutMs },
   );
@@ -727,9 +725,10 @@ async function loadSpoolIntoPrinterAndClear(
   await operationForm.waitFor({ state: "visible", timeout: timeoutMs });
   const outgoingInput = operationForm.locator('input[name="outgoing-grams"]');
   await outgoingInput.waitFor({ state: "visible", timeout: timeoutMs });
-  if (!(await outgoingInput.inputValue()).trim()) {
-    throw new Error("Companion printer clear flow did not prefill the outgoing weight.");
+  if ((await outgoingInput.inputValue()).trim()) {
+    throw new Error("Companion printer clear prefilled the outgoing weight for a roll without RFID.");
   }
+  await outgoingInput.fill(String(record.initialWeight));
   const clearRequestPromise = page.waitForRequest(
     (request) =>
       request.method() === "POST" &&
@@ -742,7 +741,7 @@ async function loadSpoolIntoPrinterAndClear(
   if (
     clearBody?.expected_current_spool_id !== spoolId ||
     clearBody?.target_spool_id !== null ||
-    !Number.isFinite(clearBody?.outgoing_measured_total_g) ||
+    clearBody?.outgoing_measured_total_g !== record.initialWeight ||
     clearBody?.incoming_measured_total_g !== null
   ) {
     throw new Error(
