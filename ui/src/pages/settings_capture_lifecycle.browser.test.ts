@@ -67,7 +67,10 @@ test("diagnostic captures continue for collapsed printers and stop independently
     await run("captureReview.complete()");
     await page.waitForFunction("captureReview.result() === 12");
     await page.clock.fastForward(25_000);
-    assert.equal(await run("captureReview.result()"), 12);
+    await page.waitForFunction("captureReview.result() === undefined");
+    // The catalog receipt expires independently of the printer capture sessions.
+    await run("captureReview.update(3)");
+    await page.waitForFunction("captureReview.last('a') === '2026-10-25T10:00:03Z' && captureReview.last('b') === '2026-10-25T10:00:03Z'");
     await run("captureReview.confirm()");
     await page.waitForFunction("captureReview.confirmed()");
     await run("captureReview.changeIds()");
