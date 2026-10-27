@@ -162,7 +162,30 @@ async function waitForPage(page, spec, fixture, timeoutMs) {
   );
 }
 
-async function scanPage(page, spec) {
+export async function waitForAccessibilityReady(page, timeoutMs = DEFAULT_TIMEOUT_MS) {
+  await page.waitForFunction(
+    () => [...document.querySelectorAll('[aria-busy="true"]')]
+      .every((element) => element.getClientRects().length === 0),
+    undefined,
+    { timeout: timeoutMs },
+  );
+  await page.waitForFunction(
+    () => document.fonts.status === "loaded",
+    undefined,
+    { timeout: timeoutMs },
+  );
+  await page.waitForFunction(
+    () => document.getAnimations().every((animation) =>
+      animation.playState !== "running" ||
+      !Number.isFinite(animation.effect?.getComputedTiming().endTime)),
+    undefined,
+    { timeout: timeoutMs },
+  );
+}
+
+async function scanPage(page, spec, timeoutMs) {
+  // Loaded controls can still be transitioning out of their disabled opacity.
+  await waitForAccessibilityReady(page, timeoutMs);
   const result = await new AxeBuilder({ page })
     .withTags([...WCAG_TAGS])
     .analyze();
@@ -263,7 +286,7 @@ export async function runDataBackedAccessibilityAnalysis(options) {
             { cause: error },
           );
         }
-        scans.push(await scanPage(page, spec));
+        scans.push(await scanPage(page, spec, options.timeoutMs));
         if (spec.evidenceKey === "statistics") {
           const views = page.getByRole("tablist", { name: "Statistics views" });
           for (const name of ["Inventory value", "Printers"]) {
@@ -272,7 +295,7 @@ export async function runDataBackedAccessibilityAnalysis(options) {
             if (name === "Printers" && fixture.printerRows[0]) {
               await page.getByText(fixture.printerRows[0].printer.name, { exact: true }).first().waitFor();
             }
-            scans.push(await scanPage(page, { label: activePageLabel }));
+            scans.push(await scanPage(page, { label: activePageLabel }, options.timeoutMs));
           }
         }
       }
