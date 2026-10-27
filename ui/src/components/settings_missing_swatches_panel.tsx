@@ -80,7 +80,7 @@ export function SettingsMissingSwatchesPanel({
   return (
     <SettingsSectionPanel className="settings-catalog-swatches mt-6">
       <SettingsSectionHeader
-        eyebrow={t("settings.swatchQuality", "Swatch quality")}
+        eyebrow={compact ? undefined : t("settings.swatchQuality", "Swatch quality")}
         description={t(
           "settings.swatchQualityHelp",
           "Review missing swatches here, then save manual fixes or fill the visible list in bulk.",

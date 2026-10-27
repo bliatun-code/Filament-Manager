@@ -1,6 +1,6 @@
 import { rowMatchesLiveBambuSlot, liveSlotHasLoadedRoll } from "./companion_live_rfid_candidates.js";
 import { formatPrinterSlotLabelForModel } from "./printer_slot_labels.js";
-import { resolveSpoolRowTareWeight } from "./companion_spool_weight.js";
+import { canUnloadPrinterSlotWithoutWeighing, resolveSpoolRowTareWeight } from "./companion_spool_weight.js";
 import { normalizeOwnershipType } from "./companion_domain.js";
 
 const ROOT_FLOW_STORAGE = "storage";
@@ -347,6 +347,7 @@ export function createCompanionShellState(options) {
   }
 
   function startPrinterWeightUpdate(taskOptions = {}) {
+    if (state.busy) return;
     const normalizedMode = String(taskOptions.mode || "update").trim().toLowerCase();
     const normalizedPrinterId = String(taskOptions.printerId || "").trim();
     const normalizedSlotId = String(taskOptions.slotId || "").trim();
@@ -392,6 +393,8 @@ export function createCompanionShellState(options) {
             : ""),
       ).trim(),
       currentSpoolId,
+      outgoingWeightConfirmed: canUnloadPrinterSlotWithoutWeighing(slotRow, currentSpoolRow),
+      incomingWeightRequired: normalizedMode === "assign" && targetSpoolId === currentSpoolId,
       currentSpoolTitle: currentSpoolRow
         ? `${String(currentSpoolRow.master?.filament_name || "").trim()}${currentSpoolRow.master?.color_name ? ` · ${String(currentSpoolRow.master.color_name).trim()}` : ""}`
         : String(taskOptions.spoolTitle || "").trim(),
@@ -426,6 +429,16 @@ export function createCompanionShellState(options) {
     syncTaskSheetState();
     ensureActivePrinterSelection();
     syncLegacySectionState();
+    if (((normalizedMode === "clear" && state.activeTaskSheet.outgoingWeightConfirmed) ||
+         (normalizedMode === "assign" && targetSpoolId !== currentSpoolId &&
+          (!currentSpoolId || state.activeTaskSheet.outgoingWeightConfirmed))) &&
+        options.submitUnweighedPrinterOperation) {
+      const task = state.activeTaskSheet;
+      state.activeTaskSheet = null;
+      syncTaskSheetState();
+      void options.submitUnweighedPrinterOperation(task);
+      return;
+    }
     render();
   }
 

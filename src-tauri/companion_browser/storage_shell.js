@@ -360,7 +360,7 @@ export function renderAddFilamentTaskSheetBody(state, busy, escapeHtml) {
             : `
               <div class="stack add-spool-catalog-block">
                 <label class="search-field" for="companion-filament-catalog-search">
-                  <span class="search-field-label">${escapeHtml(
+                  <span class="search-field-label visually-hidden">${escapeHtml(
                     selection.source === "bambu"
                       ? t(locale, "storage.catalogSearchBambu", "Search material, color, or filament code")
                       : t(locale, "storage.catalogSearch", "Search material, filament, color, or vendor"),

@@ -128,7 +128,7 @@ export function StatisticsConsumptionModal({
             htmlFor={searchId}
             className={`${statisticsFilterLabelClass} sm:col-span-2`}
           >
-            <span>
+            <span className="sr-only">
               {t(
                 "statistics.searchFilamentPlaceholder",
                 "Search filament, color, vendor or owner",
@@ -167,7 +167,7 @@ export function StatisticsConsumptionModal({
               {consumptionVendorOptions.map((option) => (
                 <option key={option} value={option}>
                   {option === "ALL"
-                    ? `${t("statistics.filterVendor", "Vendor")}: ${t("common.all", "All")}`
+                    ? t("common.all", "All")
                     : option}
                 </option>
               ))}
@@ -189,7 +189,7 @@ export function StatisticsConsumptionModal({
               {consumptionMaterialOptions.map((option) => (
                 <option key={option} value={option}>
                   {option === "ALL"
-                    ? `${t("statistics.filterMaterial", "Material")}: ${t("common.all", "All")}`
+                    ? t("common.all", "All")
                     : option}
                 </option>
               ))}
@@ -209,18 +209,18 @@ export function StatisticsConsumptionModal({
               className={`w-full ${statisticsFilterSelectClass}`}
             >
               <option value="ALL">
-                {`${t("inventory.ownershipGroup", "Ownership")}: ${t("common.all", "All")}`}
+                {t("common.all", "All")}
               </option>
               <option value="OWNED">
-                {`${t("inventory.ownershipGroup", "Ownership")}: ${t("inventory.ownedByUs", "Owned")}`}
+                {t("inventory.ownedByUs", "Owned")}
               </option>
               <option value="BORROWED_IN">
-                {`${t("inventory.ownershipGroup", "Ownership")}: ${t("inventory.borrowedIn", "Borrowed in")}`}
+                {t("inventory.borrowedIn", "Borrowed in")}
               </option>
             </select>
           </label>
-          <label htmlFor={sortId} className={statisticsFilterLabelClass}>
-            <span>{consumptionSortLabel(t, consumptionPrefs.sort)}</span>
+          <label htmlFor={sortId} className={`${statisticsFilterLabelClass} self-end`}>
+            <span className="sr-only">{consumptionSortLabel(t, consumptionPrefs.sort)}</span>
             <select
               id={sortId}
               value={consumptionPrefs.sort}
@@ -373,7 +373,7 @@ export function StatisticsBorrowerUsageModal({
       {!borrowerLoading && !borrowerError && borrowerRows.length > 0 ? (
         <div className="surface-subtle mt-4 grid grid-cols-1 gap-2 p-3 sm:grid-cols-[minmax(0,1fr)_auto]">
           <label htmlFor={searchId} className={statisticsFilterLabelClass}>
-            <span>
+            <span className="sr-only">
               {t(
                 "statistics.searchBorrowerFilamentPlaceholder",
                 "Search filament, color or vendor",

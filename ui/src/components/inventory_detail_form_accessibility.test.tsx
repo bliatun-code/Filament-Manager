@@ -124,7 +124,7 @@ test("spool maintenance fields use labels, fieldset context, and existing help t
   const ids = assertUniqueLabelTargetsExist(html, 5);
   for (const label of [
     "Empty spool weight (g)",
-    "Home location",
+    "Home location (optional)",
     "Owner name (required)",
     "Contact (optional)",
     "Note (optional)",
@@ -223,7 +223,7 @@ test("loaned-out ownership controls are disabled until the return flow completes
   assert.doesNotMatch(html, /Owned rolls stay in your inventory/);
 });
 
-test("owned-spool help describes the ownership fieldset", () => {
+test("owned-spool controls retain their fieldset name and selected ownership without a dangling description", () => {
   const html = renderWithI18n(
     <InventorySpoolOwnershipPanel
       contactValue=""
@@ -240,10 +240,10 @@ test("owned-spool help describes the ownership fieldset", () => {
     />,
   );
 
-  const helpId = html.match(/aria-describedby="([^"]+-owned-help)"/)?.[1];
-  assert.ok(helpId);
-  assert.ok(html.includes(`id="${helpId}"`));
-  assert.match(html, /Owned rolls stay in your inventory/);
+  assert.match(html, /<fieldset[^>]*><legend[^>]*>Ownership<\/legend>/);
+  assert.match(html, /role="group" aria-label="Ownership type"/);
+  assert.match(html, /aria-pressed="true"[^>]*><span>Owned<\/span>/);
+  assert.doesNotMatch(html, /aria-describedby=/);
 });
 
 test("weight range and numeric value have distinct labels and ids", () => {

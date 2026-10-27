@@ -98,14 +98,7 @@ export function InventoryCreateActionsPanel({
 
       {purpose === "PURCHASE" ? (
         <div className="mt-4">
-          <div className="text-xs leading-5 text-slate-600 dark:text-slate-300">
-            {t(
-              "inventory.addToWishlistHelp",
-              "Use the current selection to keep the wishlist → on order → stock workflow.",
-            )}
-          </div>
           <ModalActionButton
-            className="mt-4"
             fullWidth
             size="roomy"
             variant="solid"

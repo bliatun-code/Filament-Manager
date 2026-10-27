@@ -143,6 +143,7 @@ export const itITDictionary: DictionaryNode = {
     hideLowStockSuggestionAria: "Nascondi il suggerimento per {name} su questo dispositivo",
     hideLowStockSuggestion: "Nascondi",
     noVisibleLowStockSuggestions: "Tutti i suggerimenti per scorte basse sono nascosti.",
+    openInventory: "Apri inventario",
     openLowStockInventory: "Apri l'inventario con scorte basse",
     lowStockSuggestionsOptional:
       "Le scorte basse non implicano che tu debba ricomprare lo stesso filamento.",
@@ -934,6 +935,11 @@ export const itITDictionary: DictionaryNode = {
     rfidPresetSignal: "Impostazioni del filamento preimpostate",
     rfidPrinterLive: "Stampante in funzione",
     rfidRegistered: "RFID registrato",
+    "rfidRemove": "Rimuovi RFID salvato",
+    "rfidRemoved": "RFID salvato rimosso da questa bobina.",
+    "rfidRemoveHint": "Rimuove il collegamento RFID salvato. Bobina, peso e assegnazione allo slot vengono mantenuti.",
+    "amsWeightAccept": "Accetta peso AMS",
+    "amsWeightReview": "Controlla il peso: le stime AMS ripetute differiscono dal peso salvato.",
     rfidSaved: "Tag RFID salvato sulla bobina selezionata.",
     rfidSlotActive: "Attivo",
     rfidSlotEmpty: "Vuoto",
@@ -1825,7 +1831,7 @@ export const itITDictionary: DictionaryNode = {
     catalogRefreshClientHostOnly:
       "Gli aggiornamenti del catalogo del fornitore vengono inviati a host. Questo client mostra e modifica ancora il catalogo host condiviso.",
     catalogRefreshHelp:
-      "Trova i tipi di materiale attualmente disponibili, quindi aggiornane uno alla volta. La ricerca non importa nulla e non modifica mai lo stato del ciclo di vita.",
+      "Scegli un fornitore e un tipo di materiale per aggiungere nuovi prodotti e aggiornare il catalogo.",
     discoverCatalogMaterials: "Trova materiali disponibili",
     discoveringCatalogMaterials: "Ricerca dei materiali disponibili",
     availableCatalogMaterials: "Materiali disponibili",

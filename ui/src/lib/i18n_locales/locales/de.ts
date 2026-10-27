@@ -281,6 +281,7 @@ export const deDictionary: DictionaryNode = {
       "Den Vorschlag für {name} auf diesem Gerät ausblenden",
     hideLowStockSuggestion: "Vorschlag ausblenden",
     noVisibleLowStockSuggestions: "Keine sichtbaren Kaufvorschläge.",
+    openInventory: "Lager öffnen",
     openLowStockInventory: "Bestand mit niedrigem Füllstand öffnen",
     lowStockSuggestionsOptional:
       "Diese Vorschläge sind optional und können auf diesem Gerät einzeln ausgeblendet werden.",
@@ -1084,6 +1085,11 @@ export const deDictionary: DictionaryNode = {
     rfidCaptureNoSlotData: "Für diesen Quellplatz sind noch keine platzspezifischen AMS-Felder verfügbar.",
     rfidCaptureNothingToSave: "Für den ausgewählten Quellplatz ist noch keine RFID-Identität verfügbar.",
     rfidCaptureFailed: "RFID-Erfassung vom Drucker konnte nicht aktualisiert werden.",
+    "rfidRemove": "Gespeicherte RFID entfernen",
+    "rfidRemoved": "Die gespeicherte RFID wurde von dieser Rolle entfernt.",
+    "rfidRemoveHint": "Entfernt die gespeicherte RFID-Verknüpfung. Rolle, Gewicht und Schachtzuordnung bleiben erhalten.",
+    "amsWeightAccept": "AMS-Gewicht übernehmen",
+    "amsWeightReview": "Gewicht prüfen: Wiederholte AMS-Schätzungen weichen vom gespeicherten Gewicht ab.",
     rfidSaved: "RFID-Tag auf der ausgewählten Rolle gespeichert.",
     saveRfid: "RFID speichern",
     error: {
@@ -2261,7 +2267,7 @@ export const deDictionary: DictionaryNode = {
       "Dieser Client zeigt den Host-Katalog. Farbmusterkorrekturen und Herstelleraktualisierungen werden auf dem Host gespeichert.",
     catalogRefreshTitle: "Herstellerkatalog aktualisieren",
     catalogRefreshHelp:
-      "Ermittle die derzeit verfügbaren Materialtypen und aktualisiere anschließend jeweils einen Materialtyp. Die Ermittlung importiert nichts und ändert niemals den Lebenszyklusstatus.",
+      "Wählen Sie einen Anbieter und Materialtyp, um neue Produkte hinzuzufügen und den Katalog zu aktualisieren.",
     discoverCatalogMaterials: "Verfügbare Materialien ermitteln",
     discoveringCatalogMaterials: "Verfügbare Materialien werden ermittelt",
     availableCatalogMaterials: "Verfügbare Materialien",

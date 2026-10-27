@@ -139,6 +139,7 @@ function catalogRow(
 
 function renderStatus(options: {
   slotRow: PrinterAmsSlotRow;
+  busy?: boolean;
   liveTray?: BambuLiveObservedTray;
   spools?: SpoolWithMasterRow[];
   catalogRows?: MasterCatalogRow[];
@@ -166,8 +167,9 @@ function renderStatus(options: {
       React.createElement(PrinterSlotAssignmentStatus, {
         printer: printerOverview(options.slotRow),
         slot: options.slotRow,
-        busy: false,
+        busy: options.busy ?? false,
         displayState,
+        clearSlot: () => {},
         openRfidOverrideDialog: () => {},
         registerLiveRfidCandidate: () => {},
         createLiveBambuCatalogSpool: () => {},
@@ -345,7 +347,7 @@ test("PrinterSlotAssignmentStatus lists multiple catalog onboarding choices", ()
   assert.equal((html.match(/Add \+ save RFID/g) ?? []).length, 3);
 });
 
-test("PrinterSlotAssignmentStatus blocks catalog onboarding when the slot is already occupied", () => {
+test("PrinterSlotAssignmentStatus opens the outgoing-weight flow before catalog onboarding for an occupied slot", () => {
   const html = renderStatus({
     slotRow: slot({ spool_id: "loaded-spool" }),
     catalogRows: [catalogRow("bambu-matte-black")],
@@ -353,6 +355,27 @@ test("PrinterSlotAssignmentStatus blocks catalog onboarding when the slot is alr
 
   assert.match(html, /Current roll/);
   assert.match(html, /Bambu catalog has one likely match/);
-  assert.match(html, /clear slot first/);
+  assert.match(html, /<button[^>]*type="button"[^>]*>clear slot first<\/button>/);
   assert.doesNotMatch(html, /Add \+ save RFID/);
+});
+
+test("PrinterSlotAssignmentStatus disables the clear-slot shortcut while an operation is pending", () => {
+  const html = renderStatus({
+    slotRow: slot({ spool_id: "loaded-spool" }),
+    catalogRows: [catalogRow("bambu-matte-black")],
+    busy: true,
+  });
+  assert.match(html, /<button[^>]*disabled=""[^>]*>clear slot first<\/button>/);
+  assert.doesNotMatch(html, /Add \+ save RFID/);
+});
+
+test("duplicate saved RFID shows both rolls without registration or selection actions", () => {
+  const html = renderStatus({
+    slotRow: slot({spool_id:"spool_551609", spool_rfid_tag:"SHARED-RFID"}),
+    liveTray: unknownRfidTray({tray_uuid:"SHARED-RFID", match_status:"ambiguous"}),
+    spools: [spoolRow("spool_551609",{rfidTag:"SHARED-RFID",status:"ASSIGNED"}), spoolRow("spool_984684",{rfidTag:"SHARED-RFID"})],
+  });
+  assert.match(html,/Multiple inventory rolls share this saved RFID/);
+  assert.match(html,/#551609/); assert.match(html,/#984684/);
+  assert.doesNotMatch(html,/Save RFID|Select roll|RFID is not registered|<button/);
 });

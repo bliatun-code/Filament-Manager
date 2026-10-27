@@ -184,7 +184,6 @@ export function SettingsPrinterEditForm({
               onChange={(event) => onNameChange(event.target.value)}
               aria-describedby={configurationHintId}
               className={`${settingsFormControlClass} mt-auto`}
-              placeholder={t("settings.printerName", "Printer name")}
               disabled={disabled}
               required
             />
@@ -285,7 +284,6 @@ export function SettingsPrinterEditForm({
                     onChange={(event) => onBambuLiveHostChange(event.target.value)}
                     aria-describedby={liveHintId}
                     className={settingsFormControlClass}
-                    placeholder={t("settings.bambuLiveHost", "Printer host / IP")}
                     autoCapitalize="none"
                     autoComplete="off"
                     disabled={liveConfigDisabled}
@@ -304,7 +302,6 @@ export function SettingsPrinterEditForm({
                     onChange={(event) => onBambuLivePrinterSerialChange(event.target.value)}
                     aria-describedby={liveHintId}
                     className={settingsFormControlClass}
-                    placeholder={t("settings.bambuLivePrinterSerial", "Printer serial")}
                     autoCapitalize="characters"
                     autoComplete="off"
                     disabled={liveConfigDisabled}

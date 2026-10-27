@@ -1673,15 +1673,19 @@ impl InventoryEngine {
             }
 
             let outgoing_total_g = match actual_current_spool_id.as_deref() {
-                Some(_) => Some(input.outgoing_measured_total_g.ok_or_else(|| {
-                    invalid_printer_slot_operation(
+                Some(spool_id) => match input.outgoing_measured_total_g {
+                    Some(total) => Some(total),
+                    None if can_unload_without_weighing(conn, printer_id, slot_id, spool_id)? => {
+                        None
+                    }
+                    None => return Err(invalid_printer_slot_operation(
                         "outgoing_measured_total_g is required when clearing or replacing a spool",
-                    )
-                })?),
+                    )),
+                },
                 None => None,
             };
-            // Loading a different roll may preserve its stored weight. The outgoing
-            // measurement remains mandatory for every occupied-slot replacement.
+            // Preserve an outgoing roll's weight only when a fresh, unique AMS
+            // identity and estimate confirm the weight already stored in inventory.
             let loading_without_measurement =
                 target_spool_id.is_some() && input.incoming_measured_total_g.is_none();
             let incoming_total_g = match target_spool_id.as_deref() {
@@ -1877,168 +1881,15 @@ impl InventoryEngine {
         }
 
         self.db.with_inventory_transaction(|conn| {
-            let slot: Option<(String, i64, Option<String>, Option<String>)> = conn
-                .query_row(
-                    "SELECT s.ams_id, s.slot_index, s.spool_id, s.live_cache_cleared_at
-                     FROM ams_slots s
-                     JOIN ams_units u ON u.id = s.ams_id
-                     WHERE s.id = ?1 AND u.printer_id = ?2
-                     LIMIT 1",
-                    params![slot_id, printer_id],
-                    |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?, row.get(3)?)),
-                )
-                .optional()?;
-            let (ams_id, slot_index, assigned_spool_id, live_cache_cleared_at) =
-                slot.ok_or(InventoryError::NotFound)?;
-            if assigned_spool_id.as_deref() != Some(spool_id) {
-                return Err(ams_weight_accept_rejected(
-                    "The loaded spool changed. Refresh printer data and try again.",
-                ));
-            }
-
-            let spool = get_spool_by_id_row(conn, spool_id)?.ok_or(InventoryError::NotFound)?;
-            ensure_spool_not_outbound_loan_locked(conn, spool_id)?;
-            let current_grams = spool.remaining_g.or(spool.current_weight_g);
-            let setting = get_setting_row(conn, &bambu_live_integration_setting_key(printer_id))?
-                .ok_or_else(|| {
-                    ams_weight_accept_rejected(
-                        "Live printer data is unavailable. Refresh printer data and try again.",
-                    )
-                })?;
-            let integration = serde_json::from_str::<
-                crate::backend::filament_database::BambuLiveIntegrationRow,
-            >(&setting)
-            .map_err(|_| {
-                ams_weight_accept_rejected(
-                    "Live printer data is invalid. Refresh printer data and try again.",
-                )
-            })?;
-            if !integration.enabled {
-                return Err(ams_weight_accept_rejected(
-                    "Live printer data is disabled. Refresh printer data and try again.",
-                ));
-            }
-            let observed = integration.observed_state.as_ref().ok_or_else(|| {
-                ams_weight_accept_rejected(
-                    "Live printer data is unavailable. Refresh printer data and try again.",
-                )
-            })?;
-            if !observed.online || !observed.mqtt_connected {
-                return Err(ams_weight_accept_rejected(
-                    "The printer is not currently connected. Refresh live data and try again.",
-                ));
-            }
-            require_fresh_ams_accept_timestamp(observed.last_seen_at.as_deref())?;
-            if observed
-                .ams_reading_bits
-                .as_deref()
-                .map(str::trim)
-                .filter(|value| !value.is_empty() && *value != "0")
-                .is_some()
-            {
-                return Err(ams_weight_accept_rejected(
-                    "The AMS is still reading its slots. Wait for live data to settle and try again.",
-                ));
-            }
-            let tray = observed
-                .trays
-                .iter()
-                .find(|tray| {
-                    bambu_live_slot_matches_tray(
-                        &ams_id,
-                        slot_index,
-                        tray.ams_index,
-                        tray.tray_index,
-                    )
-                })
-                .ok_or_else(|| {
-                    ams_weight_accept_rejected(
-                        "The live AMS slot is unavailable. Refresh printer data and try again.",
-                    )
-                })?;
-
-            if !tray.loaded
-                || tray.match_status.as_deref() != Some("clear_match")
-                || tray.matched_inventory_mode.as_deref() != Some("exact_rfid")
-                || tray.matched_inventory_spool_id.as_deref() != Some(spool_id)
-            {
-                return Err(ams_weight_accept_rejected(
-                    "The live AMS slot no longer has an exact RFID match. Refresh printer data and try again.",
-                ));
-            }
-            let identity_seen_at = tray.last_identity_seen_at.as_deref().ok_or_else(|| {
-                ams_weight_accept_rejected(
-                    "The live AMS identity has no timestamp. Refresh printer data and try again.",
-                )
-            })?;
-            require_fresh_ams_accept_timestamp(Some(identity_seen_at))?;
-
-            let live_identity = normalized_ams_identity(tray.tray_uuid.as_deref())
-                .or_else(|| normalized_ams_identity(tray.observed_rfid_tag.as_deref()))
-                .ok_or_else(|| {
-                    ams_weight_accept_rejected(
-                        "The live AMS identity is unavailable. Refresh printer data and try again.",
-                    )
-                })?;
-            let spool_rfid = normalized_ams_identity(spool.rfid_tag.as_deref()).ok_or_else(|| {
-                ams_weight_accept_rejected(
-                    "The inventory spool no longer has the matching RFID. Refresh printer data and try again.",
-                )
-            })?;
-            if !live_identity.eq_ignore_ascii_case(spool_rfid) {
-                return Err(ams_weight_accept_rejected(
-                    "The inventory RFID changed. Refresh printer data and try again.",
-                ));
-            }
-            let mut eligible_match_ids = conn.prepare(
-                "SELECT id FROM filament_spools
-                 WHERE deleted_at IS NULL
-                   AND trim(rfid_tag) COLLATE NOCASE = trim(?1) COLLATE NOCASE
-                   AND REPLACE(REPLACE(UPPER(TRIM(COALESCE(status, ''))), '-', '_'), ' ', '_')
-                       NOT IN ('LOST', 'MISSING', 'DELETED', 'BORROWED', 'LOANED_OUT', 'LOANED')
-                 ORDER BY id
-                 LIMIT 2",
-            )?;
-            let eligible_match_ids = eligible_match_ids
-                .query_map(params![live_identity], |row| row.get::<_, String>(0))?
-                .collect::<Result<Vec<_>, _>>()?;
-            if eligible_match_ids.as_slice() != [spool_id] {
-                return Err(ams_weight_accept_rejected(
-                    "The RFID match is no longer unique. Refresh printer data and try again.",
-                ));
-            }
-
-            let weight_seen_at = tray.last_weight_seen_at.as_deref().ok_or_else(|| {
-                ams_weight_accept_rejected(
-                    "The AMS weight estimate is unavailable. Refresh printer data and try again.",
-                )
-            })?;
-            require_fresh_ams_accept_timestamp(Some(weight_seen_at))?;
-            if live_cache_cleared_at.as_deref().is_some_and(|cleared_at| {
-                ams_accept_timestamp_is_at_or_before(identity_seen_at, cleared_at)
-                    || ams_accept_timestamp_is_at_or_before(weight_seen_at, cleared_at)
-            }) {
-                return Err(ams_weight_accept_rejected(
-                    "The live AMS snapshot predates a manual slot change. Refresh printer data and try again.",
-                ));
-            }
-            let remaining_percent = tray.remaining_percent.filter(|value| (0..=100).contains(value));
-            let tray_weight_g = tray.tray_weight_g.filter(|value| (1..=100_000).contains(value));
-            let derived_remaining_grams = remaining_percent
-                .zip(tray_weight_g)
-                .and_then(|(percent, weight)| {
-                    weight
-                        .checked_mul(percent)?
-                        .checked_add(50)
-                        .map(|grams| grams / 100)
-                })
-                .ok_or_else(|| {
-                    ams_weight_accept_rejected(
-                        "The AMS weight estimate is invalid. Refresh printer data and try again.",
-                    )
-                })?;
-            if tray.remaining_grams != Some(derived_remaining_grams)
-                || weight_seen_at != expected_weight_seen_at
+            let snapshot = validated_ams_slot_weight(conn, printer_id, slot_id, spool_id)?;
+            let ValidatedAmsSlotWeight {
+                current_grams,
+                remaining_grams: derived_remaining_grams,
+                remaining_percent,
+                tray_weight_g,
+                weight_seen_at,
+            } = snapshot;
+            if weight_seen_at != expected_weight_seen_at
                 || derived_remaining_grams != input.expected_remaining_grams
             {
                 return Err(ams_weight_accept_rejected(
@@ -2260,6 +2111,206 @@ fn insert_json_history_event(
     let payload_json =
         serde_json::to_string(&payload).map_err(|error| InventoryError::Db(error.to_string()))?;
     insert_spool_history_event_row(conn, spool_id, event_type, &payload_json)
+}
+
+struct ValidatedAmsSlotWeight {
+    current_grams: Option<i64>,
+    remaining_grams: i64,
+    remaining_percent: Option<i64>,
+    tray_weight_g: Option<i64>,
+    weight_seen_at: String,
+}
+
+fn validated_ams_slot_weight(
+    conn: &rusqlite::Connection,
+    printer_id: &str,
+    slot_id: &str,
+    spool_id: &str,
+) -> InventoryResult<ValidatedAmsSlotWeight> {
+    let slot: Option<(String, i64, Option<String>, Option<String>)> = conn
+        .query_row(
+            "SELECT s.ams_id, s.slot_index, s.spool_id, s.live_cache_cleared_at
+             FROM ams_slots s
+             JOIN ams_units u ON u.id = s.ams_id
+             WHERE s.id = ?1 AND u.printer_id = ?2
+             LIMIT 1",
+            params![slot_id, printer_id],
+            |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?, row.get(3)?)),
+        )
+        .optional()?;
+    let (ams_id, slot_index, assigned_spool_id, live_cache_cleared_at) =
+        slot.ok_or(InventoryError::NotFound)?;
+    if assigned_spool_id.as_deref() != Some(spool_id) {
+        return Err(ams_weight_accept_rejected(
+            "The loaded spool changed. Refresh printer data and try again.",
+        ));
+    }
+
+    let spool = get_spool_by_id_row(conn, spool_id)?.ok_or(InventoryError::NotFound)?;
+    ensure_spool_not_outbound_loan_locked(conn, spool_id)?;
+    let current_grams = spool.remaining_g.or(spool.current_weight_g);
+    let setting = get_setting_row(conn, &bambu_live_integration_setting_key(printer_id))?
+        .ok_or_else(|| {
+            ams_weight_accept_rejected(
+                "Live printer data is unavailable. Refresh printer data and try again.",
+            )
+        })?;
+    let integration = serde_json::from_str::<
+        crate::backend::filament_database::BambuLiveIntegrationRow,
+    >(&setting)
+    .map_err(|_| {
+        ams_weight_accept_rejected(
+            "Live printer data is invalid. Refresh printer data and try again.",
+        )
+    })?;
+    if !integration.enabled {
+        return Err(ams_weight_accept_rejected(
+            "Live printer data is disabled. Refresh printer data and try again.",
+        ));
+    }
+    let observed = integration.observed_state.as_ref().ok_or_else(|| {
+        ams_weight_accept_rejected(
+            "Live printer data is unavailable. Refresh printer data and try again.",
+        )
+    })?;
+    if !observed.online || !observed.mqtt_connected {
+        return Err(ams_weight_accept_rejected(
+            "The printer is not currently connected. Refresh live data and try again.",
+        ));
+    }
+    require_fresh_ams_accept_timestamp(observed.last_seen_at.as_deref())?;
+    if observed
+        .ams_reading_bits
+        .as_deref()
+        .map(str::trim)
+        .filter(|value| !value.is_empty() && *value != "0")
+        .is_some()
+    {
+        return Err(ams_weight_accept_rejected(
+            "The AMS is still reading its slots. Wait for live data to settle and try again.",
+        ));
+    }
+    let tray = observed
+        .trays
+        .iter()
+        .find(|tray| {
+            bambu_live_slot_matches_tray(&ams_id, slot_index, tray.ams_index, tray.tray_index)
+        })
+        .ok_or_else(|| {
+            ams_weight_accept_rejected(
+                "The live AMS slot is unavailable. Refresh printer data and try again.",
+            )
+        })?;
+
+    if !tray.loaded
+        || tray.match_status.as_deref() != Some("clear_match")
+        || tray.matched_inventory_mode.as_deref() != Some("exact_rfid")
+        || tray.matched_inventory_spool_id.as_deref() != Some(spool_id)
+    {
+        return Err(ams_weight_accept_rejected(
+            "The live AMS slot no longer has an exact RFID match. Refresh printer data and try again.",
+        ));
+    }
+    let identity_seen_at = tray.last_identity_seen_at.as_deref().ok_or_else(|| {
+        ams_weight_accept_rejected(
+            "The live AMS identity has no timestamp. Refresh printer data and try again.",
+        )
+    })?;
+    require_fresh_ams_accept_timestamp(Some(identity_seen_at))?;
+
+    let live_identity = normalized_ams_identity(tray.tray_uuid.as_deref())
+        .or_else(|| normalized_ams_identity(tray.observed_rfid_tag.as_deref()))
+        .ok_or_else(|| {
+            ams_weight_accept_rejected(
+                "The live AMS identity is unavailable. Refresh printer data and try again.",
+            )
+        })?;
+    let spool_rfid = normalized_ams_identity(spool.rfid_tag.as_deref()).ok_or_else(|| {
+        ams_weight_accept_rejected(
+            "The inventory spool no longer has the matching RFID. Refresh printer data and try again.",
+        )
+    })?;
+    if !live_identity.eq_ignore_ascii_case(spool_rfid) {
+        return Err(ams_weight_accept_rejected(
+            "The inventory RFID changed. Refresh printer data and try again.",
+        ));
+    }
+    let mut eligible_match_ids = conn.prepare(
+        "SELECT id FROM filament_spools
+         WHERE deleted_at IS NULL
+           AND trim(rfid_tag) COLLATE NOCASE = trim(?1) COLLATE NOCASE
+           AND REPLACE(REPLACE(UPPER(TRIM(COALESCE(status, ''))), '-', '_'), ' ', '_')
+               NOT IN ('LOST', 'MISSING', 'DELETED', 'BORROWED', 'LOANED_OUT', 'LOANED')
+         ORDER BY id
+         LIMIT 2",
+    )?;
+    let eligible_match_ids = eligible_match_ids
+        .query_map(params![live_identity], |row| row.get::<_, String>(0))?
+        .collect::<Result<Vec<_>, _>>()?;
+    if eligible_match_ids.as_slice() != [spool_id] {
+        return Err(ams_weight_accept_rejected(
+            "The RFID match is no longer unique. Refresh printer data and try again.",
+        ));
+    }
+
+    let weight_seen_at = tray.last_weight_seen_at.as_deref().ok_or_else(|| {
+        ams_weight_accept_rejected(
+            "The AMS weight estimate is unavailable. Refresh printer data and try again.",
+        )
+    })?;
+    require_fresh_ams_accept_timestamp(Some(weight_seen_at))?;
+    if live_cache_cleared_at.as_deref().is_some_and(|cleared_at| {
+        ams_accept_timestamp_is_at_or_before(identity_seen_at, cleared_at)
+            || ams_accept_timestamp_is_at_or_before(weight_seen_at, cleared_at)
+    }) {
+        return Err(ams_weight_accept_rejected(
+            "The live AMS snapshot predates a manual slot change. Refresh printer data and try again.",
+        ));
+    }
+    let remaining_percent = tray
+        .remaining_percent
+        .filter(|value| (0..=100).contains(value));
+    let tray_weight_g = tray
+        .tray_weight_g
+        .filter(|value| (1..=100_000).contains(value));
+    let derived_remaining_grams = remaining_percent
+        .zip(tray_weight_g)
+        .and_then(|(percent, weight)| {
+            weight
+                .checked_mul(percent)?
+                .checked_add(50)
+                .map(|grams| grams / 100)
+        })
+        .ok_or_else(|| {
+            ams_weight_accept_rejected(
+                "The AMS weight estimate is invalid. Refresh printer data and try again.",
+            )
+        })?;
+    if tray.remaining_grams != Some(derived_remaining_grams) {
+        return Err(ams_weight_accept_rejected(
+            "The AMS weight estimate is invalid. Refresh printer data and try again.",
+        ));
+    }
+    Ok(ValidatedAmsSlotWeight {
+        current_grams,
+        remaining_grams: derived_remaining_grams,
+        remaining_percent,
+        tray_weight_g,
+        weight_seen_at: weight_seen_at.to_string(),
+    })
+}
+
+pub(super) fn can_unload_without_weighing(
+    conn: &rusqlite::Connection,
+    printer_id: &str,
+    slot_id: &str,
+    spool_id: &str,
+) -> InventoryResult<bool> {
+    match validated_ams_slot_weight(conn, printer_id, slot_id, spool_id) {
+        Ok(snapshot) => Ok(snapshot.current_grams == Some(snapshot.remaining_grams)),
+        Err(InventoryError::InvalidOperation { .. } | InventoryError::NotFound) => Ok(false),
+        Err(error) => Err(error),
+    }
 }
 
 fn required_ams_accept_text<'a>(value: &'a str, field: &str) -> InventoryResult<&'a str> {

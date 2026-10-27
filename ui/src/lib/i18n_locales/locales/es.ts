@@ -405,6 +405,7 @@ export const esDictionary: DictionaryNode = {
       "Ocultar la sugerencia de {name} en este dispositivo",
     hideLowStockSuggestion: "Ocultar sugerencia",
     noVisibleLowStockSuggestions: "No hay sugerencias de compra visibles.",
+    openInventory: "Abrir inventario",
     openLowStockInventory: "Abrir inventario con existencias bajas",
     lowStockSuggestionsOptional:
       "Estas sugerencias son opcionales y pueden ocultarse en este dispositivo.",
@@ -810,6 +811,11 @@ export const esDictionary: DictionaryNode = {
       "Aún no hay una identidad RFID disponible para esta ranura.",
     rfidCaptureFailed:
       "No se pudo actualizar la captura RFID desde la impresora.",
+    "rfidRemove": "Eliminar RFID guardado",
+    "rfidRemoved": "Se ha eliminado el RFID guardado de esta bobina.",
+    "rfidRemoveHint": "Elimina el vínculo RFID guardado. Se conservan la bobina, el peso y la asignación a la ranura.",
+    "amsWeightAccept": "Aceptar peso de AMS",
+    "amsWeightReview": "Comprueba el peso: las estimaciones AMS repetidas difieren del peso guardado.",
     rfidSaved: "Etiqueta RFID guardada en la bobina seleccionada.",
     saveRfid: "Guardar RFID",
     markEmpty: "Marcar como agotada (vacía)",
@@ -2632,7 +2638,7 @@ export const esDictionary: DictionaryNode = {
     catalogRefreshClientHostOnly:
       "Las actualizaciones del catálogo de proveedores se envían al host. Este cliente todavía muestra y edita el catálogo de hosts compartidos.",
     catalogRefreshHelp:
-      "Busca los tipos de material disponibles y actualiza solo uno cada vez. La búsqueda no importa nada ni cambia el estado del ciclo de vida.",
+      "Elige un proveedor y un tipo de material para añadir nuevos productos y actualizar el catálogo.",
     discoverCatalogMaterials: "Buscar materiales disponibles",
     discoveringCatalogMaterials: "Buscando materiales disponibles",
     availableCatalogMaterials: "Materiales disponibles",

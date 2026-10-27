@@ -110,7 +110,6 @@ export function InventoryCatalogMetadataPanel({
                 type="text"
                 value={vendor}
                 onChange={(event) => onChangeVendor(event.target.value)}
-                placeholder={t("wishlist.vendorPlaceholder", "Vendor")}
                 className={`mt-1.5 ${inventoryDetailCompactFormControlClassName}`}
                 aria-describedby={helpId}
                 disabled={disabled}
@@ -125,7 +124,6 @@ export function InventoryCatalogMetadataPanel({
                 type="text"
                 value={material}
                 onChange={(event) => onChangeMaterial(event.target.value)}
-                placeholder={t("wishlist.materialPlaceholder", "Material")}
                 className={`mt-1.5 ${inventoryDetailCompactFormControlClassName}`}
                 aria-describedby={helpId}
                 disabled={disabled}
@@ -140,7 +138,6 @@ export function InventoryCatalogMetadataPanel({
                 type="text"
                 value={filamentName}
                 onChange={(event) => onChangeFilamentName(event.target.value)}
-                placeholder={t("wishlist.filamentName", "Filament name")}
                 className={`mt-1.5 ${inventoryDetailCompactFormControlClassName}`}
                 aria-describedby={helpId}
                 disabled={disabled}
@@ -155,7 +152,6 @@ export function InventoryCatalogMetadataPanel({
                 type="text"
                 value={colorName}
                 onChange={(event) => onChangeColorName(event.target.value)}
-                placeholder={t("wishlist.colorName", "Color name")}
                 className={`mt-1.5 ${inventoryDetailCompactFormControlClassName}`}
                 aria-describedby={helpId}
                 disabled={disabled}
@@ -175,7 +171,6 @@ export function InventoryCatalogMetadataPanel({
                     type="text"
                     value={hexColor}
                     onChange={(event) => onChangeHexColor(event.target.value)}
-                    placeholder={t("wishlist.hexOptional", "Swatch color (optional)")}
                     className={inventoryDetailCompactFormControlClassName}
                     aria-describedby={helpId}
                     disabled={disabled}

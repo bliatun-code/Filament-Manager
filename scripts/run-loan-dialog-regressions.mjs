@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { resolve } from "node:path";
-import { chromium } from "playwright";
+import { chromium, webkit } from "playwright";
+import { mkdir } from "node:fs/promises";
 import { createVisualQaFixture } from "./create-visual-qa-fixture.mjs";
 import { cleanupVisualQaDatabase } from "./visual-qa-db.mjs";
 import {
@@ -103,7 +104,7 @@ async function openLoanOut(page) {
 async function checkReopen({ page, fixture, calls, state, fallback }) {
   let dialog = await openLoanOut(page);
   await dialog.getByRole("spinbutton", { name: "Measured total weight (g)" }).fill("600");
-  assert.match(await dialog.locator("#loan-out-weight-preview").innerText(), /600 g − 200 g = 400 g/);
+  assert.match(await dialog.locator("#loan-out-weight-preview").innerText(), /600 g\s*−\s*200 g\s*=\s*400 g/);
   await dialog.getByLabel("Borrower name", { exact: true }).fill("Old borrower");
   await dialog.getByRole("button", { name: "Close", exact: true }).click();
   fixture.printerRows = [{ printer: { id: "test-printer" }, slots: [{ spool_id: "dialog-spool-a" }] }];
@@ -274,6 +275,50 @@ async function checkReturn({ page, calls, state, fallback }, inbound) {
   assert.equal(calls.filter((call) => call.command === command).length, 2);
 }
 
+async function checkScrollableLoanForm({ page, fixture }) {
+  fixture.spoolRows.push(...Array.from({ length: 40 }, (_, index) => ({
+    ...structuredClone(fixture.spoolRows[0]),
+    spool: { ...fixture.spoolRows[0].spool, id: `scroll-spool-${index}` },
+  })));
+  for (const row of fixture.spoolRows) row.master.filament_name = "PLA Silk Multi-Color · Dawn Radiance (13912) — long selection preview";
+  const engine = process.env.LOAN_QA_BROWSER || "chromium";
+  const out = resolve("release-artifacts/visual-qa/loan-scroll", engine);
+  await mkdir(out, { recursive: true });
+  for (const [width, height] of [[1440, 650], [1024, 650], [780, 650], [390, 720]]) {
+    await page.setViewportSize({ width, height });
+    const dialog = await openLoanOut(page);
+    const save = dialog.getByRole("button", { name: "Loan out roll", exact: true });
+    await dialog.getByLabel("Borrower name", { exact: true }).waitFor();
+    const scrollArea = await save.evaluate(button => {
+      for (let node = button.parentElement; node; node = node.parentElement) {
+        if (/auto|scroll/.test(getComputedStyle(node).overflowY) && node.scrollHeight > node.clientHeight + 1) {
+          const rect = node.getBoundingClientRect();
+          return { x: rect.x + rect.width / 2, y: rect.y + rect.height / 2 };
+        }
+      }
+      return null;
+    });
+    assert.ok(scrollArea, `${width}x${height}: the clipped loan form needs a reachable scroll container`);
+    await page.mouse.move(scrollArea.x, scrollArea.y);
+    await page.mouse.wheel(0, 5000);
+    await page.waitForFunction(() => {
+      const button = [...document.querySelectorAll('[role="dialog"] button')].find(node => node.textContent.trim() === "Loan out roll");
+      const rect = button?.getBoundingClientRect();
+      return rect && rect.top >= 0 && rect.bottom <= innerHeight;
+    });
+    const reachable = await save.evaluate(button => {
+      const rect = button.getBoundingClientRect();
+      const hit = document.elementFromPoint(rect.x + rect.width / 2, rect.y + rect.height / 2);
+      return hit === button || button.contains(hit);
+    });
+    assert.ok(reachable, `${width}x${height}: the save action must not remain clipped behind the panel`);
+    const close = dialog.getByRole("button", { name: "Close", exact: true });
+    const box = await close.boundingBox();assert.ok(box.y >= 0 && box.y + box.height <= height);
+    await page.screenshot({ path: resolve(out, `${width}x${height}.png`) });
+    await close.click();await dialog.waitFor({ state: "hidden" });
+  }
+}
+
 async function main() {
   const generated = createVisualQaFixture();
   let server;
@@ -288,9 +333,12 @@ async function main() {
     const address = server.httpServer.address();
     assert.ok(address && typeof address !== "string");
     const url = `http://127.0.0.1:${address.port}`;
-    browser = await chromium.launch({ headless: true });
+    const engine = process.env.LOAN_QA_BROWSER || "chromium";
+    assert.ok(["chromium", "webkit"].includes(engine));
+    browser = await (engine === "webkit" ? webkit : chromium).launch({ headless: true });
     const failures = [];
     for (const [name, check] of [
+      ["loan form remains scrollable with 42 rolls and a short window", checkScrollableLoanForm],
       ["failed reopen clears old selection; retry uses current assignments", checkReopen],
       ["narrow validation focuses the invalid field and shows its message", checkVisibleValidation],
       ["late load cannot overwrite a newly opened draft", checkLateLoad],

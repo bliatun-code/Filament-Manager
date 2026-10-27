@@ -21,6 +21,32 @@ use super::database_printer_queries::printer_exists as printer_exists_row;
 use super::database_result::InventoryResult;
 
 impl FilamentDatabase {
+    pub fn can_unload_without_weighing(
+        &self,
+        printer_id: &str,
+        slot_id: &str,
+        spool_id: &str,
+    ) -> InventoryResult<bool> {
+        super::inventory_engine::can_unload_without_weighing(
+            self.connection(),
+            printer_id,
+            slot_id,
+            spool_id,
+        )
+    }
+
+    pub fn stable_live_weight_rejection_count(
+        &self,
+        printer_id: &str,
+        slot: &super::database_printer_models::PrinterAmsSlotRow,
+    ) -> InventoryResult<Option<i64>> {
+        super::database_printer_live_events::stable_live_weight_rejection_count(
+            self.connection(),
+            printer_id,
+            slot,
+        )
+    }
+
     pub fn save_bambu_live_integration(
         &self,
         printer_id: &str,

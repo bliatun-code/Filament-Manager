@@ -433,3 +433,13 @@ test("derivePrinterSlotDisplayState falls back to catalog when matching inventor
     "bambu-matte-black",
   ]);
 });
+
+test("duplicate RFID suppresses exact-match labels even with an older host match result", () => {
+  const rows = [spoolRow("first", {rfidTag:"SAME"}), spoolRow("second", {rfidTag:"SAME"})];
+  const state = derivePrinterSlotDisplayState({slot:slot({spool_id:"first",spool_rfid_tag:"SAME"}),
+    liveConfig:liveConfig(0), liveTray:tray({tray_uuid:"SAME",match_status:"clear_match",matched_inventory_mode:"exact_rfid",matched_inventory_spool_id:"first"}),
+    spoolRows:rows, selectedTargetSpool:null, clientReadOnly:true,clientPrinterSource:"LIVE",locale:"en",t,
+    findSpoolById:id=>rows.find(row=>row.spool.id===id)??null});
+  assert.equal(state.duplicateRfidRolls.length,2);assert.equal(state.liveIdentityLabel,null);
+  assert.equal(state.unknownLiveRfid,false);
+});

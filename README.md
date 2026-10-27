@@ -1,6 +1,6 @@
 # Filament Manager
 
-[**Download latest release · v0.35.0**](https://github.com/bliatun-code/Filament-Manager/releases/latest) · [English guide](docs/USER_GUIDE.md) · [Norsk veiledning](docs/BRUKERVEILEDNING.md)
+[**Download latest release · v0.35.1**](https://github.com/bliatun-code/Filament-Manager/releases/latest) · [English guide](docs/USER_GUIDE.md) · [Norsk veiledning](docs/BRUKERVEILEDNING.md)
 
 Know what filament you have, where it is and what is loaded in your printers.
 Keep track of remaining weight, usage and loans, and find the right spool for

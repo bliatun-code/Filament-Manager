@@ -7253,3 +7253,187 @@ fn printer_slot_operation_unweighed_replacement_records_only_outgoing_usage() {
         let _ = std::fs::remove_file(path);
     }
 }
+
+#[test]
+fn manual_ams_unload_preserves_confirmed_weight_without_new_measurements() {
+    for replace in [false, true] {
+        let path = temp_db_path("manual-ams-unload");
+        {
+            let (engine, input) = setup_acceptable_bambu_live_weight(&path).unwrap();
+            assert!(!engine
+                .db
+                .can_unload_without_weighing(&input.printer_id, &input.slot_id, &input.spool_id)
+                .unwrap());
+            engine
+                .accept_bambu_live_weight_estimate(input.clone())
+                .unwrap();
+            assert!(engine
+                .db
+                .can_unload_without_weighing(&input.printer_id, &input.slot_id, &input.spool_id)
+                .unwrap());
+            if replace {
+                let spool = engine.db.get_spool_by_id(&input.spool_id).unwrap().unwrap();
+                engine.create_spool(serde_json::from_value(serde_json::json!({
+                    "id":"replacement", "master_id":spool.master_id,"status":"IN_STOCK","initial_weight_g":1000,
+                })).unwrap()).unwrap();
+            }
+            let readings: i64 = engine
+                .db
+                .connection()
+                .query_row("SELECT COUNT(*) FROM weight_readings", [], |r| r.get(0))
+                .unwrap();
+            engine
+                .operate_printer_slot(PrinterSlotOperationInput {
+                    printer_id: input.printer_id.clone(),
+                    slot_id: input.slot_id.clone(),
+                    expected_current_spool_id: Some(input.spool_id.clone()),
+                    target_spool_id: replace.then(|| "replacement".into()),
+                    outgoing_measured_total_g: None,
+                    incoming_measured_total_g: None,
+                })
+                .unwrap();
+            let overview = engine
+                .db
+                .get_printer_overview(&input.printer_id)
+                .unwrap()
+                .unwrap();
+            assert_eq!(
+                overview
+                    .slots
+                    .iter()
+                    .find(|s| s.slot_id == input.slot_id)
+                    .unwrap()
+                    .spool_id
+                    .as_deref(),
+                if replace { Some("replacement") } else { None }
+            );
+            let outgoing = engine.db.get_spool_by_id(&input.spool_id).unwrap().unwrap();
+            assert_eq!(outgoing.remaining_g, Some(300));
+            assert_eq!(outgoing.status, "IN_STOCK");
+            assert_eq!(
+                engine
+                    .db
+                    .connection()
+                    .query_row("SELECT COUNT(*) FROM weight_readings", [], |r| r
+                        .get::<_, i64>(0))
+                    .unwrap(),
+                readings,
+                "no fabricated manual measurement"
+            );
+        }
+        std::fs::remove_file(path).unwrap();
+    }
+}
+
+#[test]
+fn manual_ams_unload_requires_weighing_for_uncertain_or_unaccepted_live_evidence() {
+    for reason in [
+        "unaccepted",
+        "duplicate",
+        "missing_rfid",
+        "stale",
+        "offline",
+        "reading",
+        "removed",
+        "changed_weight",
+        "changed_identity",
+    ] {
+        let path = temp_db_path("manual-ams-unload-guard");
+        {
+            let (engine, input) = setup_acceptable_bambu_live_weight(&path).unwrap();
+            if reason != "unaccepted" {
+                engine
+                    .accept_bambu_live_weight_estimate(input.clone())
+                    .unwrap();
+            }
+            if reason == "duplicate" {
+                let mut duplicate = engine.db.get_spool_by_id(&input.spool_id).unwrap().unwrap();
+                duplicate.id = "duplicate".into();
+                duplicate.qr_code = None;
+                duplicate.status = "IN_STOCK".into();
+                engine.db.insert_spool(&duplicate).unwrap();
+            }
+            if reason == "missing_rfid" {
+                engine
+                    .update_spool_rfid_tag(UpdateSpoolRfidTagInput {
+                        spool_id: input.spool_id.clone(),
+                        rfid_tag: None,
+                        rfid_observed_at: None,
+                    })
+                    .unwrap();
+            }
+            let mut integration = engine
+                .db
+                .list_bambu_live_integrations()
+                .unwrap()
+                .remove(0)
+                .config;
+            let observed = integration.observed_state.as_mut().unwrap();
+            match reason {
+                "stale" => {
+                    observed.trays[0].last_weight_seen_at = Some("2000-01-01T00:00:00Z".into())
+                }
+                "offline" => observed.mqtt_connected = false,
+                "reading" => observed.ams_reading_bits = Some("1".into()),
+                "removed" => observed.trays[0].loaded = false,
+                "changed_weight" => {
+                    observed.trays[0].remaining_grams = Some(290);
+                    observed.trays[0].remaining_percent = Some(29);
+                }
+                "changed_identity" => observed.trays[0].tray_uuid = Some("replacement-rfid".into()),
+                _ => {}
+            }
+            engine
+                .db
+                .save_bambu_live_integration(&input.printer_id, &integration)
+                .unwrap();
+            let before = engine
+                .db
+                .get_spool_by_id(&input.spool_id)
+                .unwrap()
+                .unwrap()
+                .remaining_g;
+            assert!(
+                !engine
+                    .db
+                    .can_unload_without_weighing(&input.printer_id, &input.slot_id, &input.spool_id)
+                    .unwrap(),
+                "{reason}"
+            );
+            assert!(
+                engine
+                    .operate_printer_slot(PrinterSlotOperationInput {
+                        printer_id: input.printer_id.clone(),
+                        slot_id: input.slot_id.clone(),
+                        expected_current_spool_id: Some(input.spool_id.clone()),
+                        target_spool_id: None,
+                        outgoing_measured_total_g: None,
+                        incoming_measured_total_g: None,
+                    })
+                    .is_err(),
+                "{reason}"
+            );
+            assert_eq!(
+                engine
+                    .db
+                    .get_spool_by_id(&input.spool_id)
+                    .unwrap()
+                    .unwrap()
+                    .remaining_g,
+                before
+            );
+            assert_eq!(
+                engine
+                    .db
+                    .get_printer_overview(&input.printer_id)
+                    .unwrap()
+                    .unwrap()
+                    .slots[0]
+                    .spool_id
+                    .as_deref(),
+                Some(input.spool_id.as_str())
+            );
+        }
+        std::fs::remove_file(path).unwrap();
+    }
+}

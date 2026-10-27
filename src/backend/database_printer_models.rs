@@ -52,6 +52,10 @@ pub struct PrinterAmsSlotRow {
     pub live_remaining_percent: Option<i64>,
     pub live_remaining_grams: Option<i64>,
     pub live_weight_seen_at: Option<String>,
+    #[serde(default)]
+    pub live_weight_review_samples: Option<i64>,
+    #[serde(default)]
+    pub live_can_unload_without_weighing: Option<bool>,
     pub live_last_identity_seen_at: Option<String>,
     pub live_match_status: Option<String>,
     pub live_match_note: Option<String>,

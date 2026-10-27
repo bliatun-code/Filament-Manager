@@ -111,9 +111,9 @@ export function SettingsSectionHeader({
     <div className="border-b border-slate-200/80 px-5 py-5 dark:border-slate-700/80">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="max-w-3xl">
-          <div className="section-eyebrow">{eyebrow}</div>
+          {eyebrow ? <div className="section-eyebrow">{eyebrow}</div> : null}
           {description ? (
-            <div className={joinClassNames("mt-2 text-sm", descriptionClassName)}>
+            <div className={joinClassNames(eyebrow ? "mt-2 text-sm" : "text-sm", descriptionClassName)}>
               {description}
             </div>
           ) : null}

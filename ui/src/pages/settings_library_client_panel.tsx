@@ -317,12 +317,6 @@ export function SettingsLibraryClientAdvanced({
             <div className="font-semibold text-slate-900 dark:text-slate-100">
               {t("settings.librarySyncAdvancedTitle", "Advanced host details")}
             </div>
-            <div className="mt-1 text-slate-600 dark:text-slate-300">
-              {t(
-                "settings.librarySyncAdvancedHint",
-                "Open this only when you need diagnostics or cached snapshot details.",
-              )}
-            </div>
           </div>
           <button
             type="button"

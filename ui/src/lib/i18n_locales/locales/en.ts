@@ -275,6 +275,7 @@ export const enDictionary: DictionaryNode = {
         "Hide the suggestion for {name} on this device",
       hideLowStockSuggestion: "Hide suggestion",
       noVisibleLowStockSuggestions: "No visible purchase suggestions.",
+      openInventory: "Open inventory",
       openLowStockInventory: "Open low-stock inventory",
       lowStockSuggestionsOptional:
         "These suggestions are optional and can be hidden on this device.",
@@ -1017,6 +1018,11 @@ export const enDictionary: DictionaryNode = {
         "No RFID identity is available yet for the selected source slot.",
       rfidCaptureFailed:
         "Could not refresh RFID capture from the printer.",
+      "rfidRemove": "Remove saved RFID",
+      "rfidRemoved": "Saved RFID removed from this roll.",
+      "rfidRemoveHint": "Removes the saved RFID link. The roll, weight and slot assignment are kept.",
+      "amsWeightAccept": "Accept AMS weight",
+      "amsWeightReview": "Check weight: repeated AMS estimates differ from the saved weight.",
       rfidSaved: "RFID tag saved on the selected roll.",
       saveRfid: "Save RFID",
       markEmpty: "Mark as used up (empty)",
@@ -2487,7 +2493,7 @@ export const enDictionary: DictionaryNode = {
         "This client shows the host catalog. Swatch fixes and vendor catalog refreshes are saved on the host.",
       catalogRefreshTitle: "Vendor catalog updates",
       catalogRefreshHelp:
-        "Discover which material types are currently available, then refresh one material type at a time. Discovery imports nothing and never changes lifecycle status.",
+        "Choose a vendor and material type to add new products and update the catalog.",
       discoverCatalogMaterials: "Discover available materials",
       discoveringCatalogMaterials: "Discovering available materials",
       availableCatalogMaterials: "Available materials",

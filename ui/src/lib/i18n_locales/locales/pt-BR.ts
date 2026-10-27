@@ -273,6 +273,7 @@ export const ptBRDictionary: DictionaryNode = {
       "Ocultar a sugestão para {name} neste dispositivo",
     hideLowStockSuggestion: "Ocultar sugestão",
     noVisibleLowStockSuggestions: "Nenhuma sugestão de compra visível.",
+    openInventory: "Abrir estoque",
     openLowStockInventory: "Abrir inventário com estoque baixo",
     lowStockSuggestionsOptional:
       "Estas sugestões são opcionais e podem ser ocultadas individualmente neste dispositivo.",
@@ -1142,6 +1143,11 @@ export const ptBRDictionary: DictionaryNode = {
     rfidPresetSignal: "Predefinição de configurações de filamento",
     rfidPrinterLive: "Impressora ao vivo",
     rfidRegistered: "RFID registrado",
+    "rfidRemove": "Remover RFID salvo",
+    "rfidRemoved": "O RFID salvo foi removido deste rolo.",
+    "rfidRemoveHint": "Remove o vínculo RFID salvo. O rolo, o peso e a atribuição ao compartimento são mantidos.",
+    "amsWeightAccept": "Aceitar peso do AMS",
+    "amsWeightReview": "Verifique o peso: estimativas AMS repetidas diferem do peso salvo.",
     rfidSaved: "Tag RFID salva na bobina selecionada.",
     rfidSlotActive: "Ativo",
     rfidSlotEmpty: "Vazio",
@@ -1865,7 +1871,7 @@ export const ptBRDictionary: DictionaryNode = {
     catalogRefreshClientHostOnly:
       "As atualizações do catálogo do fornecedor são enviadas para host. Este cliente ainda mostra e edita o catálogo host compartilhado.",
     catalogRefreshHelp:
-      "Descubra os tipos de material disponíveis no momento e atualize um tipo por vez. A descoberta não importa nada nem altera o estado do ciclo de vida.",
+      "Escolha um fornecedor e um tipo de material para adicionar novos produtos e atualizar o catálogo.",
     discoverCatalogMaterials: "Descobrir materiais disponíveis",
     discoveringCatalogMaterials: "Descobrindo materiais disponíveis",
     availableCatalogMaterials: "Materiais disponíveis",

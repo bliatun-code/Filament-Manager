@@ -7,6 +7,7 @@ import {
   AMS_WEIGHT_ESTIMATE_MAX_BASIS_G,
   buildAcceptableAmsWeightEstimate,
   canOfferAmsWeightEstimateFromSource,
+  canUnloadWithoutWeighing,
   isCurrentAmsWeightEstimate,
   sameAmsWeightEstimate,
 } from "./printer_ams_weight_estimate";
@@ -387,4 +388,18 @@ test("an open AMS action remains visible only while the current live snapshot st
     ),
     false,
   );
+});
+
+test("unloading without weighing needs Host support, matching stored weight and fresh evidence", () => {
+  const loaded=slot({live_can_unload_without_weighing:true,spool_remaining_g:280});
+  const current=row();current.spool.remaining_g=280;
+  assert.equal(canUnloadWithoutWeighing(loaded,current,tray(),"LIVE",liveConfig(),nowMs),true);
+  for (const patch of [{live_can_unload_without_weighing:null},{live_match_status:"ambiguous"},
+    {live_remaining_grams:270},{spool_remaining_g:1000},{live_weight_seen_at:"2000-01-01T00:00:00Z"}]) {
+    assert.equal(canUnloadWithoutWeighing({...loaded,...patch},current,tray(),"LIVE",liveConfig(),nowMs),false);
+  }
+  assert.equal(canUnloadWithoutWeighing(loaded,current,tray(),"CACHED",liveConfig(),nowMs),false);
+  assert.equal(canUnloadWithoutWeighing(loaded,current,tray(),"LIVE",liveConfig({mqttConnected:false}),nowMs),false);
+  current.spool.remaining_g=1000;
+  assert.equal(canUnloadWithoutWeighing(loaded,current,tray(),"LIVE",liveConfig(),nowMs),false);
 });

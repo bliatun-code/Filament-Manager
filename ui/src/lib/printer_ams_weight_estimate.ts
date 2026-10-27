@@ -167,3 +167,19 @@ export function sameAmsWeightEstimate(
       current.weightSeenAt === expected.weightSeenAt,
   );
 }
+
+/** The Host advertises support; fresh local evidence still has to agree. */
+export function canUnloadWithoutWeighing(
+  slot: PrinterAmsSlotRow,
+  row: SpoolWithMasterRow | null | undefined,
+  tray: BambuLiveObservedTray | null | undefined,
+  source: "LIVE" | "CACHED" | "OFFLINE",
+  config: BambuLiveIntegrationSettings | null | undefined,
+  nowMs = Date.now(),
+): boolean {
+  if (slot.live_can_unload_without_weighing !== true || !row ||
+      !canOfferAmsWeightEstimateFromSource(source, config)) return false;
+  const estimate = buildAcceptableAmsWeightEstimate(slot, row, tray, nowMs);
+  return !!estimate && estimate.remainingGrams === slot.spool_remaining_g &&
+    estimate.remainingGrams === row.spool.remaining_g;
+}

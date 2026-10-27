@@ -188,3 +188,17 @@ test("printer weight drafts never truncate exponent or fractional notation", asy
     }
   }
 });
+
+test("confirmed AMS clear and swap use atomic operations without fabricated scale readings", async () => {
+  for (const mode of ["clear","assign"]) {
+    const task={type:"printer-weight",mode,
+      printerId:"p",slotId:"s",currentSpoolId:"old",targetSpoolId:mode==="assign"?"new":null,
+      outgoingWeightConfirmed:true,incomingWeightRequired:false};
+    const harness=createHarness();
+    await Promise.all([harness.mutations.submitPrinterSlotOperation("","","",task),harness.mutations.submitPrinterSlotOperation("","","",task)]);
+    assert.equal(harness.state.activeTaskSheet,null);
+    assert.equal(harness.fetchCalls.length,1);
+    assert.deepEqual(JSON.parse(harness.fetchCalls[0].init.body),{expected_current_spool_id:"old",
+      target_spool_id:mode==="assign"?"new":null,outgoing_measured_total_g:null,incoming_measured_total_g:null});
+  }
+});

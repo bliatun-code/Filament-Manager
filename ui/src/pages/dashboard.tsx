@@ -486,10 +486,10 @@ export default function DashboardPage({
           <button
             key={stat.id}
             type="button"
-            className="min-w-0 rounded py-4 text-left outline-none hover:bg-slate-100/60 focus-visible:ring-2 focus-visible:ring-sky-400 dark:hover:bg-slate-800/50"
+            className="app-control-focus group min-w-0 rounded py-4 text-left outline-none focus-visible:ring-2 focus-visible:ring-[var(--app-theme-focus-outline)]"
             onClick={() => onNavigate?.(stat.id === "total" ? "inventory" : stat.id === "outboundLoans" ? "loans" : "statistics")}
           >
-            <span className={`block text-xs font-medium ${dashboardOverviewStyles.muted}`}>
+            <span className={`block text-xs font-medium underline-offset-4 group-hover:decoration-[var(--app-theme-accent)] group-hover:underline ${dashboardOverviewStyles.muted}`}>
               {stat.title}
             </span>
             <span className={`mt-1 block text-3xl font-semibold tabular-nums tracking-tight ${dashboardOverviewStyles.primary}`}>{setupDataAvailable ? stat.value : "—"}</span>

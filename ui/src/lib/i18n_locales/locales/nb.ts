@@ -276,6 +276,7 @@ export const nbDictionary: DictionaryNode = {
         "Skjul forslaget for {name} på denne enheten",
       hideLowStockSuggestion: "Skjul forslag",
       noVisibleLowStockSuggestions: "Ingen synlige kjøpsforslag.",
+      openInventory: "Åpne lager",
       openLowStockInventory: "Åpne lager med lav beholdning",
       lowStockSuggestionsOptional:
         "Forslagene er valgfrie og kan skjules enkeltvis på denne enheten.",
@@ -1022,6 +1023,11 @@ export const nbDictionary: DictionaryNode = {
         "Ingen RFID-identitet er tilgjengelig ennå for valgt kildespor.",
       rfidCaptureFailed:
         "Kunne ikke oppdatere RFID-fangsten fra printeren.",
+      "rfidRemove": "Fjern lagret RFID",
+      "rfidRemoved": "Lagret RFID er fjernet fra denne rullen.",
+      "rfidRemoveHint": "Fjerner den lagrede RFID-koblingen. Rullen, vekten og sportildelingen beholdes.",
+      "amsWeightAccept": "Aksepter vekt fra AMS",
+      "amsWeightReview": "Sjekk vekten: gjentatte AMS-estimater avviker fra lagret vekt.",
       rfidSaved: "RFID-identitet lagret på valgt filament.",
       saveRfid: "Lagre RFID",
       markEmpty: "Marker som oppbrukt (tom)",
@@ -2501,7 +2507,7 @@ export const nbDictionary: DictionaryNode = {
         "Denne klienten viser vertens katalog. Endringer i fargeprøver og leverandørkataloger lagres på verten.",
       catalogRefreshTitle: "Oppdatering av leverandørkatalog",
       catalogRefreshHelp:
-        "Finn hvilke materialtyper som er tilgjengelige nå, og oppdater deretter én materialtype om gangen. Søket importerer ingenting og endrer aldri livssyklusstatus.",
+        "Velg leverandør og materialtype for å hente nye produkter og oppdatere katalogen.",
       discoverCatalogMaterials: "Finn tilgjengelige materialtyper",
       discoveringCatalogMaterials: "Finner tilgjengelige materialtyper",
       availableCatalogMaterials: "Tilgjengelige materialtyper",

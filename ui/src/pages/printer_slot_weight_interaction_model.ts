@@ -54,8 +54,9 @@ export function prepareIncomingWeightDialog(
   row: SpoolWithMasterRow,
   liveTray?: BambuLiveObservedTray | null,
   nowMs = Date.now(),
+  outgoingWeightConfirmed = false,
 ): PreparedSlotWeightDialog {
-  const prompt = buildIncomingWeightPrompt(printerId, slot, row, liveTray, nowMs);
+  const prompt = buildIncomingWeightPrompt(printerId, slot, row, liveTray, nowMs, outgoingWeightConfirmed);
   return {
     prompt,
     incomingWeightValue: prompt.requiresIncomingWeight ? buildMeasuredTotalWeightDraft(
@@ -70,9 +71,10 @@ export function prepareIncomingWeightDialog(
 export function prepareEmptySlotWeightDialog(
   printerId: string,
   slot: PrinterAmsSlotRow,
+  outgoingWeightConfirmed = false,
 ): PreparedSlotWeightDialog {
   return {
-    prompt: buildEmptySlotWeightPrompt(printerId, slot),
+    prompt: buildEmptySlotWeightPrompt(printerId, slot, outgoingWeightConfirmed),
     incomingWeightValue: "",
     outgoingWeightValue: "",
   };

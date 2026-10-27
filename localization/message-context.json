@@ -3,6 +3,12 @@
   "messages": [
     {
       "surface": "desktop",
+      "key": "dashboard.openInventory",
+      "meaning": "Short navigation action beside the Low Stock heading. Opens inventory filtered to low-stock rolls. Match the concise action wording of Open printers.",
+      "screenshot": "docs/images/v0.35.0/overview.png"
+    },
+    {
+      "surface": "desktop",
       "key": "dashboard.spoolsOnHand",
       "meaning": "Headline count of physical rolls currently on hand, including rolls loaded in printers and rolls borrowed from others. Excludes rolls loaned out, empty or lost. Do not translate as total lifetime roll count.",
       "screenshot": "docs/images/v0.35.0/overview.png"
@@ -1275,6 +1281,42 @@
       "key": "storage.searchShortPlaceholder",
       "meaning": "Short inventory search placeholder in the compact toolbar, especially on narrow phones. Searches filament, colour, owner and placement; the longer associated accessible label explains the fields. Keep short enough to fit a 320 px viewport.",
       "screenshot": "docs/images/v0.35.0/companion-mobile.png"
+    },
+    {
+      "surface": "desktop",
+      "key": "inventory.rfidRemove",
+      "meaning": "Action in the roll properties RFID section. Clears only this inventory roll’s saved RFID identity; never deletes the roll or clears its printer slot.",
+      "screenshot": "docs/images/v0.35.0/inventory.png"
+    },
+    {
+      "surface": "desktop",
+      "key": "inventory.rfidRemoved",
+      "meaning": "Success notice after clearing a roll’s saved RFID identity. Weight and slot assignment are unchanged.",
+      "screenshot": "docs/images/v0.35.0/inventory.png"
+    },
+    {
+      "surface": "desktop",
+      "key": "inventory.rfidRemoveHint",
+      "meaning": "Explains the limited effect of removing a saved RFID binding, distinguishing it from deleting inventory or physically removing the roll.",
+      "screenshot": "docs/images/v0.35.0/inventory.png"
+    },
+    {
+      "surface": "desktop",
+      "key": "inventory.amsWeightAccept",
+      "meaning": "Printer slot action replacing Update weight after at least three stable, rejected AMS estimates. Opens the existing review dialog; does not accept the estimate immediately.",
+      "screenshot": "docs/images/v0.35.0/printers.png"
+    },
+    {
+      "surface": "desktop",
+      "key": "inventory.amsWeightReview",
+      "meaning": "Tooltip for the highlighted Accept AMS weight action. Repeated recent estimates disagree with inventory. AMS estimates are not scale measurements.",
+      "screenshot": "docs/images/v0.35.0/printers.png"
+    },
+    {
+      "surface": "desktop",
+      "key": "settings.catalogRefreshHelp",
+      "meaning": "Introduction to vendor catalog updates. Selecting a vendor and material type and refreshing adds products and updates the selected catalog family. The separate discovery action lists available material types.",
+      "screenshot": "docs/images/v0.35.0/settings.png"
     }
   ],
   "groups": [
@@ -1750,7 +1792,7 @@
   ],
   "coverage": {
     "strategy": "uncovered-key-delta",
-    "reviewedUncoveredKeyCount": 2116,
-    "reviewedUncoveredKeyFingerprint": "sha256:31251b256abb6b07d01d298160d3f7d048227ad24400a3eaefa2a3d182e95210"
+    "reviewedUncoveredKeyCount": 2115,
+    "reviewedUncoveredKeyFingerprint": "sha256:8ce23fe603362e9dbedce889a2ff293baceef3860a82a7027a6870d404be8575"
   }
 }

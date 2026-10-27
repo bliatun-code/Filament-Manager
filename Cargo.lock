@@ -329,7 +329,7 @@ dependencies = [
 
 [[package]]
 name = "bambu-filament-manager"
-version = "0.35.0"
+version = "0.35.1"
 dependencies = [
  "axum",
  "base64 0.23.1",
@@ -1230,7 +1230,7 @@ dependencies = [
 
 [[package]]
 name = "filament-manager-core"
-version = "0.35.0"
+version = "0.35.1"
 dependencies = [
  "rand",
  "reqwest",

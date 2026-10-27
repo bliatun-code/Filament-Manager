@@ -24,6 +24,7 @@ type PrinterSlotAssignmentStatusProps = {
   displayState: PrinterSlotDisplayState;
   currentRollStyle?: CSSProperties;
   selectCandidate?: (row: SpoolWithMasterRow) => void;
+  clearSlot: () => void;
   openRfidOverrideDialog: (
     printer: PrinterOverviewRow,
     slot: PrinterAmsSlotRow,
@@ -65,6 +66,7 @@ export function PrinterSlotAssignmentStatus({
   displayState,
   currentRollStyle,
   selectCandidate,
+  clearSlot,
   openRfidOverrideDialog,
   registerLiveRfidCandidate,
   createLiveBambuCatalogSpool,
@@ -123,8 +125,10 @@ export function PrinterSlotAssignmentStatus({
     const catalogOpenState = effectiveLiveTray
       ? buildSlotCatalogOnboardingOpenState(slot, effectiveLiveTray, { busy })
       : null;
+    const catalogRequiresEmptySlot = catalogOpenState?.reason === "occupied_slot" ||
+      (busy && Boolean(slot.spool_id));
     const catalogBlockLabel =
-      catalogOpenState?.reason === "occupied_slot"
+      catalogRequiresEmptySlot
         ? t("printers.liveCatalogRequiresEmptySlot", "clear slot first")
         : catalogOpenState?.reason === "missing_rfid"
           ? t("printers.liveCatalogRequiresRfid", "wait for RFID")
@@ -165,6 +169,15 @@ export function PrinterSlotAssignmentStatus({
                   disabled={busy || catalogOpenState?.disabled}
                 >
                   {t("printers.addCatalogRollAndSaveRfid", "Add + save RFID")}
+                </button>
+              ) : catalogRequiresEmptySlot ? (
+                <button
+                  type="button"
+                  className={printerSlotMiniActionButtonClassName("candidate")}
+                  onClick={clearSlot}
+                  disabled={busy}
+                >
+                  {catalogBlockLabel}
                 </button>
               ) : catalogBlockLabel ? (
                 <span className="ml-auto shrink-0 text-[10px] text-slate-400 dark:text-slate-500">
@@ -326,6 +339,20 @@ export function PrinterSlotAssignmentStatus({
       </div>
     );
   };
+
+  if (displayState.duplicateRfidRolls.length > 1) {
+    return <div role="group" aria-label={t("settings.bambuLiveMatchNoteDuplicateIdentity", "Multiple inventory rolls share this saved RFID/AMS identity.")} className="mt-2 rounded-lg border border-amber-500/40 px-3 py-2 text-xs">
+      <div className="mt-1 break-all font-mono text-[11px]">{effectiveLiveIdentity}</div>
+      <ul className="mt-2 space-y-1">
+        {displayState.duplicateRfidRolls.map(row => <li key={row.spool.id} className="flex flex-wrap items-center gap-x-2 gap-y-1">
+          <span className="font-semibold">{formatSpoolReference(row.spool.id)}</span>
+          <span>{row.master.filament_name} · {row.master.color_name}</span>
+          {row.spool.id === slot.spool_id ? <span>{t("printers.liveCandidateCurrent", "current")}</span> : null}
+          <span className="ml-auto">{formatGrams(row.spool.remaining_g, "dash", locale)}</span>
+        </li>)}
+      </ul>
+    </div>;
+  }
 
   if (!slot.spool_id) {
     return (

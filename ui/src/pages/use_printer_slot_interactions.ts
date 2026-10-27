@@ -1,6 +1,7 @@
 import {
   buildAcceptableAmsWeightEstimate,
   canOfferAmsWeightEstimateFromSource,
+  canUnloadWithoutWeighing,
   isCurrentAmsWeightEstimate,
   sameAmsWeightEstimate,
 } from "../lib/printer_ams_weight_estimate";
@@ -322,25 +323,6 @@ export function usePrinterSlotInteractions({
     }));
   }, []);
 
-  const openEmptySlotWeightDialog = useCallback(
-    (printerId: string, slot: PrinterAmsSlotRow) => {
-      if (
-        !mountedRef.current || scopeRef.current !== scope || !slot.spool_id ||
-        !librarySyncReady || busy || weightOperationRef.current
-      ) {
-        return;
-      }
-      setError(null);
-      setInfo(null);
-      const prepared = prepareEmptySlotWeightDialog(printerId, slot);
-      weightPromptRef.current = prepared.prompt;
-      setIncomingWeightPrompt(prepared.prompt);
-      setIncomingWeightValue(prepared.incomingWeightValue);
-      setOutgoingWeightValue(prepared.outgoingWeightValue);
-    },
-    [busy, librarySyncReady, scope, setError, setInfo],
-  );
-
   const cancelIncomingWeightDialog = useCallback(() => {
     if (
       busy || weightOperationRef.current || !mountedRef.current ||
@@ -418,6 +400,40 @@ export function usePrinterSlotInteractions({
     librarySyncReady, reloadData, scope, setBusy, setError, setInfo, tauri, t,
   ]);
 
+  const outgoingWeightConfirmed = useCallback((printerId: string, slot: PrinterAmsSlotRow) => {
+    const { liveConfig, tray } = findLiveTrayForSlot(printerId, slot);
+    return canUnloadWithoutWeighing(slot, findSpoolById(slot.spool_id), tray, clientPrinterSource, liveConfig);
+  }, [findLiveTrayForSlot, findSpoolById, clientPrinterSource]);
+
+  const openEmptySlotWeightDialog = useCallback(
+    (printerId: string, slot: PrinterAmsSlotRow) => {
+      if (
+        !mountedRef.current || scopeRef.current !== scope || !slot.spool_id ||
+        !librarySyncReady || busy || weightOperationRef.current
+      ) {
+        return;
+      }
+      setError(null);
+      setInfo(null);
+      const prepared = prepareEmptySlotWeightDialog(printerId, slot, outgoingWeightConfirmed(printerId, slot));
+      weightPromptRef.current = prepared.prompt;
+      if (!prepared.prompt.requiresOutgoingWeight) {
+        void runWeightOperation(prepared.prompt, () => writePrinterSlotOperation(
+          {clientReadOnly, clientHostBaseUrl, clientLibraryId, clientTargetGeneration},
+          {printer_id: printerId, slot_id: slot.slot_id,
+            expected_current_spool_id: slot.spool_id ?? null, target_spool_id: null,
+            outgoing_measured_total_g: null, incoming_measured_total_g: null},
+        ), t("printers.slotUpdated", "Printer slot updated."),
+          t("printers.error.updateSlot", "Failed to update printer slot."));
+        return;
+      }
+      setIncomingWeightPrompt(prepared.prompt);
+      setIncomingWeightValue(prepared.incomingWeightValue);
+      setOutgoingWeightValue(prepared.outgoingWeightValue);
+    },
+    [busy, librarySyncReady, scope, setError, setInfo, outgoingWeightConfirmed, runWeightOperation, clientReadOnly, clientHostBaseUrl, clientLibraryId, clientTargetGeneration, t],
+  );
+
   const openIncomingWeightDialog = useCallback(
     (printerId: string, slot: PrinterAmsSlotRow, row: SpoolWithMasterRow) => {
       if (
@@ -438,6 +454,8 @@ export function usePrinterSlotInteractions({
         slot,
         row,
         liveTray,
+        Date.now(),
+        outgoingWeightConfirmed(printerId, slot),
       );
       weightPromptRef.current = prepared.prompt;
       if (!prepared.prompt.requiresIncomingWeight && !prepared.prompt.requiresOutgoingWeight) {
@@ -454,7 +472,7 @@ export function usePrinterSlotInteractions({
       setIncomingWeightValue(prepared.incomingWeightValue);
       setOutgoingWeightValue(prepared.outgoingWeightValue);
     },
-    [busy, clientHostBaseUrl, clientLibraryId, clientReadOnly, clientTargetGeneration, clientPrinterSource, findLiveTrayForSlot, librarySyncReady, runWeightOperation, scope, setError, setInfo, t],
+    [busy, clientHostBaseUrl, clientLibraryId, clientReadOnly, clientTargetGeneration, clientPrinterSource, findLiveTrayForSlot, librarySyncReady, outgoingWeightConfirmed, runWeightOperation, scope, setError, setInfo, t],
   );
 
   const confirmIncomingWeightDialog = useCallback(async () => {

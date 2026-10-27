@@ -1,8 +1,10 @@
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import type {
   CatalogRefreshResult,
   CatalogSourceAuditResult,
 } from "../lib/tauri_client";
+
+export const CATALOG_RESULT_NOTICE_DURATION_MS = 10_000;
 
 export function useSettingsCatalogRefreshResult() {
   const [catalogRefreshSummary, setCatalogRefreshSummary] =
@@ -11,6 +13,16 @@ export function useSettingsCatalogRefreshResult() {
     useState<CatalogSourceAuditResult | null>(null);
   const [catalogRefreshLog, setCatalogRefreshLog] = useState("");
   const [showCatalogRefreshLog, setShowCatalogRefreshLog] = useState(false);
+
+  useEffect(() => {
+    if (!catalogRefreshSummary && !catalogSourceAuditSummary) return;
+    const timer = window.setTimeout(() => {
+      // An older result must never dismiss a later completion.
+      setCatalogRefreshSummary(current => current === catalogRefreshSummary ? null : current);
+      setCatalogSourceAuditSummary(current => current === catalogSourceAuditSummary ? null : current);
+    }, CATALOG_RESULT_NOTICE_DURATION_MS);
+    return () => window.clearTimeout(timer);
+  }, [catalogRefreshSummary, catalogSourceAuditSummary]);
 
   const beginCatalogRefreshResult = useCallback(() => {
     setCatalogRefreshSummary(null);
@@ -35,6 +47,8 @@ export function useSettingsCatalogRefreshResult() {
   );
 
   const failCatalogRefreshResult = useCallback((message: string) => {
+    setCatalogRefreshSummary(null);
+    setCatalogSourceAuditSummary(null);
     setCatalogRefreshLog(message);
   }, []);
 

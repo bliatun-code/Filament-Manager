@@ -279,21 +279,21 @@ test("tablet and desktop compact overlays size to content while wide add-spool a
 
   assert.match(
     css,
-    /@media \(min-width: 768px\)\s*\{\s*\.task-sheet-backdrop\[data-layout="tablet"\] \.task-sheet-shell:not\(\.task-sheet-shell-wide\),\s*\.task-sheet-backdrop\[data-layout="desktop"\] \.task-sheet-shell:not\(\.task-sheet-shell-wide\),\s*\.detail-modal-backdrop\[data-layout="tablet"\] \.detail-modal-shell,\s*\.detail-modal-backdrop\[data-layout="desktop"\] \.detail-modal-shell\s*\{[^}]*height: auto;[^}]*max-height: calc\(100dvh - 1\.8rem\);/,
+    /@media \(min-width: 768px\)\s*\{\s*\.task-sheet-backdrop\[data-layout="tablet"\] \.task-sheet-shell:not\(\.task-sheet-shell-wide\),\s*\.task-sheet-backdrop\[data-layout="desktop"\] \.task-sheet-shell:not\(\.task-sheet-shell-wide\),\s*\.detail-modal-backdrop\[data-layout="tablet"\] \.detail-modal-shell,\s*\.detail-modal-backdrop\[data-layout="desktop"\] \.detail-modal-shell\s*\{[^}]*height: auto;[^}]*max-height: calc\(var\(--companion-overlay-height, 100dvh\) - 1\.8rem\);/,
   );
   assert.match(
     css,
-    /\.task-sheet-backdrop\[data-layout="tablet"\] \.task-sheet-shell:not\(\.task-sheet-shell-wide\) > \.task-sheet,\s*\.task-sheet-backdrop\[data-layout="desktop"\] \.task-sheet-shell:not\(\.task-sheet-shell-wide\) > \.task-sheet,\s*\.detail-modal-backdrop\[data-layout="tablet"\] \.detail-modal\.detail-panel,\s*\.detail-modal-backdrop\[data-layout="desktop"\] \.detail-modal\.detail-panel\s*\{[^}]*height: auto;[^}]*max-height: calc\(100dvh - 1\.8rem\);/,
+    /\.task-sheet-backdrop\[data-layout="tablet"\] \.task-sheet-shell:not\(\.task-sheet-shell-wide\) > \.task-sheet,\s*\.task-sheet-backdrop\[data-layout="desktop"\] \.task-sheet-shell:not\(\.task-sheet-shell-wide\) > \.task-sheet,\s*\.detail-modal-backdrop\[data-layout="tablet"\] \.detail-modal\.detail-panel,\s*\.detail-modal-backdrop\[data-layout="desktop"\] \.detail-modal\.detail-panel\s*\{[^}]*height: auto;[^}]*max-height: calc\(var\(--companion-overlay-height, 100dvh\) - 1\.8rem\);/,
   );
   assert.match(
     css,
-    /\.task-sheet-shell\s*\{[^}]*height: calc\(100dvh - 1\.8rem\);[^}]*max-height: calc\(100dvh - 1\.8rem\);/,
+    /\.task-sheet-shell\s*\{[^}]*height: calc\(var\(--companion-overlay-height, 100dvh\) - 1\.8rem\);[^}]*max-height: calc\(var\(--companion-overlay-height, 100dvh\) - 1\.8rem\);/,
   );
   assert.match(css, /\.task-sheet-body\s*\{[^}]*overflow: auto;/);
   assert.match(css, /\.detail-modal-body\s*\{[^}]*overflow-y: auto;/);
   assert.match(
     css,
-    /@media \(max-width: 767px\)[\s\S]*\.task-sheet-shell\s*\{[^}]*height: calc\(100dvh - max\(1rem, env\(safe-area-inset-top\)\) - max\(1rem, env\(safe-area-inset-bottom\)\)\);/,
+    /@media \(max-width: 767px\)[\s\S]*\.task-sheet-shell\s*\{[^}]*height: calc\(var\(--companion-overlay-height, 100dvh\) - max\(1rem, env\(safe-area-inset-top\)\) - max\(1rem, env\(safe-area-inset-bottom\)\)\);/,
   );
 });
 
@@ -311,7 +311,7 @@ test("phone CSS keeps root headers secondary, task sheets scrollable, and modal 
   assert.match(css, /\.printer-picker-row \.dense-list-side\s*\{[\s\S]*justify-items: end;[\s\S]*text-align: right;/);
   assert.match(css, /@media \(max-width: 767px\)[\s\S]*\.storage-shell \.dense-list-row\s*\{[\s\S]*grid-template-columns: minmax\(0, 1fr\) auto;[\s\S]*align-items: start;/);
   assert.match(css, /@media \(max-width: 767px\)[\s\S]*\.storage-shell \.dense-list-side\s*\{[\s\S]*justify-items: end;[\s\S]*text-align: right;/);
-  assert.match(css, /@media \(max-width: 767px\)[\s\S]*\.task-sheet-shell\s*\{[\s\S]*height: calc\(100dvh - max\(1rem, env\(safe-area-inset-top\)\) - max\(1rem, env\(safe-area-inset-bottom\)\)\);/);
+  assert.match(css, /@media \(max-width: 767px\)[\s\S]*\.task-sheet-shell\s*\{[\s\S]*height: calc\(var\(--companion-overlay-height, 100dvh\) - max\(1rem, env\(safe-area-inset-top\)\) - max\(1rem, env\(safe-area-inset-bottom\)\)\);/);
   assert.match(css, /@media \(max-width: 767px\)[\s\S]*\.task-sheet-backdrop\s*\{[\s\S]*align-items: start;/);
   assert.match(css, /@media \(max-width: 767px\)[\s\S]*\.printer-roster\s*\{[\s\S]*overflow: hidden;/);
   assert.match(css, /@media \(max-width: 767px\)[\s\S]*\.printer-roster > \.stack\s*\{[\s\S]*display: grid;[\s\S]*grid-template-columns: 1fr;/);
@@ -319,7 +319,7 @@ test("phone CSS keeps root headers secondary, task sheets scrollable, and modal 
   assert.match(css, /@media \(max-width: 767px\)[\s\S]*\.printer-picker-sheet \.search-input\s*\{[\s\S]*min-height: 2\.72rem;/);
   assert.match(css, /@media \(max-width: 767px\)[\s\S]*\.task-sheet \.search-input:focus-visible\s*\{[\s\S]*outline: 2px solid var\(--focus-ring\);[\s\S]*box-shadow:[\s\S]*var\(--focus-ring-shadow\)/);
   assert.match(css, /@media \(max-width: 767px\)[\s\S]*\.detail-modal-backdrop\s*\{[\s\S]*align-items: start;/);
-  assert.match(css, /@media \(max-width: 767px\)[\s\S]*\.detail-modal-shell\s*\{[\s\S]*height: calc\(100dvh - max\(1rem, env\(safe-area-inset-top\)\) - max\(1rem, env\(safe-area-inset-bottom\)\)\);/);
+  assert.match(css, /@media \(max-width: 767px\)[\s\S]*\.detail-modal-shell\s*\{[\s\S]*height: calc\(var\(--companion-overlay-height, 100dvh\) - max\(1rem, env\(safe-area-inset-top\)\) - max\(1rem, env\(safe-area-inset-bottom\)\)\);/);
   assert.match(css, /@media \(max-width: 767px\)[\s\S]*\.detail-modal-actions > \.compact-back-button\s*\{\s*width: auto;/);
   assert.match(css, /@media \(max-width: 767px\)[\s\S]*\.detail-actions > \.companion-link-button,[\s\S]*\.selection-banner-actions > \.companion-link-button\s*\{\s*width: 100%;/);
   assert.match(css, /@media \(max-width: 767px\)[\s\S]*\.detail-actions > :not\(button\):not\(\.companion-link-button\),[\s\S]*\.selection-banner-actions > :not\(button\):not\(\.companion-link-button\),/);

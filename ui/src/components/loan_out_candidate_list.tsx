@@ -123,7 +123,7 @@ export function LoanOutCandidateList({
       <div className="mt-4">
         <label
           htmlFor={searchId}
-          className="block text-xs font-medium text-slate-600 dark:text-slate-300"
+          className="sr-only"
         >
           {t("inventory.loanSearchLabel", "Search available rolls")}
         </label>

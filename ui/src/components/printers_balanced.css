@@ -76,3 +76,8 @@
  .printers-balanced-page .printer-observation-row td { display:block; padding:0 0 .6rem; }
  .printers-balanced-page .printer-compact-popup { right:0; min-width:0; width:min(26rem,calc(100vw - 4rem)); }
 }
+
+.printers-balanced-page .printer-weight-review { color:#9f1239; border-color:#e88da3; background:#fff1f2; }
+.printers-balanced-page .printer-weight-review:hover { background:#ffe4e6; }
+.dark .printers-balanced-page .printer-weight-review { color:#fecdd3; border-color:#b95d72; background:color-mix(in srgb, #e11d48 15%, var(--printer-surface)); }
+.dark .printers-balanced-page .printer-weight-review:hover { background:color-mix(in srgb, #e11d48 25%, var(--printer-surface)); }

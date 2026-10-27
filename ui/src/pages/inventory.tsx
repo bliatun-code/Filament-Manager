@@ -899,6 +899,7 @@ export default function InventoryPage({
   const {
     handlePrintLabel,
     handleSaveCapturedRfid,
+    handleRemoveRfid,
     handleStartRfidCapture,
   } = useInventorySpoolDetailUtilityActions({
     active: showRollModal, ready: librarySyncReady, captureOpen: showRfidCaptureModal,
@@ -1350,6 +1351,7 @@ export default function InventoryPage({
             onRefill={() => { clearWeightError(); void handleRefillSpool(); }}
             onSaveCommonDetails={handleSaveSpoolCommonDetails}
             onSaveMasterMetadata={handleSaveMasterMetadata}
+            onRemoveRfid={() => void handleRemoveRfid()}
             onStartRfidCapture={handleStartRfidCapture}
             onSubmitWeight={handleWeightSubmit}
             onToggleEditUnlocked={toggleMasterEditUnlocked}

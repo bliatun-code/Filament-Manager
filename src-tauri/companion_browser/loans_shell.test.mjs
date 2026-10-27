@@ -89,18 +89,17 @@ test("loans shell renders outbound history as its own primary flow", () => {
   assert.match(html, /#1/);
   assert.match(html, /Active/);
   assert.match(html, /Return loan/);
-  assert.match(html, /Track loans and finish returns\./);
   assert.match(html, /loan-card compact-loan-card swatch-surface/);
   assert.match(html, /primary-button swatch-action-button loan-action-button/);
   assert.match(html, /data-action="start-loan-picker"/);
 });
 
-test("loan search keeps a permanent visible associated label", () => {
+test("loan search keeps a permanent associated label for assistive technology", () => {
   const html = renderShell();
 
   assert.match(
     html,
-    /<label class="search-field toolbar-search" for="companion-loan-search">[\s\S]*?<span class="search-field-label">Search borrower, note, filament, or reference<\/span>[\s\S]*?<input[\s\S]*?id="companion-loan-search"[\s\S]*?name="loan-search"[\s\S]*?type="search"/,
+    /<label class="search-field toolbar-search" for="companion-loan-search">[\s\S]*?<span class="search-field-label visually-hidden">Search borrower, note, filament, or reference<\/span>[\s\S]*?<input[\s\S]*?id="companion-loan-search"[\s\S]*?name="loan-search"[\s\S]*?type="search"/,
   );
 });
 

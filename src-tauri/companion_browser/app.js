@@ -1,3 +1,4 @@
+import { createCompanionOverlayViewport } from "./companion_overlay_viewport.js";
 import { createCompanionApiClient } from "./companion_api_client.js";
 import { createAccessRecoveryController } from "./companion_access_recovery.js";
 import { createCompanionAppShellRenderer } from "./companion_app_shell.js";
@@ -88,6 +89,7 @@ const companionShellState = createCompanionShellState({
   state,
   render,
   resetSessionState,
+  submitUnweighedPrinterOperation: task => submitPrinterSlotOperation("", "", "", task),
 });
 const {
   applyLayoutMode,
@@ -454,11 +456,14 @@ const {
   submitBorrowedInHandBack,
 } = companionMutations;
 
+const overlayViewport = createCompanionOverlayViewport({ windowRef: window, documentRef: document });
+
 let overlayScrollLocked = false;
 let overlayLockedScrollY = 0;
 let overlayTouchGuardEnabled = false;
 
 function handleOverlayTouchMove(event) {
+  if (event?.touches?.length > 1) return;
   if (!(state.detailOpen || state.activeTaskSheet)) {
     return;
   }
@@ -474,6 +479,11 @@ function handleOverlayTouchMove(event) {
 
 function syncOverlayScrollLock() {
   const shouldLock = Boolean(state.detailOpen || state.activeTaskSheet);
+  if (!shouldLock && overlayScrollLocked) {
+    const control = document.activeElement;
+    if (control?.closest?.("[data-companion-overlay]")) control.blur?.();
+  }
+  overlayViewport.sync(shouldLock);
   if (shouldLock === overlayScrollLocked) {
     return;
   }

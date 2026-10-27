@@ -185,13 +185,31 @@ impl CompanionService {
 
     pub fn list_printer_overview(&self) -> InventoryResult<Vec<PrinterOverviewRow>> {
         let db = FilamentDatabase::open(&self.db_path)?;
-        let (rows, integrations) = db.with_read_transaction(|snapshot| {
-            Ok((
-                snapshot.list_printer_overview()?,
-                snapshot.list_bambu_live_integrations()?,
-            ))
+        let rows = db.with_read_transaction(|snapshot| {
+            let rows = snapshot.list_printer_overview()?;
+            let mut integrations = snapshot.list_bambu_live_integrations()?;
+            crate::bambu_live_sync::refresh_inventory_match_status(snapshot, &mut integrations)?;
+            let mut rows = enrich_printer_overview_with_live_slots(rows, &integrations);
+            for printer in &mut rows {
+                for slot in &mut printer.slots {
+                    slot.live_can_unload_without_weighing = slot
+                        .spool_id
+                        .as_deref()
+                        .map(|id| {
+                            snapshot.can_unload_without_weighing(
+                                &printer.printer.id,
+                                &slot.slot_id,
+                                id,
+                            )
+                        })
+                        .transpose()?;
+                    slot.live_weight_review_samples =
+                        snapshot.stable_live_weight_rejection_count(&printer.printer.id, slot)?;
+                }
+            }
+            Ok(rows)
         })?;
-        Ok(enrich_printer_overview_with_live_slots(rows, &integrations))
+        Ok(rows)
     }
 
     pub fn library_snapshot(&self) -> InventoryResult<CompanionLibrarySnapshot> {

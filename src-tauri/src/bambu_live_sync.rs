@@ -1,7 +1,28 @@
 use crate::backend::database_result::InventoryError;
-use crate::backend::filament_database::{BambuLiveObservedStateRow, FilamentDatabase};
+use crate::backend::filament_database::{
+    BambuLiveIntegrationEntryRow, BambuLiveObservedStateRow, FilamentDatabase,
+};
 use crate::bambu_live_matching::match_observed_trays;
 use crate::bambu_live_usage::sync_observed_usage;
+
+/// Reconcile derived matches with the current inventory on reads. Saving RFID or
+/// creating a catalog roll does not change the printer's observation timestamp.
+/// This deliberately excludes usage synchronization and automatic slot writes.
+pub(crate) fn refresh_inventory_match_status(
+    db: &FilamentDatabase,
+    integrations: &mut [BambuLiveIntegrationEntryRow],
+) -> Result<(), InventoryError> {
+    for entry in integrations {
+        let Some(observed) = entry.config.observed_state.as_mut() else {
+            continue;
+        };
+        let Some(overview) = db.get_printer_overview(&entry.printer_id)? else {
+            continue;
+        };
+        match_observed_trays(db, &overview, &mut observed.trays)?;
+    }
+    Ok(())
+}
 
 pub(crate) fn enrich_with_match_status(
     db: &FilamentDatabase,

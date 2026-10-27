@@ -83,7 +83,7 @@ test("storage keeps its associated search label without repeating the visible pl
   );
   assert.match(
     catalogHtml,
-    /<label class="search-field" for="companion-filament-catalog-search">[\s\S]*?<span class="search-field-label">Search material, color, or filament code<\/span>[\s\S]*?<input[\s\S]*?id="companion-filament-catalog-search"[\s\S]*?name="filament-catalog-search"/,
+    /<label class="search-field" for="companion-filament-catalog-search">[\s\S]*?<span class="search-field-label visually-hidden">Search material, color, or filament code<\/span>[\s\S]*?<input[\s\S]*?id="companion-filament-catalog-search"[\s\S]*?name="filament-catalog-search"/,
   );
 });
 

@@ -282,6 +282,7 @@ export const frDictionary: DictionaryNode = {
       "Masquer la suggestion pour {name} sur cet appareil",
     hideLowStockSuggestion: "Masquer la suggestion",
     noVisibleLowStockSuggestions: "Aucune suggestion d’achat visible.",
+    openInventory: "Ouvrir le stock",
     openLowStockInventory: "Ouvrir le stock faible",
     lowStockSuggestionsOptional:
       "Ces suggestions sont facultatives et peuvent être masquées sur cet appareil.",
@@ -1037,6 +1038,11 @@ export const frDictionary: DictionaryNode = {
     rfidCaptureNothingToSave:
       "Aucune identité RFID n’est encore disponible pour l’emplacement sélectionné.",
     rfidCaptureFailed: "Impossible d’actualiser la capture RFID depuis l’imprimante.",
+    "rfidRemove": "Supprimer le RFID enregistré",
+    "rfidRemoved": "Le RFID enregistré a été supprimé de cette bobine.",
+    "rfidRemoveHint": "Supprime le lien RFID enregistré. La bobine, le poids et l’affectation à l’emplacement sont conservés.",
+    "amsWeightAccept": "Accepter le poids AMS",
+    "amsWeightReview": "Vérifiez le poids : les estimations AMS répétées diffèrent du poids enregistré.",
     rfidSaved: "RFID enregistrée sur la bobine sélectionnée.",
     saveRfid: "Enregistrer la RFID",
     markEmpty: "Marquer comme épuisée (vide)",
@@ -2499,7 +2505,7 @@ export const frDictionary: DictionaryNode = {
       "Ce client affiche le catalogue de l’hôte. Les corrections de couleurs et les actualisations des fabricants sont enregistrées sur l’hôte.",
     catalogRefreshTitle: "Mises à jour des catalogues fabricants",
     catalogRefreshHelp:
-      "Détectez les types de matériaux actuellement disponibles, puis actualisez un seul type à la fois. La détection n’importe rien et ne modifie jamais l’état du cycle de vie.",
+      "Choisissez un fournisseur et un type de matériau pour ajouter de nouveaux produits et mettre à jour le catalogue.",
     discoverCatalogMaterials: "Détecter les matériaux disponibles",
     discoveringCatalogMaterials: "Recherche des matériaux disponibles",
     availableCatalogMaterials: "Matériaux disponibles",

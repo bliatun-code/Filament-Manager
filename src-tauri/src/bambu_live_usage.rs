@@ -676,6 +676,7 @@ fn sync_live_weight_in_transaction(
                 &json!({
                     "spool_id": spool_id,
                     "reason": "drop_outlier",
+                    "weight_observed_at": tray.last_weight_seen_at,
                     "current_grams": current,
                     "remaining_grams": remaining_grams,
                     "drop_grams": drop_grams,

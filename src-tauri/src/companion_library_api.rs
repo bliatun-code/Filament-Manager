@@ -197,10 +197,12 @@ pub(super) async fn handle_library_printer_settings(
             let db = FilamentDatabase::open(&state.db_path).map_err(CompanionApiError::from)?;
             let (bambu_live_integrations, printers) = db
                 .with_read_transaction(|snapshot| {
-                    Ok((
-                        snapshot.list_bambu_live_integrations()?,
-                        snapshot.list_printers()?,
-                    ))
+                    let mut integrations = snapshot.list_bambu_live_integrations()?;
+                    crate::bambu_live_sync::refresh_inventory_match_status(
+                        snapshot,
+                        &mut integrations,
+                    )?;
+                    Ok((integrations, snapshot.list_printers()?))
                 })
                 .map_err(CompanionApiError::from)?;
             let bambu_live_integrations = sanitized_bambu_live_integrations(

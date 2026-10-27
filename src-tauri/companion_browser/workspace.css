@@ -2,6 +2,13 @@
   min-height: 100dvh;
 }
 
+:root {
+  --companion-overlay-top: 0px;
+  --companion-overlay-left: 0px;
+  --companion-overlay-width: 100%;
+  --companion-overlay-height: 100dvh;
+}
+
 .companion-shell[data-layout] {
   min-height: 100dvh;
   padding:
@@ -1230,12 +1237,15 @@
 
 .detail-modal-backdrop {
   position: fixed;
-  inset: 0;
+  top: var(--companion-overlay-top, 0px);
+  left: var(--companion-overlay-left, 0px);
+  width: var(--companion-overlay-width, 100%);
+  height: var(--companion-overlay-height, 100dvh);
   z-index: 40;
   display: grid;
   align-items: center;
   overflow: hidden;
-  touch-action: none;
+  touch-action: pan-y pinch-zoom;
   padding:
     max(0.9rem, env(safe-area-inset-top))
     max(0.9rem, env(safe-area-inset-right))
@@ -1253,7 +1263,7 @@
 }
 
 .detail-modal.detail-panel {
-  max-height: calc(100dvh - 1.8rem);
+  max-height: calc(var(--companion-overlay-height, 100dvh) - 1.8rem);
   display: grid;
   grid-template-rows: auto minmax(0, 1fr);
   overflow: hidden;
@@ -1266,7 +1276,7 @@
   overflow-x: hidden;
   overscroll-behavior: contain;
   -webkit-overflow-scrolling: touch;
-  touch-action: pan-y;
+  touch-action: pan-y pinch-zoom;
   padding-top: 0.52rem;
   padding-bottom: max(0.64rem, env(safe-area-inset-bottom));
 }
@@ -1308,13 +1318,16 @@
 
 .task-sheet-backdrop {
   position: fixed;
-  inset: 0;
+  top: var(--companion-overlay-top, 0px);
+  left: var(--companion-overlay-left, 0px);
+  width: var(--companion-overlay-width, 100%);
+  height: var(--companion-overlay-height, 100dvh);
   z-index: 35;
   display: grid;
   align-items: center;
   justify-items: center;
   overflow: hidden;
-  touch-action: none;
+  touch-action: pan-y pinch-zoom;
   padding:
     max(0.9rem, env(safe-area-inset-top))
     max(0.9rem, env(safe-area-inset-right))
@@ -1327,8 +1340,8 @@
 .task-sheet-shell {
   width: min(100%, 32rem);
   min-height: 0;
-  height: calc(100dvh - 1.8rem);
-  max-height: calc(100dvh - 1.8rem);
+  height: calc(var(--companion-overlay-height, 100dvh) - 1.8rem);
+  max-height: calc(var(--companion-overlay-height, 100dvh) - 1.8rem);
 }
 
 .task-sheet-shell.task-sheet-shell-wide {
@@ -1380,7 +1393,7 @@
   overflow: auto;
   overscroll-behavior: contain;
   -webkit-overflow-scrolling: touch;
-  touch-action: pan-y;
+  touch-action: pan-y pinch-zoom;
   padding-top: 0.72rem;
 }
 
@@ -1551,7 +1564,7 @@
   .detail-modal-backdrop[data-layout="tablet"] .detail-modal-shell,
   .detail-modal-backdrop[data-layout="desktop"] .detail-modal-shell {
     height: auto;
-    max-height: calc(100dvh - 1.8rem);
+    max-height: calc(var(--companion-overlay-height, 100dvh) - 1.8rem);
   }
 
   .task-sheet-backdrop[data-layout="tablet"] .task-sheet-shell:not(.task-sheet-shell-wide) > .task-sheet,
@@ -1559,7 +1572,7 @@
   .detail-modal-backdrop[data-layout="tablet"] .detail-modal.detail-panel,
   .detail-modal-backdrop[data-layout="desktop"] .detail-modal.detail-panel {
     height: auto;
-    max-height: calc(100dvh - 1.8rem);
+    max-height: calc(var(--companion-overlay-height, 100dvh) - 1.8rem);
   }
 }
 
@@ -1727,8 +1740,8 @@
 
   .detail-modal-shell {
     width: 100%;
-    height: calc(100dvh - max(1rem, env(safe-area-inset-top)) - max(1rem, env(safe-area-inset-bottom)));
-    max-height: calc(100dvh - max(1rem, env(safe-area-inset-top)) - max(1rem, env(safe-area-inset-bottom)));
+    height: calc(var(--companion-overlay-height, 100dvh) - max(1rem, env(safe-area-inset-top)) - max(1rem, env(safe-area-inset-bottom)));
+    max-height: calc(var(--companion-overlay-height, 100dvh) - max(1rem, env(safe-area-inset-top)) - max(1rem, env(safe-area-inset-bottom)));
   }
 
   .detail-modal.detail-panel {
@@ -1748,8 +1761,8 @@
 
   .task-sheet-shell {
     width: 100%;
-    height: calc(100dvh - max(1rem, env(safe-area-inset-top)) - max(1rem, env(safe-area-inset-bottom)));
-    max-height: calc(100dvh - max(1rem, env(safe-area-inset-top)) - max(1rem, env(safe-area-inset-bottom)));
+    height: calc(var(--companion-overlay-height, 100dvh) - max(1rem, env(safe-area-inset-top)) - max(1rem, env(safe-area-inset-bottom)));
+    max-height: calc(var(--companion-overlay-height, 100dvh) - max(1rem, env(safe-area-inset-top)) - max(1rem, env(safe-area-inset-bottom)));
   }
 
   .task-sheet {

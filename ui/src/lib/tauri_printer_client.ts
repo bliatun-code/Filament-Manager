@@ -48,6 +48,8 @@ export type PrinterAmsSlotRow = {
   live_remaining_percent?: number | null;
   live_remaining_grams?: number | null;
   live_weight_seen_at?: string | null;
+  live_weight_review_samples?: number | null;
+  live_can_unload_without_weighing?: boolean | null;
   live_last_identity_seen_at?: string | null;
   live_match_status?: string | null;
   live_match_note?: string | null;

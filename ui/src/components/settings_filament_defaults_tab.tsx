@@ -1,3 +1,4 @@
+import { LockKeyhole } from "lucide-react";
 import {
   useEffect,
   useId,
@@ -865,7 +866,10 @@ export function SettingsFilamentDefaultsTab({
         <div><span>{t("settings.lowStockDefaultThreshold", "Default threshold")}</span><strong>{lowStock.policyValid && lowStock.policy ? `${lowStock.policy.default_threshold_g.toLocaleString(locale)} g` : "—"}</strong></div>
       </div>
       {!readOnly && (defaultCurrencyRaw !== defaultCurrency || groups.some(groupHasUnsavedChanges)) ? <p role="status" className="text-sm font-medium text-amber-800 dark:text-amber-200">{t("settings.unsavedChanges", "Unsaved changes")}</p> : null}
-      {readOnly ? <SettingsNotice tone="neutral">{t("settings.filamentDefaultsHostOwned", "Manage library-wide filament defaults on the Host desktop app.")}</SettingsNotice> : null}
+      {readOnly ? <SettingsNotice className="settings-filament-host-notice" tone="info">
+        <LockKeyhole aria-hidden="true" />
+        <p>{t("settings.filamentDefaultsHostOwned", "Manage library-wide filament defaults on the Host desktop app.")}</p>
+      </SettingsNotice> : null}
       <div className="settings-filament-sections" role="group" aria-label={t("settings.tabFilamentDefaults", "Filament defaults")}>
         {([
           ["GROUPS", t("settings.filamentDefaultsGroupPrices", "Filament group prices")],
@@ -887,7 +891,6 @@ export function SettingsFilamentDefaultsTab({
             {t("settings.filamentDefaultsCurrencyCode", "Three-letter currency code")}
             <input
               ref={currencyInputRef}
-              aria-describedby="settings-filament-default-currency-hint"
               autoCapitalize="characters"
               className={`${settingsFormControlClass} mt-1 uppercase`}
               disabled={disabled}
@@ -898,15 +901,6 @@ export function SettingsFilamentDefaultsTab({
               onChange={(event) => setDefaultCurrencyRaw(event.target.value.toLocaleUpperCase("en-US"))}
             />
           </label>
-          <p
-            id="settings-filament-default-currency-hint"
-            className="mt-2 text-xs leading-5 text-slate-500 dark:text-slate-400"
-          >
-            {t(
-              "settings.filamentDefaultsCurrencyCodeHint",
-              "For example NOK, EUR or USD. Saving this default never rewrites existing spool prices.",
-            )}
-          </p>
           {defaultCurrencyRaw && !normalizedDefaultCurrency ? (
             <p className="mt-2 text-xs text-rose-700 dark:text-rose-300" role="alert">
               {t(

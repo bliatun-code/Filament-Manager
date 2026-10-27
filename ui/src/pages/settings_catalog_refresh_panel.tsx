@@ -111,10 +111,10 @@ export function SettingsCatalogRefreshPanel({
   return (
     <SettingsSectionPanel className="settings-catalog-refresh mt-4">
       <SettingsSectionHeader
-        eyebrow={t("settings.catalogRefreshTitle", "Vendor catalog updates")}
+        eyebrow={compact ? undefined : t("settings.catalogRefreshTitle", "Vendor catalog updates")}
         description={t(
-          "settings.catalogDiscoveryHelp",
-          "Check the store to update which material types can be fetched. This check does not download products or change the filament catalog.",
+          "settings.catalogRefreshHelp",
+          "Choose a vendor and material type to add new products and update the catalog.",
         )}
         status={compact ? undefined : <div className={inlineStatusSignalClass("neutral", "text-sm")}>{t("settings.totalCatalog", "Catalog")}: {catalogRowsAvailable ? formatDisplayInteger(catalogCount,locale) : "—"}</div>}
         metrics={compact ? <div className="settings-catalog-counts"><span>{catalogVendor}: <strong>{catalogRowsAvailable ? formatDisplayInteger(activeCatalogMasterCount,locale) : "—"}</strong></span><span>{t("inventory.materialGroup", "Material")}: <strong>{catalogRowsAvailable ? formatDisplayInteger(activeCatalogMaterialOptions.length,locale) : "—"}</strong></span></div> : <>

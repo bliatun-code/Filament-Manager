@@ -347,7 +347,7 @@ function LoanOutSession({
           className="px-6 py-4"
         />
 
-        <ModalBody scroll={false} className="px-6 py-6">
+        <ModalBody scroll={false} className="flex flex-col px-6 py-6">
           <div className="flex min-h-0 flex-1 flex-col space-y-4">
             {error ? <ModalNotice tone="danger" role="alert">{error}</ModalNotice> : null}
 
@@ -442,12 +442,6 @@ function LoanOutSession({
                         <div className={panelTitleClassName}>
                           {t("inventory.loanDetails", "Loan details")}
                         </div>
-                        <div className={panelSubtitleClassName}>
-                          {t(
-                            "inventory.loanDetailsHelp",
-                            "Confirm the borrower and measured outgoing total weight including spool before saving the loan.",
-                          )}
-                        </div>
 
                         <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
                           <ModalFormField label={t("inventory.borrowerName", "Borrower name")}>
@@ -460,7 +454,6 @@ function LoanOutSession({
                               value={borrowerName}
                               onChange={(event) => { setBorrowerName(event.target.value); if (fieldError?.field === "borrower") setFieldError(null); }}
                               className={modalFormInputClassName}
-                              placeholder={t("inventory.borrowerName", "Borrower name")}
                               disabled={!tauri || busy}
                             />
                             {fieldError?.field === "borrower" ? <p id="loan-borrower-error" role="alert" className="text-sm text-red-700 dark:text-red-300">{fieldError.message}</p> : null}
@@ -501,16 +494,6 @@ function LoanOutSession({
                               disabled={!tauri || busy}
                             />
                             {fieldError?.field === "weight" ? <p id="loan-weight-error" role="alert" className="text-sm text-red-700 dark:text-red-300">{fieldError.message}</p> : null}
-                            <p className={panelSubtitleClassName}>
-                              {t("inventory.emptySpoolWeightHelp", "Used to subtract spool tare from measured total so remaining filament stays accurate.")}
-                            </p>
-                            <div id="loan-out-weight-preview" role="status" aria-live="polite" aria-atomic="true" className={panelSubtitleClassName}>
-                              {t("loans.loanedGrams", "Loaned")}: {previewTotalGrams === null ? "—" :
-                                `${formatLoanOutGrams(previewTotalGrams, locale)} − ${formatLoanOutGrams(resolveLoanableSpoolTareWeight(selectedSpool), locale)} = ${formatLoanOutGrams(toLoanedFilamentWeight(selectedSpool, previewTotalGrams), locale)}`}
-                            </div>
-                            <p className={panelSubtitleClassName}>
-                              {t("inventory.remaining", "remaining")}: {formatLoanOutGrams(selectedSpool.remainingGrams, locale)}
-                            </p>
                           </ModalFormField>
 
                           <ModalFormField
@@ -533,6 +516,15 @@ function LoanOutSession({
                             />
                             {fieldError?.field === "date" ? <p id="loan-date-error" role="alert" className="text-sm text-red-700 dark:text-red-300">{fieldError.message}</p> : null}
                           </ModalFormField>
+
+                          <div id="loan-out-weight-preview" role="status" aria-live="polite" aria-atomic="true" className={`${panelSubtitleClassName} flex flex-wrap items-baseline gap-x-1 sm:col-span-2`}>
+                            <span>{t("loans.loanedGrams", "Loaned")}:</span>
+                            {previewTotalGrams === null ? "—" : <>
+                              <span className="whitespace-nowrap">{formatLoanOutGrams(previewTotalGrams, locale)}</span>{" − "}
+                              <span className="whitespace-nowrap">{formatLoanOutGrams(resolveLoanableSpoolTareWeight(selectedSpool), locale)}</span>{" = "}
+                              <span className="whitespace-nowrap font-semibold">{formatLoanOutGrams(toLoanedFilamentWeight(selectedSpool, previewTotalGrams), locale)}</span>
+                            </>}
+                          </div>
                         </div>
 
                         <div className="mt-3">
@@ -543,7 +535,6 @@ function LoanOutSession({
                               value={note}
                               onChange={(event) => setNote(event.target.value)}
                               className={`${modalFormInputClassName} min-h-[88px] resize-y`}
-                              placeholder={t("inventory.loanNoteOptional", "Loan note (optional)")}
                               disabled={!tauri || busy}
                             />
                           </ModalFormField>

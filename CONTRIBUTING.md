@@ -256,9 +256,9 @@ belong in the maintained quality and distribution documentation.
 
 ## Recent Release Notes
 
+- [v0.35.1](docs/releases/RELEASE_NOTES_v0.35.1.md)
 - [v0.35.0](docs/releases/RELEASE_NOTES_v0.35.0.md)
 - [v0.34.0](docs/releases/RELEASE_NOTES_v0.34.0.md)
-- [v0.33.0](docs/releases/RELEASE_NOTES_v0.33.0.md)
 
 The three newest release-note files stay in the working tree. Older source and
 checked-in notes remain available through their published Git tags. Archive
