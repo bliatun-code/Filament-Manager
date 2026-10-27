@@ -24,3 +24,6 @@
 
 .settings-filament-group-select { display:none; }
 @media(max-width:1000px) { .settings-filament-groups { display:none; } .settings-filament-group-select { display:block; } }
+
+.settings-filament-balanced .settings-filament-host-notice { display:flex; align-items:center; gap:.875rem; padding:1rem 1.125rem; border-inline-start-width:4px; border-color:var(--app-theme-accent); background:color-mix(in srgb, var(--app-theme-accent) 12%, var(--app-theme-data-card-base)); color:var(--app-theme-control-text); font-size:.9375rem; font-weight:600; line-height:1.5; }
+.settings-filament-host-notice > svg { width:1.5rem; height:1.5rem; flex:none; color:var(--app-theme-accent); }
