@@ -2024,7 +2024,7 @@ export const huHUDictionary: DictionaryNode = {
     "totalCatalog": "Katalógus",
     "refreshCurrentVendor": "Frissítse az aktuális szállítók katalógusát",
     "refreshSelectedMaterials": "A kiválasztott anyag frissítése",
-    "catalogRefreshHelp": "Derítse fel a jelenleg elérhető anyagtípusokat, majd egyszerre csak egy anyagtípust frissítsen. A felderítés nem importál semmit, és nem módosítja az életciklus-állapotot.",
+    "catalogRefreshHelp": "Válasszon szállítót és anyagtípust az új termékek hozzáadásához és a katalógus frissítéséhez.",
     "discoverCatalogMaterials": "Elérhető anyagok felderítése",
     "discoveringCatalogMaterials": "Elérhető anyagok felderítése folyamatban",
     "availableCatalogMaterials": "Elérhető anyagok",

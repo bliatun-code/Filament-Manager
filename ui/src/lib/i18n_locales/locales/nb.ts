@@ -2506,7 +2506,7 @@ export const nbDictionary: DictionaryNode = {
         "Denne klienten viser vertens katalog. Endringer i fargeprøver og leverandørkataloger lagres på verten.",
       catalogRefreshTitle: "Oppdatering av leverandørkatalog",
       catalogRefreshHelp:
-        "Finn hvilke materialtyper som er tilgjengelige nå, og oppdater deretter én materialtype om gangen. Søket importerer ingenting og endrer aldri livssyklusstatus.",
+        "Velg leverandør og materialtype for å hente nye produkter og oppdatere katalogen.",
       discoverCatalogMaterials: "Finn tilgjengelige materialtyper",
       discoveringCatalogMaterials: "Finner tilgjengelige materialtyper",
       availableCatalogMaterials: "Tilgjengelige materialtyper",

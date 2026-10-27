@@ -1870,7 +1870,7 @@ export const ptBRDictionary: DictionaryNode = {
     catalogRefreshClientHostOnly:
       "As atualizações do catálogo do fornecedor são enviadas para host. Este cliente ainda mostra e edita o catálogo host compartilhado.",
     catalogRefreshHelp:
-      "Descubra os tipos de material disponíveis no momento e atualize um tipo por vez. A descoberta não importa nada nem altera o estado do ciclo de vida.",
+      "Escolha um fornecedor e um tipo de material para adicionar novos produtos e atualizar o catálogo.",
     discoverCatalogMaterials: "Descobrir materiais disponíveis",
     discoveringCatalogMaterials: "Descobrindo materiais disponíveis",
     availableCatalogMaterials: "Materiais disponíveis",

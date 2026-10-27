@@ -2114,7 +2114,7 @@ export const koKRDictionary: DictionaryNode = {
     "catalogTabHelp": "앱은 지역 종자 카탈로그와 함께 제공됩니다. 공급업체 업데이트는 새로 발견된 제품을 추가하고 선택한 재료군을 새로 고칩니다.",
     "catalogTabClientHelp": "이 클라이언트는 host 카탈로그를 표시합니다. 견본 수정 사항 및 공급업체 카탈로그 새로 고침은 host에 저장됩니다.",
     "catalogRefreshTitle": "공급업체 카탈로그 업데이트",
-    "catalogRefreshHelp": "현재 사용 가능한 재료 유형을 찾은 다음 한 번에 하나의 재료 유형만 새로 고칩니다. 찾기 작업은 아무것도 가져오지 않으며 수명 주기 상태를 변경하지 않습니다.",
+    "catalogRefreshHelp": "공급업체와 소재 유형을 선택하여 새 제품을 추가하고 카탈로그를 업데이트하세요.",
     "discoverCatalogMaterials": "사용 가능한 재료 찾기",
     "discoveringCatalogMaterials": "사용 가능한 재료를 찾는 중",
     "availableCatalogMaterials": "사용 가능한 재료",

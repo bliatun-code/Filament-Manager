@@ -2114,7 +2114,7 @@ export const zhTWDictionary: DictionaryNode = {
     "catalogTabHelp": "該應用程式附帶本地種子目錄。供應商更新新增發現的產品並重新整理選定的材料系列。",
     "catalogTabClientHelp": "此使用者端顯示 host 目錄。樣本修復和供應商目錄重新整理儲存在 host 上。",
     "catalogRefreshTitle": "供應商目錄更新",
-    "catalogRefreshHelp": "先尋找目前可用的材料型別，再每次只更新一種材料。尋找作業不會匯入任何內容，也不會變更生命週期狀態。",
+    "catalogRefreshHelp": "選擇供應商和材料類型，以新增產品並更新目錄。",
     "discoverCatalogMaterials": "尋找可用材料",
     "discoveringCatalogMaterials": "正在尋找可用材料",
     "availableCatalogMaterials": "可用材料",

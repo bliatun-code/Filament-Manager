@@ -1,11 +1,9 @@
 import { useEffect, useRef, useState, useId, type ComponentProps } from "react";
 import { SettingsMissingSwatchesPanel } from "../components/settings_missing_swatches_panel";
-import { SettingsSurfaceCard, SettingsNotice } from "../components/settings_ui";
+import { SettingsSurfaceCard } from "../components/settings_ui";
 import { resolveDesktopVisualQaScenario } from "../lib/desktop_visual_qa_scenario";
 import { useI18n } from "../lib/i18n";
 import { formatDisplayInteger } from "../lib/number_display";
-import { formatSettingsDateTime } from "../lib/settings_utils";
-import { settingsCatalogProgressCopy } from "./settings_catalog_progress_copy";
 import { SettingsCatalogRefreshPanel } from "./settings_catalog_refresh_panel";
 
 export type SettingsCatalogTabProps = {
@@ -47,14 +45,6 @@ export function SettingsCatalogTab({
     return () => window.cancelAnimationFrame(frame);
   }, [visibleMissingSwatchCount]);
 
-  const [completion, setCompletion] = useState({ phase: refreshPanel.catalogRefreshPhase, confirmedAt: null as string | null });
-  if (completion.phase !== refreshPanel.catalogRefreshPhase) {
-    setCompletion({ phase: refreshPanel.catalogRefreshPhase, confirmedAt: refreshPanel.catalogRefreshPhase === "SUCCEEDED" ? new Date().toISOString() : null });
-  }
-  const succeeded = refreshPanel.catalogRefreshPhase === "SUCCEEDED";
-  const showOperationStatus = activeSection === "SWATCHES" && (succeeded || refreshPanel.catalogRefreshBusy || refreshPanel.catalogRefreshPhase === "FAILED" || refreshPanel.catalogRefreshPhase === "INTERRUPTED" || refreshPanel.catalogRefreshUnavailable);
-  const progress = settingsCatalogProgressCopy({phase:refreshPanel.catalogRefreshPhase,kind:refreshPanel.catalogRefreshKind,unavailable:refreshPanel.catalogRefreshUnavailable,vendor:refreshPanel.catalogRefreshVendor,t});
-
   return (
     <SettingsSurfaceCard className="settings-catalog-balanced">
       <p className="text-sm text-slate-600 dark:text-slate-300">{helpText}</p>
@@ -66,9 +56,6 @@ export function SettingsCatalogTab({
         <button type="button" aria-pressed={activeSection === "REFRESH"} aria-controls={`${panelId}-refresh`} onClick={() => setActiveSection("REFRESH")} className="app-control-focus">{t("settings.catalogRefreshTitle", "Vendor catalog updates")}</button>
         <button type="button" aria-pressed={activeSection === "SWATCHES"} aria-controls={`${panelId}-swatches`} onClick={() => setActiveSection("SWATCHES")} className="app-control-focus">{t("settings.swatchQuality", "Swatch quality")}</button>
       </div>
-      {showOperationStatus ? <SettingsNotice tone={succeeded ? "success" : refreshPanel.catalogRefreshBusy ? "info" : "warning"}>
-        <div className="flex flex-wrap items-center justify-between gap-3"><span role="status">{refreshPanel.catalogRefreshVendor} · {progress.message}{succeeded && completion.confirmedAt ? <> · <time dateTime={completion.confirmedAt}>{formatSettingsDateTime(completion.confirmedAt,locale)}</time></> : null}{succeeded && refreshPanel.catalogRefreshSummary ? <> · {t("inventory.imported", "Imported")}: {formatDisplayInteger(refreshPanel.catalogRefreshSummary.imported,locale)}</> : null}{succeeded && refreshPanel.catalogSourceAuditSummary ? <> · {t("settings.discoveredMaterials", "Discovered materials")}: {formatDisplayInteger(refreshPanel.catalogSourceAuditSummary.discovered_materials.length,locale)}</> : null}</span><button type="button" onClick={() => setActiveSection("REFRESH")} className="app-control-focus underline">{t("settings.catalogRefreshTitle", "Vendor catalog updates")}</button></div>
-      </SettingsNotice> : null}
       <div id={`${panelId}-refresh`} hidden={activeSection !== "REFRESH"}>
         <SettingsCatalogRefreshPanel {...refreshPanel} compact />
       </div>

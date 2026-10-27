@@ -1516,7 +1516,7 @@ export const trTRDictionary: DictionaryNode = {
     "cachedReused": "Önbelleğe alınmış yeniden kullanıldı",
     "catalogAllTypes": "Malzemeleri bul",
     "catalogRefreshClientHostOnly": "Satıcı kataloğu güncellemeleri host'ye gönderilir. Bu istemci, paylaşılan host kataloğunu göstermeye ve düzenlemeye devam eder.",
-    "catalogRefreshHelp": "Şu anda kullanılabilir olan malzeme türlerini bulun ve ardından her seferinde bir malzeme türünü yenileyin. Bulma işlemi hiçbir şeyi içe aktarmaz ve yaşam döngüsü durumunu değiştirmez.",
+    "catalogRefreshHelp": "Yeni ürünler eklemek ve kataloğu güncellemek için bir tedarikçi ve malzeme türü seçin.",
     "discoverCatalogMaterials": "Kullanılabilir malzemeleri bul",
     "discoveringCatalogMaterials": "Kullanılabilir malzemeler bulunuyor",
     "availableCatalogMaterials": "Kullanılabilir malzemeler",

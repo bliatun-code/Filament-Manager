@@ -2018,7 +2018,7 @@ export const svSEDictionary: DictionaryNode = {
     "runFullVendorAudit": "Hitta tillgängliga material",
     "catalogAllTypes": "Hitta material",
     "swatchQuality": "Swatch-kvalitet",
-    "catalogRefreshHelp": "Hitta de materialtyper som är tillgängliga nu och uppdatera sedan en materialtyp i taget. Sökningen importerar ingenting och ändrar aldrig livscykelstatus.",
+    "catalogRefreshHelp": "Välj leverantör och materialtyp för att hämta nya produkter och uppdatera katalogen.",
     "discoverCatalogMaterials": "Hitta tillgängliga material",
     "discoveringCatalogMaterials": "Söker efter tillgängliga material",
     "availableCatalogMaterials": "Tillgängliga material",

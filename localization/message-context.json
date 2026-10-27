@@ -1305,6 +1305,12 @@
       "key": "inventory.amsWeightReview",
       "meaning": "Tooltip for the highlighted Accept AMS weight action. Repeated recent estimates disagree with inventory. AMS estimates are not scale measurements.",
       "screenshot": "docs/images/v0.35.0/printers.png"
+    },
+    {
+      "surface": "desktop",
+      "key": "settings.catalogRefreshHelp",
+      "meaning": "Introduction to vendor catalog updates. Selecting a vendor and material type and refreshing adds products and updates the selected catalog family. The separate discovery action lists available material types.",
+      "screenshot": "docs/images/v0.35.0/settings.png"
     }
   ],
   "groups": [
@@ -1780,7 +1786,7 @@
   ],
   "coverage": {
     "strategy": "uncovered-key-delta",
-    "reviewedUncoveredKeyCount": 2116,
-    "reviewedUncoveredKeyFingerprint": "sha256:31251b256abb6b07d01d298160d3f7d048227ad24400a3eaefa2a3d182e95210"
+    "reviewedUncoveredKeyCount": 2115,
+    "reviewedUncoveredKeyFingerprint": "sha256:8ce23fe603362e9dbedce889a2ff293baceef3860a82a7027a6870d404be8575"
   }
 }

@@ -1516,7 +1516,7 @@ export const plPLDictionary: DictionaryNode = {
     "cachedReused": "Ponownie wykorzystane w pamięci podręcznej",
     "catalogAllTypes": "Znajdź materiały",
     "catalogRefreshClientHostOnly": "Aktualizacje katalogu dostawców są wysyłane do host. Ten klient nadal wyświetla i edytuje współdzielony katalog host.",
-    "catalogRefreshHelp": "Znajdź aktualnie dostępne typy materiałów, a następnie odświeżaj po jednym typie materiału. Wyszukiwanie niczego nie importuje i nigdy nie zmienia stanu cyklu życia.",
+    "catalogRefreshHelp": "Wybierz dostawcę i typ materiału, aby dodać nowe produkty i zaktualizować katalog.",
     "discoverCatalogMaterials": "Znajdź dostępne materiały",
     "discoveringCatalogMaterials": "Wyszukiwanie dostępnych materiałów",
     "availableCatalogMaterials": "Dostępne materiały",

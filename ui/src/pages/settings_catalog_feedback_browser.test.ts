@@ -21,7 +21,7 @@ async function buildHarness() {
     import {SettingsCatalogRefreshPanel} from ${file("./settings_catalog_refresh_panel.tsx")};
     import {I18nContext} from ${file("../lib/i18n.ts")};
     const t=(key,fallback="")=>fallback, noop=()=>{};
-    let result,phase,busy,mode="reject",calls=0,resolveAudit;
+    let result,phase,busy,setCurrentPhase,mode="reject",calls=0,resolveAudit;
     window.__TAURI__={invoke:async command=>{
       if(command!=="audit_bambu_catalog_source")throw Error("Unexpected command "+command);
       calls++;
@@ -31,7 +31,7 @@ async function buildHarness() {
     function Harness(){
       result=useSettingsCatalogRefreshResult();
       const [currentPhase,setPhase]=useState("IDLE"),[currentBusy,setBusy]=useState(false);
-      phase=currentPhase;busy=currentBusy;
+      phase=currentPhase;busy=currentBusy;setCurrentPhase=setPhase;
       const actions=useSettingsCatalogRefreshActions({
         ...result,busy:false,catalogRefreshBusy:busy,getCatalogRefreshMaterial:()=>"PLA",
         locale:"en",reloadSettings:async()=>{},setCatalogRefreshBusy:setBusy,setCatalogRefreshPhase:setPhase,
@@ -54,7 +54,11 @@ async function buildHarness() {
           onSelectCatalogRefreshMaterial={noop}/>
       </I18nContext.Provider>;
     }
-    window.qa={inspect:()=>({phase,busy,calls,log:result.catalogRefreshLog,shown:result.showCatalogRefreshLog}),
+    window.qa={inspect:()=>({phase,busy,calls,log:result.catalogRefreshLog,shown:result.showCatalogRefreshLog,
+      refresh:result.catalogRefreshSummary,audit:result.catalogSourceAuditSummary}),
+      complete:kind=>{setCurrentPhase("SUCCEEDED");if(kind==="AUDIT")result.completeCatalogSourceAuditResult({discovered_materials:["PLA"],detail_fetches:0,detected_store:"Vendor",output:"Found PLA"});
+        else result.completeCatalogRefreshResult({imported:17,reactivated_count:0,discontinued_count:0,output:"Imported 17 entries"});},
+      fail:()=>{setCurrentPhase("FAILED");result.failCatalogRefreshResult("Retained failure diagnostic");},
       defer:()=>{mode="defer";},release:()=>resolveAudit?.(),failAgain:()=>result.failCatalogRefreshResult("Replacement diagnostic")};
     const root=createRoot(document.getElementById("root"));flushSync(()=>root.render(<Harness/>));
   `;
@@ -104,4 +108,25 @@ test("failed catalog checks show a manual next step while retaining opt-in diagn
     assert.equal(await page.evaluate("qa.inspect().calls"), 2, "only explicit check starts a second request");
     assert.deepEqual(errors, []);
   } finally { await browser.close(); }
+});
+
+
+test("catalog success expires after ten seconds, retains its log and never expires failure feedback", async () => {
+  const html=await buildHarness(),browser=await chromium.launch({headless:true});
+  try {
+    const page=await browser.newPage();await page.clock.install();
+    await page.route("http://localhost/**",route=>route.fulfill({contentType:"text/html",body:html}));
+    await page.goto("http://localhost/catalog-success");
+    await page.evaluate("qa.complete('REFRESH')");
+    await page.waitForFunction("qa.inspect().refresh?.imported===17");
+    await page.clock.runFor(9_000);assert.equal((await page.evaluate("qa.inspect()")).refresh.imported,17);
+    await page.evaluate("qa.complete('AUDIT')");await page.waitForFunction("qa.inspect().audit!==null");
+    await page.clock.runFor(1_001);assert.notEqual((await page.evaluate("qa.inspect()")).audit,null,"the older timer cannot hide a newer result");
+    await page.clock.runFor(9_000);await page.waitForFunction("qa.inspect().audit===null");
+    const expired=await page.evaluate("qa.inspect()");assert.equal(expired.refresh,null);assert.equal(expired.log,"Found PLA");
+    await page.getByRole("button",{name:"View refresh log",exact:true}).click();assert.equal(await page.locator("pre").innerText(),"Found PLA");
+    await page.evaluate("qa.fail()");await page.waitForFunction("qa.inspect().phase==='FAILED'");
+    await page.clock.runFor(20_000);assert.equal(await page.locator("pre").innerText(),"Retained failure diagnostic");
+    assert.match(await page.locator("body").innerText(),/The check was not completed/);
+  } finally {await browser.close();}
 });

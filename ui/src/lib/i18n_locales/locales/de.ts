@@ -2266,7 +2266,7 @@ export const deDictionary: DictionaryNode = {
       "Dieser Client zeigt den Host-Katalog. Farbmusterkorrekturen und Herstelleraktualisierungen werden auf dem Host gespeichert.",
     catalogRefreshTitle: "Herstellerkatalog aktualisieren",
     catalogRefreshHelp:
-      "Ermittle die derzeit verfügbaren Materialtypen und aktualisiere anschließend jeweils einen Materialtyp. Die Ermittlung importiert nichts und ändert niemals den Lebenszyklusstatus.",
+      "Wählen Sie einen Anbieter und Materialtyp, um neue Produkte hinzuzufügen und den Katalog zu aktualisieren.",
     discoverCatalogMaterials: "Verfügbare Materialien ermitteln",
     discoveringCatalogMaterials: "Verfügbare Materialien werden ermittelt",
     availableCatalogMaterials: "Verfügbare Materialien",

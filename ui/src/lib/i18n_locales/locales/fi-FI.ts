@@ -2114,7 +2114,7 @@ export const fiFIDictionary: DictionaryNode = {
     "catalogTabHelp": "Sovelluksen mukana tulee paikallinen siemenhakemisto. Toimittajapäivitykset lisäävät uusia uusia tuotteita ja päivittävät valittuja materiaaliperheitä.",
     "catalogTabClientHelp": "Tämä asiakas näyttää isäntähakemiston. Swatch-korjaukset ja toimittajaluettelopäivitykset tallennetaan isäntään.",
     "catalogRefreshTitle": "Toimittajahakemiston päivitykset",
-    "catalogRefreshHelp": "Etsi tällä hetkellä saatavilla olevat materiaalityypit ja päivitä sitten yksi materiaalityyppi kerrallaan. Haku ei tuo mitään eikä muuta elinkaaritilaa.",
+    "catalogRefreshHelp": "Valitse toimittaja ja materiaalityyppi lisätäksesi uusia tuotteita ja päivittääksesi luettelon.",
     "discoverCatalogMaterials": "Etsi saatavilla olevat materiaalit",
     "discoveringCatalogMaterials": "Etsitään saatavilla olevia materiaaleja",
     "availableCatalogMaterials": "Saatavilla olevat materiaalit",

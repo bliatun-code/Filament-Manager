@@ -2114,7 +2114,7 @@ export const jaJPDictionary: DictionaryNode = {
     "catalogTabHelp": "アプリにはローカル種子カタログが付属しています。ベンダー更新により、新しく発見された製品が追加され、選択された材料ファミリーが更新されます。",
     "catalogTabClientHelp": "このクライアントは、host カタログを表示します。スウォッチの修正とベンダー カタログの更新は、host に保存されます。",
     "catalogRefreshTitle": "ベンダーカタログの更新",
-    "catalogRefreshHelp": "現在利用可能な材料タイプを検出し、その後は一度に1つの材料タイプを更新します。検出では何もインポートせず、ライフサイクル状態も変更しません。",
+    "catalogRefreshHelp": "メーカーと材料の種類を選択して、新しい製品を追加し、カタログを更新します。",
     "discoverCatalogMaterials": "利用可能な材料を検出",
     "discoveringCatalogMaterials": "利用可能な材料を検出中",
     "availableCatalogMaterials": "利用可能な材料",

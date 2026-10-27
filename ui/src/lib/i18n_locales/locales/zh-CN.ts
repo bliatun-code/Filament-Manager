@@ -2114,7 +2114,7 @@ export const zhCNDictionary: DictionaryNode = {
     "catalogTabHelp": "该应用程序附带本地种子目录。供应商更新添加新发现的产品并刷新选定的材料系列。",
     "catalogTabClientHelp": "此客户端显示 host 目录。样本修复和供应商目录刷新保存在 host 上。",
     "catalogRefreshTitle": "供应商目录更新",
-    "catalogRefreshHelp": "先查找当前可用的材料类型，再每次只刷新一种材料。查找操作不会导入任何内容，也不会更改生命周期状态。",
+    "catalogRefreshHelp": "选择供应商和材料类型，以添加新产品并更新目录。",
     "discoverCatalogMaterials": "查找可用材料",
     "discoveringCatalogMaterials": "正在查找可用材料",
     "availableCatalogMaterials": "可用材料",

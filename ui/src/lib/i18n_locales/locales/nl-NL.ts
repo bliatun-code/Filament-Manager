@@ -1516,7 +1516,7 @@ export const nlNLDictionary: DictionaryNode = {
     "cachedReused": "In cache opgeslagen, hergebruikt",
     "catalogAllTypes": "Materialen zoeken",
     "catalogRefreshClientHostOnly": "Updates van de leverancierscatalogus worden naar de host verzonden. Deze client toont en bewerkt nog steeds de gedeelde host-catalogus.",
-    "catalogRefreshHelp": "Zoek welke materiaaltypen momenteel beschikbaar zijn en vernieuw daarna één materiaaltype per keer. De zoekactie importeert niets en wijzigt nooit de levenscyclusstatus.",
+    "catalogRefreshHelp": "Kies een leverancier en materiaaltype om nieuwe producten toe te voegen en de catalogus bij te werken.",
     "discoverCatalogMaterials": "Beschikbare materialen zoeken",
     "discoveringCatalogMaterials": "Beschikbare materialen zoeken",
     "availableCatalogMaterials": "Beschikbare materialen",

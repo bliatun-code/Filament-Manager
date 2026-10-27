@@ -1516,7 +1516,7 @@ export const csCZDictionary: DictionaryNode = {
     "cachedReused": "Znovu použito v mezipaměti",
     "catalogAllTypes": "Zjistit materiály",
     "catalogRefreshClientHostOnly": "Aktualizace katalogu dodavatelů se zasílají na host. Tento klient stále zobrazuje a upravuje sdílený katalog host.",
-    "catalogRefreshHelp": "Zjistěte aktuálně dostupné typy materiálů a poté aktualizujte vždy jen jeden typ. Zjišťování nic neimportuje ani nemění stav životního cyklu.",
+    "catalogRefreshHelp": "Vyberte dodavatele a typ materiálu pro přidání nových produktů a aktualizaci katalogu.",
     "discoverCatalogMaterials": "Zjistit dostupné materiály",
     "discoveringCatalogMaterials": "Zjišťování dostupných materiálů",
     "availableCatalogMaterials": "Dostupné materiály",

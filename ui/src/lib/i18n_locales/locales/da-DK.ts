@@ -2018,7 +2018,7 @@ export const daDKDictionary: DictionaryNode = {
     "runFullVendorAudit": "Find tilgængelige materialer",
     "catalogAllTypes": "Find materialer",
     "swatchQuality": "Swatch kvalitet",
-    "catalogRefreshHelp": "Find de materialetyper, der er tilgængelige nu, og opdater derefter én materialetype ad gangen. Søgningen importerer intet og ændrer aldrig livscyklusstatus.",
+    "catalogRefreshHelp": "Vælg leverandør og materialetype for at hente nye produkter og opdatere kataloget.",
     "discoverCatalogMaterials": "Find tilgængelige materialer",
     "discoveringCatalogMaterials": "Finder tilgængelige materialer",
     "availableCatalogMaterials": "Tilgængelige materialer",

@@ -2637,7 +2637,7 @@ export const esDictionary: DictionaryNode = {
     catalogRefreshClientHostOnly:
       "Las actualizaciones del catálogo de proveedores se envían al host. Este cliente todavía muestra y edita el catálogo de hosts compartidos.",
     catalogRefreshHelp:
-      "Busca los tipos de material disponibles y actualiza solo uno cada vez. La búsqueda no importa nada ni cambia el estado del ciclo de vida.",
+      "Elige un proveedor y un tipo de material para añadir nuevos productos y actualizar el catálogo.",
     discoverCatalogMaterials: "Buscar materiales disponibles",
     discoveringCatalogMaterials: "Buscando materiales disponibles",
     availableCatalogMaterials: "Materiales disponibles",

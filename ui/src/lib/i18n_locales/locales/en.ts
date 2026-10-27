@@ -2492,7 +2492,7 @@ export const enDictionary: DictionaryNode = {
         "This client shows the host catalog. Swatch fixes and vendor catalog refreshes are saved on the host.",
       catalogRefreshTitle: "Vendor catalog updates",
       catalogRefreshHelp:
-        "Discover which material types are currently available, then refresh one material type at a time. Discovery imports nothing and never changes lifecycle status.",
+        "Choose a vendor and material type to add new products and update the catalog.",
       discoverCatalogMaterials: "Discover available materials",
       discoveringCatalogMaterials: "Discovering available materials",
       availableCatalogMaterials: "Available materials",
