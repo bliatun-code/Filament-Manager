@@ -234,7 +234,7 @@ paired Companion browsers. Start with these references for technical work:
 
 The workspace contains `src/backend/` for the shared core, `src-tauri/` for the
 native shell and Companion service, `ui/` for the desktop interface, and
-`scripts/` for builds and validation. Node.js 24, npm 10 or newer and the checked-in
+`scripts/` for builds and validation. Node.js 26, npm 10 or newer and the checked-in
 Rust toolchain are required for development. macOS builds also need Xcode and
 its command-line tools. End users can install the published DMG or MSI without
 these development tools.

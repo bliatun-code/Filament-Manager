@@ -31,7 +31,7 @@ function printLine(line) {
 
 const nodeVersion = process.versions.node;
 const nodeMajor = Number.parseInt(nodeVersion.split(".")[0] ?? "0", 10);
-const supportedNodeMajor = 24;
+const supportedNodeMajor = Number(fs.readFileSync(path.join(rootDir, ".nvmrc"), "utf8").trim());
 
 printHeader("Runtime");
 printLine(`- node: ${nodeVersion}`);
