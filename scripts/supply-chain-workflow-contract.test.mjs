@@ -207,7 +207,9 @@ test("Dependabot surfaces majors except for explicit UI compatibility holds", ()
   assertDependabotIgnorePolicy(dependabot);
   assert.equal(uiPackageManifest.engines.node, ">=26 <27");
   assert.match(uiPackageManifest.devDependencies["@types/node"], /^\^26\./);
-  assert.match(uiPackageManifest.devDependencies.typescript, /^~6\.0\./);
+  assert.match(uiPackageManifest.devDependencies.typescript, /^npm:@typescript\/typescript6@~6\.0\./);
+  assert.match(uiPackageManifest.devDependencies["@typescript/native"], /^npm:typescript@~7\.0\./);
+  assert.match(uiPackageManifest.scripts.build, /node_modules\/@typescript\/native\/bin\/tsc -b/);
 });
 
 test("Dependabot ignore policy parser accepts either YAML quote style", () => {

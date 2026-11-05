@@ -28,12 +28,12 @@ Rust 1.90 lower bound and formatting style remain separate, explicit contracts.
 Dependabot surfaces major npm and Cargo upgrades as focused pull requests
 instead of suppressing them with wildcard rules. The UI has two temporary,
 named compatibility holds: `@types/node` follows the application's Node 26
-runtime contract, and TypeScript remains on 6.0.x while typescript-eslint requires
-TypeScript below 6.1. The `~6.0.3` manifest range allows compatible patches;
-Dependabot temporarily holds its minor and major upgrades. Revisit this limit
-when the [lint toolchain's supported range](https://typescript-eslint.io/users/dependency-versions/)
-expands. The contract suite requires these holds to stay explicit
-and tied to their manifest baselines.
+runtime contract, and ESLint and the localization checks use the TypeScript 6.0
+API through the `typescript` alias. The UI build runs the TypeScript 7.0 compiler
+through `@typescript/native`. This follows the
+[TypeScript side-by-side setup](https://devblogs.microsoft.com/typescript/announcing-typescript-7-0/#running-side-by-side-with-typescript-6.0).
+Revisit the aliases when the [lint toolchain](https://typescript-eslint.io/users/dependency-versions/)
+and localization checks can use a newer compiler API.
 
 The weekly Cargo version-update group explicitly allows both direct and
 transitive dependencies. Eligible patch and minor updates share the existing
