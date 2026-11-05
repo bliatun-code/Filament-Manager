@@ -111,7 +111,7 @@ test("every reviewed Rust workflow setup installs the exact toolchain", () => {
   }
 });
 
-test("every Rust setup reads the sole release pin after Node 24 is installed", () => {
+test("every Rust setup reads the sole release pin after Node 26 is installed", () => {
   for (const [workflowIndex, jobNames] of [
     [0, ["shared-contracts", "migration-integrity", "macos-smoke", "windows-smoke"]],
     [1, ["build-macos-dmg", "build-windows-msi"]],
@@ -121,8 +121,8 @@ test("every Rust setup reads the sole release pin after Node 24 is installed", (
       const job = workflowJob(workflows[workflowIndex][1], jobName);
       const readers = [...job.matchAll(/^      - name: Read Rust toolchain\n        id: rust-toolchain\n        run: node \.\/scripts\/read-rust-toolchain\.mjs --github-output$/gm)];
       assert.equal(readers.length, 1, `${jobName} must run the validated pin reader exactly once`);
-      const nodeSetup = job.match(/      - name: Setup Node\n        uses: actions\/setup-node@[0-9a-f]{40}[^\n]*\n        with:\n          node-version: 24\n/);
-      assert.ok(nodeSetup, `${jobName} must install Node 24 before reading the pin`);
+      const nodeSetup = job.match(/      - name: Setup Node\n        uses: actions\/setup-node@[0-9a-f]{40}[^\n]*\n        with:\n          node-version: 26\n/);
+      assert.ok(nodeSetup, `${jobName} must install Node 26 before reading the pin`);
       assert.ok(nodeSetup.index < readers[0].index, `${jobName} must install Node first`);
       assert.ok(readers[0].index < job.indexOf("      - name: Setup Rust\n"), `${jobName} must read the pin before installing Rust`);
     }

@@ -38,7 +38,10 @@ test("balanced roll dialog preserves weight, properties, labels and guarded acti
           const update = dialog.getByRole("button", { name: "Update weight", exact: true });
           await weight.fill(""); assert.equal(await update.isDisabled(), true); await weight.fill("770");
           const tare = dialog.getByRole("spinbutton", { name: "Empty spool weight (g)", exact: true }); await tare.fill("300"); assert.equal(await update.isDisabled(), true);
-          await dialog.getByRole("button", { name: "Save roll changes", exact: true }).click(); await weight.fill("800"); await update.click();
+          await dialog.getByRole("button", { name: "Save roll changes", exact: true }).click();
+          await page.waitForFunction(() => document.querySelector<HTMLInputElement>(".inventory-balanced-weight-input input[type=number]")?.value === "820");
+          await weight.fill("800");
+          await update.click();
           await page.waitForFunction(() => document.querySelector(".inventory-balanced-weight-summary strong")?.textContent === "500 g");
           await page.evaluate(() => (window as unknown as { setFilamentBusy: (busy: boolean) => void }).setFilamentBusy(true)); await page.waitForFunction(() => document.querySelector(".inventory-balanced-weight-input")?.hasAttribute("disabled")); assert.equal(await update.isDisabled(), true);
           await page.evaluate(() => (window as unknown as { setFilamentBusy: (busy: boolean) => void }).setFilamentBusy(false));

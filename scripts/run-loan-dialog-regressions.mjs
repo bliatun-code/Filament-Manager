@@ -349,6 +349,8 @@ async function main() {
       try {
         await runCase(browser, url, fixture, name, check);
       } catch (error) {
+        console.error(`  Failed: ${name}
+${error.stack ?? error}`);
         failures.push(new Error(name, { cause: error }));
       }
     }
