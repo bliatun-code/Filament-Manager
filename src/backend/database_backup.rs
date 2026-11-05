@@ -430,11 +430,7 @@ pub(crate) fn export_full_backup_content(conn: &rusqlite::Connection) -> Invento
 fn export_table_rows(conn: &rusqlite::Connection, table: &str) -> InventoryResult<Vec<Value>> {
     let query = format!("SELECT * FROM {table}");
     let mut stmt = conn.prepare(&query)?;
-    let columns: Vec<String> = stmt
-        .column_names()
-        .iter()
-        .map(|name| (*name).to_string())
-        .collect();
+    let columns: Vec<String> = stmt.column_names().map(str::to_owned).collect();
 
     let mut rows = stmt.query([])?;
     let mut output = Vec::new();
