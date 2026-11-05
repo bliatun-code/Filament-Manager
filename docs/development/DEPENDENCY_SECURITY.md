@@ -15,7 +15,7 @@ workspace with Rust 1.90 on their supported desktop platform before running
 ordinary verification with the exact pinned release. Both compilers are installed
 before restoring the [native CI dependency cache](CI_CACHE.md), so its key includes
 both compiler identities. Each CI, release and audit
-Rust setup first runs `scripts/read-rust-toolchain.mjs` with Node 24. The reader
+Rust setup first runs `scripts/read-rust-toolchain.mjs` with Node 26. The reader
 accepts one exact `x.y.z` release pin and rejects rolling channels, expressions,
 missing or duplicate pins, and unsupported configuration syntax before writing
 the validated value to GitHub Actions output. The SHA-pinned Rust setup action
@@ -27,7 +27,7 @@ Rust 1.90 lower bound and formatting style remain separate, explicit contracts.
 
 Dependabot surfaces major npm and Cargo upgrades as focused pull requests
 instead of suppressing them with wildcard rules. The UI has two temporary,
-named compatibility holds: `@types/node` follows the application's Node 24
+named compatibility holds: `@types/node` follows the application's Node 26
 runtime contract, and TypeScript remains on 6.0.x while typescript-eslint requires
 TypeScript below 6.1. The `~6.0.3` manifest range allows compatible patches;
 Dependabot temporarily holds its minor and major upgrades. Revisit this limit

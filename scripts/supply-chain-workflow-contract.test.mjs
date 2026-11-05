@@ -205,8 +205,8 @@ test("npm audit covers both lockfiles at a fail-closed severity threshold", () =
 
 test("Dependabot surfaces majors except for explicit UI compatibility holds", () => {
   assertDependabotIgnorePolicy(dependabot);
-  assert.equal(uiPackageManifest.engines.node, ">=24 <25");
-  assert.match(uiPackageManifest.devDependencies["@types/node"], /^\^24\./);
+  assert.equal(uiPackageManifest.engines.node, ">=26 <27");
+  assert.match(uiPackageManifest.devDependencies["@types/node"], /^\^26\./);
   assert.match(uiPackageManifest.devDependencies.typescript, /^~6\.0\./);
 });
 
