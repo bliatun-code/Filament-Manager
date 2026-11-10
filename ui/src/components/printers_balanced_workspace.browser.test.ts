@@ -31,7 +31,7 @@ test("balanced printers show all slots, rank manual candidates and require measu
     await page.locator(".printer-slot-row").first().waitFor();
     assert.equal(await page.locator(".printer-slot-row").count(),11);
     assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth+1));
-    const axe=await new AxeBuilder({page}).include("main").withTags(["wcag2a","wcag2aa","wcag21aa"]).analyze();assert.deepEqual(axe.violations.map(v=>({id:v.id,targets:v.nodes.map(n=>n.target)})),[]);
+    const axe=await new AxeBuilder({page}).include("main").withTags(["wcag2a","wcag2aa","wcag21aa"]).analyze();assert.deepEqual(axe.violations.map(v=>({id:v.id,targets:v.nodes.map(n=>[n.target,n.failureSummary])})),[]);
     await page.screenshot({path:resolve(out,`${locale}-${width}-${theme}.png`),fullPage:true});
     assert.deepEqual(errors,[]);
     testContext.diagnostic(`Printers: ${locale}, ${width}px, ${theme} passed`);
