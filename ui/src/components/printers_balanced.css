@@ -15,7 +15,7 @@
 .printers-balanced-page .printer-metric-value { font-weight:600; font-variant-numeric:tabular-nums; }
 .printers-balanced-page .printer-balanced-telemetry { grid-column:1/-1; padding-left:6rem; }
 .printers-balanced-page .printer-slot-table-wrap { margin-top:.7rem; }
-.printers-balanced-page .printer-slot-table { width:100%; border-collapse:collapse; font-size:.78rem; text-align:left; table-layout:fixed; }
+.printers-balanced-page .printer-slot-table { width:100%; border-collapse:collapse; color:inherit; font-size:.78rem; text-align:left; table-layout:fixed; }
 .printers-balanced-page .printer-slot-table th { font-weight:500; }
 .printers-balanced-page .printer-slot-table thead th { background:var(--printer-subtle); padding:.45rem .65rem; color:var(--printer-muted); font-size:.72rem; }
 .printers-balanced-page .printer-slot-table thead th:nth-child(1) { width:15%; }
