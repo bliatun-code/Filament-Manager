@@ -18,7 +18,7 @@
     "@tauri-apps/api": "^2.12.4",
     "@zxing/browser": "^0.2.1",
     "@zxing/library": "^0.23.0",
-    "lucide-react": "^1.70.0",
+    "lucide-react": "^1.72.0",
     "pdf-lib": "^1.17.1",
     "qrcode": "^1.5.4",
     "react": "^19.3.1",
@@ -39,7 +39,7 @@
     "tailwindcss": "^4.3.5",
     "typescript": "npm:@typescript/typescript6@~6.0.2",
     "typescript-eslint": "^8.72.2",
-    "vite": "^8.3.7"
+    "vite": "^8.3.8"
   },
   "overrides": {
     "minimatch": "^11.0.4"
