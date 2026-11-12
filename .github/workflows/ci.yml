@@ -427,7 +427,7 @@ jobs:
       - name: Build MSI smoke bundle
         env:
           MSI_VERSION_CONFIG_PATH: ${{ runner.temp }}/filament-manager-msi-smoke-version.json
-        run: npm run tauri -- build --debug --bundles msi --config "$env:MSI_VERSION_CONFIG_PATH"
+        run: node ./scripts/run-tauri.mjs build --debug --bundles msi --config "$env:MSI_VERSION_CONFIG_PATH"
 
       - name: Verify MSI smoke bundle
         shell: pwsh
