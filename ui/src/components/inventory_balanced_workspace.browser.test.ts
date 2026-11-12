@@ -28,7 +28,10 @@ test("balanced inventory preserves per-roll weights, filtering, selection and co
     await page.evaluate(async ({locale,theme})=>{
      await (window as unknown as {InventoryPreview:{mountInventoryWorkspacePreview:(locale:string,theme:string)=>Promise<void>}}).InventoryPreview.mountInventoryWorkspacePreview(locale,theme);document.documentElement.lang=locale;
     },{locale,theme});
-    const cards=page.locator(".inventory-product-card");await cards.first().waitFor();assert.equal(await cards.count(),10);
+    const cards=page.locator(".inventory-product-card");
+    // The initial preview render can contend with other Chromium tests on shared runners.
+    await cards.first().waitFor({timeout:20_000});
+    assert.equal(await cards.count(),10);
     const grams=(value:number)=>new Intl.NumberFormat(locale,{style:"unit",unit:"gram",unitDisplay:"short",maximumFractionDigits:1}).format(value);
     const black=cards.filter({has:page.getByRole("heading",{name:"ABS Black (40101)",exact:true})});
     assert.equal(await black.locator(".inventory-roll-row").count(),2);
