@@ -1,0 +1,12 @@
+name: Set up npm 12
+description: Install the pinned npm CLI and put it first on the runner PATH
+runs:
+  using: composite
+  steps:
+    - shell: bash
+      run: |
+        npm_dir="$(node -p 'require("node:path").join(process.env.RUNNER_TEMP, "filament-manager-npm")')"
+        npm install --prefix "$npm_dir" --no-save --ignore-scripts --no-audit --no-fund npm@12.2.2
+        node -e 'const path = require("node:path"); require("node:fs").appendFileSync(process.env.GITHUB_PATH, path.join(process.argv[1], "node_modules", ".bin") + "\n")' "$npm_dir"
+    - shell: bash
+      run: npm --version
