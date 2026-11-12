@@ -8,11 +8,11 @@ state or an extra audit tool, while `verify` must remain a repeatable source and
 build gate. The deterministic npm lockfile policy is also exercised by the
 ordinary script test suite.
 
-The desktop smoke jobs use npm 12.2.2 and its default policy of blocking
-dependency install scripts. The jobs check that the locked native SQLite addon
-loads from the package's bundled binaries. The release workflow continues to
-use the npm version bundled with Node 26, including for the historical database
-fixture.
+The desktop smoke and installer release jobs use pinned npm 12.2.2 with its
+default policy of blocking dependency install scripts. CI also uses npm 12 to
+generate and verify both historical release database fixtures on Linux and
+verify the downloaded v0.28 fixture on Windows. The fixture generators use the
+native SQLite binaries bundled with the locked packages.
 
 The reviewed Rust release has one version source, `rust-toolchain.toml`, monitored by
 Dependabot's Rust-toolchain ecosystem. Both Cargo packages declare Rust 1.90 as
