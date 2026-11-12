@@ -8,6 +8,12 @@ state or an extra audit tool, while `verify` must remain a repeatable source and
 build gate. The deterministic npm lockfile policy is also exercised by the
 ordinary script test suite.
 
+The desktop smoke jobs use npm 12.2.2 and its default policy of blocking
+dependency install scripts. The jobs check that the locked native SQLite addon
+loads from the package's bundled binaries. The release workflow continues to
+use the npm version bundled with Node 26, including for the historical database
+fixture.
+
 The reviewed Rust release has one version source, `rust-toolchain.toml`, monitored by
 Dependabot's Rust-toolchain ecosystem. Both Cargo packages declare Rust 1.90 as
 their minimum supported version. Both required smoke jobs compile the complete

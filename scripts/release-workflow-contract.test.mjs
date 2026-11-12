@@ -1303,7 +1303,7 @@ test("Windows CI runs separate builtin portability contracts before toolchain se
   assert.match(windowsJob, /timeout-minutes: 60/);
   assert.match(
     windowsJob,
-    /npm run tauri -- build --debug --bundles msi --config "\$env:MSI_VERSION_CONFIG_PATH"/,
+    /node \.\/scripts\/run-tauri\.mjs build --debug --bundles msi --config "\$env:MSI_VERSION_CONFIG_PATH"/,
   );
   assert.match(windowsJob, /-MsiDirectory "target\/debug\/bundle\/msi"/);
   assert.match(windowsJob, /-ExpectedArchitecture "x64"/);
