@@ -248,7 +248,7 @@ test("Dependabot ignore policy rejects alternate wildcard key syntax", () => {
 test("Cargo audit and license tools are exact, locked and fail closed", () => {
   assert.match(
     workflow,
-    /cargo install --locked cargo-audit --version 0\.22\.2/,
+    /cargo install --locked cargo-audit --version 0\.23\.0/,
   );
   assert.match(workflow, /^        run: cargo audit$/m);
   assert.doesNotMatch(workflow, /cargo audit[^\n]*(?:--ignore|--stale)/);
