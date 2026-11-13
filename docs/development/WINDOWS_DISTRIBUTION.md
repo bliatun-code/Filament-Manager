@@ -112,3 +112,13 @@ for troubleshooting without database contents or the local path. It also omits
 names, IP addresses, printer serials, tokens, QR/RFID values, and raw printer
 telemetry. The file includes the non-secret build commit, target, and
 distribution channel, but not the configured update metadata URL.
+
+## NSIS release rehearsal
+
+Run **Windows NSIS release rehearsal** on `main` in GitHub Actions to build
+and test a per-user x64 release candidate. The workflow downloads the checked
+candidate by digest and uses it for both the installed-app release gates and
+the MSI migration gate. When the repository version still matches the newest
+supported MSI, the candidate uses the next patch version with `-rc.1` in a
+temporary build config. The rehearsal uploads workflow artifacts and the
+public release workflow continues to publish MSI.
