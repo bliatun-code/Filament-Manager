@@ -161,12 +161,8 @@ jobs:
             ~/.cargo/registry/src
             ~/.cargo/git/db
             ~/.cargo/git/checkouts
-            target/debug/deps
             target/debug/build
-            target/debug/.fingerprint
-            target/release/deps
             target/release/build
-            target/release/.fingerprint
             target/msrv/debug/deps
             target/msrv/debug/build
             target/msrv/debug/.fingerprint
@@ -315,12 +311,8 @@ jobs:
             ~/.cargo/registry/src
             ~/.cargo/git/db
             ~/.cargo/git/checkouts
-            target/debug/deps
             target/debug/build
-            target/debug/.fingerprint
-            target/release/deps
             target/release/build
-            target/release/.fingerprint
             target/msrv/debug/deps
             target/msrv/debug/build
             target/msrv/debug/.fingerprint
@@ -414,12 +406,8 @@ jobs:
             ~/.cargo/registry/src
             ~/.cargo/git/db
             ~/.cargo/git/checkouts
-            target/debug/deps
             target/debug/build
-            target/debug/.fingerprint
-            target/release/deps
             target/release/build
-            target/release/.fingerprint
             target/msrv/debug/deps
             target/msrv/debug/build
             target/msrv/debug/.fingerprint
@@ -575,12 +563,8 @@ jobs:
             ~/.cargo/registry/src
             ~/.cargo/git/db
             ~/.cargo/git/checkouts
-            target/debug/deps
             target/debug/build
-            target/debug/.fingerprint
-            target/release/deps
             target/release/build
-            target/release/.fingerprint
             target/msrv/debug/deps
             target/msrv/debug/build
             target/msrv/debug/.fingerprint
