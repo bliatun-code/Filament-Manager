@@ -1421,6 +1421,8 @@ test("CI executes real browser accessibility and sanitized Companion workflows",
   assertStepOrder(macosJob, [
     "Install root dependencies",
     "Install Playwright Chromium",
+    "Install Playwright WebKit",
+    "Run Companion mobile WebKit smoke",
     "Run full verification",
     "Run data-backed Companion E2E",
   ]);
@@ -1436,6 +1438,14 @@ test("CI executes real browser accessibility and sanitized Companion workflows",
   assert.match(
     windowsJob,
     /- name: Install Playwright Chromium\s+run: node \.\/node_modules\/playwright\/cli\.js install chromium/,
+  );
+  assert.match(
+    macosJob,
+    /- name: Install Playwright WebKit\s+timeout-minutes: 5\s+run: node \.\/node_modules\/playwright\/cli\.js install webkit/,
+  );
+  assert.match(
+    macosJob,
+    /- name: Run Companion mobile WebKit smoke\s+timeout-minutes: 5\s+env:\s+COMPANION_QA_BROWSER: webkit\s+run: npm run qa:visual:companion:balanced -- --smoke/,
   );
   assert.match(
     macosJob,
