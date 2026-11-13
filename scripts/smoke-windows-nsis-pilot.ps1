@@ -32,6 +32,8 @@ $database = Join-Path $dataDirectory "filament-manager.db"
 $uninstallRoot = "HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall"
 $nsisEntry = Join-Path $uninstallRoot $product
 $startMenuShortcut = Join-Path ([Environment]::GetFolderPath("Programs")) "$product\$product.lnk"
+# ProductCode from the exact, SHA-256-pinned v0.35.1 MSI below.
+$productCode = "{BEFA7FBD-D3A2-43DD-8317-F4873A0A5A01}"
 
 function Invoke-PilotInstaller {
     param([string]$FilePath, [string[]]$InstallerArguments, [int]$ExpectedExitCode = 0)
@@ -39,16 +41,6 @@ function Invoke-PilotInstaller {
     $process = Start-Process -FilePath $FilePath -ArgumentList $InstallerArguments -Wait -PassThru
     if ($process.ExitCode -ne $ExpectedExitCode) {
         throw "Unexpected exit code $($process.ExitCode) for $FilePath. Expected $ExpectedExitCode."
-    }
-}
-
-function Get-MsiRegistration {
-    if (-not (Test-Path -LiteralPath $uninstallRoot)) { return }
-
-    Get-ChildItem -LiteralPath $uninstallRoot | Where-Object {
-        $_.GetValue("WindowsInstaller") -eq 1 -and
-        $_.GetValue("DisplayName") -ceq $product -and
-        $_.GetValue("DisplayVersion") -ceq "0.35.1"
     }
 }
 
@@ -138,7 +130,7 @@ Start-Transcript -Path (Join-Path $Logs "pilot-transcript.log")
 try {
     Write-Host "Checking the clean per-user installation and library paths."
     Assert-Absent @($installDirectory, $dataDirectory, $roamingDirectory, $nsisEntry, $startMenuShortcut)
-    if (@(Get-MsiRegistration).Count) { throw "The baseline MSI is already registered." }
+    if ((Get-MsiState $productCode) -ne -1) { throw "The baseline MSI is already registered." }
 
     $Installer = (Resolve-Path -LiteralPath $Installer).Path
     $candidateHash = (Get-FileHash -LiteralPath $Candidate).Hash
@@ -155,9 +147,6 @@ try {
     $msiexec = Join-Path $env:SystemRoot "System32\msiexec.exe"
     Write-Host "Installing the published Filament Manager v0.35.1 MSI."
     Invoke-PilotInstaller $msiexec @("/i", ('"{0}"' -f $sourceMsi), "/qn", "/norestart", "/L*V", ('"{0}"' -f $msiLog))
-    $registration = @(Get-MsiRegistration)
-    if ($registration.Count -ne 1) { throw "Expected exactly one installed per-user v0.35.1 MSI." }
-    $productCode = $registration[0].PSChildName
     if ((Get-MsiState $productCode) -ne 5) { throw "Windows Installer did not report the MSI as installed." }
     if ((Get-FileHash -LiteralPath $installedApp).Hash -ceq $candidateHash) {
         throw "The released MSI and the candidate must install different binaries."
@@ -177,7 +166,7 @@ try {
 
     Write-Host "Migrating the installed MSI to the NSIS pilot."
     Invoke-PilotInstaller $Installer @("/S")
-    if ((Get-MsiState $productCode) -ne -1 -or @(Get-MsiRegistration).Count) {
+    if ((Get-MsiState $productCode) -ne -1) {
         throw "Windows Installer still reports the previous MSI as installed."
     }
     Assert-CandidateInstalled
