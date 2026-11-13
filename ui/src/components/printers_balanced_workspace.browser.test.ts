@@ -81,6 +81,52 @@ test("balanced printers show all slots, rank manual candidates and require measu
     }
    } finally {await page.close();}
   }
+  const visibility = await browser.newPage({ viewport: { width: 1440, height: 1100 } });
+  try {
+   await visibility.route("http://printers-preview.local/**", (route) => route.fulfill({
+    contentType: "text/html",
+    body: '<html lang="en"><head><title>Printer slot visibility</title></head><body><div id="root"></div></body></html>',
+   }));
+   const mountWorkspace = async () => {
+    await visibility.addStyleTag({ content: css });
+    await visibility.addScriptTag({ content: script.code });
+    await visibility.evaluate(() => (
+     window as unknown as {
+      PrintersPreview: { mountPrintersWorkspace: (locale: string, theme: string) => Promise<void> };
+     }
+    ).PrintersPreview.mountPrintersWorkspace("en", "dark"));
+   };
+   const firstPrinter = visibility.locator(".printer-balanced-card").first();
+   const brutus = visibility.getByRole("table", { name: "Brutus" });
+   const prusan = visibility.getByRole("table", { name: "Prusan" });
+
+   await visibility.goto("http://printers-preview.local/");
+   await mountWorkspace();
+   await brutus.waitFor();
+   await prusan.waitFor();
+   await firstPrinter.getByRole("button", { name: "Hide slots" }).click();
+   await brutus.waitFor({ state: "hidden" });
+   await prusan.waitFor();
+
+   await visibility.reload();
+   await mountWorkspace();
+   const showSlots = firstPrinter.getByRole("button", { name: "Show slots" });
+   assert.equal(await showSlots.getAttribute("aria-expanded"), "false");
+   assert.equal(await brutus.count(), 0);
+   await prusan.waitFor();
+   await showSlots.click();
+   await brutus.waitFor();
+   assert.deepEqual(await visibility.evaluate(() => JSON.parse(
+    localStorage.getItem("bfm-printer-slot-visibility:brutus") ?? "null",
+   )), { version: 1, value: "expanded" });
+
+   await visibility.reload();
+   await mountWorkspace();
+   await brutus.waitFor();
+   await prusan.waitFor();
+  } finally {
+   await visibility.close();
+  }
   const review=await browser.newPage({viewport:{width:1440,height:1100}});
   try {
    await review.route("http://printers-preview.local/**",r=>r.fulfill({contentType:"text/html",body:'<html lang="nb"><head><title>Printere</title></head><body><div id="root"></div></body></html>'}));
