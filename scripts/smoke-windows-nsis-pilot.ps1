@@ -43,6 +43,8 @@ function Invoke-PilotInstaller {
 }
 
 function Get-MsiRegistration {
+    if (-not (Test-Path -LiteralPath $uninstallRoot)) { return }
+
     Get-ChildItem -LiteralPath $uninstallRoot | Where-Object {
         $_.GetValue("WindowsInstaller") -eq 1 -and
         $_.GetValue("DisplayName") -ceq $product -and
@@ -134,6 +136,7 @@ function Assert-CandidateInstalled {
 New-Item -ItemType Directory -Path $Logs | Out-Null
 Start-Transcript -Path (Join-Path $Logs "pilot-transcript.log")
 try {
+    Write-Host "Checking the clean per-user installation and library paths."
     Assert-Absent @($installDirectory, $dataDirectory, $roamingDirectory, $nsisEntry, $startMenuShortcut)
     if (@(Get-MsiRegistration).Count) { throw "The baseline MSI is already registered." }
 
@@ -150,6 +153,7 @@ try {
 
     $msiLog = Join-Path $Logs "baseline-msi-install.log"
     $msiexec = Join-Path $env:SystemRoot "System32\msiexec.exe"
+    Write-Host "Installing the published Filament Manager v0.35.1 MSI."
     Invoke-PilotInstaller $msiexec @("/i", ('"{0}"' -f $sourceMsi), "/qn", "/norestart", "/L*V", ('"{0}"' -f $msiLog))
     $registration = @(Get-MsiRegistration)
     if ($registration.Count -ne 1) { throw "Expected exactly one installed per-user v0.35.1 MSI." }
@@ -168,20 +172,25 @@ try {
     Copy-Item -LiteralPath $Fixture -Destination $database
     & node $databaseCheck capture $database $snapshot
     if ($LASTEXITCODE -ne 0) { throw "Could not capture the expected spool and printer identities and state." }
+    Write-Host "Opening the historical library with the released MSI application."
     Test-InstalledApp "MSI"
 
+    Write-Host "Migrating the installed MSI to the NSIS pilot."
     Invoke-PilotInstaller $Installer @("/S")
     if ((Get-MsiState $productCode) -ne -1 -or @(Get-MsiRegistration).Count) {
         throw "Windows Installer still reports the previous MSI as installed."
     }
     Assert-CandidateInstalled
+    Write-Host "Reopening the same library with the installed NSIS application."
     Test-InstalledApp "NSIS"
+    Write-Host "Uninstalling the NSIS application and checking that the library is retained."
     Invoke-PilotInstaller $uninstaller @("/S")
     Assert-Absent @($installedApp, $uninstaller, $nsisEntry, $startMenuShortcut, $roamingDirectory)
     & node $databaseCheck verify $database $snapshot
     if ($LASTEXITCODE -ne 0) { throw "NSIS uninstall did not preserve the library." }
 
     # Exercise the no-MSI branch in the same profile while retaining the library.
+    Write-Host "Exercising clean NSIS installation and uninstall with the retained library."
     Invoke-PilotInstaller $Installer @("/S")
     Assert-CandidateInstalled
     Test-InstalledApp "NSIS-clean-install"
