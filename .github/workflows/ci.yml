@@ -185,6 +185,16 @@ jobs:
       - name: Install Playwright Chromium
         run: node ./node_modules/playwright/cli.js install chromium
 
+      - name: Install Playwright WebKit
+        timeout-minutes: 5
+        run: node ./node_modules/playwright/cli.js install webkit
+
+      - name: Run Companion mobile WebKit smoke
+        timeout-minutes: 5
+        env:
+          COMPANION_QA_BROWSER: webkit
+        run: npm run qa:visual:companion:balanced -- --smoke
+
       - name: Install UI dependencies
         working-directory: ui
         run: npm ci
