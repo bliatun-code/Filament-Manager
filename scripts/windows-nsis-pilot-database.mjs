@@ -8,11 +8,11 @@ import {
 import { verifyWindowsAppDatabase } from "./verify-windows-app-database.mjs";
 
 const [command, databasePath, snapshotPath, ...extra] = process.argv.slice(2);
-const commands = ["capture", "prepare-launch", "verify-launch", "verify"];
+const commands = ["capture", "prepare-launch", "verify-legacy-launch", "verify-legacy", "verify-launch", "verify"];
 if (!commands.includes(command) || !databasePath || !snapshotPath || extra.length) {
   throw new Error(
     "Usage: node scripts/windows-nsis-pilot-database.mjs " +
-      "capture|prepare-launch|verify-launch|verify <database> <snapshot>",
+      "capture|prepare-launch|verify-legacy-launch|verify-legacy|verify-launch|verify <database> <snapshot>",
   );
 }
 
@@ -37,7 +37,7 @@ if (command === "prepare-launch") {
     throw new Error("Could not reset the fixture journal before startup.");
   }
 } else {
-  if (command === "verify-launch" && journalMode(databasePath) !== "wal") {
+  if (command.endsWith("-launch") && journalMode(databasePath) !== "wal") {
     throw new Error("Waiting for the app to open the default SQLite database in WAL mode.");
   }
   const snapshot = snapshotReleaseUpgradeDatabase(databasePath);
@@ -50,7 +50,9 @@ if (command === "prepare-launch") {
     writeFileSync(snapshotPath, JSON.stringify(snapshot), { flag: "wx" });
   } else {
     const previous = JSON.parse(readFileSync(snapshotPath, "utf8"));
-    await verifyWindowsAppDatabase(databasePath);
+    if (!command.startsWith("verify-legacy")) {
+      await verifyWindowsAppDatabase(databasePath);
+    }
     assertPreservedReleaseUpgradeData(previous, snapshot);
     console.log("Verified the spool and printer IDs and state in the default Windows database.");
   }

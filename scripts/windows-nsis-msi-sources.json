@@ -1,0 +1,22 @@
+{
+  "v0.33.0": {
+    "asset": "Filament-Manager_0.33.0_x64_en-US.msi",
+    "sha256": "d8cb29a4ca4196029f5118a9574cf93cf5c3ea22d9f7883cc35168901291cb7c",
+    "productCode": "{E39774D8-7B6D-431C-BEDB-2EF6F4B64B52}"
+  },
+  "v0.34.0": {
+    "asset": "Filament-Manager_0.34.0_x64_en-US.msi",
+    "sha256": "6a6dac6b08dc8ef772439021d0fe25f8f3c8e47a9f9aa04e09add0bf6738e19c",
+    "productCode": "{68C16157-4191-4C3E-A3EC-820D1F66A4EC}"
+  },
+  "v0.35.0": {
+    "asset": "Filament-Manager_0.35.0_x64_en-US.msi",
+    "sha256": "71439b4b69b98ab2acdaf4e5936a4d168da5891421fc322b5c463d1616eeaae1",
+    "productCode": "{839D9EC2-6F41-43FB-93F4-893A71353B78}"
+  },
+  "v0.35.1": {
+    "asset": "Filament-Manager_0.35.1_x64_en-US.msi",
+    "sha256": "b4e49f30a4f31662df1910e3c59ddff9100e59984b5f33b841bb05dacd65eda0",
+    "productCode": "{BEFA7FBD-D3A2-43DD-8317-F4873A0A5A01}"
+  }
+}

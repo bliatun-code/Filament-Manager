@@ -5,7 +5,24 @@ on:
     branches: [main]
     paths:
       - ".github/workflows/windows-nsis-pilot.yml"
-      - "scripts/*windows-nsis-pilot*"
+      - ".github/actions/setup-npm/action.yml"
+      - "Cargo.lock"
+      - "package-lock.json"
+      - "ui/package-lock.json"
+      - "rust-toolchain.toml"
+      - "scripts/*windows-nsis*"
+      - "scripts/prepare-ci-release-upgrade-fixture.mjs"
+      - "scripts/prepare-release-upgrade-fixture.mjs"
+      - "scripts/read-rust-toolchain.mjs"
+      - "scripts/release-upgrade-fixture-contract.mjs"
+      - "scripts/run-tauri.mjs"
+      - "scripts/smoke-release-database-upgrade.mjs"
+      - "scripts/verify-windows-app-database.mjs"
+      - "src-tauri/src/desktop_lifecycle.rs"
+      - "src-tauri/tauri.conf.json"
+      - "src-tauri/tauri.windows.conf.json"
+      - "src-tauri/windows/nsis*"
+      - "src-tauri/wix/per-user.wxs"
 
 permissions:
   contents: read
@@ -51,13 +68,18 @@ jobs:
           name: windows-nsis-pilot-fixture
           path: ${{ runner.temp }}/windows-nsis-pilot.db
           if-no-files-found: error
+          overwrite: true
           retention-days: 1
 
-  migration:
-    name: Migrate the published Windows MSI to NSIS
-    needs: fixture
+  build:
+    name: Build the two Windows NSIS candidates
     runs-on: windows-2025
     timeout-minutes: 45
+    outputs:
+      initial-version: ${{ steps.bundle.outputs.initial-version }}
+      initial-sha256: ${{ steps.bundle.outputs.initial-sha256 }}
+      next-version: ${{ steps.bundle.outputs.next-version }}
+      next-sha256: ${{ steps.bundle.outputs.next-sha256 }}
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -92,10 +114,79 @@ jobs:
         working-directory: ui
         run: npm ci
 
-      - name: Build the unsigned x64 pilot installer
+      - name: Build and hash the two unsigned x64 installers
+        id: bundle
+        shell: pwsh
         run: |
-          $config = (Resolve-Path -LiteralPath "scripts/windows-nsis-pilot.json").Path
-          node ./scripts/run-tauri.mjs build --debug --bundles nsis --target x86_64-pc-windows-msvc --config $config
+          $output = New-Item -ItemType Directory -Path (Join-Path $env:RUNNER_TEMP "nsis-candidates")
+          $config = Get-Content -LiteralPath "scripts/windows-nsis-pilot.json" -Raw | ConvertFrom-Json -AsHashtable
+          $versions = [ordered]@{
+            initial = "0.35.2-nsis-pilot.1"
+            next = "0.35.2-nsis-pilot.2"
+          }
+          $bundleDir = "target/x86_64-pc-windows-msvc/debug/bundle/nsis"
+          foreach ($candidate in $versions.GetEnumerator()) {
+            $config.version = $candidate.Value
+            $configPath = Join-Path $env:RUNNER_TEMP "$($candidate.Key)-nsis-config.json"
+            $config | ConvertTo-Json -Depth 10 | Set-Content -LiteralPath $configPath
+            node ./scripts/run-tauri.mjs build --debug --bundles nsis --target x86_64-pc-windows-msvc --config $configPath
+            if ($LASTEXITCODE -ne 0) { throw "Could not build NSIS candidate $($candidate.Value)." }
+            $files = @(Get-ChildItem -LiteralPath $bundleDir -Filter "*_$($candidate.Value)_x64-setup.exe" -File)
+            if ($files.Count -ne 1) { throw "Expected exactly one x64 installer for $($candidate.Value)." }
+            $artifact = Join-Path $output.FullName "$($candidate.Key).exe"
+            Move-Item -LiteralPath $files[0].FullName -Destination $artifact
+            $digest = (Get-FileHash -LiteralPath $artifact -Algorithm SHA256).Hash
+            "$($candidate.Key)-version=$($candidate.Value)" >> $env:GITHUB_OUTPUT
+            "$($candidate.Key)-sha256=$digest" >> $env:GITHUB_OUTPUT
+          }
+
+      - name: Upload the two NSIS candidates
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: filament-manager-unsigned-nsis-pilot
+          path: ${{ runner.temp }}/nsis-candidates/*.exe
+          if-no-files-found: error
+          overwrite: true
+          retention-days: 7
+
+  migration:
+    name: Migrate Windows MSI ${{ matrix.source }} to NSIS (${{ matrix.scenario }})
+    needs: [fixture, build]
+    runs-on: windows-2025
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - source: v0.33.0
+            scenario: standard
+          - source: v0.34.0
+            scenario: standard
+          - source: v0.35.0
+            scenario: standard
+          - source: v0.35.1
+            scenario: interactive
+          - source: v0.35.1
+            scenario: running-app
+          - source: v0.33.0
+            scenario: custom-directory
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Node
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 26
+          cache: npm
+
+      - name: Set up npm 12
+        uses: ./.github/actions/setup-npm
+
+      - name: Install test dependencies
+        run: npm ci
 
       - name: Download the synthetic fixture from this run
         uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
@@ -103,35 +194,54 @@ jobs:
           name: windows-nsis-pilot-fixture
           path: ${{ runner.temp }}/windows-nsis-pilot-fixture
 
-      - name: Exercise the installed MSI, NSIS migration and uninstallation
+      - name: Download the NSIS candidates from this run
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: filament-manager-unsigned-nsis-pilot
+          path: ${{ runner.temp }}/nsis-candidates
+
+      - name: Verify and exercise the Windows installer migration
         shell: pwsh
         timeout-minutes: 12
         env:
           FIXTURE_SHA256: ${{ needs.fixture.outputs.sha256 }}
+          INITIAL_SHA256: ${{ needs.build.outputs.initial-sha256 }}
+          INITIAL_VERSION: ${{ needs.build.outputs.initial-version }}
+          NEXT_SHA256: ${{ needs.build.outputs.next-sha256 }}
+          NEXT_VERSION: ${{ needs.build.outputs.next-version }}
+          SOURCE_VERSION: ${{ matrix.source }}
+          SCENARIO: ${{ matrix.scenario }}
         run: |
-          $buildDirectory = "target/x86_64-pc-windows-msvc/debug"
-          $installers = @(Get-ChildItem "$buildDirectory/bundle/nsis" -Filter "*.exe" -File)
-          if ($installers.Count -ne 1) { throw "Expected exactly one NSIS pilot installer." }
+          function Get-VerifiedCandidate([string]$Name, [string]$ExpectedSha256) {
+            $file = Join-Path $env:RUNNER_TEMP "nsis-candidates/$Name.exe"
+            if ($ExpectedSha256 -cnotmatch "^[0-9A-F]{64}$" -or
+                (Get-FileHash -LiteralPath $file -Algorithm SHA256).Hash -cne $ExpectedSha256) {
+              throw "SHA-256 mismatch for the $Name NSIS candidate."
+            }
+            return $file
+          }
+
           $pilot = @{
-            Installer = $installers[0].FullName
+            Installer = (Get-VerifiedCandidate "initial" $env:INITIAL_SHA256)
+            ExpectedNsisVersion = $env:INITIAL_VERSION
             Logs = (Join-Path $env:RUNNER_TEMP "filament-manager-nsis-logs")
             Fixture = (Join-Path $env:RUNNER_TEMP "windows-nsis-pilot-fixture/windows-nsis-pilot.db")
             FixtureSha256 = $env:FIXTURE_SHA256
+            SourceManifest = (Resolve-Path -LiteralPath "scripts/windows-nsis-msi-sources.json").Path
+            SourceVersion = $env:SOURCE_VERSION
+            Scenario = $env:SCENARIO
+          }
+          if ($env:SCENARIO -ceq "interactive") {
+            $pilot.NextInstaller = Get-VerifiedCandidate "next" $env:NEXT_SHA256
+            $pilot.NextVersion = $env:NEXT_VERSION
           }
           ./scripts/smoke-windows-nsis-pilot.ps1 @pilot
-
-      - name: Upload pilot installer
-        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
-        with:
-          name: filament-manager-unsigned-nsis-pilot
-          path: target/x86_64-pc-windows-msvc/debug/bundle/nsis/*.exe
-          if-no-files-found: error
-          retention-days: 7
 
       - name: Upload failed migration diagnostics
         if: failure()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
-          name: filament-manager-nsis-pilot-logs
+          name: filament-manager-nsis-pilot-logs-${{ matrix.source }}-${{ matrix.scenario }}
           path: ${{ runner.temp }}/filament-manager-nsis-logs
+          overwrite: true
           retention-days: 7

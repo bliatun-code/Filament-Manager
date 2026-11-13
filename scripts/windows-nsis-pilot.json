@@ -1,9 +1,10 @@
 {
-  "version": "0.35.2-nsis-pilot.1",
   "bundle": {
     "windows": {
+      "allowDowngrades": false,
       "nsis": {
         "installMode": "currentUser",
+        "template": "./windows/nsis-installer.nsi",
         "installerHooks": "../scripts/windows-nsis-pilot.nsh",
         "startMenuFolder": "Filament Manager"
       }
