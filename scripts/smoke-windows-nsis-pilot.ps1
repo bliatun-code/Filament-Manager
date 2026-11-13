@@ -2,7 +2,9 @@
 param(
     [Parameter(Mandatory = $true)][string]$Installer,
     [Parameter(Mandatory = $true)][string]$Candidate,
-    [Parameter(Mandatory = $true)][string]$Logs
+    [Parameter(Mandatory = $true)][string]$Logs,
+    [Parameter(Mandatory = $true)][string]$Fixture,
+    [Parameter(Mandatory = $true)][ValidatePattern("^[0-9a-fA-F]{64}$")][string]$FixtureSha256
 )
 
 Set-StrictMode -Version Latest
@@ -162,8 +164,11 @@ try {
 
     $databaseCheck = Join-Path $PSScriptRoot "windows-nsis-pilot-database.mjs"
     $snapshot = Join-Path $env:RUNNER_TEMP "filament-manager-nsis-library.json"
-    & node (Join-Path $PSScriptRoot "prepare-ci-release-upgrade-fixture.mjs") "--output=$database"
-    if ($LASTEXITCODE -ne 0) { throw "Could not prepare a populated historical database." }
+    if ((Get-FileHash -LiteralPath $Fixture).Hash -ne $FixtureSha256) {
+        throw "The fixture does not match the same-run Linux job's SHA-256."
+    }
+    New-Item -ItemType Directory -Path $dataDirectory | Out-Null
+    Copy-Item -LiteralPath $Fixture -Destination $database
     & node $databaseCheck capture $database $snapshot
     if ($LASTEXITCODE -ne 0) { throw "Could not capture the expected spool and printer identities and state." }
     Test-InstalledApp "MSI"
