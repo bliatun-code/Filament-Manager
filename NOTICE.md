@@ -25,3 +25,9 @@ These images identify supported equipment and do not imply endorsement.
 
 Lucide icons are used under the ISC license, with notices for icons derived
 from Feather. See `ui/src/assets/licenses/lucide-LICENSE.txt` for the full notice.
+
+## Windows installer template
+
+The NSIS rehearsal uses an adapted Tauri CLI 2.12.4 installer template under
+the MIT license. The source version and checksum are recorded in the template
+header. See [the upstream license notice](src-tauri/windows/TAURI-MIT.txt).

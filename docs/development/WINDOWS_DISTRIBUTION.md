@@ -77,6 +77,25 @@ retained as a CI artifact for troubleshooting. The MSI is intentionally
 unsigned; the smoke test fails unless both the source MSI and installed
 executable report the exact Authenticode status `NotSigned`.
 
+## NSIS migration candidate
+
+The NSIS test installer covers the published x64 per-user MSI versions
+v0.33.0 through v0.35.1. Close Filament Manager from its tray menu before
+installing. A custom install under the current user profile can be migrated
+when the NSIS destination matches its registered path. For other locations
+or unsupported MSI versions, exit the app, uninstall it through Windows
+Settings, then install NSIS in the normal per-user location. The library
+stays in the application-data directory.
+
+If an interrupted migration leaves an executable without a Windows Settings
+entry, rename the program’s installation folder and run setup again.
+Keep the library folder `%LOCALAPPDATA%\no.bliatun.filamentmanager` in place.
+
+Migration preserves the Windows launch-at-login choice. MSI removes the
+program directory it added to the user `PATH`. NSIS provides Start Menu
+and optional desktop shortcuts. Ordinary NSIS uninstall removes the
+program and its launch-at-login entries and retains the library.
+
 ## Runtime database safeguards
 
 On startup, an existing database is inspected read-only before schema writes.
