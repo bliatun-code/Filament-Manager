@@ -55,7 +55,7 @@ The private database is removed after the gate and is never uploaded with the
 diagnostic logs.
 
 Tagged releases also include a validated source dependency SBOM. Public tag
-releases include GitHub/Sigstore build provenance for the DMG and MSI. See
+releases include GitHub/Sigstore build provenance for both desktop installers. See
 [Release Integrity And Supply Chain](SUPPLY_CHAIN.md) for their verification
 commands and scope.
 

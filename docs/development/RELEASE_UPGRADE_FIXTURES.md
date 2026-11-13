@@ -89,7 +89,7 @@ Neither operational journal becomes portable user data through this fixture.
 
 The release workflow prepares the v0.30 fixture on Linux and transfers its
 database and manifest as a separate, run-scoped artifact to the Apple Silicon
-DMG and Windows MSI jobs. Each installed-app runner verifies the downloaded
+DMG and Windows installer jobs. Each installed-app runner verifies the downloaded
 pair before passing the fixture to the existing two-launch database smoke.
 The v0.28 schema-migration gate still runs first. Intel's existing launch gate
 is unchanged.
@@ -105,7 +105,7 @@ Download or generate a fresh pair before repeating the gate.
 
 For a local packaged candidate, add
 `--compatibility-fixture=/path/to/filament-manager-v0.30.0.db` to the macOS DMG
-smoke, or `-CompatibilityFixturePath` to the Windows MSI smoke. The adjacent
+smoke, or `-CompatibilityFixturePath` to the Windows installer smoke. The adjacent
 `.json` manifest is required. These checks exercise the installed executable
 with an explicit fixture database; the wrappers separately retain their normal
 window/installation checks. This does not test portable-backup restore and is

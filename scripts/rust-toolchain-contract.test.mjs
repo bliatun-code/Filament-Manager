@@ -114,7 +114,7 @@ test("every reviewed Rust workflow setup installs the exact toolchain", () => {
 test("every Rust setup reads the sole release pin after Node 26 is installed", () => {
   for (const [workflowIndex, jobNames] of [
     [0, ["shared-contracts", "migration-integrity", "macos-smoke", "windows-smoke"]],
-    [1, ["build-macos-dmg", "build-windows-msi"]],
+    [1, ["build-macos-dmg", "build-windows-nsis"]],
     [2, ["cargo-audit"]],
   ]) {
     for (const jobName of jobNames) {

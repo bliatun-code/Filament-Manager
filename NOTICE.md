@@ -28,6 +28,6 @@ from Feather. See `ui/src/assets/licenses/lucide-LICENSE.txt` for the full notic
 
 ## Windows installer template
 
-The NSIS rehearsal uses an adapted Tauri CLI 2.12.4 installer template under
+The Windows NSIS installer uses an adapted Tauri CLI 2.12.4 template under
 the MIT license. The source version and checksum are recorded in the template
 header. See [the upstream license notice](src-tauri/windows/TAURI-MIT.txt).
