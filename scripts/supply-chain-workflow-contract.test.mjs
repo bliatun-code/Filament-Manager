@@ -178,7 +178,10 @@ test("SBOM smoke uses the same pinned fail-closed generator as release", () => {
   );
   const sbomPin = /uses: (anchore\/sbom-action@[a-f0-9]{40}) # (v\d+\.\d+\.\d+)/;
   assert.deepEqual(workflow.match(sbomPin)?.slice(1), releaseWorkflow.match(sbomPin)?.slice(1));
-  assert.match(workflow, /syft-version: v1\.54\.1/);
+  const syftPin = /^\s+syft-version: (v\d+\.\d+\.\d+)\s*$/m;
+  const syftVersion = workflow.match(syftPin)?.[1];
+  assert.ok(syftVersion, "the SBOM smoke must pin a stable Syft version");
+  assert.equal(syftVersion, releaseWorkflow.match(syftPin)?.[1]);
   assert.match(workflow, /dependency-snapshot: false/);
   assert.match(workflow, /upload-artifact: false/);
   assert.match(workflow, /upload-release-assets: false/);
