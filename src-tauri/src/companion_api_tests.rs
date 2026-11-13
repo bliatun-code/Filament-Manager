@@ -390,7 +390,7 @@ async fn pair_test_session(
                 .map_err(|error| error.to_string())?,
         )
         .await
-        .map_err(|error| error.to_string())?;
+        .expect("the Companion router is infallible");
     assert_eq!(pair.status(), StatusCode::OK);
     assert_no_store(pair.headers());
 
@@ -728,7 +728,7 @@ async fn companion_http_times_out_slow_requests_with_the_api_error_contract() {
                     .map_err(|error| error.to_string())?,
             )
             .await
-            .map_err(|error| error.to_string())?;
+            .expect("the Companion router is infallible");
         assert_eq!(response.status(), StatusCode::REQUEST_TIMEOUT);
         assert_security_headers(response.headers());
         assert_no_store(response.headers());
@@ -764,7 +764,7 @@ async fn companion_api_pairs_session_and_requires_csrf_for_writes() {
                     .map_err(|error| error.to_string())?,
             )
             .await
-            .map_err(|error| error.to_string())?;
+            .expect("the Companion router is infallible");
         assert_eq!(unauthorized.status(), StatusCode::UNAUTHORIZED);
 
         let AuthenticatedTestSession {
@@ -784,7 +784,7 @@ async fn companion_api_pairs_session_and_requires_csrf_for_writes() {
                     .map_err(|error| error.to_string())?,
             )
             .await
-            .map_err(|error| error.to_string())?;
+            .expect("the Companion router is infallible");
         assert_eq!(authorized_read.status(), StatusCode::OK);
 
         let initial_history = router
@@ -798,7 +798,7 @@ async fn companion_api_pairs_session_and_requires_csrf_for_writes() {
                     .map_err(|error| error.to_string())?,
             )
             .await
-            .map_err(|error| error.to_string())?;
+            .expect("the Companion router is infallible");
         assert_eq!(initial_history.status(), StatusCode::OK);
         let initial_history_body = to_bytes(initial_history.into_body(), usize::MAX)
             .await
@@ -818,7 +818,7 @@ async fn companion_api_pairs_session_and_requires_csrf_for_writes() {
                     .map_err(|error| error.to_string())?,
             )
             .await
-            .map_err(|error| error.to_string())?;
+            .expect("the Companion router is infallible");
         assert_eq!(printer_overview.status(), StatusCode::OK);
         let printer_body = to_bytes(printer_overview.into_body(), usize::MAX)
             .await
@@ -838,7 +838,7 @@ async fn companion_api_pairs_session_and_requires_csrf_for_writes() {
                     .map_err(|error| error.to_string())?,
             )
             .await
-            .map_err(|error| error.to_string())?;
+            .expect("the Companion router is infallible");
         assert_eq!(active_loans_before_lend.status(), StatusCode::OK);
         let active_loans_before_lend_body =
             to_bytes(active_loans_before_lend.into_body(), usize::MAX)
@@ -863,7 +863,7 @@ async fn companion_api_pairs_session_and_requires_csrf_for_writes() {
                     .map_err(|error| error.to_string())?,
             )
             .await
-            .map_err(|error| error.to_string())?;
+            .expect("the Companion router is infallible");
         assert_eq!(forbidden_write.status(), StatusCode::FORBIDDEN);
 
         let successful_write = router
@@ -881,7 +881,7 @@ async fn companion_api_pairs_session_and_requires_csrf_for_writes() {
                     .map_err(|error| error.to_string())?,
             )
             .await
-            .map_err(|error| error.to_string())?;
+            .expect("the Companion router is infallible");
         assert_eq!(successful_write.status(), StatusCode::OK);
 
         let assign_slot = router
@@ -901,7 +901,7 @@ async fn companion_api_pairs_session_and_requires_csrf_for_writes() {
                     .map_err(|error| error.to_string())?,
             )
             .await
-            .map_err(|error| error.to_string())?;
+            .expect("the Companion router is infallible");
         assert_eq!(assign_slot.status(), StatusCode::OK);
 
         let replace_slot = router
@@ -921,7 +921,7 @@ async fn companion_api_pairs_session_and_requires_csrf_for_writes() {
                     .map_err(|error| error.to_string())?,
             )
             .await
-            .map_err(|error| error.to_string())?;
+            .expect("the Companion router is infallible");
         assert_eq!(replace_slot.status(), StatusCode::BAD_REQUEST);
 
         let detail = router
@@ -935,7 +935,7 @@ async fn companion_api_pairs_session_and_requires_csrf_for_writes() {
                     .map_err(|error| error.to_string())?,
             )
             .await
-            .map_err(|error| error.to_string())?;
+            .expect("the Companion router is infallible");
         assert_eq!(detail.status(), StatusCode::OK);
 
         let detail_body = to_bytes(detail.into_body(), usize::MAX)
@@ -963,7 +963,7 @@ async fn companion_api_pairs_session_and_requires_csrf_for_writes() {
                     .map_err(|error| error.to_string())?,
             )
             .await
-            .map_err(|error| error.to_string())?;
+            .expect("the Companion router is infallible");
         assert_eq!(clear_slot.status(), StatusCode::OK);
 
         let invalid_lend_date = router
@@ -983,7 +983,7 @@ async fn companion_api_pairs_session_and_requires_csrf_for_writes() {
                     .map_err(|error| error.to_string())?,
             )
             .await
-            .map_err(|error| error.to_string())?;
+            .expect("the Companion router is infallible");
         assert_eq!(invalid_lend_date.status(), StatusCode::BAD_REQUEST);
         let invalid_lend_date_body = to_bytes(invalid_lend_date.into_body(), usize::MAX)
             .await
@@ -1012,7 +1012,7 @@ async fn companion_api_pairs_session_and_requires_csrf_for_writes() {
                     .map_err(|error| error.to_string())?,
             )
             .await
-            .map_err(|error| error.to_string())?;
+            .expect("the Companion router is infallible");
         assert_eq!(lend_spool.status(), StatusCode::OK);
 
         let lend_body = to_bytes(lend_spool.into_body(), usize::MAX)
@@ -1037,7 +1037,7 @@ async fn companion_api_pairs_session_and_requires_csrf_for_writes() {
                     .map_err(|error| error.to_string())?,
             )
             .await
-            .map_err(|error| error.to_string())?;
+            .expect("the Companion router is infallible");
         assert_eq!(active_loans_after_lend.status(), StatusCode::OK);
         let active_loans_after_lend_body =
             to_bytes(active_loans_after_lend.into_body(), usize::MAX)
@@ -1065,7 +1065,7 @@ async fn companion_api_pairs_session_and_requires_csrf_for_writes() {
                     .map_err(|error| error.to_string())?,
             )
             .await
-            .map_err(|error| error.to_string())?;
+            .expect("the Companion router is infallible");
         assert_eq!(history_after_lend.status(), StatusCode::OK);
         let history_after_lend_body = to_bytes(history_after_lend.into_body(), usize::MAX)
             .await
@@ -1092,7 +1092,7 @@ async fn companion_api_pairs_session_and_requires_csrf_for_writes() {
                     .map_err(|error| error.to_string())?,
             )
             .await
-            .map_err(|error| error.to_string())?;
+            .expect("the Companion router is infallible");
         assert_eq!(borrowed_detail.status(), StatusCode::OK);
         let borrowed_detail_body = to_bytes(borrowed_detail.into_body(), usize::MAX)
             .await
@@ -1122,7 +1122,7 @@ async fn companion_api_pairs_session_and_requires_csrf_for_writes() {
                     .map_err(|error| error.to_string())?,
             )
             .await
-            .map_err(|error| error.to_string())?;
+            .expect("the Companion router is infallible");
         assert_eq!(return_loan.status(), StatusCode::OK);
         let return_body = to_bytes(return_loan.into_body(), usize::MAX)
             .await
@@ -1149,7 +1149,7 @@ async fn companion_api_pairs_session_and_requires_csrf_for_writes() {
                     .map_err(|error| error.to_string())?,
             )
             .await
-            .map_err(|error| error.to_string())?;
+            .expect("the Companion router is infallible");
         assert_eq!(repeated_return.status(), StatusCode::OK);
 
         let conflicting_return = router
@@ -1169,7 +1169,7 @@ async fn companion_api_pairs_session_and_requires_csrf_for_writes() {
                     .map_err(|error| error.to_string())?,
             )
             .await
-            .map_err(|error| error.to_string())?;
+            .expect("the Companion router is infallible");
         assert_eq!(conflicting_return.status(), StatusCode::BAD_REQUEST);
         let conflicting_return_body = to_bytes(conflicting_return.into_body(), usize::MAX)
             .await
@@ -1194,7 +1194,7 @@ async fn companion_api_pairs_session_and_requires_csrf_for_writes() {
                     .map_err(|error| error.to_string())?,
             )
             .await
-            .map_err(|error| error.to_string())?;
+            .expect("the Companion router is infallible");
         assert_eq!(returned_detail.status(), StatusCode::OK);
         let returned_detail_body = to_bytes(returned_detail.into_body(), usize::MAX)
             .await
@@ -1219,7 +1219,7 @@ async fn companion_api_pairs_session_and_requires_csrf_for_writes() {
                     .map_err(|error| error.to_string())?,
             )
             .await
-            .map_err(|error| error.to_string())?;
+            .expect("the Companion router is infallible");
         assert_eq!(active_loans_after_return.status(), StatusCode::OK);
         let active_loans_after_return_body =
             to_bytes(active_loans_after_return.into_body(), usize::MAX)
@@ -1241,7 +1241,7 @@ async fn companion_api_pairs_session_and_requires_csrf_for_writes() {
                     .map_err(|error| error.to_string())?,
             )
             .await
-            .map_err(|error| error.to_string())?;
+            .expect("the Companion router is infallible");
         assert_eq!(history_after_return.status(), StatusCode::OK);
         let history_after_return_body = to_bytes(history_after_return.into_body(), usize::MAX)
             .await
@@ -1304,7 +1304,7 @@ async fn companion_api_printer_slot_operation_requires_expectation_and_replaces_
                     .map_err(|error| error.to_string())?,
             )
             .await
-            .map_err(|error| error.to_string())?;
+            .expect("the Companion router is infallible");
         assert_eq!(missing_expectation.status(), StatusCode::BAD_REQUEST);
 
         let load_empty_slot = router
@@ -1331,7 +1331,7 @@ async fn companion_api_printer_slot_operation_requires_expectation_and_replaces_
                     .map_err(|error| error.to_string())?,
             )
             .await
-            .map_err(|error| error.to_string())?;
+            .expect("the Companion router is infallible");
         assert_eq!(load_empty_slot.status(), StatusCode::OK);
 
         let replace_slot = router
@@ -1358,7 +1358,7 @@ async fn companion_api_printer_slot_operation_requires_expectation_and_replaces_
                     .map_err(|error| error.to_string())?,
             )
             .await
-            .map_err(|error| error.to_string())?;
+            .expect("the Companion router is infallible");
         assert_eq!(replace_slot.status(), StatusCode::OK);
 
         let db = FilamentDatabase::open(&db_path).map_err(|error| error.to_string())?;
@@ -1446,7 +1446,7 @@ async fn companion_client_role_rejects_protected_reads_and_writes_without_mutati
                     .map_err(|error| error.to_string())?,
             )
             .await
-            .map_err(|error| error.to_string())?;
+            .expect("the Companion router is infallible");
         assert_eq!(health.status(), StatusCode::OK);
 
         let rejected_pair = router
@@ -1462,7 +1462,7 @@ async fn companion_client_role_rejects_protected_reads_and_writes_without_mutati
                     .map_err(|error| error.to_string())?,
             )
             .await
-            .map_err(|error| error.to_string())?;
+            .expect("the Companion router is infallible");
         assert_eq!(rejected_pair.status(), StatusCode::SERVICE_UNAVAILABLE);
 
         let rejected_read = router
@@ -1476,7 +1476,7 @@ async fn companion_client_role_rejects_protected_reads_and_writes_without_mutati
                     .map_err(|error| error.to_string())?,
             )
             .await
-            .map_err(|error| error.to_string())?;
+            .expect("the Companion router is infallible");
         assert_eq!(rejected_read.status(), StatusCode::SERVICE_UNAVAILABLE);
         let rejected_read_body = to_bytes(rejected_read.into_body(), usize::MAX)
             .await
@@ -1499,7 +1499,7 @@ async fn companion_client_role_rejects_protected_reads_and_writes_without_mutati
                     .map_err(|error| error.to_string())?,
             )
             .await
-            .map_err(|error| error.to_string())?;
+            .expect("the Companion router is infallible");
         assert_eq!(rejected_write.status(), StatusCode::SERVICE_UNAVAILABLE);
 
         let db = FilamentDatabase::open(&db_path).map_err(|error| error.to_string())?;
@@ -1581,7 +1581,7 @@ async fn in_flight_companion_get_discards_local_response_after_host_becomes_clie
         let response = response_task
             .await
             .map_err(|error| error.to_string())?
-            .map_err(|error| error.to_string())?;
+            .expect("the Companion router is infallible");
         assert_eq!(response.status(), StatusCode::SERVICE_UNAVAILABLE);
         let body = to_bytes(response.into_body(), usize::MAX)
             .await
@@ -1630,7 +1630,7 @@ async fn companion_api_accepts_current_ams_weight_only_through_protected_write_r
                     .map_err(|error| error.to_string())?,
             )
             .await
-            .map_err(|error| error.to_string())?;
+            .expect("the Companion router is infallible");
         assert_eq!(unauthorized.status(), StatusCode::UNAUTHORIZED);
 
         let AuthenticatedTestSession {
@@ -1651,7 +1651,7 @@ async fn companion_api_accepts_current_ams_weight_only_through_protected_write_r
                     .map_err(|error| error.to_string())?,
             )
             .await
-            .map_err(|error| error.to_string())?;
+            .expect("the Companion router is infallible");
         assert_eq!(missing_csrf.status(), StatusCode::FORBIDDEN);
 
         let accepted = router
@@ -1669,7 +1669,7 @@ async fn companion_api_accepts_current_ams_weight_only_through_protected_write_r
                     .map_err(|error| error.to_string())?,
             )
             .await
-            .map_err(|error| error.to_string())?;
+            .expect("the Companion router is infallible");
         assert_eq!(accepted.status(), StatusCode::OK);
 
         let db = FilamentDatabase::open(&db_path).map_err(|error| error.to_string())?;
@@ -1706,7 +1706,7 @@ async fn companion_api_trusted_lan_requires_exact_host_and_pairing() {
                     .map_err(|error| error.to_string())?,
             )
             .await
-            .map_err(|error| error.to_string())?;
+            .expect("the Companion router is infallible");
         assert_eq!(session_status.status(), StatusCode::OK);
         let session_status_body = to_bytes(session_status.into_body(), usize::MAX)
             .await
@@ -1750,7 +1750,7 @@ async fn companion_api_trusted_lan_requires_exact_host_and_pairing() {
                     .map_err(|error| error.to_string())?,
             )
             .await
-            .map_err(|error| error.to_string())?;
+            .expect("the Companion router is infallible");
         assert_eq!(protected_read.status(), StatusCode::FORBIDDEN);
 
         let localhost_health = router
@@ -1763,7 +1763,7 @@ async fn companion_api_trusted_lan_requires_exact_host_and_pairing() {
                     .map_err(|error| error.to_string())?,
             )
             .await
-            .map_err(|error| error.to_string())?;
+            .expect("the Companion router is infallible");
         assert_eq!(localhost_health.status(), StatusCode::FORBIDDEN);
 
         let missing_host_health = router
@@ -1775,7 +1775,7 @@ async fn companion_api_trusted_lan_requires_exact_host_and_pairing() {
                     .map_err(|error| error.to_string())?,
             )
             .await
-            .map_err(|error| error.to_string())?;
+            .expect("the Companion router is infallible");
         assert_eq!(missing_host_health.status(), StatusCode::FORBIDDEN);
 
         let localhost_pair = router
@@ -1791,7 +1791,7 @@ async fn companion_api_trusted_lan_requires_exact_host_and_pairing() {
                     .map_err(|error| error.to_string())?,
             )
             .await
-            .map_err(|error| error.to_string())?;
+            .expect("the Companion router is infallible");
         assert_eq!(localhost_pair.status(), StatusCode::FORBIDDEN);
 
         let host_health = router
@@ -1804,7 +1804,7 @@ async fn companion_api_trusted_lan_requires_exact_host_and_pairing() {
                     .map_err(|error| error.to_string())?,
             )
             .await
-            .map_err(|error| error.to_string())?;
+            .expect("the Companion router is infallible");
         assert_eq!(host_health.status(), StatusCode::OK);
         let host_health_body = to_bytes(host_health.into_body(), usize::MAX)
             .await
@@ -1892,7 +1892,7 @@ async fn companion_api_trusted_lan_requires_exact_host_and_pairing() {
                     .map_err(|error| error.to_string())?,
             )
             .await
-            .map_err(|error| error.to_string())?;
+            .expect("the Companion router is infallible");
         assert_eq!(removed_bootstrap_route.status(), StatusCode::NOT_FOUND);
 
         Ok::<(), String>(())
@@ -1922,7 +1922,7 @@ async fn stable_companion_name_is_required_outside_the_direct_health_probe() {
                     .map_err(|error| error.to_string())?,
             )
             .await
-            .map_err(|error| error.to_string())?;
+            .expect("the Companion router is infallible");
         assert_eq!(direct_health.status(), StatusCode::OK);
 
         let direct_shell = router
@@ -1935,7 +1935,7 @@ async fn stable_companion_name_is_required_outside_the_direct_health_probe() {
                     .map_err(|error| error.to_string())?,
             )
             .await
-            .map_err(|error| error.to_string())?;
+            .expect("the Companion router is infallible");
         assert_eq!(direct_shell.status(), StatusCode::FORBIDDEN);
 
         let stable_root = router
@@ -1948,7 +1948,7 @@ async fn stable_companion_name_is_required_outside_the_direct_health_probe() {
                     .map_err(|error| error.to_string())?,
             )
             .await
-            .map_err(|error| error.to_string())?;
+            .expect("the Companion router is infallible");
         assert_eq!(stable_root.status(), StatusCode::TEMPORARY_REDIRECT);
         assert_eq!(
             stable_root
@@ -1967,7 +1967,7 @@ async fn stable_companion_name_is_required_outside_the_direct_health_probe() {
                     .map_err(|error| error.to_string())?,
             )
             .await
-            .map_err(|error| error.to_string())?;
+            .expect("the Companion router is infallible");
         assert_eq!(stable_shell.status(), StatusCode::OK);
 
         Ok::<(), String>(())
@@ -2012,7 +2012,7 @@ async fn companion_api_library_reads_require_an_active_session() {
                     .map_err(|error| error.to_string())?,
             )
             .await
-            .map_err(|error| error.to_string())?;
+            .expect("the Companion router is infallible");
         assert_eq!(health.status(), StatusCode::OK);
 
         for path in library_paths {
@@ -2026,7 +2026,7 @@ async fn companion_api_library_reads_require_an_active_session() {
                         .map_err(|error| error.to_string())?,
                 )
                 .await
-                .map_err(|error| error.to_string())?;
+                .expect("the Companion router is infallible");
             assert_eq!(
                 missing_session.status(),
                 StatusCode::UNAUTHORIZED,
@@ -2044,7 +2044,7 @@ async fn companion_api_library_reads_require_an_active_session() {
                         .map_err(|error| error.to_string())?,
                 )
                 .await
-                .map_err(|error| error.to_string())?;
+                .expect("the Companion router is infallible");
             assert_eq!(
                 invalid_session.status(),
                 StatusCode::UNAUTHORIZED,
@@ -2066,7 +2066,7 @@ async fn companion_api_library_reads_require_an_active_session() {
                         .map_err(|error| error.to_string())?,
                 )
                 .await
-                .map_err(|error| error.to_string())?;
+                .expect("the Companion router is infallible");
             assert_eq!(
                 valid_session.status(),
                 StatusCode::OK,
@@ -2104,7 +2104,7 @@ async fn companion_api_statistics_period_report_validates_and_echoes_half_open_c
                     .map_err(|error| error.to_string())?,
             )
             .await
-            .map_err(|error| error.to_string())?;
+            .expect("the Companion router is infallible");
         assert_eq!(valid.status(), StatusCode::OK);
         assert_no_store(valid.headers());
         let body = to_bytes(valid.into_body(), usize::MAX)
@@ -2141,7 +2141,7 @@ async fn companion_api_statistics_period_report_validates_and_echoes_half_open_c
                     .map_err(|error| error.to_string())?,
             )
             .await
-            .map_err(|error| error.to_string())?;
+            .expect("the Companion router is infallible");
         assert_eq!(reversed.status(), StatusCode::BAD_REQUEST);
         let body = to_bytes(reversed.into_body(), usize::MAX)
             .await
@@ -2179,7 +2179,7 @@ async fn companion_api_library_revisions_require_auth_and_advance_after_writes()
                     .map_err(|error| error.to_string())?,
             )
             .await
-            .map_err(|error| error.to_string())?;
+            .expect("the Companion router is infallible");
         assert_eq!(unauthorized.status(), StatusCode::UNAUTHORIZED);
         assert_no_store(unauthorized.headers());
 
@@ -2198,7 +2198,7 @@ async fn companion_api_library_revisions_require_auth_and_advance_after_writes()
                     .map_err(|error| error.to_string())?,
             )
             .await
-            .map_err(|error| error.to_string())?;
+            .expect("the Companion router is infallible");
         assert_eq!(initial.status(), StatusCode::OK);
         assert_no_store(initial.headers());
         let initial_body = to_bytes(initial.into_body(), usize::MAX)
@@ -2226,7 +2226,7 @@ async fn companion_api_library_revisions_require_auth_and_advance_after_writes()
                     .map_err(|error| error.to_string())?,
             )
             .await
-            .map_err(|error| error.to_string())?;
+            .expect("the Companion router is infallible");
         assert_eq!(write.status(), StatusCode::OK);
 
         let current = router
@@ -2239,7 +2239,7 @@ async fn companion_api_library_revisions_require_auth_and_advance_after_writes()
                     .map_err(|error| error.to_string())?,
             )
             .await
-            .map_err(|error| error.to_string())?;
+            .expect("the Companion router is infallible");
         assert_eq!(current.status(), StatusCode::OK);
         assert_no_store(current.headers());
         let current_body = to_bytes(current.into_body(), usize::MAX)
@@ -2287,7 +2287,7 @@ async fn companion_api_library_snapshot_exposes_host_summary() {
                     .map_err(|error| error.to_string())?,
             )
             .await
-            .map_err(|error| error.to_string())?;
+            .expect("the Companion router is infallible");
         assert_eq!(snapshot_response.status(), StatusCode::OK);
 
         let snapshot_body = to_bytes(snapshot_response.into_body(), usize::MAX)
@@ -2376,7 +2376,7 @@ async fn companion_api_library_snapshot_exposes_host_summary() {
                     .map_err(|error| error.to_string())?,
             )
             .await
-            .map_err(|error| error.to_string())?;
+            .expect("the Companion router is infallible");
         assert_eq!(inventory_response.status(), StatusCode::OK);
         let inventory_body = to_bytes(inventory_response.into_body(), usize::MAX)
             .await
@@ -2432,7 +2432,7 @@ async fn companion_api_trusted_lan_pairs_renews_and_revokes_browser_sessions() {
                     .map_err(|error| error.to_string())?,
             )
             .await
-            .map_err(|error| error.to_string())?;
+            .expect("the Companion router is infallible");
         assert_eq!(pair.status(), StatusCode::OK);
         let session_cookie = extract_named_cookie(pair.headers(), COMPANION_SESSION_COOKIE)?;
         let device_cookie =
@@ -2459,7 +2459,7 @@ async fn companion_api_trusted_lan_pairs_renews_and_revokes_browser_sessions() {
                     .map_err(|error| error.to_string())?,
             )
             .await
-            .map_err(|error| error.to_string())?;
+            .expect("the Companion router is infallible");
         assert_eq!(second_pair.status(), StatusCode::UNAUTHORIZED);
 
         let authenticated_status = router
@@ -2478,7 +2478,7 @@ async fn companion_api_trusted_lan_pairs_renews_and_revokes_browser_sessions() {
                     .map_err(|error| error.to_string())?,
             )
             .await
-            .map_err(|error| error.to_string())?;
+            .expect("the Companion router is infallible");
         assert_eq!(authenticated_status.status(), StatusCode::OK);
         let authenticated_status_body =
             to_bytes(authenticated_status.into_body(), usize::MAX)
@@ -2538,7 +2538,7 @@ async fn companion_api_trusted_lan_pairs_renews_and_revokes_browser_sessions() {
                     .map_err(|error| error.to_string())?,
             )
             .await
-            .map_err(|error| error.to_string())?;
+            .expect("the Companion router is infallible");
         assert_eq!(renewable_status.status(), StatusCode::OK);
         let renewable_status_body = to_bytes(renewable_status.into_body(), usize::MAX)
             .await
@@ -2578,7 +2578,7 @@ async fn companion_api_trusted_lan_pairs_renews_and_revokes_browser_sessions() {
                     .map_err(|error| error.to_string())?,
             )
             .await
-            .map_err(|error| error.to_string())?;
+            .expect("the Companion router is infallible");
         assert_eq!(renew.status(), StatusCode::OK);
         let renewed_session_cookie =
             extract_named_cookie(renew.headers(), COMPANION_SESSION_COOKIE)?;
@@ -2610,7 +2610,7 @@ async fn companion_api_trusted_lan_pairs_renews_and_revokes_browser_sessions() {
                     .map_err(|error| error.to_string())?,
             )
             .await
-            .map_err(|error| error.to_string())?;
+            .expect("the Companion router is infallible");
         assert_eq!(renewed_write.status(), StatusCode::OK);
 
         db.revoke_trusted_lan_paired_browser(&paired_browser_id)
@@ -2632,7 +2632,7 @@ async fn companion_api_trusted_lan_pairs_renews_and_revokes_browser_sessions() {
                     .map_err(|error| error.to_string())?,
             )
             .await
-            .map_err(|error| error.to_string())?;
+            .expect("the Companion router is infallible");
         assert_eq!(
             revoked_active_session_read.status(),
             StatusCode::UNAUTHORIZED
@@ -2659,7 +2659,7 @@ async fn companion_api_trusted_lan_pairs_renews_and_revokes_browser_sessions() {
                     .map_err(|error| error.to_string())?,
             )
             .await
-            .map_err(|error| error.to_string())?;
+            .expect("the Companion router is infallible");
         assert_eq!(revoked_status.status(), StatusCode::OK);
         let revoked_status_body = to_bytes(revoked_status.into_body(), usize::MAX)
             .await
@@ -2699,7 +2699,7 @@ async fn companion_api_trusted_lan_pairs_renews_and_revokes_browser_sessions() {
                     .map_err(|error| error.to_string())?,
             )
             .await
-            .map_err(|error| error.to_string())?;
+            .expect("the Companion router is infallible");
         assert_eq!(denied_renew.status(), StatusCode::UNAUTHORIZED);
 
         let revoked_session_read = router
@@ -2717,7 +2717,7 @@ async fn companion_api_trusted_lan_pairs_renews_and_revokes_browser_sessions() {
                     .map_err(|error| error.to_string())?,
             )
             .await
-            .map_err(|error| error.to_string())?;
+            .expect("the Companion router is infallible");
         assert_eq!(revoked_session_read.status(), StatusCode::UNAUTHORIZED);
 
         Ok::<(), String>(())
@@ -2749,7 +2749,7 @@ async fn companion_api_exports_full_backup_from_protected_route() {
                     .map_err(|error| error.to_string())?,
             )
             .await
-            .map_err(|error| error.to_string())?;
+            .expect("the Companion router is infallible");
         assert_eq!(unauthorized.status(), StatusCode::UNAUTHORIZED);
 
         let AuthenticatedTestSession { session_cookie, .. } =
@@ -2764,7 +2764,7 @@ async fn companion_api_exports_full_backup_from_protected_route() {
                     .map_err(|error| error.to_string())?,
             )
             .await
-            .map_err(|error| error.to_string())?;
+            .expect("the Companion router is infallible");
         assert_eq!(backup.status(), StatusCode::OK);
 
         let body = to_bytes(backup.into_body(), usize::MAX)
@@ -2812,7 +2812,7 @@ async fn companion_api_qa_route_can_expire_sessions() {
                     .map_err(|error| error.to_string())?,
             )
             .await
-            .map_err(|error| error.to_string())?;
+            .expect("the Companion router is infallible");
         assert_eq!(library_snapshot_before.status(), StatusCode::OK);
 
         let expire = router
@@ -2827,7 +2827,7 @@ async fn companion_api_qa_route_can_expire_sessions() {
                     .map_err(|error| error.to_string())?,
             )
             .await
-            .map_err(|error| error.to_string())?;
+            .expect("the Companion router is infallible");
         assert_eq!(expire.status(), StatusCode::OK);
 
         let library_snapshot_after = router
@@ -2840,7 +2840,7 @@ async fn companion_api_qa_route_can_expire_sessions() {
                     .map_err(|error| error.to_string())?,
             )
             .await
-            .map_err(|error| error.to_string())?;
+            .expect("the Companion router is infallible");
         assert_eq!(library_snapshot_after.status(), StatusCode::UNAUTHORIZED);
 
         Ok::<(), String>(())
@@ -2869,7 +2869,7 @@ async fn companion_api_qa_session_bootstraps_protected_access_only_in_qa_mode() 
                     .map_err(|error| error.to_string())?,
             )
             .await
-            .map_err(|error| error.to_string())?;
+            .expect("the Companion router is infallible");
         assert_eq!(unavailable.status(), StatusCode::NOT_FOUND);
 
         let router = build_router(qa_test_state(&db_path));
@@ -2883,7 +2883,7 @@ async fn companion_api_qa_session_bootstraps_protected_access_only_in_qa_mode() 
                     .map_err(|error| error.to_string())?,
             )
             .await
-            .map_err(|error| error.to_string())?;
+            .expect("the Companion router is infallible");
         assert_eq!(session.status(), StatusCode::OK);
         let session_cookie = extract_named_cookie(session.headers(), COMPANION_SESSION_COOKIE)?;
         assert!(
@@ -2902,7 +2902,7 @@ async fn companion_api_qa_session_bootstraps_protected_access_only_in_qa_mode() 
                     .map_err(|error| error.to_string())?,
             )
             .await
-            .map_err(|error| error.to_string())?;
+            .expect("the Companion router is infallible");
         assert_eq!(session_status.status(), StatusCode::OK);
         let status_body = to_bytes(session_status.into_body(), usize::MAX)
             .await
@@ -2921,7 +2921,7 @@ async fn companion_api_qa_session_bootstraps_protected_access_only_in_qa_mode() 
                     .map_err(|error| error.to_string())?,
             )
             .await
-            .map_err(|error| error.to_string())?;
+            .expect("the Companion router is infallible");
         assert_eq!(inventory.status(), StatusCode::OK);
 
         Ok::<(), String>(())
@@ -2958,7 +2958,7 @@ async fn companion_api_qa_delay_header_keeps_detail_route_working() {
                     .map_err(|error| error.to_string())?,
             )
             .await
-            .map_err(|error| error.to_string())?;
+            .expect("the Companion router is infallible");
         assert_eq!(detail.status(), StatusCode::OK);
         assert!(started_at.elapsed() >= std::time::Duration::from_millis(30));
 
@@ -2993,7 +2993,7 @@ async fn companion_api_serves_authenticated_spool_qr_svg() {
                     .map_err(|error| error.to_string())?,
             )
             .await
-            .map_err(|error| error.to_string())?;
+            .expect("the Companion router is infallible");
         assert_eq!(unauthenticated.status(), StatusCode::UNAUTHORIZED);
 
         let AuthenticatedTestSession { session_cookie, .. } =
@@ -3009,7 +3009,7 @@ async fn companion_api_serves_authenticated_spool_qr_svg() {
                     .map_err(|error| error.to_string())?,
             )
             .await
-            .map_err(|error| error.to_string())?;
+            .expect("the Companion router is infallible");
         assert_eq!(qr_image.status(), StatusCode::OK);
         assert_eq!(
             qr_image
@@ -3065,7 +3065,7 @@ async fn companion_api_registers_owned_manual_spool() {
                     .map_err(|error| error.to_string())?,
             )
             .await
-            .map_err(|error| error.to_string())?;
+            .expect("the Companion router is infallible");
         assert_eq!(create_spool.status(), StatusCode::OK);
 
         let create_body = to_bytes(create_spool.into_body(), usize::MAX)
@@ -3087,7 +3087,7 @@ async fn companion_api_registers_owned_manual_spool() {
                     .map_err(|error| error.to_string())?,
             )
             .await
-            .map_err(|error| error.to_string())?;
+            .expect("the Companion router is infallible");
         assert_eq!(detail.status(), StatusCode::OK);
 
         let detail_body = to_bytes(detail.into_body(), usize::MAX)
@@ -3149,7 +3149,7 @@ async fn companion_api_lists_catalog_and_wishlist_items() {
                     .map_err(|error| error.to_string())?,
             )
             .await
-            .map_err(|error| error.to_string())?;
+            .expect("the Companion router is infallible");
         assert_eq!(catalog.status(), StatusCode::OK);
         let catalog_body = to_bytes(catalog.into_body(), usize::MAX)
             .await
@@ -3169,7 +3169,7 @@ async fn companion_api_lists_catalog_and_wishlist_items() {
                     .map_err(|error| error.to_string())?,
             )
             .await
-            .map_err(|error| error.to_string())?;
+            .expect("the Companion router is infallible");
         assert_eq!(wishlist.status(), StatusCode::OK);
         let wishlist_body = to_bytes(wishlist.into_body(), usize::MAX)
             .await
@@ -3226,7 +3226,7 @@ async fn companion_api_updates_master_catalog_entry() {
                     .map_err(|error| error.to_string())?,
             )
             .await
-            .map_err(|error| error.to_string())?;
+            .expect("the Companion router is infallible");
         assert_eq!(update.status(), StatusCode::OK);
 
         let updated = FilamentDatabase::open(&db_path)
@@ -3281,7 +3281,7 @@ async fn companion_api_rejects_invalid_catalog_refresh_vendor() {
                     .map_err(|error| error.to_string())?,
             )
             .await
-            .map_err(|error| error.to_string())?;
+            .expect("the Companion router is infallible");
 
         assert_eq!(response.status(), StatusCode::BAD_REQUEST);
 
@@ -3326,7 +3326,7 @@ async fn companion_api_requires_exactly_one_catalog_refresh_material() {
                         .map_err(|error| error.to_string())?,
                 )
                 .await
-                .map_err(|error| error.to_string())?;
+                .expect("the Companion router is infallible");
             assert_eq!(response.status(), StatusCode::BAD_REQUEST);
         }
 
@@ -3401,7 +3401,7 @@ async fn companion_api_registers_owned_catalog_spool() {
                     .map_err(|error| error.to_string())?,
             )
             .await
-            .map_err(|error| error.to_string())?;
+            .expect("the Companion router is infallible");
         assert_eq!(create_spool.status(), StatusCode::OK);
 
         let create_body = to_bytes(create_spool.into_body(), usize::MAX)
@@ -3422,7 +3422,7 @@ async fn companion_api_registers_owned_catalog_spool() {
                     .map_err(|error| error.to_string())?,
             )
             .await
-            .map_err(|error| error.to_string())?;
+            .expect("the Companion router is infallible");
         assert_eq!(detail.status(), StatusCode::OK);
 
         let detail_body = to_bytes(detail.into_body(), usize::MAX)
@@ -3475,7 +3475,7 @@ async fn companion_api_creates_and_updates_wishlist_item() {
                     .map_err(|error| error.to_string())?,
             )
             .await
-            .map_err(|error| error.to_string())?;
+            .expect("the Companion router is infallible");
         assert_eq!(create_item.status(), StatusCode::OK);
 
         let wishlist = router
@@ -3489,7 +3489,7 @@ async fn companion_api_creates_and_updates_wishlist_item() {
                     .map_err(|error| error.to_string())?,
             )
             .await
-            .map_err(|error| error.to_string())?;
+            .expect("the Companion router is infallible");
         assert_eq!(wishlist.status(), StatusCode::OK);
         let wishlist_body = to_bytes(wishlist.into_body(), usize::MAX)
             .await
@@ -3513,7 +3513,7 @@ async fn companion_api_creates_and_updates_wishlist_item() {
                     .map_err(|error| error.to_string())?,
             )
             .await
-            .map_err(|error| error.to_string())?;
+            .expect("the Companion router is infallible");
         assert_eq!(update_item.status(), StatusCode::OK);
 
         let wishlist = router
@@ -3527,7 +3527,7 @@ async fn companion_api_creates_and_updates_wishlist_item() {
                     .map_err(|error| error.to_string())?,
             )
             .await
-            .map_err(|error| error.to_string())?;
+            .expect("the Companion router is infallible");
         let wishlist_body = to_bytes(wishlist.into_body(), usize::MAX)
             .await
             .map_err(|error| error.to_string())?;
@@ -3551,7 +3551,7 @@ async fn companion_api_creates_and_updates_wishlist_item() {
                     .map_err(|error| error.to_string())?,
             )
             .await
-            .map_err(|error| error.to_string())?;
+            .expect("the Companion router is infallible");
         assert_eq!(receive_partial.status(), StatusCode::OK);
         let receive_partial_body = to_bytes(receive_partial.into_body(), usize::MAX)
             .await
@@ -3591,7 +3591,7 @@ async fn companion_api_creates_and_updates_wishlist_item() {
                     .map_err(|error| error.to_string())?,
             )
             .await
-            .map_err(|error| error.to_string())?;
+            .expect("the Companion router is infallible");
         assert_eq!(receive_too_many.status(), StatusCode::BAD_REQUEST);
 
         let receive_final = router
@@ -3609,7 +3609,7 @@ async fn companion_api_creates_and_updates_wishlist_item() {
                     .map_err(|error| error.to_string())?,
             )
             .await
-            .map_err(|error| error.to_string())?;
+            .expect("the Companion router is infallible");
         assert_eq!(receive_final.status(), StatusCode::OK);
         let receive_final_body = to_bytes(receive_final.into_body(), usize::MAX)
             .await
@@ -3638,7 +3638,7 @@ async fn companion_api_creates_and_updates_wishlist_item() {
                     .map_err(|error| error.to_string())?,
             )
             .await
-            .map_err(|error| error.to_string())?;
+            .expect("the Companion router is infallible");
         let spools_body = to_bytes(spools.into_body(), usize::MAX)
             .await
             .map_err(|error| error.to_string())?;
@@ -3657,7 +3657,7 @@ async fn companion_api_creates_and_updates_wishlist_item() {
                     .map_err(|error| error.to_string())?,
             )
             .await
-            .map_err(|error| error.to_string())?;
+            .expect("the Companion router is infallible");
         let wishlist_body = to_bytes(wishlist.into_body(), usize::MAX)
             .await
             .map_err(|error| error.to_string())?;
@@ -3692,7 +3692,7 @@ async fn companion_api_creates_and_updates_wishlist_item() {
                     .map_err(|error| error.to_string())?,
             )
             .await
-            .map_err(|error| error.to_string())?;
+            .expect("the Companion router is infallible");
         assert_eq!(delete_item.status(), StatusCode::OK);
 
         let wishlist = router
@@ -3706,7 +3706,7 @@ async fn companion_api_creates_and_updates_wishlist_item() {
                     .map_err(|error| error.to_string())?,
             )
             .await
-            .map_err(|error| error.to_string())?;
+            .expect("the Companion router is infallible");
         let wishlist_body = to_bytes(wishlist.into_body(), usize::MAX)
             .await
             .map_err(|error| error.to_string())?;
@@ -3752,7 +3752,7 @@ async fn companion_api_applies_receipt_metadata_to_every_received_spool() {
                     .map_err(|error| error.to_string())?,
             )
             .await
-            .map_err(|error| error.to_string())?;
+            .expect("the Companion router is infallible");
         assert_eq!(create_item.status(), StatusCode::OK);
 
         let wishlist = router
@@ -3766,7 +3766,7 @@ async fn companion_api_applies_receipt_metadata_to_every_received_spool() {
                     .map_err(|error| error.to_string())?,
             )
             .await
-            .map_err(|error| error.to_string())?;
+            .expect("the Companion router is infallible");
         let wishlist_body = to_bytes(wishlist.into_body(), usize::MAX)
             .await
             .map_err(|error| error.to_string())?;
@@ -3791,7 +3791,7 @@ async fn companion_api_applies_receipt_metadata_to_every_received_spool() {
                     .map_err(|error| error.to_string())?,
             )
             .await
-            .map_err(|error| error.to_string())?;
+            .expect("the Companion router is infallible");
         assert_eq!(invalid.status(), StatusCode::BAD_REQUEST);
         let invalid_body = to_bytes(invalid.into_body(), usize::MAX)
             .await
@@ -3820,7 +3820,7 @@ async fn companion_api_applies_receipt_metadata_to_every_received_spool() {
                     .map_err(|error| error.to_string())?,
             )
             .await
-            .map_err(|error| error.to_string())?;
+            .expect("the Companion router is infallible");
         assert_eq!(receive.status(), StatusCode::OK);
         let receive_body = to_bytes(receive.into_body(), usize::MAX)
             .await
@@ -3896,7 +3896,7 @@ async fn companion_api_creates_and_deletes_printer() {
                     .map_err(|error| error.to_string())?,
             )
             .await
-            .map_err(|error| error.to_string())?;
+            .expect("the Companion router is infallible");
         assert_eq!(create_printer.status(), StatusCode::OK);
 
         let overview = router
@@ -3910,7 +3910,7 @@ async fn companion_api_creates_and_deletes_printer() {
                     .map_err(|error| error.to_string())?,
             )
             .await
-            .map_err(|error| error.to_string())?;
+            .expect("the Companion router is infallible");
         assert_eq!(overview.status(), StatusCode::OK);
         let overview_body = to_bytes(overview.into_body(), usize::MAX)
             .await
@@ -3967,7 +3967,7 @@ async fn companion_api_creates_and_deletes_printer() {
                     .map_err(|error| error.to_string())?,
             )
             .await
-            .map_err(|error| error.to_string())?;
+            .expect("the Companion router is infallible");
         assert_eq!(delete_printer.status(), StatusCode::OK);
 
         let overview = router
@@ -3981,7 +3981,7 @@ async fn companion_api_creates_and_deletes_printer() {
                     .map_err(|error| error.to_string())?,
             )
             .await
-            .map_err(|error| error.to_string())?;
+            .expect("the Companion router is infallible");
         let overview_body = to_bytes(overview.into_body(), usize::MAX)
             .await
             .map_err(|error| error.to_string())?;
@@ -4041,7 +4041,7 @@ async fn companion_api_blocks_bambu_credential_and_trust_mutations() {
                     .map_err(|error| error.to_string())?,
             )
             .await
-            .map_err(|error| error.to_string())?;
+            .expect("the Companion router is infallible");
         assert_eq!(save_live.status(), StatusCode::FORBIDDEN);
 
         let integrations = FilamentDatabase::open(&db_path)
@@ -4065,7 +4065,7 @@ async fn companion_api_blocks_bambu_credential_and_trust_mutations() {
                     .map_err(|error| error.to_string())?,
             )
             .await
-            .map_err(|error| error.to_string())?;
+            .expect("the Companion router is infallible");
         assert_eq!(delete_live.status(), StatusCode::FORBIDDEN);
 
         let integrations = FilamentDatabase::open(&db_path)
@@ -4135,7 +4135,7 @@ async fn companion_printer_settings_never_return_bambu_access_code() {
                     .map_err(|error| error.to_string())?,
             )
             .await
-            .map_err(|error| error.to_string())?;
+            .expect("the Companion router is infallible");
         assert_eq!(response.status(), StatusCode::OK);
         let body = to_bytes(response.into_body(), usize::MAX)
             .await
@@ -4212,7 +4212,7 @@ async fn companion_api_rejects_spool_delete_with_active_loan() {
                     .map_err(|error| error.to_string())?,
             )
             .await
-            .map_err(|error| error.to_string())?;
+            .expect("the Companion router is infallible");
         assert_eq!(delete_spool.status(), StatusCode::BAD_REQUEST);
         let delete_body = to_bytes(delete_spool.into_body(), usize::MAX)
             .await
@@ -4267,7 +4267,7 @@ async fn companion_api_registers_borrowed_in_spool() {
                     .map_err(|error| error.to_string())?,
             )
             .await
-            .map_err(|error| error.to_string())?;
+            .expect("the Companion router is infallible");
         assert_eq!(create_spool.status(), StatusCode::OK);
 
         let create_body = to_bytes(create_spool.into_body(), usize::MAX)
@@ -4289,7 +4289,7 @@ async fn companion_api_registers_borrowed_in_spool() {
                     .map_err(|error| error.to_string())?,
             )
             .await
-            .map_err(|error| error.to_string())?;
+            .expect("the Companion router is infallible");
         assert_eq!(detail.status(), StatusCode::OK);
 
         let detail_body = to_bytes(detail.into_body(), usize::MAX)
@@ -4314,7 +4314,7 @@ async fn companion_api_registers_borrowed_in_spool() {
                     .map_err(|error| error.to_string())?,
             )
             .await
-            .map_err(|error| error.to_string())?;
+            .expect("the Companion router is infallible");
         assert_eq!(default_loans.status(), StatusCode::OK);
         let default_loans_body = to_bytes(default_loans.into_body(), usize::MAX)
             .await
@@ -4334,7 +4334,7 @@ async fn companion_api_registers_borrowed_in_spool() {
                     .map_err(|error| error.to_string())?,
             )
             .await
-            .map_err(|error| error.to_string())?;
+            .expect("the Companion router is infallible");
         assert_eq!(all_loans.status(), StatusCode::OK);
         let all_loans_body = to_bytes(all_loans.into_body(), usize::MAX)
             .await
@@ -4377,7 +4377,7 @@ async fn companion_api_finds_spool_by_qr() {
                     .map_err(|error| error.to_string())?,
             )
             .await
-            .map_err(|error| error.to_string())?;
+            .expect("the Companion router is infallible");
         assert_eq!(lookup.status(), StatusCode::OK);
 
         let lookup_body = to_bytes(lookup.into_body(), usize::MAX)
@@ -4400,7 +4400,7 @@ async fn companion_api_finds_spool_by_qr() {
                     .map_err(|error| error.to_string())?,
             )
             .await
-            .map_err(|error| error.to_string())?;
+            .expect("the Companion router is infallible");
         assert_eq!(lookup_by_spool_id.status(), StatusCode::OK);
 
         let lookup_by_spool_id_body = to_bytes(lookup_by_spool_id.into_body(), usize::MAX)
@@ -4421,7 +4421,7 @@ async fn companion_api_finds_spool_by_qr() {
                     .map_err(|error| error.to_string())?,
             )
             .await
-            .map_err(|error| error.to_string())?;
+            .expect("the Companion router is infallible");
         assert_eq!(missing.status(), StatusCode::NOT_FOUND);
 
         Ok::<(), String>(())
@@ -4464,7 +4464,7 @@ async fn companion_api_updates_borrowed_in_spool_metadata() {
                     .map_err(|error| error.to_string())?,
             )
             .await
-            .map_err(|error| error.to_string())?;
+            .expect("the Companion router is infallible");
         assert_eq!(create_spool.status(), StatusCode::OK);
 
         let create_body = to_bytes(create_spool.into_body(), usize::MAX)
@@ -4491,7 +4491,7 @@ async fn companion_api_updates_borrowed_in_spool_metadata() {
                     .map_err(|error| error.to_string())?,
             )
             .await
-            .map_err(|error| error.to_string())?;
+            .expect("the Companion router is infallible");
         assert_eq!(update_spool.status(), StatusCode::OK);
 
         let update_body = to_bytes(update_spool.into_body(), usize::MAX)
@@ -4512,7 +4512,7 @@ async fn companion_api_updates_borrowed_in_spool_metadata() {
                     .map_err(|error| error.to_string())?,
             )
             .await
-            .map_err(|error| error.to_string())?;
+            .expect("the Companion router is infallible");
         assert_eq!(detail.status(), StatusCode::OK);
 
         let detail_body = to_bytes(detail.into_body(), usize::MAX)
@@ -4576,7 +4576,7 @@ async fn companion_api_updates_spool_status_and_location() {
                     .map_err(|error| error.to_string())?,
             )
             .await
-            .map_err(|error| error.to_string())?;
+            .expect("the Companion router is infallible");
         assert_eq!(update.status(), StatusCode::OK);
 
         let update_body = to_bytes(update.into_body(), usize::MAX)
@@ -4597,7 +4597,7 @@ async fn companion_api_updates_spool_status_and_location() {
                     .map_err(|error| error.to_string())?,
             )
             .await
-            .map_err(|error| error.to_string())?;
+            .expect("the Companion router is infallible");
         assert_eq!(detail.status(), StatusCode::OK);
 
         let detail_body = to_bytes(detail.into_body(), usize::MAX)
@@ -4631,7 +4631,7 @@ async fn companion_api_updates_spool_status_and_location() {
                     .map_err(|error| error.to_string())?,
             )
             .await
-            .map_err(|error| error.to_string())?;
+            .expect("the Companion router is infallible");
         assert_eq!(clear_qr.status(), StatusCode::OK);
         let db = FilamentDatabase::open(&db_path).map_err(|error| error.to_string())?;
         let cleared = db
@@ -4678,7 +4678,7 @@ async fn companion_api_updates_and_explicitly_clears_spool_receipt_metadata() {
                     .map_err(|error| error.to_string())?,
             )
             .await
-            .map_err(|error| error.to_string())?;
+            .expect("the Companion router is infallible");
         assert_eq!(update.status(), StatusCode::OK);
 
         let db = FilamentDatabase::open(&db_path).map_err(|error| error.to_string())?;
@@ -4711,7 +4711,7 @@ async fn companion_api_updates_and_explicitly_clears_spool_receipt_metadata() {
                     .map_err(|error| error.to_string())?,
             )
             .await
-            .map_err(|error| error.to_string())?;
+            .expect("the Companion router is infallible");
         assert_eq!(invalid.status(), StatusCode::BAD_REQUEST);
         let invalid_body = to_bytes(invalid.into_body(), usize::MAX)
             .await
@@ -4740,7 +4740,7 @@ async fn companion_api_updates_and_explicitly_clears_spool_receipt_metadata() {
                     .map_err(|error| error.to_string())?,
             )
             .await
-            .map_err(|error| error.to_string())?;
+            .expect("the Companion router is infallible");
         assert_eq!(clear.status(), StatusCode::OK);
 
         let db = FilamentDatabase::open(&db_path).map_err(|error| error.to_string())?;
@@ -4831,7 +4831,7 @@ async fn companion_api_edits_borrowed_receipt_without_mutating_loan_or_placement
                     .map_err(|error| error.to_string())?,
             )
             .await
-            .map_err(|error| error.to_string())?;
+            .expect("the Companion router is infallible");
         assert_eq!(update.status(), StatusCode::OK);
 
         let updated_spool = service
@@ -4896,7 +4896,7 @@ async fn companion_api_edits_borrowed_receipt_without_mutating_loan_or_placement
                     .map_err(|error| error.to_string())?,
             )
             .await
-            .map_err(|error| error.to_string())?;
+            .expect("the Companion router is infallible");
         assert_eq!(update_safe_nonplacement_details.status(), StatusCode::OK);
 
         let details_updated_spool = service
@@ -4972,7 +4972,7 @@ async fn companion_api_edits_borrowed_receipt_without_mutating_loan_or_placement
                     .map_err(|error| error.to_string())?,
             )
             .await
-            .map_err(|error| error.to_string())?;
+            .expect("the Companion router is infallible");
         assert_eq!(ownership_mutation.status(), StatusCode::BAD_REQUEST);
         let ownership_error_body = to_bytes(ownership_mutation.into_body(), usize::MAX)
             .await
@@ -5001,7 +5001,7 @@ async fn companion_api_edits_borrowed_receipt_without_mutating_loan_or_placement
                     .map_err(|error| error.to_string())?,
             )
             .await
-            .map_err(|error| error.to_string())?;
+            .expect("the Companion router is infallible");
         assert_eq!(placement_mutation.status(), StatusCode::BAD_REQUEST);
 
         let status_mutation = router
@@ -5021,7 +5021,7 @@ async fn companion_api_edits_borrowed_receipt_without_mutating_loan_or_placement
                     .map_err(|error| error.to_string())?,
             )
             .await
-            .map_err(|error| error.to_string())?;
+            .expect("the Companion router is infallible");
         assert_eq!(status_mutation.status(), StatusCode::BAD_REQUEST);
 
         let clear = router
@@ -5041,7 +5041,7 @@ async fn companion_api_edits_borrowed_receipt_without_mutating_loan_or_placement
                     .map_err(|error| error.to_string())?,
             )
             .await
-            .map_err(|error| error.to_string())?;
+            .expect("the Companion router is infallible");
         assert_eq!(clear.status(), StatusCode::OK);
 
         let cleared_spool = service
@@ -5122,7 +5122,7 @@ async fn companion_api_preserves_location_when_status_update_omits_location() {
                     .map_err(|error| error.to_string())?,
             )
             .await
-            .map_err(|error| error.to_string())?;
+            .expect("the Companion router is infallible");
         assert_eq!(update_location.status(), StatusCode::OK);
 
         let update_status = router
@@ -5140,7 +5140,7 @@ async fn companion_api_preserves_location_when_status_update_omits_location() {
                     .map_err(|error| error.to_string())?,
             )
             .await
-            .map_err(|error| error.to_string())?;
+            .expect("the Companion router is infallible");
         assert_eq!(update_status.status(), StatusCode::OK);
 
         let detail = router
@@ -5154,7 +5154,7 @@ async fn companion_api_preserves_location_when_status_update_omits_location() {
                     .map_err(|error| error.to_string())?,
             )
             .await
-            .map_err(|error| error.to_string())?;
+            .expect("the Companion router is infallible");
         assert_eq!(detail.status(), StatusCode::OK);
 
         let detail_body = to_bytes(detail.into_body(), usize::MAX)
@@ -5205,7 +5205,7 @@ async fn companion_api_clears_location_when_status_update_sends_null_location() 
                     .map_err(|error| error.to_string())?,
             )
             .await
-            .map_err(|error| error.to_string())?;
+            .expect("the Companion router is infallible");
         assert_eq!(update_location.status(), StatusCode::OK);
 
         let clear_location = router
@@ -5223,7 +5223,7 @@ async fn companion_api_clears_location_when_status_update_sends_null_location() 
                     .map_err(|error| error.to_string())?,
             )
             .await
-            .map_err(|error| error.to_string())?;
+            .expect("the Companion router is infallible");
         assert_eq!(clear_location.status(), StatusCode::OK);
 
         let detail = router
@@ -5237,7 +5237,7 @@ async fn companion_api_clears_location_when_status_update_sends_null_location() 
                     .map_err(|error| error.to_string())?,
             )
             .await
-            .map_err(|error| error.to_string())?;
+            .expect("the Companion router is infallible");
         assert_eq!(detail.status(), StatusCode::OK);
 
         let detail_body = to_bytes(detail.into_body(), usize::MAX)
@@ -5284,7 +5284,7 @@ async fn companion_api_allows_common_details_but_rejects_placement_edits_for_loa
                     .map_err(|error| error.to_string())?,
             )
             .await
-            .map_err(|error| error.to_string())?;
+            .expect("the Companion router is infallible");
         assert_eq!(printer_overview.status(), StatusCode::OK);
         let printer_body = to_bytes(printer_overview.into_body(), usize::MAX)
             .await
@@ -5310,7 +5310,7 @@ async fn companion_api_allows_common_details_but_rejects_placement_edits_for_loa
                     .map_err(|error| error.to_string())?,
             )
             .await
-            .map_err(|error| error.to_string())?;
+            .expect("the Companion router is infallible");
         assert_eq!(assign.status(), StatusCode::OK);
 
         let common_update = router
@@ -5330,7 +5330,7 @@ async fn companion_api_allows_common_details_but_rejects_placement_edits_for_loa
                     .map_err(|error| error.to_string())?,
             )
             .await
-            .map_err(|error| error.to_string())?;
+            .expect("the Companion router is infallible");
         assert_eq!(common_update.status(), StatusCode::OK);
 
         let detail = router
@@ -5344,7 +5344,7 @@ async fn companion_api_allows_common_details_but_rejects_placement_edits_for_loa
                     .map_err(|error| error.to_string())?,
             )
             .await
-            .map_err(|error| error.to_string())?;
+            .expect("the Companion router is infallible");
         assert_eq!(detail.status(), StatusCode::OK);
         let detail_body = to_bytes(detail.into_body(), usize::MAX)
             .await
@@ -5370,7 +5370,7 @@ async fn companion_api_allows_common_details_but_rejects_placement_edits_for_loa
                     .map_err(|error| error.to_string())?,
             )
             .await
-            .map_err(|error| error.to_string())?;
+            .expect("the Companion router is infallible");
         assert_eq!(update.status(), StatusCode::BAD_REQUEST);
 
         let update_body = to_bytes(update.into_body(), usize::MAX)
@@ -5423,7 +5423,7 @@ async fn companion_api_hands_back_borrowed_in_spool() {
                     .map_err(|error| error.to_string())?,
             )
             .await
-            .map_err(|error| error.to_string())?;
+            .expect("the Companion router is infallible");
         assert_eq!(create_spool.status(), StatusCode::OK);
 
         let create_body = to_bytes(create_spool.into_body(), usize::MAX)
@@ -5444,7 +5444,7 @@ async fn companion_api_hands_back_borrowed_in_spool() {
                     .map_err(|error| error.to_string())?,
             )
             .await
-            .map_err(|error| error.to_string())?;
+            .expect("the Companion router is infallible");
         assert_eq!(detail_before.status(), StatusCode::OK);
 
         let detail_before_body = to_bytes(detail_before.into_body(), usize::MAX)
@@ -5472,7 +5472,7 @@ async fn companion_api_hands_back_borrowed_in_spool() {
                     .map_err(|error| error.to_string())?,
             )
             .await
-            .map_err(|error| error.to_string())?;
+            .expect("the Companion router is infallible");
         assert_eq!(hand_back.status(), StatusCode::OK);
 
         let hand_back_body = to_bytes(hand_back.into_body(), usize::MAX)
@@ -5495,7 +5495,7 @@ async fn companion_api_hands_back_borrowed_in_spool() {
                     .map_err(|error| error.to_string())?,
             )
             .await
-            .map_err(|error| error.to_string())?;
+            .expect("the Companion router is infallible");
         assert_eq!(detail_after.status(), StatusCode::NOT_FOUND);
 
         let inventory_after = router
@@ -5509,7 +5509,7 @@ async fn companion_api_hands_back_borrowed_in_spool() {
                     .map_err(|error| error.to_string())?,
             )
             .await
-            .map_err(|error| error.to_string())?;
+            .expect("the Companion router is infallible");
         assert_eq!(inventory_after.status(), StatusCode::OK);
         let inventory_after_body = to_bytes(inventory_after.into_body(), usize::MAX)
             .await
@@ -5544,7 +5544,7 @@ async fn companion_shell_route_serves_browser_ui() {
                     .map_err(|error| error.to_string())?,
             )
             .await
-            .map_err(|error| error.to_string())?;
+            .expect("the Companion router is infallible");
         assert_eq!(missing_host.status(), StatusCode::FORBIDDEN);
         assert_no_store(missing_host.headers());
 
@@ -5558,7 +5558,7 @@ async fn companion_shell_route_serves_browser_ui() {
                     .map_err(|error| error.to_string())?,
             )
             .await
-            .map_err(|error| error.to_string())?;
+            .expect("the Companion router is infallible");
         assert_eq!(root_response.status(), StatusCode::TEMPORARY_REDIRECT);
         assert_eq!(
             root_response
@@ -5578,7 +5578,7 @@ async fn companion_shell_route_serves_browser_ui() {
                     .map_err(|error| error.to_string())?,
             )
             .await
-            .map_err(|error| error.to_string())?;
+            .expect("the Companion router is infallible");
         assert_eq!(response.status(), StatusCode::OK);
         let cache_control = response
             .headers()
@@ -5621,7 +5621,7 @@ async fn companion_shell_route_serves_module_assets() {
                     .map_err(|error| error.to_string())?,
             )
             .await
-            .map_err(|error| error.to_string())?;
+            .expect("the Companion router is infallible");
         assert_eq!(rejected_host.status(), StatusCode::FORBIDDEN);
         assert_no_store(rejected_host.headers());
 
@@ -5635,7 +5635,7 @@ async fn companion_shell_route_serves_module_assets() {
                     .map_err(|error| error.to_string())?,
             )
             .await
-            .map_err(|error| error.to_string())?;
+            .expect("the Companion router is infallible");
         assert_eq!(module_response.status(), StatusCode::OK);
         let module_cache_control = module_response
             .headers()
@@ -5677,7 +5677,7 @@ async fn companion_shell_route_serves_module_assets() {
                     .map_err(|error| error.to_string())?,
             )
             .await
-            .map_err(|error| error.to_string())?;
+            .expect("the Companion router is infallible");
         assert_eq!(not_modified.status(), StatusCode::NOT_MODIFIED);
         assert_eq!(
             not_modified
@@ -5709,7 +5709,7 @@ async fn companion_shell_route_serves_module_assets() {
                     .map_err(|error| error.to_string())?,
             )
             .await
-            .map_err(|error| error.to_string())?;
+            .expect("the Companion router is infallible");
         assert_eq!(gzip_response.status(), StatusCode::OK);
         assert_eq!(
             gzip_response
@@ -5740,7 +5740,7 @@ async fn companion_shell_route_serves_module_assets() {
                         .map_err(|error| error.to_string())?,
                 )
                 .await
-                .map_err(|error| error.to_string())?;
+                .expect("the Companion router is infallible");
             assert_eq!(response.status(), StatusCode::OK);
             let content_type = response
                 .headers()
@@ -5781,7 +5781,7 @@ async fn companion_shell_route_serves_module_assets() {
                     .map_err(|error| error.to_string())?,
             )
             .await
-            .map_err(|error| error.to_string())?;
+            .expect("the Companion router is infallible");
         assert_eq!(icon_response.status(), StatusCode::OK);
         let icon_content_type = icon_response
             .headers()
@@ -5799,7 +5799,7 @@ async fn companion_shell_route_serves_module_assets() {
                     .map_err(|error| error.to_string())?,
             )
             .await
-            .map_err(|error| error.to_string())?;
+            .expect("the Companion router is infallible");
         assert_eq!(missing_asset.status(), StatusCode::NOT_FOUND);
         assert_no_store(missing_asset.headers());
 
@@ -5830,7 +5830,7 @@ async fn companion_api_success_auth_and_error_responses_are_no_store() {
                     .map_err(|error| error.to_string())?,
             )
             .await
-            .map_err(|error| error.to_string())?;
+            .expect("the Companion router is infallible");
         assert_eq!(health.status(), StatusCode::OK);
         assert_no_store(health.headers());
 
@@ -5844,7 +5844,7 @@ async fn companion_api_success_auth_and_error_responses_are_no_store() {
                     .map_err(|error| error.to_string())?,
             )
             .await
-            .map_err(|error| error.to_string())?;
+            .expect("the Companion router is infallible");
         assert_eq!(auth_status.status(), StatusCode::OK);
         assert_no_store(auth_status.headers());
 
@@ -5858,7 +5858,7 @@ async fn companion_api_success_auth_and_error_responses_are_no_store() {
                     .map_err(|error| error.to_string())?,
             )
             .await
-            .map_err(|error| error.to_string())?;
+            .expect("the Companion router is infallible");
         assert_eq!(unauthorized.status(), StatusCode::UNAUTHORIZED);
         assert_no_store(unauthorized.headers());
 
@@ -5871,7 +5871,7 @@ async fn companion_api_success_auth_and_error_responses_are_no_store() {
                     .map_err(|error| error.to_string())?,
             )
             .await
-            .map_err(|error| error.to_string())?;
+            .expect("the Companion router is infallible");
         assert_eq!(unknown_api_route.status(), StatusCode::NOT_FOUND);
         assert_no_store(unknown_api_route.headers());
 
@@ -5912,7 +5912,7 @@ async fn companion_api_rejects_invalid_browser_lend_request() {
                     .map_err(|error| error.to_string())?,
             )
             .await
-            .map_err(|error| error.to_string())?;
+            .expect("the Companion router is infallible");
         assert_eq!(missing_borrower.status(), StatusCode::BAD_REQUEST);
 
         Ok::<(), String>(())
@@ -5959,7 +5959,7 @@ async fn companion_api_location_lifecycle_merge_revision_and_spool_names_are_con
                     .map_err(|error| error.to_string())?,
             )
             .await
-            .map_err(|error| error.to_string())?;
+            .expect("the Companion router is infallible");
         assert_eq!(create_source.status(), StatusCode::OK);
         let source: serde_json::Value = serde_json::from_slice(
             &to_bytes(create_source.into_body(), usize::MAX)
@@ -5988,7 +5988,7 @@ async fn companion_api_location_lifecycle_merge_revision_and_spool_names_are_con
                     .map_err(|error| error.to_string())?,
             )
             .await
-            .map_err(|error| error.to_string())?;
+            .expect("the Companion router is infallible");
         assert_eq!(create_target.status(), StatusCode::OK);
         let target: serde_json::Value = serde_json::from_slice(
             &to_bytes(create_target.into_body(), usize::MAX)
@@ -6018,7 +6018,7 @@ async fn companion_api_location_lifecycle_merge_revision_and_spool_names_are_con
                     .map_err(|error| error.to_string())?,
             )
             .await
-            .map_err(|error| error.to_string())?;
+            .expect("the Companion router is infallible");
         assert_eq!(rename.status(), StatusCode::OK);
         let renamed: serde_json::Value = serde_json::from_slice(
             &to_bytes(rename.into_body(), usize::MAX)
@@ -6057,7 +6057,7 @@ async fn companion_api_location_lifecycle_merge_revision_and_spool_names_are_con
                     .map_err(|error| error.to_string())?,
             )
             .await
-            .map_err(|error| error.to_string())?;
+            .expect("the Companion router is infallible");
         assert_eq!(merge.status(), StatusCode::OK);
         let merge_result: serde_json::Value = serde_json::from_slice(
             &to_bytes(merge.into_body(), usize::MAX)
@@ -6082,7 +6082,7 @@ async fn companion_api_location_lifecycle_merge_revision_and_spool_names_are_con
                     .map_err(|error| error.to_string())?,
             )
             .await
-            .map_err(|error| error.to_string())?;
+            .expect("the Companion router is infallible");
         assert_eq!(referenced_delete.status(), StatusCode::BAD_REQUEST);
         let referenced_delete_error: serde_json::Value = serde_json::from_slice(
             &to_bytes(referenced_delete.into_body(), usize::MAX)
@@ -6110,7 +6110,7 @@ async fn companion_api_location_lifecycle_merge_revision_and_spool_names_are_con
                     .map_err(|error| error.to_string())?,
             )
             .await
-            .map_err(|error| error.to_string())?;
+            .expect("the Companion router is infallible");
         assert_eq!(delete_merged_source.status(), StatusCode::OK);
         let deleted_source: serde_json::Value = serde_json::from_slice(
             &to_bytes(delete_merged_source.into_body(), usize::MAX)
@@ -6133,7 +6133,7 @@ async fn companion_api_location_lifecycle_merge_revision_and_spool_names_are_con
                     .map_err(|error| error.to_string())?,
             )
             .await
-            .map_err(|error| error.to_string())?;
+            .expect("the Companion router is infallible");
         assert_eq!(spools.status(), StatusCode::OK);
         let spools_json: serde_json::Value = serde_json::from_slice(
             &to_bytes(spools.into_body(), usize::MAX)
@@ -6163,7 +6163,7 @@ async fn companion_api_location_lifecycle_merge_revision_and_spool_names_are_con
                     .map_err(|error| error.to_string())?,
             )
             .await
-            .map_err(|error| error.to_string())?;
+            .expect("the Companion router is infallible");
         assert_eq!(archive.status(), StatusCode::OK);
 
         let active = router
@@ -6177,7 +6177,7 @@ async fn companion_api_location_lifecycle_merge_revision_and_spool_names_are_con
                     .map_err(|error| error.to_string())?,
             )
             .await
-            .map_err(|error| error.to_string())?;
+            .expect("the Companion router is infallible");
         let active_json: serde_json::Value = serde_json::from_slice(
             &to_bytes(active.into_body(), usize::MAX)
                 .await
@@ -6203,7 +6203,7 @@ async fn companion_api_location_lifecycle_merge_revision_and_spool_names_are_con
                     .map_err(|error| error.to_string())?,
             )
             .await
-            .map_err(|error| error.to_string())?;
+            .expect("the Companion router is infallible");
         assert_eq!(restore.status(), StatusCode::OK);
 
         let db = FilamentDatabase::open(&db_path).map_err(|error| error.to_string())?;
@@ -6289,7 +6289,7 @@ async fn companion_api_executes_one_atomic_inventory_bulk_request() {
                     .map_err(|error| error.to_string())?,
             )
             .await
-            .map_err(|error| error.to_string())?;
+            .expect("the Companion router is infallible");
         assert_eq!(response.status(), StatusCode::OK);
         let receipt: serde_json::Value = serde_json::from_slice(
             &to_bytes(response.into_body(), usize::MAX)
@@ -6335,7 +6335,7 @@ async fn companion_api_executes_one_atomic_inventory_bulk_request() {
                     .map_err(|error| error.to_string())?,
             )
             .await
-            .map_err(|error| error.to_string())?;
+            .expect("the Companion router is infallible");
         assert_eq!(stale.status(), StatusCode::BAD_REQUEST);
         let stale_error: serde_json::Value = serde_json::from_slice(
             &to_bytes(stale.into_body(), usize::MAX)

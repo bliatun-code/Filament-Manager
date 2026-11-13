@@ -29,8 +29,10 @@ if needed. See GitHub's
 [restore action](https://github.com/actions/cache/tree/55cc8345863c7cc4c66a329aec7e433d2d1c52a9/restore).
 
 The path allowlist includes Cargo registry index/cache/source and git
-database/checkouts, plus `deps`, `build`, and `.fingerprint` in ordinary debug and
-release profiles and the MSRV debug profile. Cargo-installed binaries,
+database/checkouts. Cargo 1.100 places compiled dependencies and fingerprints
+under `build` in the ordinary debug and release profiles. The Rust 1.90 MSRV
+debug profile uses the separate `deps`, `build`, and `.fingerprint` paths.
+Cargo-installed binaries,
 incremental compilation, target-root files, and Tauri bundles are excluded.
 `CARGO_INCREMENTAL=0` applies to both native jobs. Database fixtures and smoke
 logs use `runner.temp` outside the cached directories.
