@@ -99,18 +99,26 @@ public static class FilamentManagerInstallerDialog {
     [DllImport("user32.dll")] private static extern bool EnumChildWindows(IntPtr hwnd, WindowCallback callback, IntPtr parameter);
     [DllImport("user32.dll")] private static extern bool IsWindowVisible(IntPtr hwnd);
     [DllImport("user32.dll")] public static extern bool IsWindowEnabled(IntPtr hwnd);
+    [DllImport("user32.dll")] private static extern IntPtr GetParent(IntPtr hwnd);
+    [DllImport("user32.dll")] private static extern IntPtr GetWindow(IntPtr hwnd, uint command);
+    [DllImport("user32.dll")] private static extern int GetDlgCtrlID(IntPtr hwnd);
     [DllImport("user32.dll")] private static extern uint GetWindowThreadProcessId(IntPtr hwnd, out int pid);
-
-    public static int ProcessId(IntPtr hwnd) {
-        GetWindowThreadProcessId(hwnd, out int pid);
-        return pid;
-    }
     [DllImport("user32.dll", CharSet = CharSet.Unicode)] private static extern int GetClassName(IntPtr hwnd, StringBuilder name, int size);
     [DllImport("user32.dll", CharSet = CharSet.Unicode)] private static extern IntPtr SendMessageTimeout(
         IntPtr hwnd, uint message, IntPtr wParam, StringBuilder lParam, uint flags, uint timeout, out IntPtr result);
     [DllImport("user32.dll", CharSet = CharSet.Unicode)] private static extern IntPtr SendMessageTimeout(
         IntPtr hwnd, uint message, IntPtr wParam, IntPtr lParam, uint flags, uint timeout, out IntPtr result);
     [DllImport("user32.dll", CharSet = CharSet.Unicode)] private static extern bool PostMessage(IntPtr hwnd, uint message, IntPtr wParam, IntPtr lParam);
+
+    public static int ProcessId(IntPtr hwnd) {
+        GetWindowThreadProcessId(hwnd, out int pid);
+        return pid;
+    }
+
+    public static IntPtr Owner(IntPtr hwnd) {
+        const uint GW_OWNER = 4;
+        return GetWindow(hwnd, GW_OWNER);
+    }
 
     public static string Label(IntPtr hwnd) {
         var text = new StringBuilder(512);
@@ -137,7 +145,9 @@ public static class FilamentManagerInstallerDialog {
     }
 
     public static bool Click(IntPtr hwnd) {
-        return PostMessage(hwnd, 0xF5, IntPtr.Zero, IntPtr.Zero);
+        // Send BN_CLICKED to the dialog even when it does not have foreground focus.
+        const uint WM_COMMAND = 0x0111;
+        return PostMessage(GetParent(hwnd), WM_COMMAND, new IntPtr(GetDlgCtrlID(hwnd) & 0xffff), hwnd);
     }
 }
 '@
@@ -145,46 +155,93 @@ public static class FilamentManagerInstallerDialog {
 
     $process = Start-Process -FilePath $FilePath -PassThru
     $uninstalling = (Split-Path -Leaf $FilePath) -eq "uninstall.exe"
+    $action = if ($uninstalling) { "Uninstall" } else { "Install" }
+    $actionLabels = '^(Next\s*>?|Install|Uninstall|Finish|Close)$'
     $seen = [Collections.Generic.List[string]]::new()
+    $wizard = [IntPtr]::Zero
+    $wizardProcessId = $process.Id
+    $lastPage = ""
     try {
         $deadline = [DateTime]::UtcNow.AddSeconds(90)
         do {
-            $visibleDialog = $false
-            foreach ($window in [FilamentManagerInstallerDialog]::Visible([IntPtr]::Zero, "#32770")) {
-                if ([FilamentManagerInstallerDialog]::Label($window) -notlike "$product*" -or
-                    (-not $uninstalling -and [FilamentManagerInstallerDialog]::ProcessId($window) -ne $process.Id)) {
-                    continue
+            $dialogs = @(
+                foreach ($window in [FilamentManagerInstallerDialog]::Visible([IntPtr]::Zero, "#32770")) {
+                    $windowProcessId = [FilamentManagerInstallerDialog]::ProcessId($window)
+                    $isOwned = $wizard -ne [IntPtr]::Zero -and [FilamentManagerInstallerDialog]::Owner($window) -eq $wizard
+                    $isWizardProcess = $windowProcessId -eq $wizardProcessId
+                    # The temporary uninstaller executable may have a different process ID.
+                    $findUninstaller = $uninstalling -and $wizard -eq [IntPtr]::Zero
+                    if (-not ($isWizardProcess -or $isOwned -or $findUninstaller)) { continue }
+                    $title = [FilamentManagerInstallerDialog]::Label($window)
+                    if (-not ($isWizardProcess -or $isOwned) -and $title -notlike "$product*") { continue }
+                    $buttons = @(
+                        foreach ($control in [FilamentManagerInstallerDialog]::Visible($window, "Button")) {
+                            [pscustomobject]@{
+                                Handle = $control
+                                Label = [FilamentManagerInstallerDialog]::Label($control)
+                                Enabled = [FilamentManagerInstallerDialog]::IsWindowEnabled($control)
+                            }
+                        }
+                    )
+                    $wizardButtons = $buttons | Where-Object Label -match $actionLabels
+                    if ($wizard -eq [IntPtr]::Zero -and $title -like "$product*" -and $wizardButtons) {
+                        $wizard = $window
+                        $wizardProcessId = $windowProcessId
+                        $isWizardProcess = $true
+                    }
+                    if ($isWizardProcess -or $isOwned) {
+                        $staticText = [FilamentManagerInstallerDialog]::Visible($window, "Static") | ForEach-Object {
+                            [FilamentManagerInstallerDialog]::Label($_)
+                        } | Where-Object { $_ }
+                        [pscustomobject]@{
+                            Handle = $window
+                            Title = $title
+                            Text = $staticText -join ' | '
+                            Buttons = $buttons
+                            Enabled = [FilamentManagerInstallerDialog]::IsWindowEnabled($window)
+                        }
+                    }
                 }
-                $visibleDialog = $true
-                $buttons = [FilamentManagerInstallerDialog]::Visible($window, "Button")
-                foreach ($control in $buttons) {
-                    $label = [FilamentManagerInstallerDialog]::Label($control)
-                    if ($label -match '(?i)delete app data') {
+            )
+            foreach ($dialog in $dialogs) {
+                if ($dialog.Handle -ne $wizard -and $dialog.Enabled) {
+                    $labels = ($dialog.Buttons | ForEach-Object { $_.Label }) -join ', '
+                    throw "Unexpected installer dialog '$($dialog.Title)' ($labels): $($dialog.Text)"
+                }
+            }
+
+            $page = $dialogs | Where-Object Handle -eq $wizard | Select-Object -First 1
+            if ($null -ne $page -and $page.Enabled) {
+                foreach ($button in $page.Buttons) {
+                    if ($button.Label -match '(?i)delete app data') {
                         throw "Interactive uninstall exposes deletion of the library."
                     }
-                    if ($label -match '(?i)^(run|launch) .*Filament Manager') {
-                        [FilamentManagerInstallerDialog]::SetChecked($control, $false)
+                    if ($button.Label -match '(?i)^(run|launch) .*Filament Manager') {
+                        [FilamentManagerInstallerDialog]::SetChecked($button.Handle, $false)
                     }
-                    if ($label -match '(?i)create .*desktop') {
-                        [FilamentManagerInstallerDialog]::SetChecked($control, $true)
+                    if ($button.Label -match '(?i)create .*desktop') {
+                        [FilamentManagerInstallerDialog]::SetChecked($button.Handle, $true)
                     }
                 }
-                foreach ($control in $buttons) {
-                    $label = [FilamentManagerInstallerDialog]::Label($control)
-                    if (-not [FilamentManagerInstallerDialog]::IsWindowEnabled($control) -or
-                        $label -notmatch '^(Next\s*>?|Install|Uninstall|Finish|Close)$') { continue }
-                    if ([FilamentManagerInstallerDialog]::Click($control)) {
-                        $seen.Add($label)
-                        break
+                $button = $page.Buttons | Where-Object { $_.Enabled -and $_.Label -match $actionLabels } | Select-Object -First 1
+                $pageDescription = "$($page.Title): $($page.Text)"
+                if ($null -ne $button -and "$($button.Label) | $pageDescription" -cne $lastPage) {
+                    if (-not [FilamentManagerInstallerDialog]::Click($button.Handle)) {
+                        throw "Could not click '$($button.Label)' in $pageDescription"
                     }
+                    $seen.Add($button.Label)
+                    $lastPage = "$($button.Label) | $pageDescription"
+                    Write-Host "Clicked installer button '$($button.Label)' in $pageDescription"
                 }
             }
 
             # NSIS can fork the uninstaller into a temporary executable, so require
             # the actual confirmation control and wait until its dialog closes.
-            $action = if ($uninstalling) { "Uninstall" } else { "Install" }
             $terminal = $seen.Contains("Finish") -or $seen.Contains("Close")
-            if (-not $visibleDialog -and $seen.Contains($action) -and
+            if (-not $uninstalling -and $dialogs.Count -eq 0 -and $process.HasExited -and $process.ExitCode -ne 0) {
+                throw "Interactive installer exited with code $($process.ExitCode). Buttons used: $($seen -join ', ')"
+            }
+            if ($dialogs.Count -eq 0 -and $seen.Contains($action) -and
                 ($terminal -or ($uninstalling -and -not (Test-Path -LiteralPath $nsisEntry))) -and
                 $process.WaitForExit(1000)) {
                 if ($process.ExitCode -ne 0) { throw "Interactive installer exited with code $($process.ExitCode)." }
@@ -193,7 +250,11 @@ public static class FilamentManagerInstallerDialog {
             }
             Start-Sleep -Milliseconds 350
         } while ([DateTime]::UtcNow -lt $deadline)
-        throw "Interactive installer did not finish within 90 seconds. Buttons used: $($seen -join ', ')"
+        $remaining = $dialogs | ForEach-Object {
+            $labels = ($_.Buttons | ForEach-Object { "'$($_.Label)' enabled=$($_.Enabled)" }) -join ', '
+            "'$($_.Title)' enabled=$($_.Enabled) ($labels): $($_.Text)"
+        }
+        throw "Interactive installer did not finish within 90 seconds. Buttons used: $($seen -join ', '). Remaining dialogs: $($remaining -join '; ')"
     }
     finally {
         $process.Dispose()
@@ -221,9 +282,18 @@ function Assert-Autostart {
     $actualRun = Get-AutostartValue $runRegistry
     $actualApproval = Get-AutostartValue $approvalRegistry
     if ($Preserved -and $null -ne $approval) {
-        if ($actualRun -cne $autostartCommand -or $actualApproval -isnot [byte[]] -or
-            [Convert]::ToHexString($actualApproval) -cne [Convert]::ToHexString([byte[]]$approval)) {
-            throw "Windows launch-at-login registration or approval changed."
+        if ($actualRun -cne $autostartCommand) {
+            $runState = if ($null -eq $actualRun) { "missing" } else { "different from the installed app command" }
+            throw "Windows launch-at-login Run value is $runState."
+        }
+        $expectedApproval = [Convert]::ToHexString([byte[]]$approval)
+        $approvalState = if ($actualApproval -is [byte[]]) {
+            [Convert]::ToHexString($actualApproval)
+        }
+        elseif ($null -eq $actualApproval) { "missing" }
+        else { $actualApproval.GetType().Name }
+        if ($approvalState -cne $expectedApproval) {
+            throw "Windows launch-at-login StartupApproved value is $approvalState, expected $expectedApproval."
         }
     }
     elseif ($null -ne $actualRun -or $null -ne $actualApproval) {

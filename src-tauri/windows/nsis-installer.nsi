@@ -76,7 +76,6 @@ ManifestDPIAwareness PerMonitorV2
 Var PassiveMode
 Var UpdateMode
 Var NoShortcutMode
-Var OldMainBinaryName
 
 Name "${PRODUCTNAME}"
 BrandingText "${COPYRIGHT}"
@@ -190,24 +189,16 @@ VIAddVersionKey "ProductVersion" "${VERSION}"
 ; The per-user bridge validates the old installer before migration.
 ; NSIS updates install in place, keeping shortcuts and autostart.
 
-; 5. Choose install directory page
+; 4. Choose install directory page
 !define MUI_PAGE_CUSTOMFUNCTION_PRE SkipIfPassive
 !insertmacro MUI_PAGE_DIRECTORY
 
-; 6. Start menu shortcut page
-Var AppStartMenuFolder
-!if "${STARTMENUFOLDER}" != ""
-  !define MUI_PAGE_CUSTOMFUNCTION_PRE SkipIfPassive
-  !define MUI_STARTMENUPAGE_DEFAULTFOLDER "${STARTMENUFOLDER}"
-!else
-  !define MUI_PAGE_CUSTOMFUNCTION_PRE Skip
-!endif
-!insertmacro MUI_PAGE_STARTMENU Application $AppStartMenuFolder
+; Match the MSI's fixed Start Menu folder so uninstall finds the shortcut.
 
-; 7. Installation page
+; 5. Installation page
 !insertmacro MUI_PAGE_INSTFILES
 
-; 8. Finish page
+; 6. Finish page
 ;
 ; Don't auto jump to finish page after installation page,
 ; because the installation page has useful info that can be used debug any issues with the installer.
@@ -444,16 +435,6 @@ Section Install
     WriteRegStr SHCTX "${UNINSTKEY}" $MultiUser.InstallMode 1
   !endif
 
-  ; Remove old main binary if it doesn't match new main binary name
-  ReadRegStr $OldMainBinaryName SHCTX "${UNINSTKEY}" "MainBinaryName"
-  ${If} $OldMainBinaryName != ""
-  ${AndIf} $OldMainBinaryName != "${MAINBINARYNAME}.exe"
-    Delete "$INSTDIR\$OldMainBinaryName"
-  ${EndIf}
-
-  ; Save current MAINBINARYNAME for future updates
-  WriteRegStr SHCTX "${UNINSTKEY}" "MainBinaryName" "${MAINBINARYNAME}.exe"
-
   ; Registry information for add/remove programs
   WriteRegStr SHCTX "${UNINSTKEY}" "DisplayName" "${PRODUCTNAME}"
   WriteRegStr SHCTX "${UNINSTKEY}" "DisplayIcon" "$\"$INSTDIR\${MAINBINARYNAME}.exe$\""
@@ -476,9 +457,7 @@ Section Install
   !endif
 
   ; Create start menu shortcut
-  !insertmacro MUI_STARTMENU_WRITE_BEGIN Application
-    Call CreateOrUpdateStartMenuShortcut
-  !insertmacro MUI_STARTMENU_WRITE_END
+  Call CreateOrUpdateStartMenuShortcut
 
   ; Create desktop shortcut for silent and passive installers
   ; because finish page will be skipped
@@ -581,13 +560,12 @@ Section Uninstall
     !insertmacro DeleteAppUserModelId
 
     ; Remove start menu shortcut
-    !insertmacro MUI_STARTMENU_GETFOLDER Application $AppStartMenuFolder
-    !insertmacro IsShortcutTarget "$SMPROGRAMS\$AppStartMenuFolder\${PRODUCTNAME}.lnk" "$INSTDIR\${MAINBINARYNAME}.exe"
+    !insertmacro IsShortcutTarget "$SMPROGRAMS\${STARTMENUFOLDER}\${PRODUCTNAME}.lnk" "$INSTDIR\${MAINBINARYNAME}.exe"
     Pop $0
     ${If} $0 = 1
-      !insertmacro UnpinShortcut "$SMPROGRAMS\$AppStartMenuFolder\${PRODUCTNAME}.lnk"
-      Delete "$SMPROGRAMS\$AppStartMenuFolder\${PRODUCTNAME}.lnk"
-      RMDir "$SMPROGRAMS\$AppStartMenuFolder"
+      !insertmacro UnpinShortcut "$SMPROGRAMS\${STARTMENUFOLDER}\${PRODUCTNAME}.lnk"
+      Delete "$SMPROGRAMS\${STARTMENUFOLDER}\${PRODUCTNAME}.lnk"
+      RMDir "$SMPROGRAMS\${STARTMENUFOLDER}"
     ${EndIf}
     !insertmacro IsShortcutTarget "$SMPROGRAMS\${PRODUCTNAME}.lnk" "$INSTDIR\${MAINBINARYNAME}.exe"
     Pop $0
@@ -647,10 +625,6 @@ Function RestorePreviousInstallLocation
     StrCpy $INSTDIR $4
 FunctionEnd
 
-Function Skip
-  Abort
-FunctionEnd
-
 Function SkipIfPassive
   ${IfThen} $PassiveMode = 1  ${|} Abort ${|}
 FunctionEnd
@@ -659,28 +633,6 @@ Function un.SkipIfPassive
 FunctionEnd
 
 Function CreateOrUpdateStartMenuShortcut
-  ; We used to use product name as MAINBINARYNAME
-  ; migrate old shortcuts to target the new MAINBINARYNAME
-  StrCpy $R0 0
-
-  !insertmacro IsShortcutTarget "$SMPROGRAMS\$AppStartMenuFolder\${PRODUCTNAME}.lnk" "$INSTDIR\$OldMainBinaryName"
-  Pop $0
-  ${If} $0 = 1
-    !insertmacro SetShortcutTarget "$SMPROGRAMS\$AppStartMenuFolder\${PRODUCTNAME}.lnk" "$INSTDIR\${MAINBINARYNAME}.exe"
-    StrCpy $R0 1
-  ${EndIf}
-
-  !insertmacro IsShortcutTarget "$SMPROGRAMS\${PRODUCTNAME}.lnk" "$INSTDIR\$OldMainBinaryName"
-  Pop $0
-  ${If} $0 = 1
-    !insertmacro SetShortcutTarget "$SMPROGRAMS\${PRODUCTNAME}.lnk" "$INSTDIR\${MAINBINARYNAME}.exe"
-    StrCpy $R0 1
-  ${EndIf}
-
-  ${If} $R0 = 1
-    Return
-  ${EndIf}
-
   ; Skip creating shortcut if in update mode or no shortcut mode
   ${If} $UpdateMode = 1
   ${OrIf} $NoShortcutMode = 1
@@ -688,9 +640,9 @@ Function CreateOrUpdateStartMenuShortcut
   ${EndIf}
 
   !if "${STARTMENUFOLDER}" != ""
-    CreateDirectory "$SMPROGRAMS\$AppStartMenuFolder"
-    CreateShortcut "$SMPROGRAMS\$AppStartMenuFolder\${PRODUCTNAME}.lnk" "$INSTDIR\${MAINBINARYNAME}.exe"
-    !insertmacro SetLnkAppUserModelId "$SMPROGRAMS\$AppStartMenuFolder\${PRODUCTNAME}.lnk"
+    CreateDirectory "$SMPROGRAMS\${STARTMENUFOLDER}"
+    CreateShortcut "$SMPROGRAMS\${STARTMENUFOLDER}\${PRODUCTNAME}.lnk" "$INSTDIR\${MAINBINARYNAME}.exe"
+    !insertmacro SetLnkAppUserModelId "$SMPROGRAMS\${STARTMENUFOLDER}\${PRODUCTNAME}.lnk"
   !else
     CreateShortcut "$SMPROGRAMS\${PRODUCTNAME}.lnk" "$INSTDIR\${MAINBINARYNAME}.exe"
     !insertmacro SetLnkAppUserModelId "$SMPROGRAMS\${PRODUCTNAME}.lnk"
@@ -698,15 +650,6 @@ Function CreateOrUpdateStartMenuShortcut
 FunctionEnd
 
 Function CreateOrUpdateDesktopShortcut
-  ; We used to use product name as MAINBINARYNAME
-  ; migrate old shortcuts to target the new MAINBINARYNAME
-  !insertmacro IsShortcutTarget "$DESKTOP\${PRODUCTNAME}.lnk" "$INSTDIR\$OldMainBinaryName"
-  Pop $0
-  ${If} $0 = 1
-    !insertmacro SetShortcutTarget "$DESKTOP\${PRODUCTNAME}.lnk" "$INSTDIR\${MAINBINARYNAME}.exe"
-    Return
-  ${EndIf}
-
   ; Skip creating shortcut if in update mode or no shortcut mode
   ${If} $UpdateMode = 1
   ${OrIf} $NoShortcutMode = 1
