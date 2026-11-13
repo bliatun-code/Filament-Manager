@@ -3,7 +3,7 @@ use reqwest::blocking::Client;
 use reqwest::Url;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 use std::env;
 use std::io::Read;
 use std::sync::{Mutex, OnceLock};
@@ -1457,42 +1457,72 @@ fn parse_bambu_product_group_entries(
             .ok_or_else(|| "JSON-LD product URL did not match the detected store".to_string())?
     };
     let material = infer_material(filament_name);
-    let mut entries: Vec<BambuCatalogEntry> = Vec::new();
-    for variant in group.variants {
-        if variant.sku.trim().is_empty() || variant.name.trim().is_empty() {
+    let mut sku_options: HashMap<&str, (&str, Option<i64>)> = HashMap::new();
+    let mut colors: Vec<BambuCatalogColor<'_>> = Vec::new();
+    for variant in &group.variants {
+        let sku = variant.sku.trim();
+        if sku.is_empty() || variant.name.trim().is_empty() {
             return Err("JSON-LD ProductGroup contained an incomplete variant".to_string());
         }
-        let (color_name, default_weight_g) =
-            parse_bambu_variant_name(filament_name, &variant.name)?;
-        let image_url = json_ld_image_url(&variant.image, base_url);
-        if let Some(existing) = entries
-            .iter_mut()
-            .find(|entry| entry.color_name.eq_ignore_ascii_case(&color_name))
+        let (color_name, weight_g) = parse_bambu_variant_name(filament_name, &variant.name)?;
+        let (known_color, known_weight) = sku_options.entry(sku).or_insert((color_name, weight_g));
+        if !known_color.eq_ignore_ascii_case(color_name)
+            || matches!((*known_weight, weight_g), (Some(previous), Some(current)) if previous != current)
         {
-            if existing.default_weight_g != default_weight_g {
-                return Err(format!(
-                    "JSON-LD variants for color '{color_name}' had conflicting weights"
-                ));
-            }
+            return Err(format!(
+                "JSON-LD variants for SKU '{sku}' disagreed on color or weight"
+            ));
+        }
+        *known_weight = known_weight.or(weight_g);
+
+        let image_url = json_ld_image_url(&variant.image, base_url);
+        if let Some(existing) = colors
+            .iter_mut()
+            .find(|entry| entry.name.eq_ignore_ascii_case(color_name))
+        {
+            existing.weight_g = preferred_bambu_catalog_weight(existing.weight_g, weight_g);
             if existing.image_url.is_none() {
                 existing.image_url = image_url;
             }
-            continue;
+        } else {
+            colors.push(BambuCatalogColor {
+                name: color_name,
+                weight_g,
+                image_url,
+            });
         }
-        entries.push(BambuCatalogEntry {
+    }
+
+    Ok(colors
+        .into_iter()
+        .map(|color| BambuCatalogEntry {
             material: material.clone(),
             filament_name: filament_name.to_string(),
-            color_name: color_name.clone(),
-            hex_color: resolve_bambu_hex(filament_name, &color_name),
-            image_url,
+            color_name: color.name.to_string(),
+            hex_color: resolve_bambu_hex(filament_name, color.name),
+            image_url: color.image_url,
             product_url: product_url.clone(),
-            default_weight_g,
-        });
+            default_weight_g: color.weight_g.unwrap_or(DEFAULT_WEIGHT_G),
+        })
+        .collect())
+}
+
+struct BambuCatalogColor<'a> {
+    name: &'a str,
+    weight_g: Option<i64>,
+    image_url: Option<String>,
+}
+
+fn preferred_bambu_catalog_weight(existing: Option<i64>, incoming: Option<i64>) -> Option<i64> {
+    // The catalog keeps one record per color. Prefer its conventional 1 kg
+    // default if sold, otherwise use the smallest explicitly listed size.
+    match (existing, incoming) {
+        (Some(left), Some(right)) if left == DEFAULT_WEIGHT_G || right == DEFAULT_WEIGHT_G => {
+            Some(DEFAULT_WEIGHT_G)
+        }
+        (Some(left), Some(right)) => Some(left.min(right)),
+        _ => existing.or(incoming),
     }
-    if entries.is_empty() {
-        return Err("JSON-LD ProductGroup produced no exact colors".to_string());
-    }
-    Ok(entries)
 }
 
 fn extract_json_ld_values(body: &str) -> Result<Vec<Value>, String> {
@@ -1559,10 +1589,10 @@ fn json_ld_type_matches(value: &Value, expected: &str) -> bool {
     }
 }
 
-fn parse_bambu_variant_name(
+fn parse_bambu_variant_name<'a>(
     filament_name: &str,
-    variant_name: &str,
-) -> Result<(String, i64), String> {
+    variant_name: &'a str,
+) -> Result<(&'a str, Option<i64>), String> {
     let variant_name = variant_name.trim();
     let prefix_length = filament_name.trim().len();
     let Some(prefix) = variant_name.get(..prefix_length) else {
@@ -1583,22 +1613,17 @@ fn parse_bambu_variant_name(
         .strip_prefix('-')
         .ok_or_else(|| format!("variant '{variant_name}' omitted its color separator"))?
         .trim_start();
-    let segments: Vec<&str> = remainder
-        .split(" / ")
-        .map(str::trim)
-        .filter(|segment| !segment.is_empty())
-        .collect();
+    let mut segments = remainder.split(" / ").map(str::trim);
     let color_name = segments
-        .first()
-        .copied()
+        .next()
         .filter(|color| !color.is_empty())
         .ok_or_else(|| format!("variant '{variant_name}' omitted its color"))?;
-    let default_weight_g = segments
-        .iter()
-        .skip(1)
-        .find_map(|segment| parse_weight_grams(segment))
-        .unwrap_or(DEFAULT_WEIGHT_G);
-    Ok((color_name.to_string(), default_weight_g))
+    let mut explicit_weights = segments.filter_map(parse_weight_grams);
+    let weight_g = explicit_weights.next();
+    if explicit_weights.any(|other| Some(other) != weight_g) {
+        return Err(format!("variant '{variant_name}' had conflicting weights"));
+    }
+    Ok((color_name, weight_g))
 }
 
 fn parse_weight_grams(value: &str) -> Option<i64> {

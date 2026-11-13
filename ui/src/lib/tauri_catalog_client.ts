@@ -55,6 +55,7 @@ export type EsunProductDetail = {
 
 export type CatalogRefreshResult = {
   imported: number;
+  preserved_existing_count?: number;
   detected_store?: string | null;
   detected_collection?: string | null;
   discovered_materials?: string[] | null;

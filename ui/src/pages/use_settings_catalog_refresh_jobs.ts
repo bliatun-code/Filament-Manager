@@ -109,7 +109,7 @@ export function useSettingsCatalogRefreshJobs(input: JobInput) {
         if (job.status === "SUCCEEDED" && job.result) {
           current.completeCatalogRefreshResult(job.result);
           void current.reloadSettings().catch(() => {});
-          if (job.result.imported === 0) {
+          if (job.result.imported === 0 && (job.result.preserved_existing_count ?? 0) === 0) {
             current.setError(buildSettingsCatalogRefreshZeroImportMessage(
               job.vendor, current.settingsCatalogRefreshMessageLabels(),
             ));

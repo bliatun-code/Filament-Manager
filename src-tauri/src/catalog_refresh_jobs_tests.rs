@@ -94,12 +94,19 @@ fn summary(imported: i64, output: &str) -> CatalogRefreshResult {
 }
 
 fn import(execution: &CatalogJobExecution) -> Result<CatalogRefreshResult, String> {
-    execution.import("eSUN", "PLA", "2026-09-05 00:00:00", &[entry()], |stats| {
-        summary(
-            stats.imported_count(),
-            "Synthetic catalog refresh completed.",
-        )
-    })
+    execution.import(
+        "eSUN",
+        "PLA",
+        "2026-09-05 00:00:00",
+        &[entry()],
+        false,
+        |stats| {
+            summary(
+                stats.imported_count(),
+                "Synthetic catalog refresh completed.",
+            )
+        },
+    )
 }
 
 fn entry() -> SourceCatalogEntryInput<'static> {
@@ -261,6 +268,60 @@ fn authority_generation_change_during_fetch_rejects_import_and_retires_old_recei
 }
 
 #[test]
+fn supplemental_refresh_reports_a_successful_receipt_for_existing_entries() {
+    let library = TestLibrary::new();
+    let authority = current_authority(&library);
+    start_job_with(
+        library.service(),
+        input("primary-refresh"),
+        |execution, _| import(execution),
+    )
+    .unwrap();
+    assert_eq!(
+        terminal(&library, &authority, "primary-refresh").status,
+        "SUCCEEDED"
+    );
+
+    start_job_with(
+        library.service(),
+        input("supplemental-refresh"),
+        |execution, _| {
+            let mut duplicate = entry();
+            duplicate.product_url = "https://example.invalid/registry-entry";
+            execution.import(
+                "eSUN",
+                "PLA",
+                "2026-09-05 00:00:00",
+                &[duplicate],
+                true,
+                |stats| {
+                    let mut receipt = serde_json::to_value(summary(
+                        stats.imported_count(),
+                        "Supplemental refresh complete.",
+                    ))
+                    .unwrap();
+                    receipt["preserved_existing_count"] = stats.preserved_existing_count.into();
+                    serde_json::from_value(receipt).unwrap()
+                },
+            )
+        },
+    )
+    .unwrap();
+    let job = terminal(&library, &authority, "supplemental-refresh");
+    assert_eq!(job.status, "SUCCEEDED");
+    let receipt = job.result.unwrap();
+    assert_eq!(receipt["imported"], 0);
+    assert_eq!(receipt["preserved_existing_count"], 1);
+    assert_eq!(library.imported_count(), 1);
+    let row = library
+        .db()
+        .list_master_catalog(1, Some(SYNTHETIC_FILAMENT))
+        .unwrap()
+        .remove(0);
+    assert_eq!(row.product_url.as_deref(), Some(entry().product_url));
+}
+
+#[test]
 fn source_unavailable_summary_retires_failed_job_and_allows_a_fresh_request() {
     let library = TestLibrary::new();
     let authority = current_authority(&library);
@@ -331,9 +392,14 @@ fn import_summary_panic_rolls_back_without_poisoning_the_authority_gate() {
     let library = TestLibrary::new();
     let authority = current_authority(&library);
     start_job_with(library.service(), input("panic-job"), |execution, _| {
-        execution.import("eSUN", "PLA", "2026-09-05 00:00:00", &[entry()], |_| {
-            panic!("synthetic summary panic after import before receipt")
-        })
+        execution.import(
+            "eSUN",
+            "PLA",
+            "2026-09-05 00:00:00",
+            &[entry()],
+            false,
+            |_| panic!("synthetic summary panic after import before receipt"),
+        )
     })
     .unwrap();
     assert_eq!(terminal(&library, &authority, "panic-job").status, "FAILED");

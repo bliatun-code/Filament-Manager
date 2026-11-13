@@ -379,6 +379,29 @@ test("zero-import warnings remain visible after remount and reload", async () =>
   }
 });
 
+test("an up-to-date supplemental catalog completes without a zero-import warning", async () => {
+  const previousWindow = globalThis.window;
+  globalThis.window = fakeWindow();
+  const completed = completedJob("up-to-date-supplement", 0);
+  assert.ok(completed.result);
+  completed.result.preserved_existing_count = 8;
+  invokeHandler = async () => completed;
+  const feedback = trackedFeedback();
+  let mounted: ReturnType<typeof MountCatalogJobs> | null = null;
+  try {
+    const controller = observeCatalogRefreshJobSession(feedback.input.target, () => undefined)!;
+    await controller.checkNow();
+    mounted = MountCatalogJobs(feedback.input);
+    assert.deepEqual(feedback.errors, []);
+    assert.equal(feedback.notifications.length, 1);
+    assert.deepEqual(feedback.results, [completed.result]);
+  } finally {
+    mounted?.unmount();
+    observeCatalogRefreshJobSession({ clientReadOnly: true }, () => undefined);
+    globalThis.window = previousWindow;
+  }
+});
+
 test("an unresolved Settings remount preserves the active start and its pending ID until target loading finishes", async () => {
   const previousWindow = globalThis.window;
   const storage = new Map<string, string>();

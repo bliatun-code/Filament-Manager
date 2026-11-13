@@ -75,6 +75,7 @@ impl CatalogJobExecution {
         material: &str,
         started_at: &str,
         entries: &[SourceCatalogEntryInput<'_>],
+        preserve_existing_entries: bool,
         summary: impl FnOnce(&SourceCatalogImportStats) -> CatalogRefreshResult,
     ) -> Result<CatalogRefreshResult, String> {
         self.service.with_authoritative_write(|| {
@@ -84,20 +85,25 @@ impl CatalogJobExecution {
                 if authority_key(&db)? != self.authority {
                     return Err(coded_command_error("common.forbidden"));
                 }
-                let value = db
-                    .import_source_vendor_catalog_with_job_receipt(
-                        vendor,
-                        material,
-                        started_at,
-                        entries,
-                        &self.authority,
-                        &self.job_id,
-                        |stats| {
-                            serde_json::to_value(summary(stats))
-                                .map_err(|error| InventoryError::Db(error.to_string()))
-                        },
-                    )
-                    .map_err(inventory_error_to_command_string)?;
+                let persist = if preserve_existing_entries {
+                    FilamentDatabase::insert_missing_source_vendor_catalog_with_job_receipt
+                } else {
+                    FilamentDatabase::import_source_vendor_catalog_with_job_receipt
+                };
+                let value = persist(
+                    &db,
+                    vendor,
+                    material,
+                    started_at,
+                    entries,
+                    &self.authority,
+                    &self.job_id,
+                    |stats: &SourceCatalogImportStats| {
+                        serde_json::to_value(summary(stats))
+                            .map_err(|error| InventoryError::Db(error.to_string()))
+                    },
+                )
+                .map_err(inventory_error_to_command_string)?;
                 serde_json::from_value(value).map_err(|_| coded_command_error("common.internal"))
             }))
             .unwrap_or_else(|_| Err(coded_command_error("common.internal")))
@@ -144,6 +150,7 @@ pub(crate) fn start_job(
                     &job.material,
                     started_at,
                     entries,
+                    false,
                     crate::packaged_host_client_e2e::catalog_job_summary,
                 )
             },

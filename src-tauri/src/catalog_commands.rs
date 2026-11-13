@@ -10,6 +10,8 @@ use tauri::Emitter;
 #[derive(Debug, Serialize, Deserialize)]
 pub(crate) struct CatalogRefreshResult {
     imported: i64,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    preserved_existing_count: Option<i64>,
     detected_store: Option<String>,
     detected_collection: Option<String>,
     discovered_materials: Option<Vec<String>>,
@@ -216,6 +218,7 @@ pub(crate) fn refresh_bambu_catalog_blocking(
         Err(error) => {
             return Ok(CatalogRefreshResult {
                 imported: 0,
+                preserved_existing_count: None,
                 detected_store: None,
                 detected_collection: None,
                 discovered_materials: None,
@@ -255,6 +258,7 @@ pub(crate) fn refresh_bambu_catalog_blocking(
         &material_types[0],
         &refresh_started_at,
         &source_entries,
+        false,
         |import_stats| {
             let imported = import_stats.imported_count();
             let reactivated_count = import_stats.reactivated_count;
@@ -304,6 +308,7 @@ pub(crate) fn refresh_bambu_catalog_blocking(
 
             CatalogRefreshResult {
                 imported,
+                preserved_existing_count: None,
                 detected_store: Some(snapshot.detected_store.clone()),
                 detected_collection: Some(snapshot.detected_collection.clone()),
                 discovered_materials: Some(snapshot.discovered_materials.clone()),
@@ -373,6 +378,7 @@ pub(crate) fn refresh_esun_catalog_blocking(
         Err(error) => {
             return Ok(CatalogRefreshResult {
                 imported: 0,
+                preserved_existing_count: None,
                 detected_store: None,
                 detected_collection: None,
                 discovered_materials: None,
@@ -410,6 +416,7 @@ pub(crate) fn refresh_esun_catalog_blocking(
         &material_types[0],
         &refresh_started_at,
         &source_entries,
+        snapshot.preserve_existing_entries,
         |import_stats| {
             let imported = import_stats.imported_count();
             let reactivated_count = import_stats.reactivated_count;
@@ -428,6 +435,12 @@ pub(crate) fn refresh_esun_catalog_blocking(
                 import_stats.skipped_user_edited_count,
                 import_stats.skipped_vendor_conflict_count,
             );
+            if snapshot.preserve_existing_entries {
+                output.push_str(&format!(
+                    "Existing entries preserved: {}\n",
+                    import_stats.preserved_existing_count,
+                ));
+            }
             if !material_types.is_empty() {
                 output.push_str(&format!("Material filter: {}\n", material_types.join(", ")));
             }
@@ -436,9 +449,11 @@ pub(crate) fn refresh_esun_catalog_blocking(
                 output.push_str(&snapshot.warnings.join("\n"));
             }
             output.push_str("\n\nCatalog lifecycle update:\nVendor: eSUN\n");
-            output.push_str(
-                "Discontinued handling: disabled for targeted refreshes. Unseen catalog rows were preserved.\n",
-            );
+            output.push_str(if snapshot.preserve_existing_entries {
+                "Lifecycle handling: supplemental source, existing catalog entries were preserved.\n"
+            } else {
+                "Discontinued handling: disabled for targeted refreshes. Unseen catalog rows were preserved.\n"
+            });
             output.push_str(&format!(
                 "Reactivated: {}\nMarked discontinued: {}\n",
                 reactivated_count, discontinued_count
@@ -446,6 +461,9 @@ pub(crate) fn refresh_esun_catalog_blocking(
 
             CatalogRefreshResult {
                 imported,
+                preserved_existing_count: snapshot
+                    .preserve_existing_entries
+                    .then_some(import_stats.preserved_existing_count),
                 detected_store: Some(snapshot.detected_store.clone()),
                 detected_collection: Some(snapshot.detected_collection.clone()),
                 discovered_materials: Some(material_types.clone()),
