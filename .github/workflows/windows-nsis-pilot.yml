@@ -1,0 +1,89 @@
+name: Windows NSIS pilot
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - ".github/workflows/windows-nsis-pilot.yml"
+      - "scripts/*windows-nsis-pilot*"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: windows-nsis-pilot-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  migration:
+    name: Migrate the published Windows MSI to NSIS
+    runs-on: windows-2025
+    timeout-minutes: 45
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Node
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 26
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            ui/package-lock.json
+
+      - name: Set up npm 12
+        uses: ./.github/actions/setup-npm
+
+      - name: Read Rust toolchain
+        id: rust-toolchain
+        run: node ./scripts/read-rust-toolchain.mjs --github-output
+
+      - name: Set up Rust
+        uses: dtolnay/rust-toolchain@683b588c487a69d01f6c6ddf40f036ff682cc2c8 # master
+        with:
+          toolchain: ${{ steps.rust-toolchain.outputs.toolchain }}
+
+      - name: Install test dependencies
+        run: npm ci
+
+      - name: Install UI dependencies
+        working-directory: ui
+        run: npm ci
+
+      - name: Build the unsigned x64 pilot installer
+        run: |
+          $config = (Resolve-Path -LiteralPath "scripts/windows-nsis-pilot.json").Path
+          node ./scripts/run-tauri.mjs build --debug --bundles nsis --target x86_64-pc-windows-msvc --config $config
+
+      - name: Exercise the installed MSI, NSIS migration and uninstallation
+        shell: pwsh
+        timeout-minutes: 12
+        run: |
+          $buildDirectory = "target/x86_64-pc-windows-msvc/debug"
+          $installers = @(Get-ChildItem "$buildDirectory/bundle/nsis" -Filter "*.exe" -File)
+          if ($installers.Count -ne 1) { throw "Expected exactly one NSIS pilot installer." }
+          $pilot = @{
+            Installer = $installers[0].FullName
+            Candidate = "$buildDirectory/bambu-filament-manager.exe"
+            Logs = (Join-Path $env:RUNNER_TEMP "filament-manager-nsis-logs")
+          }
+          ./scripts/smoke-windows-nsis-pilot.ps1 @pilot
+
+      - name: Upload pilot installer
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: filament-manager-unsigned-nsis-pilot
+          path: target/x86_64-pc-windows-msvc/debug/bundle/nsis/*.exe
+          if-no-files-found: error
+          retention-days: 7
+
+      - name: Upload failed migration diagnostics
+        if: failure()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: filament-manager-nsis-pilot-logs
+          path: ${{ runner.temp }}/filament-manager-nsis-logs
+          retention-days: 7
