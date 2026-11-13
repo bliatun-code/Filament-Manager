@@ -163,7 +163,9 @@ FunctionEnd
   Pop ${BUFFER}
   StrCmp ${BUFFER} 0 autostart_read_failed
   StrCpy $7 ${BUFFER}
-  System::Call 'advapi32::RegGetValueW(p 0x80000001, w "${FM_STARTUP_APPROVAL_KEY}", w "${NAME}", i 0x08, p 0, p r7, *i ${NSIS_MAX_STRLEN} .r6)i.r5'
+  ; For an in/out System parameter, the input already advances to the output
+  ; slot. An extra dot before r6 would discard the returned byte count.
+  System::Call 'advapi32::RegGetValueW(p 0x80000001, w "${FM_STARTUP_APPROVAL_KEY}", w "${NAME}", i 0x08, p 0, p r7, *i ${NSIS_MAX_STRLEN} r6)i.r5'
   StrCpy ${SIZE} 0
   ${If} $5 = 0
     StrCpy ${SIZE} $6
@@ -269,8 +271,8 @@ no_msi:
   ReadRegStr $4 HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\Filament Manager" "UninstallString"
   StrCmp $4 "" unregistered
   ReadRegStr $5 HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\Filament Manager" "InstallLocation"
-  !insertmacro FmFullPath "$5" $5
-  StrCmp $5 "$INSTDIR" 0 wrong_nsis_directory
+  ; The Tauri template records a quoted InstallLocation.
+  StrCmp $5 '$\"$INSTDIR$\"' 0 wrong_nsis_directory
   StrCmp $4 '$\"$INSTDIR\uninstall.exe$\"' 0 unsupported
   IfFileExists "$INSTDIR\uninstall.exe" 0 unsupported
   Call FmRequireAppClosed

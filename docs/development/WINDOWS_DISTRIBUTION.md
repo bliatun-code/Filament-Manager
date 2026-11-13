@@ -87,6 +87,10 @@ or unsupported MSI versions, exit the app, uninstall it through Windows
 Settings, then install NSIS in the normal per-user location. The library
 stays in the application-data directory.
 
+If an interrupted migration leaves an executable without a Windows Settings
+entry, rename the program’s installation folder and run setup again.
+Keep the library folder `%LOCALAPPDATA%\no.bliatun.filamentmanager` in place.
+
 Migration preserves the Windows launch-at-login choice. MSI removes the
 program directory it added to the user `PATH`. NSIS provides Start Menu
 and optional desktop shortcuts. Ordinary NSIS uninstall removes the
