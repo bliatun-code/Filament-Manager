@@ -211,9 +211,11 @@ test("native Rust cache paths exclude application bundles, credentials and fixtu
     "~/.cargo/registry/src",
     "~/.cargo/git/db",
     "~/.cargo/git/checkouts",
-    ...["target/debug", "target/release", "target/msrv/debug"].flatMap((profile) =>
-      ["deps", "build", ".fingerprint"].map((directory) => `${profile}/${directory}`),
-    ),
+    "target/debug/build",
+    "target/release/build",
+    "target/msrv/debug/deps",
+    "target/msrv/debug/build",
+    "target/msrv/debug/.fingerprint",
   ].sort();
   for (const jobName of ["macos-smoke", "windows-smoke"]) {
     const job = workflowJob(workflows[0][1], jobName);
