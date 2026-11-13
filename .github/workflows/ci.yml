@@ -161,12 +161,8 @@ jobs:
             ~/.cargo/registry/src
             ~/.cargo/git/db
             ~/.cargo/git/checkouts
-            target/debug/deps
             target/debug/build
-            target/debug/.fingerprint
-            target/release/deps
             target/release/build
-            target/release/.fingerprint
             target/msrv/debug/deps
             target/msrv/debug/build
             target/msrv/debug/.fingerprint
@@ -184,6 +180,16 @@ jobs:
 
       - name: Install Playwright Chromium
         run: node ./node_modules/playwright/cli.js install chromium
+
+      - name: Install Playwright WebKit
+        timeout-minutes: 5
+        run: node ./node_modules/playwright/cli.js install webkit
+
+      - name: Run Companion mobile WebKit smoke
+        timeout-minutes: 5
+        env:
+          COMPANION_QA_BROWSER: webkit
+        run: npm run qa:visual:companion:balanced -- --smoke
 
       - name: Install UI dependencies
         working-directory: ui
@@ -305,12 +311,8 @@ jobs:
             ~/.cargo/registry/src
             ~/.cargo/git/db
             ~/.cargo/git/checkouts
-            target/debug/deps
             target/debug/build
-            target/debug/.fingerprint
-            target/release/deps
             target/release/build
-            target/release/.fingerprint
             target/msrv/debug/deps
             target/msrv/debug/build
             target/msrv/debug/.fingerprint
@@ -404,12 +406,8 @@ jobs:
             ~/.cargo/registry/src
             ~/.cargo/git/db
             ~/.cargo/git/checkouts
-            target/debug/deps
             target/debug/build
-            target/debug/.fingerprint
-            target/release/deps
             target/release/build
-            target/release/.fingerprint
             target/msrv/debug/deps
             target/msrv/debug/build
             target/msrv/debug/.fingerprint
@@ -565,12 +563,8 @@ jobs:
             ~/.cargo/registry/src
             ~/.cargo/git/db
             ~/.cargo/git/checkouts
-            target/debug/deps
             target/debug/build
-            target/debug/.fingerprint
-            target/release/deps
             target/release/build
-            target/release/.fingerprint
             target/msrv/debug/deps
             target/msrv/debug/build
             target/msrv/debug/.fingerprint

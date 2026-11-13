@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { readFile, readdir, mkdir, writeFile } from 'node:fs/promises';
 import { resolve, basename } from 'node:path';
+import { parseArgs } from 'node:util';
 import { chromium, webkit } from 'playwright';
 import AxeBuilder from '@axe-core/playwright';
 const root=resolve('.');const dir=resolve('src-tauri/companion_browser');
@@ -14,11 +15,20 @@ const printers=seed.printers.map(printer=>({printer,usage:{total_jobs:12,success
 const loans=seed.spool_loans.map(loan=>({loan,...spools.find(r=>r.spool.id===loan.spool_id)?.master,spool_remaining_g:spools.find(r=>r.spool.id===loan.spool_id)?.spool.remaining_g}));
 const allowed=new Set(await readdir(dir));const pngs=new Set(await readdir(resolve('ui/src/assets/printers')));
 const browserName=process.env.COMPANION_QA_BROWSER||'chromium';assert.ok(['chromium','webkit'].includes(browserName));
-const out=resolve('release-artifacts/visual-qa/companion-balanced',browserName==='webkit'?'webkit':'.');await mkdir(out,{recursive:true});
+const { values: { smoke = false } } = parseArgs({ options: { smoke: { type: 'boolean' } } });
+const companionOrigin = 'http://companion-balanced.local';
+const phone = ['phone', 390, 844];
+const themes = smoke ? ['dark'] : ['dark', 'dark-deep', 'blue', 'light', 'auto'];
+const devicesForTheme = theme => smoke
+  ? [phone]
+  : [phone, ['ipad', 1024, 1366], ['desktop', 1440, 1000],
+      ...(theme === 'dark' ? [['phone-small', 320, 700], ['phone-pro-max', 440, 956]] : [])];
+const outputSubdirectory = smoke ? `${browserName}-smoke` : browserName === 'webkit' ? 'webkit' : '.';
+const out=resolve('release-artifacts/visual-qa/companion-balanced',outputSubdirectory);await mkdir(out,{recursive:true});
 const localeCatalog=JSON.parse(await readFile(resolve('localization/companion-dictionaries.json'),'utf8')).dictionaries;
 const browserType=browserName==='webkit'?webkit:chromium;
 const browser=await browserType.launch();const report=[];console.log('Browser:',browserName,browser.version());
-try{for(const theme of ['dark','dark-deep','blue','light','auto'])for(const [device,width,height] of [['phone',390,844],['ipad',1024,1366],['desktop',1440,1000],...(theme==='dark'?[['phone-small',320,700],['phone-pro-max',440,956]]:[])]){
+try{for(const theme of themes)for(const [device,width,height] of devicesForTheme(theme)){
  const context=await browser.newContext({viewport:{width,height},colorScheme:'dark',isMobile:device.startsWith('phone'),hasTouch:device!=='desktop'});const page=await context.newPage();let authenticated=true;let accessStatus=null;let attempts=3;const errors=[];page.on('pageerror',e=>errors.push(e.message));
  try{
  if(device.startsWith('phone')) await context.addInitScript(()=>{
@@ -28,7 +38,7 @@ try{for(const theme of ['dark','dark-deep','blue','light','auto'])for(const [dev
   window.setKeyboardTestViewport=next=>{Object.assign(values,next);viewport.dispatchEvent(new Event('resize'));viewport.dispatchEvent(new Event('scroll'));};
  });
  await context.addInitScript(({theme})=>{if(!localStorage.getItem('bfm-companion-locale'))localStorage.setItem('bfm-companion-locale','nb');localStorage.setItem('bfm-companion-theme-mode',theme);},{theme});
- await page.route('http://companion-balanced.local/**',async route=>{
+ await page.route(`${companionOrigin}/**`,async route=>{
   const url=new URL(route.request().url());const path=url.pathname;let data;
   if(/^\/api\/v1\/spools\/[^/]+\/(weight|tare-weight)$/.test(path)&&route.request().method()==='POST') {
    const payload=route.request().postDataJSON();assert.ok(Number.isFinite(payload.grams)&&payload.grams>=0);
@@ -52,6 +62,10 @@ try{for(const theme of ['dark','dark-deep','blue','light','auto'])for(const [dev
   else if(path==='/api/v1/wishlist')data=seed.wishlist_items;
   else if(path==='/api/v1/printers/overview')data=printers;
   else if(path==='/api/v1/loans')data=loans;
+  else if(path==='/api/v1/spools/by-qr') {
+   data=spools.find(row=>row.spool.qr_code===url.searchParams.get('qr_code'));
+   if(!data)return route.fulfill({status:404,contentType:'application/json',body:JSON.stringify({code:'common.not_found',message:'Spool not found'})});
+  }
   else if(/^\/api\/v1\/spools\/[^/]+$/.test(path)){const id=decodeURIComponent(path.split('/').at(-1));data={spool:spools.find(x=>x.spool.id===id),usage:[],history:seed.spool_history_events.filter(x=>x.spool_id===id)};}
   if(data!==undefined)return route.fulfill({contentType:'application/json',body:JSON.stringify(data)});
   if(path==='/companion'||path==='/companion/')return route.fulfill({contentType:'text/html',body:await readFile(resolve(dir,'index.html'))});
@@ -62,7 +76,7 @@ try{for(const theme of ['dark','dark-deep','blue','light','auto'])for(const [dev
   if(path.endsWith('/qr-image.svg'))return route.fulfill({contentType:'image/svg+xml',body:'<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100"><rect width="100" height="100" fill="white"/></svg>'});
   return route.fulfill({status:404,body:'Fixture has no matching resource'});
  });
- await page.goto('http://companion-balanced.local/companion');await page.locator('.storage-shell .spool-list-row').first().waitFor();
+ await page.goto(`${companionOrigin}/companion`);await page.locator('.storage-shell .spool-list-row').first().waitFor();
  for(const flow of ['storage','loans','printers','settings']){
   await page.locator(`[data-action="set-root-flow"][data-root-flow="${flow}"]`).filter({visible:true}).first().click();
   await page.locator(`.${flow==='storage'?'storage':flow}-shell`).waitFor();
@@ -126,13 +140,29 @@ try{for(const theme of ['dark','dark-deep','blue','light','auto'])for(const [dev
   await page.evaluate(()=>localStorage.setItem('bfm-companion-locale','nb'));await page.reload();await page.locator('.storage-shell .spool-list-row').first().waitFor();
  }
  await page.locator('[data-action="set-root-flow"][data-root-flow="storage"]').filter({visible:true}).first().click();
- const search=page.locator('[name="inventory-search"]');await search.fill('no-such-filament');assert.equal(await page.locator('.storage-shell .spool-list-row').count(),0);await search.fill('');await page.locator('.storage-shell .spool-list-row').first().click();await page.getByRole('dialog').waitFor();
+ const search=page.locator('[name="inventory-search"]');await search.fill('no-such-filament');assert.equal(await page.locator('.storage-shell .spool-list-row').count(),0);await search.fill('');
+ if (smoke) {
+  const spool = spools[1].spool;
+  const spoolUrl = new URL('/companion', companionOrigin);
+  spoolUrl.searchParams.set('spool_qr', `v1:${spool.qr_code}`);
+  await page.goto(spoolUrl.toString());
+  const detail = page.getByRole('dialog');
+  await detail.locator('form[data-action="update-weight-form"] input[name="grams"]').waitFor();
+  assert.equal(await detail.locator('form[data-action="update-weight-form"] input[name="spool-id"]').inputValue(), spool.id);
+  assert.equal(new URL(page.url()).searchParams.has('spool_qr'), false);
+  report.push({ device, theme, flow: 'qr-link', violations: [] });
+  console.log(device, theme, 'QR link opens the matching spool');
+ } else {
+  await page.locator('.storage-shell .spool-list-row').first().click();await page.getByRole('dialog').waitFor();
+ }
  const modal=await new AxeBuilder({page}).withTags(['wcag2a','wcag2aa']).analyze();report.push({device,theme,flow:'detail',violations:modal.violations.map(v=>({id:v.id,nodes:v.nodes.map(n=>({target:n.target,summary:n.failureSummary}))}))});
  await page.screenshot({path:resolve(out,`${device}-${theme}-detail.png`)});
  if(device.startsWith('phone')) {
   const frame=()=>page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));
   for(const name of ['grams','tare-grams']) {
    const input=page.locator(`.detail-modal input[name="${name}"]`);await input.click();
+   const updatedGrams = name === 'grams' ? 975 : 220;
+   if (smoke) await input.fill(String(updatedGrams));
    assert.ok(await input.evaluate(el=>parseFloat(getComputedStyle(el).fontSize)>=16),`${device}: readable form text avoids Safari focus zoom`);
    await page.evaluate(()=>window.setKeyboardTestViewport({height:320,offsetTop:140}));await frame();
    const visible=()=>page.evaluate(name=>{
@@ -144,7 +174,11 @@ try{for(const theme of ['dark','dark-deep','blue','light','auto'])for(const [dev
    assert.ok(metrics.closeTop>=140&&metrics.closeBottom<=460,`${device}: Done stays visible above keyboard`);
    assert.ok(metrics.inputTop>=metrics.bodyTop-1&&metrics.inputBottom<=metrics.bodyBottom+1,`${device}: focused ${name} remains in the form scroller`);
    const endpoint=name==='grams'?'/weight':'/tare-weight';
-   await Promise.all([page.waitForResponse(r=>r.url().endsWith(endpoint)&&r.request().method()==='POST'),page.locator(`form[data-action="${name==='grams'?'update-weight-form':'update-tare-weight-form'}"] button[type="submit"]`).click()]);
+   const [response] = await Promise.all([page.waitForResponse(r=>r.url().endsWith(endpoint)&&r.request().method()==='POST'),page.locator(`form[data-action="${name==='grams'?'update-weight-form':'update-tare-weight-form'}"] button[type="submit"]`).click()]);
+   if (smoke) {
+    assert.ok(response.ok(), `${name}: weight save succeeded`);
+    assert.deepEqual(response.request().postDataJSON(), { grams: updatedGrams });
+   }
    await page.waitForFunction(()=>!document.querySelector('.detail-modal input[name="grams"]').disabled);
    await page.locator('.overlay-feedback-header .status-line[data-tone="success"]').waitFor();await frame();metrics=await visible();
    assert.ok(metrics.closeTop>=140&&metrics.closeBottom<=460,`${device}: Done stays visible after saving ${name}`);
