@@ -7,6 +7,10 @@ const releaseWorkflow = readFileSync(
   "utf8",
 );
 const ciWorkflow = readFileSync(".github/workflows/ci.yml", "utf8");
+const releaseFixtureAction = readFileSync(
+  ".github/actions/prepare-release-fixtures/action.yml",
+  "utf8",
+);
 const windowsWixTemplate = readFileSync("src-tauri/wix/per-user.wxs", "utf8");
 const windowsMsiSmoke = readFileSync("scripts/smoke-windows-msi.ps1", "utf8");
 const macosDmgSmoke = readFileSync("scripts/smoke-macos-dmg.mjs", "utf8");
@@ -241,7 +245,7 @@ test("release workflow gates tag and manual installer builds", () => {
   );
   assert.match(
     windowsJob,
-    /- name: Build MSI bundle\s+env:\s+FILAMENT_MANAGER_UPDATE_METADATA_URL: \$\{\{ vars\.FILAMENT_MANAGER_UPDATE_METADATA_URL \}\}\s+MSI_VERSION_CONFIG_PATH: \$\{\{ runner\.temp \}\}\/filament-manager-msi-version\.json\s+run: npm run tauri -- build --bundles msi --config "\$env:MSI_VERSION_CONFIG_PATH"/,
+    /- name: Build MSI bundle\s+env:\s+FILAMENT_MANAGER_UPDATE_METADATA_URL: \$\{\{ vars\.FILAMENT_MANAGER_UPDATE_METADATA_URL \}\}\s+MSI_VERSION_CONFIG_PATH: \$\{\{ runner\.temp \}\}\/filament-manager-msi-version\.json\s+run: node \.\/scripts\/run-tauri\.mjs build --bundles msi --config "\$env:MSI_VERSION_CONFIG_PATH"/,
   );
   assert.match(
     macosJob,
@@ -1543,13 +1547,14 @@ test("packaged releases preserve pinned v0.28 data on DMG and MSI", () => {
   assert.match(fixtureJob, /needs: validate-release/);
   assert.match(fixtureJob, /ref: 76cba513eadd5137d6703f9abd1c0452531ef788/);
   assert.match(fixtureJob, /path: previous-release-v0\.28\.0/);
-  assert.match(fixtureJob, /npm --prefix \.\/previous-release-v0\.28\.0 ci/);
+  assert.match(fixtureJob, /uses: \.\/\.github\/actions\/prepare-release-fixtures/);
+  assert.match(releaseFixtureAction, /npm --prefix \.\/previous-release-v0\.28\.0 ci/);
   assert.match(
-    fixtureJob,
+    releaseFixtureAction,
     /npm run qa:release:previous-fixture --[\s\S]*?--source=previous-release-v0\.28\.0[\s\S]*?--database="\$database_path"[\s\S]*?--manifest="\$manifest_path"/,
   );
   assert.match(
-    fixtureJob,
+    releaseFixtureAction,
     /npm run qa:release:previous-fixture --[\s\S]*?--verify/,
   );
   assert.match(
@@ -1564,8 +1569,8 @@ test("packaged releases preserve pinned v0.28 data on DMG and MSI", () => {
     );
     assert.match(job, /- name: Download sanitized v0\.28 fixture/);
     assert.match(job, /- name: Verify downloaded v0\.28 fixture/);
-    assert.match(job, /npm run qa:release:previous-fixture --[\s\S]*?--verify/);
   }
+  assert.match(macosJob, /npm run qa:release:previous-fixture --[\s\S]*?--verify/);
 
   assert.match(
     macosJob,
@@ -1607,6 +1612,43 @@ test("packaged releases preserve pinned v0.28 data on DMG and MSI", () => {
     "Build MSI bundle",
     "Exercise release MSI installation from downloaded artifact",
   ]);
+});
+
+test("release and CI use the npm 12 setup before preparing or verifying historical fixtures", () => {
+  const releaseJobs = [
+    ["validate-release", "prepare-previous-release-fixture", "Validate version and release source"],
+    ["prepare-previous-release-fixture", "build-macos-dmg", "Prepare historical release databases"],
+    ["build-macos-dmg", "smoke-macos-dmg-intel", "Install dependencies"],
+    ["smoke-macos-dmg-intel", "build-windows-msi", "Install smoke dependencies"],
+    ["build-windows-msi", "generate-release-sbom", "Install root dependencies"],
+  ];
+  const migrationJob = readSection(ciWorkflow, "  migration-integrity:", "  macos-smoke:");
+  for (const [jobName, nextJob, npmStep] of releaseJobs) {
+    const job = readSection(releaseWorkflow, `  ${jobName}:`, `  ${nextJob}:`);
+    assert.match(job, /- name: Set up npm 12\s+uses: \.\/\.github\/actions\/setup-npm/);
+    assertStepOrder(job, ["Setup Node", "Set up npm 12", npmStep]);
+  }
+  assert.match(migrationJob, /runs-on: ubuntu-latest/);
+  assert.match(migrationJob, /git worktree add --detach previous-release-v0\.28\.0 76cba513eadd5137d6703f9abd1c0452531ef788/);
+  assert.match(migrationJob, /- name: Set up npm 12\s+uses: \.\/\.github\/actions\/setup-npm/);
+  assert.match(migrationJob, /- name: Prepare historical release databases\s+uses: \.\/\.github\/actions\/prepare-release-fixtures/);
+  assertStepOrder(migrationJob, [
+    "Check out pinned v0.28.0 source for the release fixtures",
+    "Set up npm 12",
+    "Prepare historical release databases",
+    "Upload sanitized v0.28 fixture for Windows",
+  ]);
+
+  const ciWindowsJob = readSection(ciWorkflow, "  windows-smoke:");
+  const releaseWindowsJob = readSection(releaseWorkflow, "  build-windows-msi:", "  generate-release-sbom:");
+  assert.match(ciWindowsJob, /needs: migration-integrity/);
+  for (const job of [ciWindowsJob, releaseWindowsJob]) {
+    assert.match(
+      job,
+      /- name: Verify downloaded v0\.28 fixture\s+env:\s+PREVIOUS_RELEASE_FIXTURE_DIR: \$\{\{ runner\.temp \}\}\/filament-manager-v0\.28\.0-fixture\s+run: >-\s+node \.\/scripts\/prepare-previous-release-upgrade-fixture\.mjs\s+--verify\s+--database="\$env:PREVIOUS_RELEASE_FIXTURE_DIR\/filament-manager-v0\.28\.0\.db"\s+--manifest="\$env:PREVIOUS_RELEASE_FIXTURE_DIR\/filament-manager-v0\.28\.0\.json"/,
+    );
+    assertStepOrder(job, ["Set up npm 12", "Install root dependencies", "Verify downloaded v0.28 fixture"]);
+  }
 });
 
 test("installed platform wrappers require batch replay evidence and the actual journal schema", () => {
@@ -2022,8 +2064,8 @@ test("schema-7 fixture supplements both installed release gates with verified pr
   const fixtureJob = readSection(releaseWorkflow, "  prepare-previous-release-fixture:", "  build-macos-dmg:");
   const macosJob = readSection(releaseWorkflow, "  build-macos-dmg:", "  smoke-macos-dmg-intel:");
   const windowsJob = readSection(releaseWorkflow, "  build-windows-msi:", "  generate-release-sbom:");
-  assert.match(fixtureJob, /prepare-compatibility-release-upgrade-fixture\.mjs --output=.*v0\.30\.0\.db/);
-  assert.match(fixtureJob, /prepare-compatibility-release-upgrade-fixture\.mjs --output=.* --verify/);
+  assert.match(releaseFixtureAction, /prepare-compatibility-release-upgrade-fixture\.mjs --output=.*v0\.30\.0\.db/);
+  assert.match(releaseFixtureAction, /prepare-compatibility-release-upgrade-fixture\.mjs --output=.* --verify/);
   assert.match(fixtureJob, /Upload sanitized v0\.30 compatibility fixture[\s\S]*?if-no-files-found: error/);
   for (const job of [macosJob, windowsJob]) {
     assert.match(job, /Download sanitized v0\.30 compatibility fixture/);

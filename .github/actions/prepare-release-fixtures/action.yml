@@ -1,0 +1,53 @@
+name: Prepare historical release databases
+description: Generate and verify the sanitized v0.28 and v0.30 release fixtures
+runs:
+  using: composite
+  steps:
+    - name: Verify pinned previous-release source
+      shell: bash
+      run: |
+        set -euo pipefail
+        expected_commit="76cba513eadd5137d6703f9abd1c0452531ef788"
+        actual_commit="$(git -C previous-release-v0.28.0 rev-parse HEAD)"
+        actual_version="$(node -p "require('./previous-release-v0.28.0/package.json').version")"
+        if [[ "$actual_commit" != "$expected_commit" ]]; then
+          echo "::error::Expected v0.28.0 commit $expected_commit, found $actual_commit."
+          exit 1
+        fi
+        if [[ "$actual_version" != "0.28.0" ]]; then
+          echo "::error::Expected previous release 0.28.0, found $actual_version."
+          exit 1
+        fi
+
+    - name: Install fixture dependencies
+      shell: bash
+      run: |
+        npm ci
+        npm --prefix ./previous-release-v0.28.0 ci
+
+    - name: Prepare and verify sanitized v0.28 fixture
+      shell: bash
+      env:
+        PREVIOUS_RELEASE_FIXTURE_DIR: ${{ runner.temp }}/filament-manager-v0.28.0-fixture
+      run: |
+        set -euo pipefail
+        mkdir -p "$PREVIOUS_RELEASE_FIXTURE_DIR"
+        database_path="$PREVIOUS_RELEASE_FIXTURE_DIR/filament-manager-v0.28.0.db"
+        manifest_path="$PREVIOUS_RELEASE_FIXTURE_DIR/filament-manager-v0.28.0.json"
+        npm run qa:release:previous-fixture -- \
+          --source=previous-release-v0.28.0 \
+          --database="$database_path" \
+          --manifest="$manifest_path"
+        npm run qa:release:previous-fixture -- \
+          --verify \
+          --database="$database_path" \
+          --manifest="$manifest_path"
+
+    - name: Prepare and verify sanitized v0.30 compatibility fixture
+      shell: bash
+      env:
+        COMPATIBILITY_FIXTURE_DIR: ${{ runner.temp }}/filament-manager-v0.30.0-fixture
+      run: |
+        set -euo pipefail
+        node scripts/prepare-compatibility-release-upgrade-fixture.mjs --output="$COMPATIBILITY_FIXTURE_DIR/filament-manager-v0.30.0.db"
+        node scripts/prepare-compatibility-release-upgrade-fixture.mjs --output="$COMPATIBILITY_FIXTURE_DIR/filament-manager-v0.30.0.db" --verify
