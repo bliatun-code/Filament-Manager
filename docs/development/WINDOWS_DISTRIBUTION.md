@@ -1,15 +1,15 @@
 # Windows Installation And Verification
 
-Official Windows releases are distributed as a per-user x64 MSI for Windows
-11. The installer does not require Administrator privileges for the normal
-installation path.
+Filament Manager v0.36.0 and later use a per-user x64 setup EXE for Windows 11.
+Run the installer as your normal Windows user. The normal installation path
+requires no Administrator privileges.
 
 ## Download
 
 1. Open the [latest release](https://github.com/bliatun-code/Filament-Manager/releases/latest).
-2. Download the Windows `.msi` file and `SHA256SUMS-windows.txt` from the same
-   release.
-3. Keep both files in the same folder while verifying the download.
+2. Download the Windows `*_x64-setup.exe` file and `SHA256SUMS-windows.txt` from
+   the same release. Releases through v0.35.1 use a Windows `.msi` file.
+3. Keep the installer and checksum file together.
 
 ## Verify the download
 
@@ -17,84 +17,64 @@ Open PowerShell in the download folder and run:
 
 ```powershell
 $manifest = (Get-Content -LiteralPath .\SHA256SUMS-windows.txt -Raw).Trim()
-$expectedHash, $msiName = $manifest -split '\s+', 2
-$msiName = $msiName.Trim()
-$actualHash = (Get-FileHash -LiteralPath $msiName -Algorithm SHA256).Hash.ToLowerInvariant()
+if ($manifest -notmatch '\A([0-9a-fA-F]{64})[ \t]+\*?(Filament-Manager_[^/\\\r\n]+\.(?:exe|msi))\z') {
+    throw "The Windows checksum manifest is invalid."
+}
+$expectedHash = $Matches[1]
+$installerName = $Matches[2]
+$actualHash = (Get-FileHash -LiteralPath $installerName -Algorithm SHA256 -ErrorAction Stop).Hash
 
 if ($actualHash -ne $expectedHash) {
-    throw "The MSI checksum does not match the release manifest."
+    throw "The installer checksum does not match the release manifest."
 }
 
-Write-Host "Checksum verified for $msiName"
+Write-Host "Checksum verified for $installerName"
 ```
 
-Do not install the file if the command reports a mismatch. Download both files
-again from the official release page instead.
+If the command reports a mismatch, download both files again from the
+official release page before installing.
 
-The checksum confirms that the downloaded MSI is byte-for-byte identical to
-the artifact produced by the release workflow. During that workflow, the MSI
-is also opened through Windows Installer and checked for the expected product
-name, release version, and x64 package architecture before it can be uploaded.
-Version-tag releases are published only after the exact commit has passed the
-macOS and Windows CI checks and the MSI, signed macOS DMG, and both platform
-checksum manifests have passed their respective verification steps.
+The checksum confirms that the installer matches the release artifact.
+Public tag releases also include GitHub/Sigstore build provenance for both
+desktop installers and a validated source dependency SBOM. See
+[Release Integrity And Supply Chain](SUPPLY_CHAIN.md) for verification
+commands. The Windows installer and application are unsigned.
 
-Tagged releases also include a validated source dependency SBOM. Public tag
-releases include GitHub/Sigstore build provenance for the DMG and MSI. See
-[Release Integrity And Supply Chain](SUPPLY_CHAIN.md) for their verification
-commands and scope. This provenance does not Authenticode-sign the MSI; Windows
-installer signing remains intentionally deferred by project decision.
+## Install or upgrade
+
+Exit Filament Manager from its tray menu before running setup. The NSIS
+installer can migrate the published per-user x64 MSI versions v0.33.0
+through v0.35.1. Use the same destination as the previous installation if
+it is a custom directory under your current Windows user profile.
+
+For other MSI installations or a location outside your user profile, exit
+the app, uninstall it through Windows Settings, then install the setup EXE
+in its normal per-user location. Keep the library directory
+`%LOCALAPPDATA%\no.bliatun.filamentmanager` in place.
+
+If a migration was interrupted and the program files remain without a
+Windows Settings entry, rename the program's installation folder and run
+setup again.
+
+Migration preserves the launch-at-login choice. The MSI uninstaller removes
+the program directory it added to the user `PATH`. NSIS creates a Start Menu
+shortcut and offers a desktop shortcut. Ordinary NSIS uninstall removes the
+program and its launch-at-login entries and retains the library.
 
 ## Automated installer smoke test
 
-Before GitHub release publication, the Windows release job downloads and
-exercises the internally uploaded MSI candidate on a clean hosted Windows
-runner profile. It exercises the MSI's per-user installation path, which is
-configured not to request elevation, launches the installed executable with an
-isolated runtime database, waits for a responsive application window, and
-verifies that SQLite
-`quick_check`, schema compatibility, and the required catalog, inventory, and
-settings tables pass. A separate private test database then drives the installed
-app through the mutating packaged desktop gate: create and update a spool,
-complete a loan and return, create a printer and assign the spool to a slot,
-restart against the same database, and validate both persisted state and a
-complete portable backup. The private database is removed after the gate and is
-never uploaded with the diagnostic logs.
+Before publication, CI verifies the NSIS bootstrap, x64 application payload,
+product name, version and unsigned status. It checks that the downloaded
+installer and payload match the verified build. On a clean hosted Windows
+profile, it checks the per-user install, application launch, fresh database,
+historical database upgrade, Host/Client, persistence, portable backup and
+uninstall. A separate migration gate exercises the upgrade from the
+published v0.35.1 MSI.
 
-Both the local desktop and paired Host/Client gates register two borrowed rolls
-from one catalog entry and replay the original batch after restart. They require
-the same ordered IDs without extra rolls, loans, history, or revisions. The
-Host/Client gate also requires zero batch rolls, loans, or receipts in the
-Client's unrelated local database. A current schema marker alone cannot pass:
-the batch journal and its constraints must exist, and the MSI wrapper requires
-explicit batch replay evidence in each passing summary.
-
-CI then closes the app normally, uninstalls it, and confirms that the
-executable, installer registration, shortcuts, and user `PATH` entry are
-removed while the ordinary isolated smoke database remains healthy and
-unchanged. Verbose install, uninstall, application, and smoke-test logs are
-retained as a CI artifact for troubleshooting. The MSI is intentionally
-unsigned; the smoke test fails unless both the source MSI and installed
-executable report the exact Authenticode status `NotSigned`.
-
-## NSIS migration candidate
-
-The NSIS test installer covers the published x64 per-user MSI versions
-v0.33.0 through v0.35.1. Close Filament Manager from its tray menu before
-installing. A custom install under the current user profile can be migrated
-when the NSIS destination matches its registered path. For other locations
-or unsupported MSI versions, exit the app, uninstall it through Windows
-Settings, then install NSIS in the normal per-user location. The library
-stays in the application-data directory.
-
-If an interrupted migration leaves an executable without a Windows Settings
-entry, rename the program’s installation folder and run setup again.
-Keep the library folder `%LOCALAPPDATA%\no.bliatun.filamentmanager` in place.
-
-Migration preserves the Windows launch-at-login choice. MSI removes the
-program directory it added to the user `PATH`. NSIS provides Start Menu
-and optional desktop shortcuts. Ordinary NSIS uninstall removes the
-program and its launch-at-login entries and retains the library.
+The installed desktop and Host/Client tests verify that a catalog batch
+replayed after restart returns the same rolls without duplicate loans or
+history. The tests use isolated databases and keep private files out of
+uploaded diagnostic logs.
 
 ## Runtime database safeguards
 
@@ -109,18 +89,10 @@ its schema v7 upgrade. Verified snapshots are also used before a full restore
 and storage migrations that replace or merge an existing database. If snapshot
 creation or verification fails, the destructive operation does not continue.
 
-## Install
-
-Upgrades keep the active database under the current user's Local application
-data. If an older inventory is found under the previous Roaming location, the
-app performs a one-time, transactional recovery into Local storage, preserves
-the Roaming source, and creates a verified recovery snapshot before replacing
-or merging an existing Local database.
-
-After the checksum passes, open the MSI and follow the installer. Filament
-Manager is installed for the current user. App data remains in the current
-user's application-data directory and is not removed by simply downloading a
-new installer.
+If an older inventory is found under the previous Roaming location, the
+app performs a one-time, transactional recovery into Local storage. It
+preserves the Roaming source and creates a verified recovery snapshot
+before replacing or merging an existing Local database.
 
 ## Diagnostics and support file
 
@@ -139,5 +111,4 @@ and test a per-user x64 release candidate. The workflow downloads the checked
 candidate by digest and uses it for both the installed-app release gates and
 the MSI migration gate. When the repository version still matches the newest
 supported MSI, the candidate uses the next patch version with `-rc.1` in a
-temporary build config. The rehearsal uploads workflow artifacts and the
-public release workflow continues to publish MSI.
+temporary build config. The rehearsal uploads workflow artifacts for testing.

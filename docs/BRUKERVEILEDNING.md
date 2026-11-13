@@ -6,7 +6,7 @@ Hold oversikt over filament, gjenværende vekt, utlån og lastede printerspor.
 
 ## Kom i gang
 
-1. Installer DMG for macOS eller MSI for Windows fra siste release.
+1. Last ned og åpne DMG-filen for macOS eller installasjonsfilen `.exe` for Windows fra siste versjon.
 2. Legg inn filamentet ditt under **Lager → Legg til filament**.
 3. Legg til printerne og plasser rullene i riktige spor.
 4. Velg språk og tema under **Innstillinger → Generelt**.

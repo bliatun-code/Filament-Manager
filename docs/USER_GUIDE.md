@@ -6,7 +6,7 @@ Keep track of your filament, remaining weight, loans and loaded printer slots.
 
 ## Get started
 
-1. Install the macOS DMG or Windows MSI from the latest release.
+1. Install the macOS DMG or Windows setup EXE from the latest release.
 2. Add the filament you own under **Inventory → Add filament**.
 3. Add your printers and assign spools to their slots.
 4. Choose your language and theme under **Settings → General**.

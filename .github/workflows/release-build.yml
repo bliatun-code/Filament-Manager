@@ -97,12 +97,6 @@ jobs:
           fi
 
           if [[ "$GITHUB_EVENT_NAME" == "push" \
-            || "$SELECTED_PLATFORM" == "windows" \
-            || "$SELECTED_PLATFORM" == "both" ]]; then
-            npm run check:msi-version
-          fi
-
-          if [[ "$GITHUB_EVENT_NAME" == "push" \
             || "$SELECTED_PLATFORM" == "macos" \
             || "$SELECTED_PLATFORM" == "both" ]]; then
             if [[ ! "$EXPECTED_APPLE_TEAM_ID" =~ ^[A-Z0-9]{10}$ ]]; then
@@ -130,12 +124,14 @@ jobs:
           fi
 
   prepare-previous-release-fixture:
-    name: Prepare v0.28 database fixture
+    name: Prepare historical release database fixtures
     needs: validate-release
     runs-on: ubuntu-latest
     timeout-minutes: 15
     permissions:
       contents: read
+    outputs:
+      migration-sha256: ${{ steps.migration-fixture.outputs.sha256 }}
     steps:
       - name: Checkout release source
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -178,6 +174,28 @@ jobs:
         with:
           name: filament-manager-v0.30.0-database-fixture-${{ github.run_id }}
           path: ${{ runner.temp }}/filament-manager-v0.30.0-fixture
+          if-no-files-found: error
+          overwrite: true
+          retention-days: 1
+
+      - name: Prepare the synthetic MSI migration fixture
+        if: github.event_name == 'push' || inputs.platform == 'both' || inputs.platform == 'windows'
+        id: migration-fixture
+        run: |
+          set -euo pipefail
+          fixtures="$RUNNER_TEMP/filament-manager-nsis-migration-fixture"
+          mkdir -p "$fixtures"
+          fixture="$fixtures/filament-manager-nsis-migration.db"
+          npm run qa:release:upgrade-ci-fixture -- --output="$fixture"
+          digest=$(sha256sum "$fixture")
+          echo "sha256=${digest%% *}" >> "$GITHUB_OUTPUT"
+
+      - name: Upload the synthetic MSI migration fixture
+        if: github.event_name == 'push' || inputs.platform == 'both' || inputs.platform == 'windows'
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: filament-manager-nsis-migration-fixture-${{ github.run_id }}
+          path: ${{ runner.temp }}/filament-manager-nsis-migration-fixture/filament-manager-nsis-migration.db
           if-no-files-found: error
           overwrite: true
           retention-days: 1
@@ -572,14 +590,17 @@ jobs:
           overwrite: true
           retention-days: 7
 
-  build-windows-msi:
-    name: Build Windows MSI
+  build-windows-nsis:
+    name: Build and smoke Windows NSIS
     needs:
       - validate-release
       - prepare-previous-release-fixture
     if: github.event_name == 'push' || github.event.inputs.platform == 'both' || github.event.inputs.platform == 'windows'
     runs-on: windows-2025
     timeout-minutes: 60
+    outputs:
+      installer-sha256: ${{ steps.verify.outputs.installer-sha256 }}
+      payload-sha256: ${{ steps.verify.outputs.payload-sha256 }}
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -606,6 +627,7 @@ jobs:
         uses: dtolnay/rust-toolchain@683b588c487a69d01f6c6ddf40f036ff682cc2c8 # master
         with:
           toolchain: ${{ steps.rust-toolchain.outputs.toolchain }}
+          targets: x86_64-pc-windows-msvc
 
       - name: Install root dependencies
         run: npm ci
@@ -634,114 +656,100 @@ jobs:
           --database="$env:PREVIOUS_RELEASE_FIXTURE_DIR/filament-manager-v0.28.0.db"
           --manifest="$env:PREVIOUS_RELEASE_FIXTURE_DIR/filament-manager-v0.28.0.json"
 
-      - name: Prepare MSI version override
-        env:
-          MSI_VERSION_CONFIG_PATH: ${{ runner.temp }}/filament-manager-msi-version.json
-        run: node ./scripts/normalize-msi-version.mjs --output "$env:MSI_VERSION_CONFIG_PATH"
-
-      - name: Verify MSI preparation leaves manifests unchanged
-        run: git diff --exit-code -- src-tauri/tauri.conf.json src-tauri/Cargo.toml
-
-      - name: Build MSI bundle
-        env:
-          FILAMENT_MANAGER_UPDATE_METADATA_URL: ${{ vars.FILAMENT_MANAGER_UPDATE_METADATA_URL }}
-          MSI_VERSION_CONFIG_PATH: ${{ runner.temp }}/filament-manager-msi-version.json
-        run: node ./scripts/run-tauri.mjs build --bundles msi --config "$env:MSI_VERSION_CONFIG_PATH"
-
-      - name: Verify MSI bundle and write checksum
+      - name: Prepare per-user NSIS release configuration
         shell: pwsh
         env:
-          MSI_VERSION_CONFIG_PATH: ${{ runner.temp }}/filament-manager-msi-version.json
+          NSIS_CONFIG_PATH: ${{ runner.temp }}/filament-manager-nsis-release.json
+          RELEASE_VERSION: ${{ needs['validate-release'].outputs['package-version'] }}
         run: |
-          $tauriConfig = Get-Content -LiteralPath "src-tauri/tauri.conf.json" -Raw | ConvertFrom-Json
-          $msiVersionConfig = Get-Content -LiteralPath $env:MSI_VERSION_CONFIG_PATH -Raw | ConvertFrom-Json
-          ./scripts/verify-windows-msi.ps1 `
-            -MsiDirectory "target/release/bundle/msi" `
-            -ExpectedProductName $tauriConfig.productName `
-            -ExpectedProductVersion $msiVersionConfig.bundle.windows.wix.version `
-            -ExpectedArchitecture "x64" `
-            -NormalizedFileName "Filament-Manager_$($tauriConfig.version)_x64_en-US.msi"
+          $version = node ./scripts/prepare-windows-nsis-rehearsal.mjs --output "$env:NSIS_CONFIG_PATH"
+          if ($LASTEXITCODE -ne 0 -or $version -cne $env:RELEASE_VERSION) {
+            throw "The NSIS configuration must use the exact release version $env:RELEASE_VERSION."
+          }
 
-      - name: Upload verified MSI artifact
+      - name: Build x64 NSIS release bundle
+        env:
+          CARGO_INCREMENTAL: "0"
+          FILAMENT_MANAGER_UPDATE_METADATA_URL: ${{ vars.FILAMENT_MANAGER_UPDATE_METADATA_URL }}
+          NSIS_CONFIG_PATH: ${{ runner.temp }}/filament-manager-nsis-release.json
+        run: node ./scripts/run-tauri.mjs build --bundles nsis --target x86_64-pc-windows-msvc --config "$env:NSIS_CONFIG_PATH" -- --locked
+
+      - name: Verify, normalize and checksum the NSIS release bundle
+        id: verify
+        shell: pwsh
+        env:
+          RELEASE_VERSION: ${{ needs['validate-release'].outputs['package-version'] }}
+          NSIS_STAGING_DIR: ${{ runner.temp }}/filament-manager-windows-release-staging
+        run: |
+          git diff --exit-code -- package.json package-lock.json Cargo.toml Cargo.lock src-tauri/Cargo.toml src-tauri/tauri.conf.json src-tauri/tauri.windows.conf.json
+          if ($LASTEXITCODE -ne 0) { throw "Building the NSIS release must not change versioned manifests." }
+          $tauriConfig = Get-Content -LiteralPath "src-tauri/tauri.conf.json" -Raw | ConvertFrom-Json
+          $checked = ./scripts/verify-windows-nsis-rehearsal.ps1 `
+            -Directory "$env:NSIS_STAGING_DIR" `
+            -StageFrom "target/x86_64-pc-windows-msvc/release/bundle/nsis" `
+            -ExpectedProductName $tauriConfig.productName `
+            -ExpectedVersion "$env:RELEASE_VERSION"
+          "installer-sha256=$($checked.InstallerSha256)" >> $env:GITHUB_OUTPUT
+          "payload-sha256=$($checked.PayloadSha256)" >> $env:GITHUB_OUTPUT
+
+      - name: Upload verified NSIS artifact
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
-          name: filament-manager-windows-msi-${{ github.run_id }}
+          name: filament-manager-windows-nsis-${{ github.run_id }}
           path: |
-            target/release/bundle/msi/*.msi
-            target/release/bundle/msi/SHA256SUMS-windows.txt
+            ${{ runner.temp }}/filament-manager-windows-release-staging/*.exe
+            ${{ runner.temp }}/filament-manager-windows-release-staging/SHA256SUMS-windows.txt
           if-no-files-found: error
           overwrite: true
           retention-days: 14
 
-      - name: Download release MSI candidate
+      - name: Download release NSIS candidate
         uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
-          name: filament-manager-windows-msi-${{ github.run_id }}
+          name: filament-manager-windows-nsis-${{ github.run_id }}
           path: ${{ runner.temp }}/filament-manager-windows-release-candidate
 
-      - name: Verify downloaded MSI candidate
+      - name: Verify downloaded NSIS candidate
+        id: candidate
         shell: pwsh
         env:
-          MSI_VERSION_CONFIG_PATH: ${{ runner.temp }}/filament-manager-msi-version.json
-          WINDOWS_MSI_CANDIDATE_DIR: ${{ runner.temp }}/filament-manager-windows-release-candidate
+          RELEASE_VERSION: ${{ needs['validate-release'].outputs['package-version'] }}
+          NSIS_CANDIDATE_DIR: ${{ runner.temp }}/filament-manager-windows-release-candidate
+          NSIS_INSTALLER_SHA256: ${{ steps.verify.outputs.installer-sha256 }}
+          NSIS_PAYLOAD_SHA256: ${{ steps.verify.outputs.payload-sha256 }}
         run: |
           $tauriConfig = Get-Content -LiteralPath "src-tauri/tauri.conf.json" -Raw | ConvertFrom-Json
-          $msiVersionConfig = Get-Content -LiteralPath $env:MSI_VERSION_CONFIG_PATH -Raw | ConvertFrom-Json
-          $manifestPath = Join-Path $env:WINDOWS_MSI_CANDIDATE_DIR "SHA256SUMS-windows.txt"
-          if (-not (Test-Path -LiteralPath $manifestPath -PathType Leaf)) {
-            throw "The downloaded release MSI checksum manifest is missing."
-          }
-          $expectedManifest = (Get-Content -LiteralPath $manifestPath -Raw).Trim()
-          $manifestMatch = [regex]::Match(
-            $expectedManifest,
-            "^(?<hash>[0-9a-fA-F]{64})\s+\*?(?<file>[^\r\n]+)$"
-          )
-          if (-not $manifestMatch.Success) {
-            throw "The downloaded release MSI checksum manifest is malformed."
-          }
-          $candidateFileName = $manifestMatch.Groups["file"].Value
-          if ([IO.Path]::GetFileName($candidateFileName) -ne $candidateFileName) {
-            throw "The downloaded release MSI checksum manifest must name a file, not a path."
-          }
-          $candidatePath = Join-Path $env:WINDOWS_MSI_CANDIDATE_DIR $candidateFileName
-          if (-not (Test-Path -LiteralPath $candidatePath -PathType Leaf)) {
-            throw "The MSI named by the downloaded checksum manifest is missing."
-          }
-          $actualHash = (Get-FileHash -LiteralPath $candidatePath -Algorithm SHA256).Hash
-          $expectedHash = $manifestMatch.Groups["hash"].Value
-          if (-not [string]::Equals($actualHash, $expectedHash, [StringComparison]::OrdinalIgnoreCase)) {
-            throw "The downloaded release MSI checksum does not match."
-          }
-
-          ./scripts/verify-windows-msi.ps1 `
-            -MsiDirectory $env:WINDOWS_MSI_CANDIDATE_DIR `
+          $checked = ./scripts/verify-windows-nsis-rehearsal.ps1 `
+            -Directory "$env:NSIS_CANDIDATE_DIR" `
             -ExpectedProductName $tauriConfig.productName `
-            -ExpectedProductVersion $msiVersionConfig.bundle.windows.wix.version `
-            -ExpectedArchitecture "x64" `
-            -NormalizedFileName "Filament-Manager_$($tauriConfig.version)_x64_en-US.msi"
+            -ExpectedVersion "$env:RELEASE_VERSION" `
+            -ExpectedInstallerSha256 "$env:NSIS_INSTALLER_SHA256"
+          if ($checked.PayloadSha256 -cne $env:NSIS_PAYLOAD_SHA256) {
+            throw "The downloaded NSIS candidate payload hash has changed."
+          }
+          "installer=$($checked.Installer)" >> $env:GITHUB_OUTPUT
 
-      - name: Exercise release MSI installation from downloaded artifact
+      - name: Exercise release NSIS installation from downloaded artifact
         shell: pwsh
         env:
-          WINDOWS_MSI_CANDIDATE_DIR: ${{ runner.temp }}/filament-manager-windows-release-candidate
-          WINDOWS_MSI_SMOKE_LOG_DIR: ${{ runner.temp }}/filament-manager-windows-release-msi-smoke
+          NSIS_INSTALLER: ${{ steps.candidate.outputs.installer }}
+          RELEASE_VERSION: ${{ needs['validate-release'].outputs['package-version'] }}
+          NSIS_PAYLOAD_SHA256: ${{ steps.verify.outputs.payload-sha256 }}
+          NSIS_SMOKE_LOG_DIR: ${{ runner.temp }}/filament-manager-windows-release-nsis-smoke
           PREVIOUS_RELEASE_FIXTURE_DIR: ${{ runner.temp }}/filament-manager-v0.28.0-fixture
         run: |
           $tauriConfig = Get-Content -LiteralPath "src-tauri/tauri.conf.json" -Raw | ConvertFrom-Json
-          $msiFiles = @(Get-ChildItem -LiteralPath $env:WINDOWS_MSI_CANDIDATE_DIR -Filter "*.msi" -File)
-          if ($msiFiles.Count -ne 1) {
-            throw "Expected exactly one downloaded release MSI; found $($msiFiles.Count)."
-          }
-
           ./scripts/smoke-windows-msi.ps1 `
-            -MsiPath $msiFiles[0].FullName `
+            -NsisPath "$env:NSIS_INSTALLER" `
+            -ExpectedNsisVersion "$env:RELEASE_VERSION" `
+            -ExpectedPayloadSha256 "$env:NSIS_PAYLOAD_SHA256" `
             -ExpectedProductName $tauriConfig.productName `
             -ExpectedExecutableName "bambu-filament-manager.exe" `
             -ExpectedWindowTitles @($tauriConfig.productName, "Dashboard") `
             -ExpectedInstallDirectory (Join-Path $env:LOCALAPPDATA $tauriConfig.productName) `
             -ExpectedAppDataDirectory (Join-Path $env:LOCALAPPDATA $tauriConfig.identifier) `
             -ExpectedDatabaseName "filament-manager.db" `
-            -LogDirectory $env:WINDOWS_MSI_SMOKE_LOG_DIR `
+            -LogDirectory "$env:NSIS_SMOKE_LOG_DIR" `
             -SignaturePolicy "UnsignedRequired" `
             -UpgradeFixturePath (Join-Path $env:PREVIOUS_RELEASE_FIXTURE_DIR "filament-manager-v0.28.0.db") `
             -UpgradeSourceRelease "v0.28.0" `
@@ -750,12 +758,96 @@ jobs:
             -RunPackagedHostClientE2E `
             -LaunchTimeoutSeconds 120
 
-      - name: Upload release MSI smoke logs
+      - name: Upload release NSIS smoke logs
         if: always()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
-          name: filament-manager-windows-release-msi-smoke-${{ github.run_id }}
-          path: ${{ runner.temp }}/filament-manager-windows-release-msi-smoke
+          name: filament-manager-windows-release-nsis-smoke-${{ github.run_id }}
+          # The private databases and packaged E2E subdirectories stay on the runner.
+          path: |
+            ${{ runner.temp }}/filament-manager-windows-release-nsis-smoke/*.log
+            ${{ runner.temp }}/filament-manager-windows-release-nsis-smoke/*.stderr
+            ${{ runner.temp }}/filament-manager-windows-release-nsis-smoke/smoke-summary.txt
+          if-no-files-found: warn
+          overwrite: true
+          retention-days: 7
+
+  smoke-windows-nsis-migration:
+    name: Smoke Windows MSI to NSIS migration
+    needs:
+      - validate-release
+      - prepare-previous-release-fixture
+      - build-windows-nsis
+    runs-on: windows-2025
+    timeout-minutes: 25
+    steps:
+      - name: Checkout release source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Setup Node
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 26
+          cache: npm
+
+      - name: Set up npm 12
+        uses: ./.github/actions/setup-npm
+
+      - name: Install test dependencies
+        run: npm ci
+
+      - name: Download the synthetic MSI migration fixture
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: filament-manager-nsis-migration-fixture-${{ github.run_id }}
+          path: ${{ runner.temp }}/filament-manager-nsis-migration-fixture
+
+      - name: Download release NSIS candidate for migration
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: filament-manager-windows-nsis-${{ github.run_id }}
+          path: ${{ runner.temp }}/filament-manager-windows-release-candidate
+
+      - name: Exercise migration from the latest published MSI
+        shell: pwsh
+        env:
+          RELEASE_VERSION: ${{ needs['validate-release'].outputs['package-version'] }}
+          NSIS_CANDIDATE_DIR: ${{ runner.temp }}/filament-manager-windows-release-candidate
+          NSIS_INSTALLER_SHA256: ${{ needs['build-windows-nsis'].outputs['installer-sha256'] }}
+          NSIS_PAYLOAD_SHA256: ${{ needs['build-windows-nsis'].outputs['payload-sha256'] }}
+          NSIS_MIGRATION_FIXTURE: ${{ runner.temp }}/filament-manager-nsis-migration-fixture/filament-manager-nsis-migration.db
+          NSIS_MIGRATION_FIXTURE_SHA256: ${{ needs['prepare-previous-release-fixture'].outputs['migration-sha256'] }}
+          NSIS_SMOKE_LOG_DIR: ${{ runner.temp }}/filament-manager-windows-release-nsis-migration
+        run: |
+          $tauriConfig = Get-Content -LiteralPath "src-tauri/tauri.conf.json" -Raw | ConvertFrom-Json
+          $checked = ./scripts/verify-windows-nsis-rehearsal.ps1 `
+            -Directory "$env:NSIS_CANDIDATE_DIR" `
+            -ExpectedProductName $tauriConfig.productName `
+            -ExpectedVersion "$env:RELEASE_VERSION" `
+            -ExpectedInstallerSha256 "$env:NSIS_INSTALLER_SHA256"
+          if ($checked.PayloadSha256 -cne $env:NSIS_PAYLOAD_SHA256) {
+            throw "The downloaded NSIS candidate payload hash has changed."
+          }
+          ./scripts/smoke-windows-nsis-pilot.ps1 `
+            -Installer $checked.Installer `
+            -ExpectedNsisVersion "$env:RELEASE_VERSION" `
+            -SourceManifest "scripts/windows-nsis-msi-sources.json" `
+            -SourceVersion "v0.35.1" `
+            -Scenario "standard" `
+            -Logs "$env:NSIS_SMOKE_LOG_DIR" `
+            -Fixture "$env:NSIS_MIGRATION_FIXTURE" `
+            -FixtureSha256 "$env:NSIS_MIGRATION_FIXTURE_SHA256"
+
+      - name: Upload release NSIS migration logs
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: filament-manager-windows-release-nsis-migration-${{ github.run_id }}
+          path: |
+            ${{ runner.temp }}/filament-manager-windows-release-nsis-migration/*.log
+            ${{ runner.temp }}/filament-manager-windows-release-nsis-migration/*.stderr
           if-no-files-found: warn
           overwrite: true
           retention-days: 7
@@ -833,7 +925,8 @@ jobs:
       - validate-release
       - build-macos-dmg
       - smoke-macos-dmg-intel
-      - build-windows-msi
+      - build-windows-nsis
+      - smoke-windows-nsis-migration
       - generate-release-sbom
     if: >-
       github.event_name == 'push' &&
@@ -858,17 +951,21 @@ jobs:
       - name: Download verified Windows artifact for attestation
         uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
-          name: filament-manager-windows-msi-${{ github.run_id }}
+          name: filament-manager-windows-nsis-${{ github.run_id }}
           path: attestation-subjects/windows
 
       - name: Reverify installer subjects
         id: installer-subjects
+        env:
+          RELEASE_VERSION: ${{ needs['validate-release'].outputs['package-version'] }}
+          NSIS_INSTALLER_SHA256: ${{ needs['build-windows-nsis'].outputs['installer-sha256'] }}
         run: |
           set -euo pipefail
           mapfile -t dmgs < <(find attestation-subjects/macos -maxdepth 1 -type f -name '*.dmg' -print)
-          mapfile -t msis < <(find attestation-subjects/windows -maxdepth 1 -type f -name '*.msi' -print)
-          if [[ ${#dmgs[@]} -ne 1 || ${#msis[@]} -ne 1 ]]; then
-            echo "::error::Expected exactly one verified DMG and one verified MSI for attestation."
+          mapfile -t windows_installers < <(find attestation-subjects/windows -maxdepth 1 -type f \( -name '*.exe' -o -name '*.msi' \) -print)
+          nsis_path="attestation-subjects/windows/Filament-Manager_${RELEASE_VERSION}_x64-setup.exe"
+          if [[ ${#dmgs[@]} -ne 1 || ${#windows_installers[@]} -ne 1 || ! -s "$nsis_path" ]]; then
+            echo "::error::Expected exactly one verified DMG and one verified NSIS installer for attestation."
             exit 1
           fi
 
@@ -884,10 +981,15 @@ jobs:
             exit 1
           fi
 
+          if [[ "$(tr -d '\r' < "$windows_manifest")" != "$NSIS_INSTALLER_SHA256 *${nsis_path##*/}" ]]; then
+            echo "::error::The NSIS attestation subject must match the checked build."
+            exit 1
+          fi
+
           (cd attestation-subjects/macos && sha256sum --check SHA256SUMS.txt)
-          (cd attestation-subjects/windows && sha256sum --check SHA256SUMS-windows.txt)
+          (cd attestation-subjects/windows && tr -d '\r' < SHA256SUMS-windows.txt | sha256sum --check -)
           echo "dmg-path=${dmgs[0]}" >> "$GITHUB_OUTPUT"
-          echo "msi-path=${msis[0]}" >> "$GITHUB_OUTPUT"
+          echo "nsis-path=$nsis_path" >> "$GITHUB_OUTPUT"
 
       - name: Generate signed build provenance
         id: installer-provenance
@@ -895,7 +997,7 @@ jobs:
         with:
           subject-path: |
             ${{ steps['installer-subjects'].outputs['dmg-path'] }}
-            ${{ steps['installer-subjects'].outputs['msi-path'] }}
+            ${{ steps['installer-subjects'].outputs['nsis-path'] }}
 
       - name: Normalize signed provenance bundle
         env:
@@ -927,7 +1029,8 @@ jobs:
       - validate-release
       - build-macos-dmg
       - smoke-macos-dmg-intel
-      - build-windows-msi
+      - build-windows-nsis
+      - smoke-windows-nsis-migration
       - generate-release-sbom
       - attest-public-release
     if: >-
@@ -938,7 +1041,8 @@ jobs:
       needs['validate-release'].result == 'success' &&
       needs['build-macos-dmg'].result == 'success' &&
       needs['smoke-macos-dmg-intel'].result == 'success' &&
-      needs['build-windows-msi'].result == 'success' &&
+      needs['build-windows-nsis'].result == 'success' &&
+      needs['smoke-windows-nsis-migration'].result == 'success' &&
       needs['generate-release-sbom'].result == 'success' &&
       (
         (github.event.repository.private == false && needs['attest-public-release'].result == 'success') ||
@@ -1006,7 +1110,7 @@ jobs:
       - name: Download verified Windows artifact
         uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
-          name: filament-manager-windows-msi-${{ github.run_id }}
+          name: filament-manager-windows-nsis-${{ github.run_id }}
           path: release-assets/windows
 
       - name: Download verified source dependency SBOM
@@ -1026,6 +1130,7 @@ jobs:
         env:
           RELEASE_TAG: ${{ github.ref_name }}
           REPOSITORY_PRIVATE: ${{ github.event.repository.private }}
+          NSIS_INSTALLER_SHA256: ${{ needs['build-windows-nsis'].outputs['installer-sha256'] }}
         run: |
           set -euo pipefail
           package_version="$(node -p "require('./package.json').version")"
@@ -1036,10 +1141,11 @@ jobs:
           fi
 
           mapfile -t dmgs < <(find release-assets/macos -maxdepth 1 -type f -name '*.dmg' -print)
-          mapfile -t msis < <(find release-assets/windows -maxdepth 1 -type f -name '*.msi' -print)
+          mapfile -t windows_installers < <(find release-assets/windows -maxdepth 1 -type f \( -name '*.exe' -o -name '*.msi' \) -print)
+          nsis_path="release-assets/windows/Filament-Manager_${package_version}_x64-setup.exe"
           mapfile -t sboms < <(find release-assets/sbom -maxdepth 1 -type f -name '*.spdx.json' -print)
-          if [[ ${#dmgs[@]} -ne 1 || ${#msis[@]} -ne 1 || ${#sboms[@]} -ne 1 ]]; then
-            echo "::error::Expected exactly one verified DMG, MSI and source dependency SBOM."
+          if [[ ${#dmgs[@]} -ne 1 || ${#windows_installers[@]} -ne 1 || ! -s "$nsis_path" || ${#sboms[@]} -ne 1 ]]; then
+            echo "::error::Expected exactly one verified DMG, NSIS installer and source dependency SBOM."
             exit 1
           fi
 
@@ -1057,8 +1163,13 @@ jobs:
             exit 1
           fi
 
+          if [[ "$(tr -d '\r' < "$windows_manifest")" != "$NSIS_INSTALLER_SHA256 *${nsis_path##*/}" ]]; then
+            echo "::error::The public NSIS installer must match the checked build."
+            exit 1
+          fi
+
           (cd release-assets/macos && sha256sum --check SHA256SUMS.txt)
-          (cd release-assets/windows && sha256sum --check SHA256SUMS-windows.txt)
+          (cd release-assets/windows && tr -d '\r' < SHA256SUMS-windows.txt | sha256sum --check -)
           (cd release-assets/sbom && sha256sum --check SHA256SUMS-sbom.txt)
           node ./scripts/verify-release-sbom.mjs \
             "${sboms[0]}" \
@@ -1080,7 +1191,7 @@ jobs:
           mkdir -p "$publish_dir"
           cp -- \
             "${dmgs[0]}" \
-            "${msis[0]}" \
+            "$nsis_path" \
             "${sboms[0]}" \
             "$macos_manifest" \
             "$windows_manifest" \

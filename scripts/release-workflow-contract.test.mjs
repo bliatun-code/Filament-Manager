@@ -97,6 +97,11 @@ test("release workflow gates tag and manual installer builds", () => {
     "  validate-release:",
     "  prepare-previous-release-fixture:",
   );
+  const fixtureJob = readSection(
+    releaseWorkflow,
+    "  prepare-previous-release-fixture:",
+    "  build-macos-dmg:",
+  );
   const macosJob = readSection(
     releaseWorkflow,
     "  build-macos-dmg:",
@@ -105,11 +110,16 @@ test("release workflow gates tag and manual installer builds", () => {
   const intelMacosSmokeJob = readSection(
     releaseWorkflow,
     "  smoke-macos-dmg-intel:",
-    "  build-windows-msi:",
+    "  build-windows-nsis:",
   );
   const windowsJob = readSection(
     releaseWorkflow,
-    "  build-windows-msi:",
+    "  build-windows-nsis:",
+    "  smoke-windows-nsis-migration:",
+  );
+  const windowsMigrationJob = readSection(
+    releaseWorkflow,
+    "  smoke-windows-nsis-migration:",
     "  generate-release-sbom:",
   );
   const sbomJob = readSection(
@@ -140,7 +150,7 @@ test("release workflow gates tag and manual installer builds", () => {
     /outputs:\s*\n\s+package-version: \$\{\{ steps\['release-request'\]\.outputs\['package-version'\] \}\}\s*\n\s+release-tag: \$\{\{ steps\['release-request'\]\.outputs\['release-tag'\] \}\}/,
   );
   assert.match(validationJob, /npm run check:version/);
-  assert.match(validationJob, /npm run check:msi-version/);
+  assert.doesNotMatch(validationJob, /npm run check:msi-version/);
   assert.match(validationJob, /npm run check:path-portability/);
   assert.match(validationJob, /npm run check:command-portability/);
   assert.match(
@@ -157,7 +167,6 @@ test("release workflow gates tag and manual installer builds", () => {
   );
   assert.match(validationJob, /"\$SELECTED_PLATFORM" != "windows"/);
   assert.match(validationJob, /"\$GITHUB_EVENT_NAME" == "push"/);
-  assert.match(validationJob, /"\$SELECTED_PLATFORM" == "windows"/);
   assert.match(validationJob, /"\$SELECTED_PLATFORM" == "both"/);
   assert.match(validationJob, /"\$CONFIRM_MACOS_NOTARIZATION" != "true"/);
   assert.match(
@@ -236,18 +245,6 @@ test("release workflow gates tag and manual installer builds", () => {
   );
   assert.match(windowsJob, /runs-on: windows-2025/);
   assert.match(
-    windowsJob,
-    /- name: Prepare MSI version override\s+env:\s+MSI_VERSION_CONFIG_PATH: \$\{\{ runner\.temp \}\}\/filament-manager-msi-version\.json\s+run: node \.\/scripts\/normalize-msi-version\.mjs --output "\$env:MSI_VERSION_CONFIG_PATH"/,
-  );
-  assert.match(
-    windowsJob,
-    /- name: Verify MSI preparation leaves manifests unchanged\s+run: git diff --exit-code -- src-tauri\/tauri\.conf\.json src-tauri\/Cargo\.toml/,
-  );
-  assert.match(
-    windowsJob,
-    /- name: Build MSI bundle\s+env:\s+FILAMENT_MANAGER_UPDATE_METADATA_URL: \$\{\{ vars\.FILAMENT_MANAGER_UPDATE_METADATA_URL \}\}\s+MSI_VERSION_CONFIG_PATH: \$\{\{ runner\.temp \}\}\/filament-manager-msi-version\.json\s+run: node \.\/scripts\/run-tauri\.mjs build --bundles msi --config "\$env:MSI_VERSION_CONFIG_PATH"/,
-  );
-  assert.match(
     macosJob,
     /- name: Build signed and notarized DMG[\s\S]*?FILAMENT_MANAGER_UPDATE_METADATA_URL: \$\{\{ vars\.FILAMENT_MANAGER_UPDATE_METADATA_URL \}\}[\s\S]*?npm run tauri --[\s\S]*?build[\s\S]*?--target universal-apple-darwin[\s\S]*?--bundles dmg/,
   );
@@ -259,93 +256,78 @@ test("release workflow gates tag and manual installer builds", () => {
   );
   assert.equal(countOccurrences(macosJob, updateMetadataVariableBinding), 1);
   assert.equal(countOccurrences(windowsJob, updateMetadataVariableBinding), 1);
-  assert.doesNotMatch(
-    windowsJob,
-    /run: node \.\/scripts\/normalize-msi-version\.mjs\s*$/m,
-  );
-  assert.doesNotMatch(windowsJob, /shell:\s*bash/);
-  assert.doesNotMatch(windowsJob, /BASH_REMATCH|<<'NODE'/);
-  assert.match(windowsJob, /Build MSI bundle/);
-  assert.match(
-    windowsJob,
-    /- name: Verify MSI bundle and write checksum\s+shell: pwsh\s+env:\s+MSI_VERSION_CONFIG_PATH: \$\{\{ runner\.temp \}\}\/filament-manager-msi-version\.json\s+run: \|/,
-  );
-  assert.match(windowsJob, /\.\/scripts\/verify-windows-msi\.ps1/);
-  assert.match(windowsJob, /-MsiDirectory "target\/release\/bundle\/msi"/);
+  assert.doesNotMatch(windowsJob, /shell:\s*bash|BASH_REMATCH|<<'NODE'/);
+  assert.doesNotMatch(windowsJob, /--bundles msi|verify-windows-msi\.ps1|-MsiPath/);
+  assert.match(windowsJob, /targets: x86_64-pc-windows-msvc/);
+  assert.match(windowsJob, /RELEASE_VERSION: \$\{\{ needs\['validate-release'\]\.outputs\['package-version'\] \}\}/);
+  assert.match(windowsJob, /node \.\/scripts\/prepare-windows-nsis-rehearsal\.mjs --output "\$env:NSIS_CONFIG_PATH"/);
+  assert.match(windowsJob, /\$LASTEXITCODE -ne 0 -or \$version -cne \$env:RELEASE_VERSION/);
+  assert.match(windowsJob, /run: node \.\/scripts\/run-tauri\.mjs build --bundles nsis --target x86_64-pc-windows-msvc --config "\$env:NSIS_CONFIG_PATH" -- --locked/);
+  assert.match(windowsJob, /git diff --exit-code -- package\.json package-lock\.json Cargo\.toml Cargo\.lock src-tauri\/Cargo\.toml src-tauri\/tauri\.conf\.json src-tauri\/tauri\.windows\.conf\.json/);
+  assert.match(windowsJob, /\.\/scripts\/verify-windows-nsis-rehearsal\.ps1/);
+  assert.match(windowsJob, /-StageFrom "target\/x86_64-pc-windows-msvc\/release\/bundle\/nsis"/);
   assert.match(windowsJob, /-ExpectedProductName \$tauriConfig\.productName/);
-  assert.match(
-    windowsJob,
-    /-ExpectedProductVersion \$msiVersionConfig\.bundle\.windows\.wix\.version/,
-  );
-  assert.match(windowsJob, /-ExpectedArchitecture "x64"/);
-  assert.match(
-    windowsJob,
-    /-NormalizedFileName "Filament-Manager_\$\(\$tauriConfig\.version\)_x64_en-US\.msi"/,
-  );
-  assert.match(
-    windowsJob,
-    /name: filament-manager-windows-msi-\$\{\{ github\.run_id \}\}/,
-  );
-  assert.match(
-    windowsJob,
-    /- name: Upload verified MSI artifact[\s\S]*?if-no-files-found: error\s+overwrite: true\s+retention-days: 14/,
-  );
-  assert.match(
-    windowsJob,
-    /- name: Download release MSI candidate[\s\S]*?actions\/download-artifact@[a-f0-9]{40} # v8\.\d+\.\d+[\s\S]*?name: filament-manager-windows-msi-\$\{\{ github\.run_id \}\}[\s\S]*?filament-manager-windows-release-candidate/,
-  );
-  assert.match(windowsJob, /- name: Verify downloaded MSI candidate/);
-  assert.match(windowsJob, /SHA256SUMS-windows\.txt/);
-  assert.match(windowsJob, /\[regex\]::Match/);
-  assert.match(
-    windowsJob,
-    /Get-FileHash -LiteralPath \$candidatePath -Algorithm SHA256/,
-  );
-  assert.match(windowsJob, /-MsiDirectory \$env:WINDOWS_MSI_CANDIDATE_DIR/);
-  assert.match(
-    windowsJob,
-    /- name: Exercise release MSI installation from downloaded artifact/,
-  );
-  assert.match(windowsJob, /WINDOWS_MSI_CANDIDATE_DIR/);
+  assert.match(windowsJob, /-ExpectedVersion "\$env:RELEASE_VERSION"/);
+  assert.match(windowsJob, /installer-sha256: \$\{\{ steps\.verify\.outputs\.installer-sha256 \}\}/);
+  assert.match(windowsJob, /payload-sha256: \$\{\{ steps\.verify\.outputs\.payload-sha256 \}\}/);
+  assert.match(windowsJob, /-ExpectedInstallerSha256 "\$env:NSIS_INSTALLER_SHA256"/);
+  assert.match(windowsJob, /\$checked\.PayloadSha256 -cne \$env:NSIS_PAYLOAD_SHA256/);
+  assert.match(windowsJob, /name: filament-manager-windows-nsis-\$\{\{ github\.run_id \}\}/);
+  assert.match(windowsJob, /- name: Upload verified NSIS artifact[\s\S]*?if-no-files-found: error\s+overwrite: true\s+retention-days: 14/);
+  assert.match(windowsJob, /- name: Download release NSIS candidate[\s\S]*?actions\/download-artifact@[a-f0-9]{40} # v8\.\d+\.\d+[\s\S]*?name: filament-manager-windows-nsis-\$\{\{ github\.run_id \}\}[\s\S]*?filament-manager-windows-release-candidate/);
+  assert.match(windowsJob, /path: \|\s+\$\{\{ runner\.temp \}\}\/filament-manager-windows-release-staging\/\*\.exe\s+\$\{\{ runner\.temp \}\}\/filament-manager-windows-release-staging\/SHA256SUMS-windows\.txt/);
+  assert.match(windowsJob, /NSIS_INSTALLER: \$\{\{ steps\.candidate\.outputs\.installer \}\}/);
   assert.match(windowsJob, /\.\/scripts\/smoke-windows-msi\.ps1/);
+  assert.match(windowsJob, /-NsisPath "\$env:NSIS_INSTALLER"/);
+  assert.match(windowsJob, /-ExpectedNsisVersion "\$env:RELEASE_VERSION"/);
+  assert.match(windowsJob, /-ExpectedPayloadSha256 "\$env:NSIS_PAYLOAD_SHA256"/);
   assert.match(windowsJob, /-SignaturePolicy "UnsignedRequired"/);
   assert.match(windowsJob, /-LaunchTimeoutSeconds 120/);
-  assert.match(
-    windowsJob,
-    /- name: Upload release MSI smoke logs\s+if: always\(\)[\s\S]*?if-no-files-found: warn[\s\S]*?retention-days: 7/,
-  );
-  assert.doesNotMatch(
-    windowsJob,
-    /name: filament-manager-windows-msi-\$\{\{ github\.ref_name \}\}/,
-  );
-  assert.match(
-    windowsJob,
-    /path: \|\s+target\/release\/bundle\/msi\/\*\.msi\s+target\/release\/bundle\/msi\/SHA256SUMS-windows\.txt/,
-  );
-  assert.match(windowsJob, /retention-days: 14/);
+  assert.match(windowsJob, /- name: Upload release NSIS smoke logs\s+if: always\(\)[\s\S]*?if-no-files-found: warn[\s\S]*?retention-days: 7/);
+  assert.doesNotMatch(windowsJob, /name: filament-manager-windows-nsis-\$\{\{ github\.ref_name \}\}/);
   assert.match(windowsJob, /- name: Install root dependencies\s+run: npm ci/);
-  assert.match(
-    windowsJob,
-    /- name: Install UI dependencies\s+run: npm --prefix \.\/ui ci/,
-  );
+  assert.match(windowsJob, /- name: Install UI dependencies\s+run: npm --prefix \.\/ui ci/);
 
   assertStepOrder(windowsJob, [
     "Install root dependencies",
     "Install UI dependencies",
-    "Prepare MSI version override",
-    "Verify MSI preparation leaves manifests unchanged",
-    "Build MSI bundle",
-    "Verify MSI bundle and write checksum",
-    "Upload verified MSI artifact",
-    "Download release MSI candidate",
-    "Verify downloaded MSI candidate",
-    "Exercise release MSI installation from downloaded artifact",
-    "Upload release MSI smoke logs",
+    "Prepare per-user NSIS release configuration",
+    "Build x64 NSIS release bundle",
+    "Verify, normalize and checksum the NSIS release bundle",
+    "Upload verified NSIS artifact",
+    "Download release NSIS candidate",
+    "Verify downloaded NSIS candidate",
+    "Exercise release NSIS installation from downloaded artifact",
+    "Upload release NSIS smoke logs",
+  ]);
+
+  assert.match(windowsMigrationJob, /needs:\s*\n\s+- validate-release\s*\n\s+- prepare-previous-release-fixture\s*\n\s+- build-windows-nsis/);
+  assert.match(windowsMigrationJob, /runs-on: windows-2025/);
+  assert.doesNotMatch(windowsMigrationJob, /environment:|permissions:|--bundles/);
+  assert.match(windowsMigrationJob, /name: filament-manager-nsis-migration-fixture-\$\{\{ github\.run_id \}\}/);
+  assert.match(windowsMigrationJob, /NSIS_MIGRATION_FIXTURE_SHA256: \$\{\{ needs\['prepare-previous-release-fixture'\]\.outputs\['migration-sha256'\] \}\}/);
+  assert.match(windowsMigrationJob, /NSIS_INSTALLER_SHA256: \$\{\{ needs\['build-windows-nsis'\]\.outputs\['installer-sha256'\] \}\}/);
+  assert.match(windowsMigrationJob, /NSIS_PAYLOAD_SHA256: \$\{\{ needs\['build-windows-nsis'\]\.outputs\['payload-sha256'\] \}\}/);
+  assert.match(windowsMigrationJob, /\.\/scripts\/verify-windows-nsis-rehearsal\.ps1[\s\S]*?-ExpectedInstallerSha256 "\$env:NSIS_INSTALLER_SHA256"[\s\S]*?\$checked\.PayloadSha256 -cne \$env:NSIS_PAYLOAD_SHA256[\s\S]*?\.\/scripts\/smoke-windows-nsis-pilot\.ps1/);
+  assert.match(windowsMigrationJob, /-Installer \$checked\.Installer/);
+  assert.match(windowsMigrationJob, /-SourceManifest "scripts\/windows-nsis-msi-sources\.json"/);
+  assert.match(windowsMigrationJob, /-SourceVersion "v0\.35\.1"/);
+  assert.match(windowsMigrationJob, /-FixtureSha256 "\$env:NSIS_MIGRATION_FIXTURE_SHA256"/);
+  assert.match(fixtureJob, /migration-sha256: \$\{\{ steps\.migration-fixture\.outputs\.sha256 \}\}/);
+  assert.match(fixtureJob, /npm run qa:release:upgrade-ci-fixture -- --output="\$fixture"\s+digest=\$\(sha256sum "\$fixture"\)\s+echo "sha256=\$\{digest%% \*\}"/);
+  assert.match(fixtureJob, /Upload the synthetic MSI migration fixture[\s\S]*?name: filament-manager-nsis-migration-fixture-\$\{\{ github\.run_id \}\}[\s\S]*?if-no-files-found: error/);
+  assertStepOrder(windowsMigrationJob, [
+    "Set up npm 12",
+    "Install test dependencies",
+    "Download the synthetic MSI migration fixture",
+    "Download release NSIS candidate for migration",
+    "Exercise migration from the latest published MSI",
+    "Upload release NSIS migration logs",
   ]);
 
   assert.match(
     publishJob,
-    /needs:\s*\n\s+- validate-release\s*\n\s+- build-macos-dmg\s*\n\s+- smoke-macos-dmg-intel\s*\n\s+- build-windows-msi\s*\n\s+- generate-release-sbom\s*\n\s+- attest-public-release/,
+    /needs:\s*\n\s+- validate-release\s*\n\s+- build-macos-dmg\s*\n\s+- smoke-macos-dmg-intel\s*\n\s+- build-windows-nsis\s*\n\s+- smoke-windows-nsis-migration\s*\n\s+- generate-release-sbom\s*\n\s+- attest-public-release/,
   );
   assert.match(publishJob, /if: >-\s+!cancelled\(\) &&/);
   assert.doesNotMatch(publishJob, /always\(\)/);
@@ -359,7 +341,8 @@ test("release workflow gates tag and manual installer builds", () => {
     publishJob,
     /needs\['smoke-macos-dmg-intel'\]\.result == 'success'/,
   );
-  assert.match(publishJob, /needs\['build-windows-msi'\]\.result == 'success'/);
+  assert.match(publishJob, /needs\['build-windows-nsis'\]\.result == 'success'/);
+  assert.match(publishJob, /needs\['smoke-windows-nsis-migration'\]\.result == 'success'/);
   assert.match(
     publishJob,
     /needs\['generate-release-sbom'\]\.result == 'success'/,
@@ -427,7 +410,7 @@ test("release workflow gates tag and manual installer builds", () => {
   );
   assert.match(
     publishJob,
-    /- name: Download verified Windows artifact[\s\S]*?name: filament-manager-windows-msi-\$\{\{ github\.run_id \}\}\s+path: release-assets\/windows/,
+    /- name: Download verified Windows artifact[\s\S]*?name: filament-manager-windows-nsis-\$\{\{ github\.run_id \}\}\s+path: release-assets\/windows/,
   );
   assert.match(
     publishJob,
@@ -441,8 +424,16 @@ test("release workflow gates tag and manual installer builds", () => {
   assert.match(publishJob, /SHA256SUMS-windows\.txt/);
   assert.match(publishJob, /SHA256SUMS-sbom\.txt/);
   assert.match(publishJob, /sha256sum --check SHA256SUMS\.txt/);
-  assert.match(publishJob, /sha256sum --check SHA256SUMS-windows\.txt/);
+  assert.match(publishJob, /tr -d '\\r' < SHA256SUMS-windows\.txt \| sha256sum --check -/);
   assert.match(publishJob, /sha256sum --check SHA256SUMS-sbom\.txt/);
+  assert.match(publishJob, /nsis_path="release-assets\/windows\/Filament-Manager_\$\{package_version\}_x64-setup\.exe"/);
+  assert.match(publishJob, /cp --[^\n]*\n\s+"\$\{dmgs\[0\]\}"[^\n]*\n\s+"\$nsis_path"/);
+  for (const job of [attestationJob, publishJob]) {
+    assert.match(job, /NSIS_INSTALLER_SHA256: \$\{\{ needs\['build-windows-nsis'\]\.outputs\['installer-sha256'\] \}\}/);
+    assert.match(job, /-name '\*\.exe' -o -name '\*\.msi'/);
+    assert.match(job, /\$\{#windows_installers\[@\]\} -ne 1 \|\| ! -s "\$nsis_path"/);
+    assert.match(job, /"\$NSIS_INSTALLER_SHA256 \*\$\{nsis_path##\*\/\}"/);
+  }
   assert.match(publishJob, /node \.\/scripts\/verify-release-sbom\.mjs/);
   assert.match(
     publishJob,
@@ -549,7 +540,7 @@ test("release workflow gates tag and manual installer builds", () => {
   assert.match(sbomJob, /needs: validate-release/);
   assert.match(
     attestationJob,
-    /needs:[\s\S]*?- build-macos-dmg[\s\S]*?- smoke-macos-dmg-intel[\s\S]*?- build-windows-msi[\s\S]*?- generate-release-sbom/,
+    /needs:[\s\S]*?- build-macos-dmg[\s\S]*?- smoke-macos-dmg-intel[\s\S]*?- build-windows-nsis[\s\S]*?- smoke-windows-nsis-migration[\s\S]*?- generate-release-sbom/,
   );
 });
 
@@ -615,10 +606,12 @@ test("public provenance uses an isolated least-privilege fail-closed job", () =>
   assert.match(attestationJob, /actions\/attest@[a-f0-9]{40} # v\d+\.\d+\.\d+/);
   assert.match(
     attestationJob,
-    /subject-path:\s*\|\s+\$\{\{ steps\['installer-subjects'\]\.outputs\['dmg-path'\] \}\}\s+\$\{\{ steps\['installer-subjects'\]\.outputs\['msi-path'\] \}\}/,
+    /subject-path:\s*\|\s+\$\{\{ steps\['installer-subjects'\]\.outputs\['dmg-path'\] \}\}\s+\$\{\{ steps\['installer-subjects'\]\.outputs\['nsis-path'\] \}\}/,
   );
   assert.match(attestationJob, /sha256sum --check SHA256SUMS\.txt/);
-  assert.match(attestationJob, /sha256sum --check SHA256SUMS-windows\.txt/);
+  assert.match(attestationJob, /tr -d '\\r' < SHA256SUMS-windows\.txt \| sha256sum --check -/);
+  assert.match(attestationJob, /nsis_path="attestation-subjects\/windows\/Filament-Manager_\$\{RELEASE_VERSION\}_x64-setup\.exe"/);
+  assert.match(attestationJob, /echo "nsis-path=\$nsis_path" >> "\$GITHUB_OUTPUT"/);
   assert.match(
     attestationJob,
     /steps\['installer-provenance'\]\.outputs\['bundle-path'\]/,
@@ -651,12 +644,12 @@ test("release artifacts remain stable across partial workflow reruns", () => {
   const intelMacosSmokeJob = readSection(
     releaseWorkflow,
     "  smoke-macos-dmg-intel:",
-    "  build-windows-msi:",
+    "  build-windows-nsis:",
   );
   const windowsJob = readSection(
     releaseWorkflow,
-    "  build-windows-msi:",
-    "  generate-release-sbom:",
+    "  build-windows-nsis:",
+    "  smoke-windows-nsis-migration:",
   );
   const sbomJob = readSection(
     releaseWorkflow,
@@ -670,7 +663,7 @@ test("release artifacts remain stable across partial workflow reruns", () => {
   );
   const macosArtifactName = "filament-manager-macos-dmg-${{ github.run_id }}";
   const windowsArtifactName =
-    "filament-manager-windows-msi-${{ github.run_id }}";
+    "filament-manager-windows-nsis-${{ github.run_id }}";
   const sbomArtifactName = "filament-manager-release-sbom-${{ github.run_id }}";
   const provenanceArtifactName =
     "filament-manager-release-provenance-${{ github.run_id }}";
@@ -681,7 +674,7 @@ test("release artifacts remain stable across partial workflow reruns", () => {
   );
   assert.equal(
     countOccurrences(releaseWorkflow, `name: ${windowsArtifactName}`),
-    4,
+    5,
   );
   assert.equal(
     countOccurrences(releaseWorkflow, `name: ${sbomArtifactName}`),
@@ -706,11 +699,11 @@ test("release artifacts remain stable across partial workflow reruns", () => {
   );
   assert.match(
     windowsJob,
-    /- name: Upload verified MSI artifact[\s\S]*?overwrite: true/,
+    /- name: Upload verified NSIS artifact[\s\S]*?overwrite: true/,
   );
   assert.match(
     windowsJob,
-    /- name: Download release MSI candidate[\s\S]*?name: filament-manager-windows-msi-\$\{\{ github\.run_id \}\}/,
+    /- name: Download release NSIS candidate[\s\S]*?name: filament-manager-windows-nsis-\$\{\{ github\.run_id \}\}/,
   );
   assert.match(
     sbomJob,
@@ -1505,7 +1498,7 @@ test("macOS CI makes the sanitized database upgrade smoke a release gate", () =>
   ]);
 });
 
-test("packaged releases preserve pinned v0.28 data on DMG and MSI", () => {
+test("packaged releases preserve pinned v0.28 data on DMG and NSIS", () => {
   const fixtureJob = readSection(
     releaseWorkflow,
     "  prepare-previous-release-fixture:",
@@ -1518,8 +1511,8 @@ test("packaged releases preserve pinned v0.28 data on DMG and MSI", () => {
   );
   const windowsJob = readSection(
     releaseWorkflow,
-    "  build-windows-msi:",
-    "  generate-release-sbom:",
+    "  build-windows-nsis:",
+    "  smoke-windows-nsis-migration:",
   );
 
   assert.equal(
@@ -1553,7 +1546,7 @@ test("packaged releases preserve pinned v0.28 data on DMG and MSI", () => {
     /source\.schemaVersion < expectedCurrentSchemaVersion[\s\S]*?"schema-migration"/,
   );
 
-  assert.match(fixtureJob, /name: Prepare v0\.28 database fixture/);
+  assert.match(fixtureJob, /name: Prepare historical release database fixtures/);
   assert.match(fixtureJob, /needs: validate-release/);
   assert.match(fixtureJob, /ref: 76cba513eadd5137d6703f9abd1c0452531ef788/);
   assert.match(fixtureJob, /path: previous-release-v0\.28\.0/);
@@ -1619,8 +1612,8 @@ test("packaged releases preserve pinned v0.28 data on DMG and MSI", () => {
   assertStepOrder(windowsJob, [
     "Download sanitized v0.28 fixture",
     "Verify downloaded v0.28 fixture",
-    "Build MSI bundle",
-    "Exercise release MSI installation from downloaded artifact",
+    "Build x64 NSIS release bundle",
+    "Exercise release NSIS installation from downloaded artifact",
   ]);
 });
 
@@ -1629,8 +1622,9 @@ test("release and CI use the npm 12 setup before preparing or verifying historic
     ["validate-release", "prepare-previous-release-fixture", "Validate version and release source"],
     ["prepare-previous-release-fixture", "build-macos-dmg", "Prepare historical release databases"],
     ["build-macos-dmg", "smoke-macos-dmg-intel", "Install dependencies"],
-    ["smoke-macos-dmg-intel", "build-windows-msi", "Install smoke dependencies"],
-    ["build-windows-msi", "generate-release-sbom", "Install root dependencies"],
+    ["smoke-macos-dmg-intel", "build-windows-nsis", "Install smoke dependencies"],
+    ["build-windows-nsis", "smoke-windows-nsis-migration", "Install root dependencies"],
+    ["smoke-windows-nsis-migration", "generate-release-sbom", "Install test dependencies"],
   ];
   const migrationJob = readSection(ciWorkflow, "  migration-integrity:", "  macos-smoke:");
   for (const [jobName, nextJob, npmStep] of releaseJobs) {
@@ -1650,7 +1644,7 @@ test("release and CI use the npm 12 setup before preparing or verifying historic
   ]);
 
   const ciWindowsJob = readSection(ciWorkflow, "  windows-smoke:");
-  const releaseWindowsJob = readSection(releaseWorkflow, "  build-windows-msi:", "  generate-release-sbom:");
+  const releaseWindowsJob = readSection(releaseWorkflow, "  build-windows-nsis:", "  smoke-windows-nsis-migration:");
   assert.match(ciWindowsJob, /needs: migration-integrity/);
   for (const job of [ciWindowsJob, releaseWindowsJob]) {
     assert.match(
@@ -1690,7 +1684,7 @@ test("release workflow keeps the protected macOS signing sequence fail-closed", 
   const intelMacosSmokeJob = readSection(
     releaseWorkflow,
     "  smoke-macos-dmg-intel:",
-    "  build-windows-msi:",
+    "  build-windows-nsis:",
   );
 
   assert.equal(existsSync(".github/workflows/macos-signed-release.yml"), false);
@@ -1877,12 +1871,12 @@ test("CI and release workflows block on packaged desktop and Host-Client mutatio
   const releaseIntelMacosJob = readSection(
     releaseWorkflow,
     "  smoke-macos-dmg-intel:",
-    "  build-windows-msi:",
+    "  build-windows-nsis:",
   );
   const releaseWindowsJob = readSection(
     releaseWorkflow,
-    "  build-windows-msi:",
-    "  generate-release-sbom:",
+    "  build-windows-nsis:",
+    "  smoke-windows-nsis-migration:",
   );
 
   assert.equal(
@@ -2073,7 +2067,7 @@ test("CI and release workflows block on packaged desktop and Host-Client mutatio
 test("schema-7 fixture supplements both installed release gates with verified provenance", () => {
   const fixtureJob = readSection(releaseWorkflow, "  prepare-previous-release-fixture:", "  build-macos-dmg:");
   const macosJob = readSection(releaseWorkflow, "  build-macos-dmg:", "  smoke-macos-dmg-intel:");
-  const windowsJob = readSection(releaseWorkflow, "  build-windows-msi:", "  generate-release-sbom:");
+  const windowsJob = readSection(releaseWorkflow, "  build-windows-nsis:", "  smoke-windows-nsis-migration:");
   assert.match(releaseFixtureAction, /prepare-compatibility-release-upgrade-fixture\.mjs --output=.*v0\.30\.0\.db/);
   assert.match(releaseFixtureAction, /prepare-compatibility-release-upgrade-fixture\.mjs --output=.* --verify/);
   assert.match(fixtureJob, /Upload sanitized v0\.30 compatibility fixture[\s\S]*?if-no-files-found: error/);

@@ -8,9 +8,10 @@ exact workflow artifact again before installation testing. The Universal 2 DMG
 is additionally downloaded, verified, installed, and launched on a separate
 native Intel runner; the build job performs the same checks on Apple Silicon.
 The publish and public-provenance jobs cannot proceed unless both macOS
-architecture smokes and the Windows candidate job succeed. The Windows MSI
-remains intentionally unsigned. Its installer smoke fails unless both the MSI
-and installed executable report the exact Authenticode status `NotSigned`.
+architecture smokes, the Windows NSIS candidate job, and migration from the
+last public MSI succeed. The Windows NSIS installer remains unsigned. Its
+smoke test checks that both the installer and the installed executable report
+the exact Authenticode status `NotSigned`.
 
 Release publication uses the separate `github-release` environment and an
 exact `refs/tags/v<package-version>` source check. The GitHub environment must
@@ -37,13 +38,13 @@ A tagged release contains:
 
 - the Developer ID-signed, notarized, and stapled Universal 2 DMG for Apple
   Silicon and Intel;
-- the currently unsigned per-user Windows x64 MSI;
+- the unsigned per-user Windows x64 NSIS installer (`_x64-setup.exe`);
 - one SHA-256 manifest for each installer;
 - `Filament-Manager_<version>_source.spdx.json`, an SPDX 2.3 source dependency
   SBOM;
 - `SHA256SUMS-sbom.txt` for that SBOM; and
 - when the repository is public, a Sigstore JSON bundle containing GitHub
-  artifact attestations for the DMG and MSI.
+  artifact attestations for the DMG and NSIS installer.
 
 The source SBOM is generated from a clean checkout with a pinned Syft version,
 then checked by the repository's fail-closed validator. It describes

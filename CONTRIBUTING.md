@@ -236,8 +236,8 @@ The workspace contains `src/backend/` for the shared core, `src-tauri/` for the
 native shell and Companion service, `ui/` for the desktop interface, and
 `scripts/` for builds and validation. Node.js 26, npm 10 or newer and the checked-in
 Rust toolchain are required for development. macOS builds also need Xcode and
-its command-line tools. End users can install the published DMG or MSI without
-these development tools.
+its command-line tools. End users can run the published Windows setup EXE or
+macOS DMG without these development tools.
 
 ## Documentation and working evidence
 
@@ -256,9 +256,9 @@ belong in the maintained quality and distribution documentation.
 
 ## Recent Release Notes
 
+- [v0.36.0](docs/releases/RELEASE_NOTES_v0.36.0.md)
 - [v0.35.1](docs/releases/RELEASE_NOTES_v0.35.1.md)
 - [v0.35.0](docs/releases/RELEASE_NOTES_v0.35.0.md)
-- [v0.34.0](docs/releases/RELEASE_NOTES_v0.34.0.md)
 
 The three newest release-note files stay in the working tree. Older source and
 checked-in notes remain available through their published Git tags. Archive
