@@ -9,6 +9,12 @@ const customPeriod: StatisticsPeriod = {
   start_at_utc: "2026-09-01T00:00:00Z",
   end_at_utc: "2026-10-01T00:00:00Z",
 };
+const inventoryOverview = {
+  total_spools: 2, total_owned_spools: 1, total_borrowed_in_spools: 1,
+  in_use: 2, owned_in_use: 1, borrowed_in_in_use: 1,
+  low_stock: 0, owned_low_stock: 0, borrowed_in_low_stock: 0,
+  total_consumption_30d: 2500, owned_consumption_30d: 1000, borrowed_in_consumption_30d: 1500,
+};
 const printers: PrinterOverviewRow[] = [
   {
     printer: { id: "atlas", name: "Atlas", model: "Bambu Lab P1S", created_at: "", updated_at: "" },
@@ -52,15 +58,17 @@ function periodResponse(period: StatisticsPeriod): StatisticsPeriodReport {
 
 async function buildPageHarness() {
   const requireFromUi = createRequire(new URL("../../package.json", import.meta.url));
-  const [{ build }, { default: react }] = await Promise.all([
+  const [{ build }, { default: react }, { default: tailwindcss }] = await Promise.all([
     import(pathToFileURL(requireFromUi.resolve("vite")).href),
     import(pathToFileURL(requireFromUi.resolve("@vitejs/plugin-react")).href),
+    import(pathToFileURL(requireFromUi.resolve("@tailwindcss/vite")).href),
   ]);
   const entry = fileURLToPath(new URL("./__statistics_analysis_lifecycle__.jsx", import.meta.url));
   const file = (relative: string) => JSON.stringify(fileURLToPath(new URL(relative, import.meta.url)));
   const source = `
     import React from "react";
     import { createRoot } from "react-dom/client";
+    import ${file("../index.css")};
     import StatisticsPage from ${file("./statistics.tsx")};
     import { I18nContext } from ${file("../lib/i18n.ts")};
     import { formatMessage } from ${file("../../../src-tauri/companion_browser/message_format.js")};
@@ -75,13 +83,17 @@ async function buildPageHarness() {
   const result = await build({
     root: fileURLToPath(new URL("../../", import.meta.url)), configFile: false,
     define: { "process.env.NODE_ENV": JSON.stringify("production") }, logLevel: "error",
-    plugins: [{ name: "statistics-analysis-lifecycle", enforce: "pre", resolveId: (id: string) => id === entry ? entry : null, load: (id: string) => id === entry ? source : null }, react()],
+    plugins: [{ name: "statistics-analysis-lifecycle", enforce: "pre", resolveId: (id: string) => id === entry ? entry : null, load: (id: string) => id === entry ? source : null }, tailwindcss(), react()],
     build: { write: false, minify: false, cssCodeSplit: false, lib: { entry, formats: ["iife"], name: "StatisticsAnalysisLifecycle" } },
   });
   const output = (Array.isArray(result) ? result : [result]).flatMap((result) => result.output);
   const script = output.find((file) => file.type === "chunk" && file.isEntry)?.code;
   assert.ok(script);
-  return `<html lang="en"><head><meta charset="UTF-8"></head><body><div id="root"></div><script>${script.replaceAll("</script", "<\\/script")}</script></body></html>`;
+  const css = output
+    .filter((file) => file.type === "asset" && file.fileName.endsWith(".css"))
+    .map((file) => file.source).join("\n");
+  assert.ok(css);
+  return `<html lang="en"><head><meta charset="UTF-8"><style>${css}</style></head><body><div id="root"></div><script>${script.replaceAll("</script", "<\\/script")}</script></body></html>`;
 }
 
 async function selectedView(page: Page, view: "consumption" | "value" | "printers") {
@@ -129,7 +141,7 @@ test("actual StatisticsPage keeps its range, keyboard navigation, filters and de
       switch (command) {
         case "get_library_sync_settings": return { mode: "STANDALONE", device_name: "Synthetic statistics" };
         case "list_spools": return [];
-        case "inventory_overview": return { total_spools: 2, total_owned_spools: 1, total_borrowed_in_spools: 1, in_use: 2, owned_in_use: 1, borrowed_in_in_use: 1, low_stock: 0, owned_low_stock: 0, borrowed_in_low_stock: 0, total_consumption_30d: 2500, owned_consumption_30d: 1000, borrowed_in_consumption_30d: 1500 };
+        case "inventory_overview": return inventoryOverview;
         case "list_printer_overview": return printers;
         case "list_loan_usage_by_person": return [];
         case "statistics_period_report": return periodResponse(payload.period as StatisticsPeriod);
@@ -232,6 +244,127 @@ test("actual StatisticsPage keeps its range, keyboard navigation, filters and de
     assert.deepEqual(requests, [], "the fixture must never reach a Host, printer or external service");
   } finally {
     await context.close();
+    await browser.close();
+  }
+});
+
+test("Statistics keeps its layout and last report visible while changing periods", { timeout: 60_000 }, async (t) => {
+  const html = await buildPageHarness();
+  const browser = await chromium.launch({ headless: true });
+  try {
+    for (const scenario of [
+      { mode: "HOST", tab: "Consumption", total: "2.50 kg" },
+      { mode: "CLIENT", tab: "Inventory value", total: /NOK\s125\.00/ },
+    ] as const) {
+      await t.test(scenario.mode, async () => {
+        const page = await browser.newPage({ locale: "en-US", timezoneId: "UTC", viewport: { width: 1280, height: 900 } });
+        const reportStarted = Promise.withResolvers<void>();
+        const releaseReport = Promise.withResolvers<void>();
+        const failedReportStarted = Promise.withResolvers<void>();
+        const releaseFailure = Promise.withResolvers<void>();
+        let reportCalls = 0;
+        try {
+          page.setDefaultTimeout(8_000);
+          await page.route("**/*", (route) => {
+            if (route.request().isNavigationRequest() && route.request().url() === "http://statistics.test/") {
+              return route.fulfill({ contentType: "text/html; charset=utf-8", body: html });
+            }
+            return route.abort();
+          });
+          await page.exposeFunction("statisticsInvoke", async (command: string, payload: Record<string, unknown> = {}) => {
+            switch (command) {
+              case "get_library_sync_settings":
+                return { mode: scenario.mode, device_name: "Test desktop", host_base_url: "https://host.test", library_id: "test-library" };
+              case "inventory_overview":
+                return inventoryOverview;
+              case "fetch_library_sync_snapshot":
+                return { inventory: inventoryOverview, captured_at: "2026-09-15T00:00:00Z" };
+              case "list_printer_overview":
+              case "fetch_library_sync_printer_overview":
+                return printers;
+              case "list_spools":
+              case "list_loan_usage_by_person":
+              case "fetch_library_sync_spools":
+              case "fetch_library_sync_loans":
+                return [];
+              case "statistics_period_report":
+              case "fetch_library_sync_statistics_period_report": {
+                const period = command === "statistics_period_report"
+                  ? payload.period as StatisticsPeriod
+                  : (payload.input as { period: StatisticsPeriod }).period;
+                const report = periodResponse(period);
+                reportCalls += 1;
+                if (reportCalls === 1) return report;
+                if (reportCalls === 3) {
+                  failedReportStarted.resolve();
+                  await releaseFailure.promise;
+                  throw new Error("Statistics report request failed");
+                }
+                reportStarted.resolve();
+                await releaseReport.promise;
+                return { ...report, total_used_g: 2230 };
+              }
+              default:
+                throw new Error(`Unexpected command in isolated statistics test: ${command}`);
+            }
+          });
+          await page.goto("http://statistics.test/", { waitUntil: "domcontentloaded" });
+          const tabs = page.getByRole("tablist", { name: "Statistics views" });
+          await tabs.getByRole("tab", { name: scenario.tab }).click();
+          const panel = page.getByRole("tabpanel", { name: scenario.tab });
+          const total = panel.getByText(scenario.total, { exact: true });
+          await total.waitFor();
+          await page.evaluate(async () => { await document.fonts.ready; });
+
+          const selectedRange = page.getByText(/^Selected: /);
+          const previousRange = (await selectedRange.innerText()).replace(/^Selected: /, "");
+          const previousPanelRange = panel.getByText(previousRange, { exact: true }).first();
+          assert.equal(await previousPanelRange.isVisible(), true);
+          const originalTabBounds = await tabs.boundingBox();
+          const originalPanelBounds = await panel.boundingBox();
+          assert.ok(originalTabBounds && originalPanelBounds);
+
+          const nextPreset = page.getByRole("button", { name: "90 d", exact: true });
+          await nextPreset.click();
+          await reportStarted.promise;
+          await page.evaluate(() => new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve()))));
+          const pendingFeedback = page.getByText(/Update or reconnect the host|Value and cost data is unavailable|Loading value and cost data|^Loading\.\.\.$/).and(page.locator(":visible"));
+          assert.equal(await pendingFeedback.count(), 0);
+          assert.equal(await nextPreset.getAttribute("aria-pressed"), "true");
+          const nextRange = (await selectedRange.innerText()).replace(/^Selected: /, "");
+          assert.notEqual(nextRange, previousRange);
+          assert.equal(await previousPanelRange.isVisible(), true);
+          assert.equal(await total.isVisible(), true);
+          assert.deepEqual(await tabs.boundingBox(), originalTabBounds);
+          assert.deepEqual(await panel.boundingBox(), originalPanelBounds);
+
+          releaseReport.resolve();
+          await panel.getByText(nextRange, { exact: true }).first().waitFor();
+          assert.equal(await previousPanelRange.isVisible(), false);
+          assert.equal(await pendingFeedback.count(), 0);
+          if (scenario.mode === "HOST") {
+            await panel.getByText("2.23 kg", { exact: true }).waitFor();
+          } else {
+            assert.equal(await total.isVisible(), true);
+          }
+
+          const failure = page.getByText(scenario.mode === "HOST"
+            ? "Failed to load statistics."
+            : /The request could not be completed/).and(page.locator(":visible"));
+          await page.getByRole("button", { name: "Last 12 months", exact: true }).click();
+          await failedReportStarted.promise;
+          assert.equal(await failure.count(), 0);
+          assert.equal(await pendingFeedback.count(), 0);
+          releaseFailure.resolve();
+          await failure.first().waitFor();
+        } finally {
+          releaseReport.resolve();
+          releaseFailure.resolve();
+          await page.close();
+        }
+      });
+    }
+  } finally {
     await browser.close();
   }
 });

@@ -78,7 +78,7 @@ test("cached statistics use one settled Host warning", () => {
   );
   assert.match(
     source,
-    /!loading && tauri && clientStatsSource === "LIVE" && periodStatus !== "AVAILABLE"/,
+    /clientReadOnly && !loading && !error && clientStatsSource === "LIVE" && periodStatus !== "AVAILABLE"/,
   );
   assert.match(source, /onRetry=\{\(\) => void reloadData\(\)\}/);
 });
