@@ -1,12 +1,16 @@
 use super::{
     bambu_material_families, bambu_response_is_blocking, canonical_base_url,
     discover_bambu_material_channels_with_fetch, infer_material, normalize_material_filters,
-    official_bambu_hex_codes, parse_bambu_next_collection_page, read_bounded_utf8_response,
-    refresh_bambu_catalog_snapshot_from_source_with_fetch, require_single_material_filter,
-    resolve_bambu_hex, validate_bambu_refresh_snapshot_for_mutation, BambuCatalogEntry,
-    BambuCatalogRefreshSnapshot, DetectStoreResult, DiscoveryHttpResponse,
-    TARGETED_DETAIL_MAX_REQUESTS, USER_AGENT,
+    official_bambu_hex_codes, parse_bambu_next_collection_page, parse_bambu_product_group_entries,
+    read_bounded_utf8_response, refresh_bambu_catalog_snapshot_from_source_with_fetch,
+    require_single_material_filter, resolve_bambu_hex,
+    validate_bambu_refresh_snapshot_for_mutation, BambuCatalogEntry, BambuCatalogRefreshSnapshot,
+    BambuCollectionProduct, DetectStoreResult, DiscoveryHttpResponse, TARGETED_DETAIL_MAX_REQUESTS,
+    USER_AGENT,
 };
+use crate::backend::database_catalog_inputs::SourceCatalogEntryInput;
+use crate::backend::database_core::FilamentDatabase;
+use rusqlite::params;
 use std::collections::HashSet;
 use std::io::Cursor;
 
@@ -867,6 +871,213 @@ fn targeted_refresh_fetches_only_the_selected_family_and_dedupes_spool_variants(
     assert_eq!(snapshot.entries[1].color_name, "Jade White (10100)");
     assert_eq!(snapshot.entries[1].hex_color.as_deref(), Some("#FFFFFF"));
     assert!(validate_bambu_refresh_snapshot_for_mutation(&snapshot).is_ok());
+}
+
+#[test]
+fn targeted_cf_refresh_imports_both_store_sizes_as_one_stable_color() {
+    let source = DetectStoreResult {
+        base_url: "https://eu.store.bambulab.com".to_string(),
+        handle: "filament".to_string(),
+    };
+    let db = FilamentDatabase::open(":memory:").expect("open isolated library");
+    db.apply_schema().expect("prepare isolated library");
+
+    // The two variant IDs for each color come from the Bambu EU storefront.
+    for (material, color_code, skus) in [
+        ("PA6", "72100", ["47023571468636", "47023571534172"]),
+        ("PAHT", "70100", ["43923846856923", "43923846889691"]),
+        ("PET", "71100", ["44012072730843", "44012072763611"]),
+    ] {
+        let product = format!("{material}-CF");
+        let handle = product.to_ascii_lowercase();
+        let color = format!("Black ({color_code})");
+        let product_url = format!("{}/products/{handle}", source.base_url);
+        let products = [("listing-id".to_string(), handle, product.clone())];
+        let sizes = if material == "PA6" {
+            ["0.5kg", "1kg"]
+        } else {
+            ["0.5 kg", "1 kg"]
+        };
+        let names = sizes.map(|size| format!("{product} - {color} / Filament with spool / {size}"));
+        let mut variants =
+            [0, 1].map(|index| (skus[index], names[index].as_str(), serde_json::Value::Null));
+
+        let master_id: String = db
+            .conn
+            .query_row(
+                "UPDATE filament_master_list SET default_weight = 500
+             WHERE vendor = 'Bambu' AND material = ?1 AND filament_name = ?2 AND color_name = ?3
+             RETURNING id",
+                params![material, product, color],
+                |row| row.get(0),
+            )
+            .expect("set the library's existing 500 g default");
+        db.conn
+            .execute(
+                "INSERT INTO filament_spools (id, master_id, status, initial_weight_g, remaining_g)
+             VALUES (?1, ?2, 'AVAILABLE', 500, 420)",
+                params![material, master_id],
+            )
+            .expect("link a partly used 500 g spool");
+
+        // Refresh both orders, then check the result as well as a repeat import.
+        for _ in 0..2 {
+            let snapshot = refresh_bambu_catalog_snapshot_from_source_with_fetch(
+                &source,
+                material,
+                false,
+                |url| {
+                    if url.ends_with("/collections/filament") {
+                        return Ok(html_response(
+                            url,
+                            next_collection_html(1, 12, 1, &products, false),
+                        ));
+                    }
+                    assert_eq!(url, product_url);
+                    Ok(html_response(
+                        url,
+                        product_group_html(&product, url, &variants),
+                    ))
+                },
+            )
+            .expect("both spool sizes must be accepted");
+            validate_bambu_refresh_snapshot_for_mutation(&snapshot)
+                .expect("complete Bambu refresh");
+            let [entry] = &snapshot.entries[..] else {
+                panic!("the catalog must still expose one product color");
+            };
+            assert_eq!(entry.filament_name, product);
+            assert_eq!(entry.color_name, color);
+            assert_eq!(entry.default_weight_g, 1000);
+
+            let refresh_started_at = db.sqlite_now().expect("get refresh start time");
+            let stats = db
+                .import_source_vendor_catalog(
+                    "Bambu",
+                    material,
+                    &refresh_started_at,
+                    &[SourceCatalogEntryInput {
+                        material: &entry.material,
+                        filament_name: &entry.filament_name,
+                        color_name: &entry.color_name,
+                        hex_color: entry.hex_color.as_deref(),
+                        product_url: &entry.product_url,
+                        default_weight: entry.default_weight_g,
+                    }],
+                )
+                .expect("import Bambu catalog");
+            assert_eq!(stats.updated_count, 1);
+            assert_eq!(stats.inserted_count, 0);
+            variants.reverse();
+        }
+
+        let library_row: (String, i64, i64, i64) = db.conn.query_row(
+            "SELECT master.id, master.default_weight, spool.initial_weight_g, spool.remaining_g
+             FROM filament_spools AS spool
+             JOIN filament_master_list AS master ON master.id = spool.master_id WHERE spool.id = ?1",
+            [material],
+            |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?, row.get(3)?)),
+        ).expect("check the existing spool and catalog entry");
+        assert_eq!(library_row, (master_id, 500, 500, 420));
+    }
+}
+
+#[test]
+fn product_group_distinguishes_explicit_sizes_from_missing_size() {
+    let product = BambuCollectionProduct {
+        id: "id".to_string(),
+        handle: "test".to_string(),
+        name: "PLA Basic".to_string(),
+    };
+    let base_url = "https://store.example";
+    let product_url = "https://store.example/products/test";
+    let variants = [
+        (
+            "without-size",
+            "PLA Basic - White (10100) / Refill",
+            serde_json::Value::Null,
+        ),
+        (
+            "large",
+            "PLA Basic - White (10100) / Filament with spool / 2 kg",
+            serde_json::Value::Null,
+        ),
+        (
+            "small",
+            "PLA Basic - White (10100) / Filament with spool / 500 g",
+            serde_json::Value::Null,
+        ),
+        (
+            "fallback",
+            "PLA Basic - Red (10200) / Refill",
+            serde_json::Value::Null,
+        ),
+    ];
+    let entries = parse_bambu_product_group_entries(
+        &product_group_html(&product.name, product_url, &variants),
+        &product,
+        "PLA",
+        base_url,
+        product_url,
+    )
+    .expect("explicit weights are preferred to an absent size");
+
+    assert_eq!(entries[0].default_weight_g, 500);
+    assert_eq!(entries[1].default_weight_g, 1000);
+}
+
+#[test]
+fn product_group_rejects_contradictory_sku_weights_and_missing_skus() {
+    let product = BambuCollectionProduct {
+        id: "id".to_string(),
+        handle: "test".to_string(),
+        name: "PET-CF".to_string(),
+    };
+    let base_url = "https://store.example";
+    let product_url = "https://store.example/products/test";
+    for (variants, reason) in [
+        (
+            [
+                (
+                    "duplicate",
+                    "PET-CF - Black (71100) / Filament with spool / 500 g",
+                ),
+                (
+                    "duplicate",
+                    "PET-CF - Black (71100) / Filament with spool / 1 kg",
+                ),
+            ],
+            "SKU 'duplicate' disagreed on color or weight",
+        ),
+        (
+            [
+                (
+                    "one",
+                    "PET-CF - Black (71100) / Filament with spool / 500 g / 1 kg",
+                ),
+                ("two", "PET-CF - Black (71100) / Filament with spool / 1 kg"),
+            ],
+            "had conflicting weights",
+        ),
+        (
+            [
+                ("", "PET-CF - Black (71100) / Filament with spool / 500 g"),
+                ("two", "PET-CF - Black (71100) / Filament with spool / 1 kg"),
+            ],
+            "contained an incomplete variant",
+        ),
+    ] {
+        let variants = variants.map(|(sku, name)| (sku, name, serde_json::Value::Null));
+        let error = parse_bambu_product_group_entries(
+            &product_group_html(&product.name, product_url, &variants),
+            &product,
+            "PET",
+            base_url,
+            product_url,
+        )
+        .expect_err("the product group does not prove distinct sold sizes");
+        assert!(error.contains(reason), "{error}");
+    }
 }
 
 #[test]

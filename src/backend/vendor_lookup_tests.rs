@@ -1,9 +1,10 @@
 use super::{
-    build_esun_scoped_snapshot, build_esun_source_discovery, infer_material, is_anti_bot_response,
-    normalize_esun_swatch_value, parse_esun_graphql_catalog_response,
-    validate_esun_graphql_http_response, validate_single_esun_material_filter,
-    EsunGraphqlHttpError, ESUN_DISCOVERY_QUERY, ESUN_GRAPHQL_MAX_REQUESTS_PER_OPERATION,
-    ESUN_MAGENTO_GRAPHQL_URL, ESUN_SCOPED_CATALOG_QUERY, ESUN_USER_AGENT,
+    build_esun_scoped_snapshot, build_esun_source_discovery, has_cloudflare_challenge,
+    infer_material, is_anti_bot_response, normalize_esun_swatch_value,
+    parse_esun_graphql_catalog_response, validate_esun_graphql_http_response,
+    validate_single_esun_material_filter, EsunGraphqlHttpError, ESUN_DISCOVERY_QUERY,
+    ESUN_GRAPHQL_MAX_REQUESTS_PER_OPERATION, ESUN_MAGENTO_GRAPHQL_URL, ESUN_SCOPED_CATALOG_QUERY,
+    ESUN_USER_AGENT,
 };
 
 const COMPLETE_MAGENTO_FIXTURE: &str = r##"
@@ -228,21 +229,28 @@ fn http_validation_treats_html_challenges_and_rate_limits_as_blocking() {
         validate_esun_graphql_http_response(
             200,
             "text/html; charset=utf-8",
+            false,
             "<!doctype html><title>Just a moment</title>"
         ),
         Err(EsunGraphqlHttpError::Blocked(_))
     ));
     assert!(matches!(
-        validate_esun_graphql_http_response(429, "application/json", "{}"),
+        validate_esun_graphql_http_response(429, "application/json", false, "{}"),
         Err(EsunGraphqlHttpError::Blocked(_))
     ));
     assert!(matches!(
-        validate_esun_graphql_http_response(503, "application/json", "{}"),
-        Err(EsunGraphqlHttpError::Blocked(_))
+        validate_esun_graphql_http_response(503, "application/json", false, "{}"),
+        Err(EsunGraphqlHttpError::Failed(_))
     ));
-    assert!(validate_esun_graphql_http_response(200, "application/json", "{}").is_ok());
-    assert!(is_anti_bot_response(200, "<html>access denied</html>"));
-    assert!(is_anti_bot_response(200, "verify you are human"));
+    assert!(validate_esun_graphql_http_response(200, "application/json", false, "{}").is_ok());
+    assert!(is_anti_bot_response(
+        200,
+        "<html><title>access denied</title></html>"
+    ));
+    assert!(is_anti_bot_response(
+        200,
+        "<html>verify you are human</html>"
+    ));
     assert!(is_anti_bot_response(403, ""));
 }
 
@@ -251,7 +259,7 @@ fn ordinary_html_errors_do_not_trigger_an_access_cooldown() {
     // A Cloudflare footer also appears on ordinary error pages; it is not a challenge.
     let not_found =
         "<!doctype html><html><title>404 Not Found</title><footer>Cloudflare</footer></html>";
-    let error = validate_esun_graphql_http_response(404, "text/html", not_found)
+    let error = validate_esun_graphql_http_response(404, "text/html", false, not_found)
         .expect_err("a missing endpoint must fail");
     assert!(matches!(error, EsunGraphqlHttpError::Failed(_)));
     let message = error.into_message();
@@ -261,7 +269,12 @@ fn ordinary_html_errors_do_not_trigger_an_access_cooldown() {
 
     for status in [400, 405, 500, 502] {
         assert!(matches!(
-            validate_esun_graphql_http_response(status, "text/html", "<html>Server error</html>"),
+            validate_esun_graphql_http_response(
+                status,
+                "text/html",
+                false,
+                "<html>Server error</html>"
+            ),
             Err(EsunGraphqlHttpError::Failed(_))
         ));
     }
@@ -274,6 +287,7 @@ fn successful_html_is_a_format_error_unless_it_contains_a_challenge() {
             validate_esun_graphql_http_response(
                 200,
                 content_type,
+                false,
                 "<!doctype html><html>eSUN store</html>"
             ),
             Err(EsunGraphqlHttpError::Failed(_))
@@ -282,14 +296,43 @@ fn successful_html_is_a_format_error_unless_it_contains_a_challenge() {
     for status in [200, 404] {
         for body in [
             "<html><title>Just a moment</title></html>",
-            "<script src=\"/cdn-cgi/challenge-platform/scripts/jsd/main.js\"></script>",
+            "<script src=\"/cdn-cgi/challenge-platform/h/g/orchestrate/chl_page/v1\"></script>",
         ] {
             assert!(matches!(
-                validate_esun_graphql_http_response(status, "text/html", body),
+                validate_esun_graphql_http_response(status, "text/html", false, body),
                 Err(EsunGraphqlHttpError::Blocked(_))
             ));
         }
     }
+}
+
+#[test]
+fn cloudflare_challenge_header_distinguishes_access_restriction_from_missing_endpoint() {
+    let mut headers = reqwest::header::HeaderMap::new();
+    assert!(!has_cloudflare_challenge(&headers));
+    headers.insert(
+        "cf-mitigated",
+        reqwest::header::HeaderValue::from_static("challenge"),
+    );
+    let challenge = has_cloudflare_challenge(&headers);
+    assert!(challenge);
+    let error = validate_esun_graphql_http_response(404, "text/html", challenge, "<html></html>")
+        .expect_err("a challenge may also return HTTP 404");
+    assert!(matches!(error, EsunGraphqlHttpError::Blocked(_)));
+    assert!(error.into_message().contains("Cloudflare challenged"));
+
+    let json = r#"{"text":"<title>Just a moment</title> Verify you are human"}"#;
+    assert!(validate_esun_graphql_http_response(200, "application/json", false, json).is_ok());
+    assert!(matches!(
+        validate_esun_graphql_http_response(404, "application/json", false, json),
+        Err(EsunGraphqlHttpError::Failed(_))
+    ));
+
+    let ordinary_page = r#"<html><title>Not Found</title><script src="/cdn-cgi/challenge-platform/scripts/jsd/main.js"></script></html>"#;
+    assert!(matches!(
+        validate_esun_graphql_http_response(404, "text/html", false, ordinary_page),
+        Err(EsunGraphqlHttpError::Failed(_))
+    ));
 }
 
 #[test]

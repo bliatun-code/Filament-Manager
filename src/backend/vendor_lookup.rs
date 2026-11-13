@@ -396,6 +396,7 @@ fn fetch_esun_graphql_catalog(client: &Client, query: &str) -> Result<String, St
     };
 
     let status_code = response.status().as_u16();
+    let challenge = has_cloudflare_challenge(response.headers());
     let content_type = response
         .headers()
         .get(reqwest::header::CONTENT_TYPE)
@@ -413,7 +414,9 @@ fn fetch_esun_graphql_catalog(client: &Client, query: &str) -> Result<String, St
     };
     gate.last_request_finished = Some(Instant::now());
 
-    if let Err(error) = validate_esun_graphql_http_response(status_code, &content_type, &body) {
+    if let Err(error) =
+        validate_esun_graphql_http_response(status_code, &content_type, challenge, &body)
+    {
         if matches!(error, EsunGraphqlHttpError::Blocked(_)) {
             gate.blocked_until = Some(Instant::now() + ESUN_GRAPHQL_BLOCK_COOLDOWN);
         }
@@ -426,15 +429,21 @@ fn fetch_esun_graphql_catalog(client: &Client, query: &str) -> Result<String, St
 fn validate_esun_graphql_http_response(
     status_code: u16,
     content_type: &str,
+    challenge: bool,
     body: &str,
 ) -> Result<(), EsunGraphqlHttpError> {
     let body_lower = body.to_ascii_lowercase();
     let looks_html = content_type.to_ascii_lowercase().contains("text/html")
         || body_lower.trim_start().starts_with("<!doctype html")
         || body_lower.trim_start().starts_with("<html");
+    if challenge {
+        return Err(EsunGraphqlHttpError::Blocked(format!(
+            "Cloudflare challenged the eSUN catalog request (HTTP {status_code}). Local catalog data stays unchanged."
+        )));
+    }
     if is_anti_bot_response(status_code, &body_lower) {
         return Err(EsunGraphqlHttpError::Blocked(format!(
-            "eSUN GraphQL request was blocked or challenged (HTTP {status_code}); no retry was attempted and local catalog data stays unchanged."
+            "The eSUN catalog source restricted automated access (HTTP {status_code}). Local catalog data stays unchanged."
         )));
     }
     if status_code == 404 {
@@ -791,6 +800,7 @@ fn fetch_text_with_client(client: &Client, url: &Url) -> Result<String, String> 
         }
     };
     let status = response.status();
+    let challenge = has_cloudflare_challenge(response.headers());
     let body = match response.text() {
         Ok(body) => body,
         Err(error) => {
@@ -802,7 +812,7 @@ fn fetch_text_with_client(client: &Client, url: &Url) -> Result<String, String> 
     };
     gate.last_request_finished = Some(Instant::now());
     let body_lower = body.to_ascii_lowercase();
-    if is_anti_bot_response(status.as_u16(), &body_lower) {
+    if challenge || is_anti_bot_response(status.as_u16(), &body_lower) {
         gate.blocked_until = Some(Instant::now() + ESUN_GRAPHQL_BLOCK_COOLDOWN);
         return Err(format!(
             "Lookup blocked by anti-bot protection ({status}); no retry was attempted"
@@ -1147,18 +1157,22 @@ fn wait_for_esun_request_interval(gate: &EsunGraphqlRequestGate) {
     }
 }
 
+fn has_cloudflare_challenge(headers: &reqwest::header::HeaderMap) -> bool {
+    headers
+        .get("cf-mitigated")
+        .and_then(|value| value.to_str().ok())
+        .is_some_and(|value| value.eq_ignore_ascii_case("challenge"))
+}
+
 fn is_anti_bot_response(status_code: u16, body_lower: &str) -> bool {
-    matches!(status_code, 403 | 429 | 503)
-        || body_lower.contains("just a moment")
-        || body_lower.contains("cf-mitigated")
-        || body_lower.contains("cf-chl-")
-        || body_lower.contains("/cdn-cgi/challenge-platform/")
-        || body_lower.contains("attention required")
-        || body_lower.contains("access denied")
-        || body_lower.contains("captcha")
-        || body_lower.contains("too many requests")
-        || body_lower.contains("rate limit")
-        || body_lower.contains("verify you are human")
+    let markup = body_lower.trim_start_matches(|ch: char| ch.is_whitespace() || ch == '\u{feff}');
+    matches!(status_code, 403 | 429)
+        || (markup.starts_with('<')
+            && (markup.contains("<title>just a moment")
+                || markup.contains("<title>attention required")
+                || markup.contains("<title>access denied")
+                || markup.contains("/cdn-cgi/challenge-platform/h/")
+                || markup.contains("verify you are human")))
 }
 
 #[cfg(test)]
