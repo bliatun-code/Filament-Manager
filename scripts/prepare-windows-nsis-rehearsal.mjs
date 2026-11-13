@@ -45,14 +45,19 @@ export function selectNsisRehearsalVersion(packageVersion, msiSourceTags) {
 }
 
 export function prepareNsisRehearsalConfig(packageVersion, sourceTags, installerConfig) {
-  const nsis = installerConfig.bundle?.windows?.nsis;
+  const windows = installerConfig.bundle?.windows;
+  const nsis = windows?.nsis;
   if (nsis?.installMode !== "currentUser" || !nsis.installerHooks || !nsis.template) {
     throw new Error("The NSIS rehearsal requires the per-user migration hooks and template.");
+  }
+  if (windows.allowDowngrades !== false) {
+    throw new Error("The NSIS rehearsal requires Windows downgrades to be disabled.");
   }
   return {
     version: selectNsisRehearsalVersion(packageVersion, sourceTags),
     bundle: {
       windows: {
+        ...windows,
         nsis: {
           ...nsis,
           installerHooks: resolve("src-tauri", nsis.installerHooks),

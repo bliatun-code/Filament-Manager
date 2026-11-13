@@ -23,10 +23,11 @@ test("NSIS rehearsal uses a greater candidate version without mutating the relea
   assert.throws(() => selectNsisRehearsalVersion("0.35.65535", ["v0.35.65535"]), /Bump the package version/);
 });
 
-test("temporary configuration uses the per-user migration template and hooks", () => {
+test("temporary configuration uses the per-user migration template, hooks, and downgrade policy", () => {
   const installerConfig = {
     bundle: {
       windows: {
+        allowDowngrades: false,
         nsis: {
           installMode: "currentUser",
           installerHooks: "../scripts/test-hooks.nsh",
@@ -40,12 +41,17 @@ test("temporary configuration uses the per-user migration template and hooks", (
   const override = prepareNsisRehearsalConfig("0.35.1", sourceTags, installerConfig);
   const { nsis } = override.bundle.windows;
   assert.equal(override.version, "0.35.2-rc.1");
+  assert.equal(override.bundle.windows.allowDowngrades, false);
   assert.equal(nsis.installMode, "currentUser");
   assert.equal(nsis.startMenuFolder, "Filament Manager");
   assert.ok(isAbsolute(nsis.installerHooks));
   assert.ok(isAbsolute(nsis.template));
   assert.deepEqual(installerConfig, snapshot);
   assert.throws(() => prepareNsisRehearsalConfig("0.35.1", sourceTags, {}), /per-user migration hooks/);
+  installerConfig.bundle.windows.allowDowngrades = true;
+  assert.throws(() => prepareNsisRehearsalConfig("0.35.1", sourceTags, installerConfig), /downgrades to be disabled/);
+  delete installerConfig.bundle.windows.allowDowngrades;
+  assert.throws(() => prepareNsisRehearsalConfig("0.35.1", sourceTags, installerConfig), /downgrades to be disabled/);
 });
 
 test("NSIS candidate builds from manual main or a scoped PR without release permissions", () => {
