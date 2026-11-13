@@ -1,6 +1,10 @@
 import { useId, useState, type Dispatch, type SetStateAction } from "react";
 import { useI18n } from "../lib/i18n";
 import {
+  readVersionedLocalPreference,
+  writeVersionedLocalPreference,
+} from "../lib/local_preference_storage";
+import {
   resolveLiveConnectionIndicator,
 } from "../lib/printer_live_display";
 import { hasConfiguredMultiMaterial } from "../lib/printer_profiles";
@@ -18,6 +22,10 @@ import type {
 import { PrinterOverviewCardHeader } from "./printer_overview_card_header";
 import { PrinterSlotCard } from "./printer_slot_card";
 import { PrinterSlotSummaryStrip } from "./printer_slot_summary_strip";
+
+function normalizeSlotVisibility(value: unknown) {
+  return value === "expanded" || value === "collapsed" ? value : null;
+}
 
 type PrinterOverviewCardProps = {
   printer: PrinterOverviewRow;
@@ -99,10 +107,20 @@ export function PrinterOverviewCard({
 }: PrinterOverviewCardProps) {
   const { t } = useI18n();
   const slotGridId = useId();
-  const [slotsExpanded, setSlotsExpanded] = useState(defaultSlotsExpanded);
+  const slotVisibilityPreference = {
+    key: `bfm-printer-slot-visibility:${printer.printer.id}`,
+    version: 1,
+    normalize: normalizeSlotVisibility,
+  };
+  const [slotVisibility, setSlotVisibility] = useState(() =>
+    readVersionedLocalPreference({
+      ...slotVisibilityPreference,
+      fallback: defaultSlotsExpanded ? "expanded" : "collapsed",
+    }),
+  );
   const hasMultiMaterial = hasConfiguredMultiMaterial(printer.slots);
   const hasOpenDropdown = printer.slots.some((slot) => slot.slot_id === openDropdownSlotId);
-  const showSlots = slotsExpanded || hasOpenDropdown;
+  const showSlots = slotVisibility === "expanded" || hasOpenDropdown;
   const printerLiveConfig = bambuLiveIntegrations[printer.printer.id] ?? null;
   const liveConnectionIndicator = resolveLiveConnectionIndicator(
     printerLiveConfig,
@@ -142,14 +160,12 @@ export function PrinterOverviewCard({
             aria-controls={slotGridId}
             aria-expanded={showSlots}
             onClick={() => {
-              if (showSlots) {
-                if (hasOpenDropdown) {
-                  setOpenDropdownSlotId(null);
-                }
-                setSlotsExpanded(false);
-                return;
+              if (hasOpenDropdown) {
+                setOpenDropdownSlotId(null);
               }
-              setSlotsExpanded(true);
+              const value = showSlots ? "collapsed" : "expanded";
+              setSlotVisibility(value);
+              writeVersionedLocalPreference({ ...slotVisibilityPreference, value });
             }}
           >
             {showSlots
