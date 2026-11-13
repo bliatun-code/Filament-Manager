@@ -2,12 +2,12 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import type { I18nContextValue } from "../lib/i18n";
 import { usePageRefreshState } from "../lib/page_refresh_state";
 import { loadStatisticsPageData } from "../lib/statistics_data_source";
+import type { ResolvedStatisticsPeriod } from "../lib/statistics_period_model";
 import type {
   FilamentConsumptionRow,
   InventoryOverview,
   LoanUsageByPersonRow,
   PrinterOverviewRow,
-  StatisticsPeriod,
   StatisticsPeriodReport,
 } from "../lib/tauri_client";
 import type {
@@ -20,14 +20,19 @@ import type {
 type Translate = I18nContextValue["t"];
 
 export function useStatisticsPageData({
-  period,
+  range,
   tauri,
   t,
 }: {
-  period: StatisticsPeriod;
+  range: ResolvedStatisticsPeriod;
   tauri: boolean;
   t: Translate;
 }) {
+  const {
+    startDate,
+    endDate,
+    period: { start_at_utc, end_at_utc },
+  } = range;
   const [overview, setOverview] = useState<InventoryOverview | null>(null);
   const [printers, setPrinters] = useState<PrinterOverviewRow[]>([]);
   const [spoolRows, setSpoolRows] = useState<NormalizedSpoolWithMasterRow[]>([]);
@@ -53,9 +58,11 @@ export function useStatisticsPageData({
   const [clientStatsSource, setClientStatsSource] =
     useState<StatisticsSnapshotSource>("OFFLINE");
   const [clientStatisticsUpdatedAt, setClientStatisticsUpdatedAt] = useState<string | null>(null);
-  const [periodReport, setPeriodReport] = useState<StatisticsPeriodReport | null>(null);
-  const [periodStatus, setPeriodStatus] =
-    useState<StatisticsPeriodDataStatus>("UNAVAILABLE");
+  const [periodResult, setPeriodResult] = useState<{
+    range: Pick<ResolvedStatisticsPeriod, "startDate" | "endDate">;
+    report: StatisticsPeriodReport | null;
+    status: StatisticsPeriodDataStatus;
+  } | null>(null);
 
   const loadStatistics = useCallback(
     async () => {
@@ -65,13 +72,8 @@ export function useStatisticsPageData({
       const requestId = loadRequestRef.current + 1;
       loadRequestRef.current = requestId;
       beginRefresh();
-      setPeriodReport(null);
-      setPeriodStatus("UNAVAILABLE");
       try {
-        const result = await loadStatisticsPageData({
-          start_at_utc: period.start_at_utc,
-          end_at_utc: period.end_at_utc,
-        });
+        const result = await loadStatisticsPageData({ start_at_utc, end_at_utc });
         if (requestId !== loadRequestRef.current) {
           return;
         }
@@ -89,8 +91,11 @@ export function useStatisticsPageData({
         setLoanDetails(result.loanDetails);
         setLoanUsage(result.loanUsage);
         setInboundLoanUsage(result.inboundLoanUsage);
-        setPeriodReport(result.periodReport);
-        setPeriodStatus(result.periodStatus);
+        setPeriodResult({
+          range: { startDate, endDate },
+          report: result.periodReport,
+          status: result.periodStatus,
+        });
         setClientStatisticsUpdatedAt(result.updatedAt);
         setClientStatsSource(result.source);
         completeRefresh();
@@ -104,9 +109,11 @@ export function useStatisticsPageData({
     [
       beginRefresh,
       completeRefresh,
+      endDate,
+      end_at_utc,
       failRefresh,
-      period.end_at_utc,
-      period.start_at_utc,
+      startDate,
+      start_at_utc,
       t,
       tauri,
     ],
@@ -130,10 +137,11 @@ export function useStatisticsPageData({
     loanUsage,
     overview,
     overviewConsumptionRows,
-    periodReport,
-    periodStatus,
+    periodReport: periodResult?.report ?? null,
+    periodStatus: periodResult?.status ?? "UNAVAILABLE",
     printers,
     refreshing,
+    renderedPeriodRange: periodResult?.range ?? null,
     reloadData: loadStatistics,
     spoolRows,
   };
