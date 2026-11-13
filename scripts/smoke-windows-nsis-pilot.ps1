@@ -72,38 +72,35 @@ function Assert-Absent {
     }
 }
 
-function Test-DefaultDatabaseOpen {
-    # SQLite holds the default file open while the app is running. An exclusive
-    # open can succeed only when the app is no longer using that file.
-    try {
-        $stream = [IO.File]::Open($database, "Open", "Read", "None")
-        $stream.Dispose()
-        return $false
-    }
-    catch [IO.IOException] {
-        if (($_.Exception.HResult -band 0xffff) -ne 32) { throw }
-        return $true
-    }
-}
-
 function Test-InstalledApp {
     param([string]$Label)
 
-    if (Test-DefaultDatabaseOpen) { throw "The database is already open." }
-    $app = Start-Process -FilePath $installedApp -WorkingDirectory $installDirectory -PassThru
+    & node $databaseCheck prepare-launch $database $snapshot
+    if ($LASTEXITCODE -ne 0) { throw "Could not prepare the default database for $Label startup." }
+
+    $launch = @{
+        FilePath = $installedApp
+        WorkingDirectory = $installDirectory
+        RedirectStandardOutput = (Join-Path $Logs "$Label-app-stdout.log")
+        RedirectStandardError = (Join-Path $Logs "$Label-app-stderr.log")
+        PassThru = $true
+    }
+    $app = Start-Process @launch
     try {
         $deadline = [DateTime]::UtcNow.AddSeconds(90)
         $verificationLog = Join-Path $Logs "$Label-database.log"
         do {
             $app.Refresh()
-            if ($app.HasExited) { throw "$Label exited before the database was ready." }
-            if (Test-DefaultDatabaseOpen) {
-                $result = & node $databaseCheck verify $database $snapshot 2>&1
-                $result | Set-Content -LiteralPath $verificationLog
-                if ($LASTEXITCODE -eq 0) {
-                    $result | Write-Host
-                    return
+            if ($app.HasExited) { throw "$Label exited before the database was ready (code $($app.ExitCode))." }
+            $result = & node $databaseCheck verify-launch $database $snapshot 2>&1
+            $verificationExit = $LASTEXITCODE
+            $result | Set-Content -LiteralPath $verificationLog
+            if ($verificationExit -eq 0) {
+                if ($app.WaitForExit(1000)) {
+                    throw "$Label exited immediately after opening the database (code $($app.ExitCode))."
                 }
+                $result | Write-Host
+                return
             }
             Start-Sleep -Seconds 1
         } while ([DateTime]::UtcNow -lt $deadline)
