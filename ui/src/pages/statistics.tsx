@@ -112,8 +112,9 @@ export default function StatisticsPage({ onOpenFilamentDefaults }: StatisticsPag
     printers,
     refreshing,
     reloadData,
+    renderedPeriodRange,
     spoolRows,
-  } = useStatisticsPageData({ period: periodPickerState.period, tauri, t });
+  } = useStatisticsPageData({ range: periodPickerState, tauri, t });
   const [showConsumptionModal, setShowConsumptionModal] = useState(false);
   const [consumptionModalTitle, setConsumptionModalTitle] = useState("");
   const [consumptionRows, setConsumptionRows] = useState<FilamentConsumptionRow[]>([]);
@@ -193,9 +194,10 @@ export default function StatisticsPage({ onOpenFilamentDefaults }: StatisticsPag
     }
   }, [borrowerPrefs]);
 
+  const displayedRange = renderedPeriodRange ?? periodPickerState;
   const periodRangeLabel = useMemo(
-    () => formatStatisticsPeriodRange(periodPickerState, locale),
-    [locale, periodPickerState],
+    () => formatStatisticsPeriodRange(displayedRange, locale),
+    [displayedRange, locale],
   );
   const currentTotals = useMemo(() => deriveStatisticsTotals(printers), [printers]);
   const periodPrinters = useMemo(
@@ -511,7 +513,7 @@ export default function StatisticsPage({ onOpenFilamentDefaults }: StatisticsPag
           retrying={refreshing}
         />
       ) : null}
-      {!loading && tauri && clientStatsSource === "LIVE" && periodStatus !== "AVAILABLE" ? (
+      {clientReadOnly && !loading && !error && clientStatsSource === "LIVE" && periodStatus !== "AVAILABLE" ? (
         <FeedbackBanner tone="warning" className="mt-4">
           {t(
             "statistics.periodDetailsUnavailable",
