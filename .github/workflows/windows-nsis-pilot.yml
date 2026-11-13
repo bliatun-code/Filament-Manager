@@ -114,7 +114,6 @@ jobs:
           if ($installers.Count -ne 1) { throw "Expected exactly one NSIS pilot installer." }
           $pilot = @{
             Installer = $installers[0].FullName
-            Candidate = "$buildDirectory/bambu-filament-manager.exe"
             Logs = (Join-Path $env:RUNNER_TEMP "filament-manager-nsis-logs")
             Fixture = (Join-Path $env:RUNNER_TEMP "windows-nsis-pilot-fixture/windows-nsis-pilot.db")
             FixtureSha256 = $env:FIXTURE_SHA256

@@ -1,7 +1,6 @@
 [CmdletBinding()]
 param(
     [Parameter(Mandatory = $true)][string]$Installer,
-    [Parameter(Mandatory = $true)][string]$Candidate,
     [Parameter(Mandatory = $true)][string]$Logs,
     [Parameter(Mandatory = $true)][string]$Fixture,
     [Parameter(Mandatory = $true)][ValidatePattern("^[0-9a-fA-F]{64}$")][string]$FixtureSha256
@@ -125,6 +124,17 @@ function Assert-CandidateInstalled {
     }
 }
 
+function Get-PilotPayloadHash {
+    $extractDirectory = Join-Path $env:RUNNER_TEMP "filament-manager-nsis-payload"
+    New-Item -ItemType Directory -Path $extractDirectory | Out-Null
+    $sevenZip = (Get-Command "7z.exe" -CommandType Application).Source
+    & $sevenZip x "-o$extractDirectory" -y $Installer "-ir!bambu-filament-manager.exe" | Write-Host
+    if ($LASTEXITCODE -ne 0) { throw "Could not extract the app payload from the NSIS installer." }
+    $payloads = @(Get-ChildItem -LiteralPath $extractDirectory -Recurse -Filter "bambu-filament-manager.exe" -File)
+    if ($payloads.Count -ne 1) { throw "Expected exactly one application executable in the NSIS payload." }
+    return (Get-FileHash -LiteralPath $payloads[0].FullName).Hash
+}
+
 New-Item -ItemType Directory -Path $Logs | Out-Null
 Start-Transcript -Path (Join-Path $Logs "pilot-transcript.log")
 try {
@@ -133,7 +143,7 @@ try {
     if ((Get-MsiState $productCode) -ne -1) { throw "The baseline MSI is already registered." }
 
     $Installer = (Resolve-Path -LiteralPath $Installer).Path
-    $candidateHash = (Get-FileHash -LiteralPath $Candidate).Hash
+    $candidateHash = Get-PilotPayloadHash
     $sourceMsi = Join-Path $env:RUNNER_TEMP "Filament-Manager_0.35.1_x64_en-US.msi"
     $sourceUri = "https://github.com/bliatun-code/Filament-Manager/releases/download/v0.35.1/Filament-Manager_0.35.1_x64_en-US.msi"
     & curl.exe --fail --location --silent --show-error --retry 3 --max-time 90 --output $sourceMsi $sourceUri
