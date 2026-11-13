@@ -886,7 +886,7 @@ jobs:
           path: .
           format: spdx-json
           output-file: ${{ steps['sbom-output'].outputs['sbom-path'] }}
-          syft-version: v1.54.1
+          syft-version: v1.57.1
           dependency-snapshot: false
           upload-artifact: false
           upload-release-assets: false
