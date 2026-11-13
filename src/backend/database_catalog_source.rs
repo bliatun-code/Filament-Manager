@@ -1,4 +1,6 @@
-use rusqlite::{params, Connection, OptionalExtension, Transaction, TransactionBehavior};
+use rusqlite::{
+    params, params_from_iter, Connection, OptionalExtension, Transaction, TransactionBehavior,
+};
 
 use super::database_catalog_inputs::SourceCatalogEntryInput;
 use super::database_catalog_lifecycle::reactivate_seen_vendor_material_in_transaction;
@@ -12,6 +14,7 @@ use super::database_result::{InventoryError, InventoryResult};
 pub struct SourceCatalogImportStats {
     pub inserted_count: i64,
     pub updated_count: i64,
+    pub preserved_existing_count: i64,
     pub skipped_user_edited_count: i64,
     pub skipped_vendor_conflict_count: i64,
     pub reactivated_count: i64,
@@ -21,6 +24,12 @@ impl SourceCatalogImportStats {
     pub fn imported_count(&self) -> i64 {
         self.inserted_count + self.updated_count
     }
+}
+
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub(crate) enum SourceCatalogImportMode {
+    Refresh,
+    InsertMissing,
 }
 
 pub(crate) fn import_source_vendor_catalog(
@@ -40,6 +49,7 @@ pub(crate) fn import_source_vendor_catalog(
         material,
         refresh_started_at,
         entries,
+        SourceCatalogImportMode::Refresh,
     )?;
     transaction.commit()?;
     Ok(stats)
@@ -51,6 +61,7 @@ pub(crate) fn import_source_vendor_catalog_in_transaction(
     material: &str,
     refresh_started_at: &str,
     entries: &[SourceCatalogEntryInput<'_>],
+    mode: SourceCatalogImportMode,
 ) -> InventoryResult<SourceCatalogImportStats> {
     let vendor = vendor.trim();
     let material = material.trim();
@@ -65,6 +76,26 @@ pub(crate) fn import_source_vendor_catalog_in_transaction(
         ));
     }
 
+    // Supplementary data cannot establish that an existing row is obsolete
+    // or now available. Only consider whether its identity already exists.
+    let lookup_sql = match mode {
+        SourceCatalogImportMode::Refresh => {
+            "SELECT id, vendor, catalog_user_edited != 0
+             FROM filament_master_list
+             WHERE material = ?1 AND filament_name = ?2 AND color_name = ?3
+             LIMIT 1"
+        }
+        SourceCatalogImportMode::InsertMissing => {
+            "SELECT id, vendor, catalog_user_edited != 0
+             FROM filament_master_list
+             WHERE trim(material) = ?1 COLLATE NOCASE
+               AND trim(filament_name) = ?2 COLLATE NOCASE
+               AND trim(color_name) = ?3 COLLATE NOCASE
+             ORDER BY (trim(vendor) = ?4 COLLATE NOCASE) DESC
+             LIMIT 1"
+        }
+    };
+    let mut lookup = conn.prepare(lookup_sql)?;
     let mut stats = SourceCatalogImportStats::default();
     for entry in entries {
         let entry_material = entry.material.trim();
@@ -87,22 +118,28 @@ pub(crate) fn import_source_vendor_catalog_in_transaction(
             )));
         }
 
-        let existing: Option<(String, String, bool)> = conn
-            .query_row(
-                "SELECT id, vendor, catalog_user_edited != 0
-                 FROM filament_master_list
-                 WHERE material = ?1
-                   AND filament_name = ?2
-                   AND color_name = ?3
-                 LIMIT 1",
-                params![entry_material, filament_name, color_name],
-                |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?)),
-            )
+        let lookup_params = [entry_material, filament_name, color_name, vendor];
+        let lookup_params = match mode {
+            SourceCatalogImportMode::Refresh => &lookup_params[..3],
+            SourceCatalogImportMode::InsertMissing => &lookup_params[..],
+        };
+        let existing: Option<(String, String, bool)> = lookup
+            .query_row(params_from_iter(lookup_params), |row| {
+                Ok((row.get(0)?, row.get(1)?, row.get(2)?))
+            })
             .optional()?;
 
         if let Some((existing_id, existing_vendor, user_edited)) = existing {
+            let existing_vendor = match mode {
+                SourceCatalogImportMode::Refresh => existing_vendor.as_str(),
+                SourceCatalogImportMode::InsertMissing => existing_vendor.trim(),
+            };
             if !existing_vendor.eq_ignore_ascii_case(vendor) {
                 stats.skipped_vendor_conflict_count += 1;
+                continue;
+            }
+            if mode == SourceCatalogImportMode::InsertMissing {
+                stats.preserved_existing_count += 1;
                 continue;
             }
             if user_edited {
@@ -158,8 +195,14 @@ pub(crate) fn import_source_vendor_catalog_in_transaction(
         stats.inserted_count += 1;
     }
 
-    stats.reactivated_count =
-        reactivate_seen_vendor_material_in_transaction(conn, vendor, material, refresh_started_at)?;
+    if mode == SourceCatalogImportMode::Refresh {
+        stats.reactivated_count = reactivate_seen_vendor_material_in_transaction(
+            conn,
+            vendor,
+            material,
+            refresh_started_at,
+        )?;
+    }
     Ok(stats)
 }
 

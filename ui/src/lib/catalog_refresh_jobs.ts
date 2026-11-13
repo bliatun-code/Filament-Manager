@@ -91,7 +91,8 @@ export class CatalogRefreshJobController {
     const { job, busy } = this.state;
     if (
       this.disposed || busy || job?.job_id !== jobId ||
-      job.status !== "SUCCEEDED" || !job.result || job.result.imported <= 0 ||
+      job.status !== "SUCCEEDED" || !job.result ||
+      (job.result.imported <= 0 && (job.result.preserved_existing_count ?? 0) <= 0) ||
       this.notifiedSuccessJobId === jobId
     ) return false;
     this.notifiedSuccessJobId = jobId;

@@ -2,9 +2,9 @@ use super::{
     build_esun_scoped_snapshot, build_esun_source_discovery, has_cloudflare_challenge,
     infer_material, is_anti_bot_response, normalize_esun_swatch_value,
     parse_esun_graphql_catalog_response, validate_esun_graphql_http_response,
-    validate_single_esun_material_filter, EsunGraphqlHttpError, ESUN_DISCOVERY_QUERY,
-    ESUN_GRAPHQL_MAX_REQUESTS_PER_OPERATION, ESUN_MAGENTO_GRAPHQL_URL, ESUN_SCOPED_CATALOG_QUERY,
-    ESUN_USER_AGENT,
+    validate_single_esun_material_filter, with_esun_registry_fallback, EsunGraphqlHttpError,
+    ESUN_DISCOVERY_QUERY, ESUN_GRAPHQL_MAX_REQUESTS_PER_OPERATION, ESUN_MAGENTO_GRAPHQL_URL,
+    ESUN_SCOPED_CATALOG_QUERY, ESUN_USER_AGENT,
 };
 
 const COMPLETE_MAGENTO_FIXTURE: &str = r##"
@@ -333,6 +333,22 @@ fn cloudflare_challenge_header_distinguishes_access_restriction_from_missing_end
         validate_esun_graphql_http_response(404, "text/html", false, ordinary_page),
         Err(EsunGraphqlHttpError::Failed(_))
     ));
+}
+
+#[test]
+fn esun_registry_is_only_used_when_the_primary_source_fails() {
+    let direct = with_esun_registry_fallback(Ok("direct"), || panic!("primary source succeeded"));
+    assert_eq!(direct.unwrap(), "direct");
+
+    let fallback = with_esun_registry_fallback(Err("HTTP 403".to_string()), || Ok("supplemental"));
+    assert_eq!(fallback.unwrap(), "supplemental");
+
+    let failure = with_esun_registry_fallback::<()>(Err("HTTP 403".to_string()), || {
+        Err("no verified PET entries".to_string())
+    })
+    .unwrap_err();
+    assert!(failure.contains("Primary eSUN source: HTTP 403"));
+    assert!(failure.contains("TigerTag registry: no verified PET entries"));
 }
 
 #[test]

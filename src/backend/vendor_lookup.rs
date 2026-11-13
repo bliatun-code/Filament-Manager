@@ -10,6 +10,9 @@ use std::time::{Duration, Instant};
 use crate::backend::app_metadata::CATALOG_USER_AGENT;
 use crate::backend::vendor_lookup_parsing::*;
 
+#[path = "vendor_lookup_esun_registry.rs"]
+mod esun_registry;
+
 const ESUN_STORE_BASE_URL: &str = "https://esun3dstore.com";
 const ESUN_MAGENTO_BASE_URL: &str = "https://www.esun3d.com";
 const ESUN_MAGENTO_GRAPHQL_URL: &str = "https://www.esun3d.com/graphql";
@@ -144,6 +147,8 @@ pub struct EsunKnownCatalogEntry {
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct EsunCatalogRefreshSnapshot {
     pub entries: Vec<EsunCatalogEntry>,
+    #[serde(default)]
+    pub preserve_existing_entries: bool,
     pub handles_found: i64,
     pub products_processed: i64,
     pub skipped_non_filament: i64,
@@ -271,16 +276,46 @@ pub fn refresh_esun_catalog_snapshot(
     let material_filters = normalize_material_filters(material_filters);
     let material = validate_single_esun_material_filter(&material_filters)?;
     let client = build_client()?;
-    let response = fetch_esun_graphql_catalog(&client, ESUN_SCOPED_CATALOG_QUERY)?;
-    let products = parse_esun_graphql_catalog_response(&response)?;
-    build_esun_scoped_snapshot(products, material)
+    with_esun_registry_fallback(
+        fetch_esun_graphql_catalog(&client, ESUN_SCOPED_CATALOG_QUERY)
+            .and_then(|response| parse_esun_graphql_catalog_response(&response))
+            .and_then(|products| build_esun_scoped_snapshot(products, material)),
+        || {
+            let mut snapshot = esun_registry::refresh(material)?;
+            snapshot.warnings.push(
+                "The primary eSUN source could not provide a complete catalog for this material."
+                    .to_string(),
+            );
+            Ok(snapshot)
+        },
+    )
 }
 
 pub fn discover_esun_catalog_source() -> Result<EsunCatalogSourceDiscovery, String> {
     let client = build_client()?;
-    let response = fetch_esun_graphql_catalog(&client, ESUN_DISCOVERY_QUERY)?;
-    let products = parse_esun_graphql_catalog_response(&response)?;
-    build_esun_source_discovery(&products)
+    with_esun_registry_fallback(
+        fetch_esun_graphql_catalog(&client, ESUN_DISCOVERY_QUERY)
+            .and_then(|response| parse_esun_graphql_catalog_response(&response))
+            .and_then(|products| build_esun_source_discovery(&products)),
+        || {
+            let mut discovery = esun_registry::discover()?;
+            discovery
+                .output
+                .push_str("\nThe primary eSUN source could not provide a complete catalog.");
+            Ok(discovery)
+        },
+    )
+}
+
+fn with_esun_registry_fallback<T>(
+    primary: Result<T, String>,
+    fallback: impl FnOnce() -> Result<T, String>,
+) -> Result<T, String> {
+    primary.or_else(|primary_error| {
+        fallback().map_err(|fallback_error| {
+            format!("Primary eSUN source: {primary_error}\nTigerTag registry: {fallback_error}")
+        })
+    })
 }
 
 pub fn search_esun_filaments(query: &str, limit: usize) -> Result<Vec<EsunSearchResult>, String> {
@@ -697,6 +732,7 @@ fn build_esun_scoped_snapshot(
 
     Ok(EsunCatalogRefreshSnapshot {
         entries,
+        preserve_existing_entries: false,
         handles_found: matching_products.len() as i64,
         products_processed: matching_products.len() as i64,
         skipped_non_filament: 0,

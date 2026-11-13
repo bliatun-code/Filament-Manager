@@ -4,7 +4,7 @@ use serde_json::Value;
 
 use super::database_catalog_inputs::SourceCatalogEntryInput;
 use super::database_catalog_source::{
-    import_source_vendor_catalog_in_transaction, SourceCatalogImportStats,
+    import_source_vendor_catalog_in_transaction, SourceCatalogImportMode, SourceCatalogImportStats,
 };
 use super::database_core::FilamentDatabase;
 use super::database_result::{InventoryError, InventoryResult};
@@ -166,6 +166,55 @@ impl FilamentDatabase {
         job_id: &str,
         build_result: impl FnOnce(&SourceCatalogImportStats) -> InventoryResult<Value>,
     ) -> InventoryResult<Value> {
+        self.apply_source_vendor_catalog_with_job_receipt(
+            vendor,
+            material,
+            refresh_started_at,
+            entries,
+            authority_key,
+            job_id,
+            SourceCatalogImportMode::Refresh,
+            build_result,
+        )
+    }
+
+    /// Import a supplementary source without changing any existing rows.
+    /// New rows and the durable success receipt commit together.
+    #[allow(clippy::too_many_arguments)]
+    pub fn insert_missing_source_vendor_catalog_with_job_receipt(
+        &self,
+        vendor: &str,
+        material: &str,
+        refresh_started_at: &str,
+        entries: &[SourceCatalogEntryInput<'_>],
+        authority_key: &str,
+        job_id: &str,
+        build_result: impl FnOnce(&SourceCatalogImportStats) -> InventoryResult<Value>,
+    ) -> InventoryResult<Value> {
+        self.apply_source_vendor_catalog_with_job_receipt(
+            vendor,
+            material,
+            refresh_started_at,
+            entries,
+            authority_key,
+            job_id,
+            SourceCatalogImportMode::InsertMissing,
+            build_result,
+        )
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    fn apply_source_vendor_catalog_with_job_receipt(
+        &self,
+        vendor: &str,
+        material: &str,
+        refresh_started_at: &str,
+        entries: &[SourceCatalogEntryInput<'_>],
+        authority_key: &str,
+        job_id: &str,
+        mode: SourceCatalogImportMode,
+        build_result: impl FnOnce(&SourceCatalogImportStats) -> InventoryResult<Value>,
+    ) -> InventoryResult<Value> {
         self.with_inventory_transaction(|conn| {
             let job = get_job(conn, authority_key, job_id)?.ok_or(InventoryError::NotFound)?;
             if job.status != "RUNNING"
@@ -180,6 +229,7 @@ impl FilamentDatabase {
                 material,
                 refresh_started_at,
                 entries,
+                mode,
             )?;
             let result = build_result(&stats)?;
             complete_job(

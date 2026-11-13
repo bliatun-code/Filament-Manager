@@ -351,6 +351,134 @@ fn import_and_receipt_commit_together_and_replay_never_imports_again() {
 }
 
 #[test]
+fn supplemental_import_preserves_existing_rows_and_succeeds_on_repeat() {
+    let library = TestLibrary::new();
+    let db = library.open();
+    let candidate = entry();
+    db.connection()
+        .execute(
+            "INSERT INTO filament_master_list (
+                id, material, filament_name, color_name, vendor, product_url,
+                hex_color, default_weight, catalog_source, catalog_user_edited,
+                last_seen_at, is_discontinued, discontinued_at
+             ) VALUES ('existing', ' pla ', ?1, 'TEST BLUE ', 'eSun',
+                       'https://example.invalid/original', '#000011', 500, 'seeded',
+                       0, '2026-01-01 00:00:00', 1, '2026-01-01 00:00:00'),
+                      ('other-vendor', 'PLA', ?2, 'Test blue', 'Generic',
+                       'https://example.invalid/other', '#000022', 750, 'manual',
+                       1, NULL, 0, NULL)",
+            [
+                candidate.filament_name.to_ascii_uppercase().as_str(),
+                "Other vendor test filament",
+            ],
+        )
+        .unwrap();
+    db.connection()
+        .execute_batch(
+            "CREATE TRIGGER fail_supplemental_update BEFORE UPDATE ON filament_master_list
+             BEGIN SELECT RAISE(ABORT, 'supplemental import tried to update a row'); END;",
+        )
+        .unwrap();
+    let candidates = [
+        candidate,
+        SourceCatalogEntryInput {
+            filament_name: "Other vendor test filament",
+            ..entry()
+        },
+        SourceCatalogEntryInput {
+            color_name: "Test green",
+            ..entry()
+        },
+    ];
+
+    for (job_id, inserted) in [("job-a", 1), ("job-b", 0)] {
+        db.claim_catalog_refresh_job("library-a", "process-a", &input(job_id))
+            .unwrap();
+        let result = db
+            .insert_missing_source_vendor_catalog_with_job_receipt(
+                "eSUN",
+                "PLA",
+                "2026-09-05 00:00:00",
+                &candidates,
+                "library-a",
+                job_id,
+                |stats| {
+                    assert_eq!(stats.updated_count, 0);
+                    assert_eq!(stats.reactivated_count, 0);
+                    Ok(json!({
+                        "imported": stats.imported_count(),
+                        "preserved": stats.preserved_existing_count,
+                        "conflicts": stats.skipped_vendor_conflict_count,
+                    }))
+                },
+            )
+            .unwrap();
+        assert_eq!(
+            result,
+            json!({"imported": inserted, "preserved": 2 - inserted, "conflicts": 1})
+        );
+        let receipt = db
+            .get_catalog_refresh_job("library-a", job_id)
+            .unwrap()
+            .unwrap();
+        assert_eq!(receipt.status, "SUCCEEDED");
+        assert_eq!(receipt.result, Some(result));
+    }
+
+    let count: i64 = db
+        .connection()
+        .query_row(
+            "SELECT COUNT(*) FROM filament_master_list WHERE trim(filament_name) = ?1 COLLATE NOCASE",
+            [entry().filament_name],
+            |row| row.get(0),
+        )
+        .unwrap();
+    assert_eq!(count, 2, "one existing color and one newly added color");
+}
+
+#[test]
+fn supplemental_import_rolls_back_on_a_later_invalid_entry() {
+    let library = TestLibrary::new();
+    let db = library.open();
+    db.claim_catalog_refresh_job("library-a", "process-a", &input("job-a"))
+        .unwrap();
+    let error = db
+        .insert_missing_source_vendor_catalog_with_job_receipt(
+            "eSUN",
+            "PLA",
+            "2026-09-05 00:00:00",
+            &[
+                entry(),
+                SourceCatalogEntryInput {
+                    material: "PETG",
+                    ..entry()
+                },
+            ],
+            "library-a",
+            "job-a",
+            |_| panic!("an invalid entry prevents a success receipt"),
+        )
+        .expect_err("invalid material must roll back all additions");
+    assert!(error
+        .to_string()
+        .contains("does not match requested material"));
+    assert!(!db
+        .connection()
+        .query_row(
+            "SELECT EXISTS(SELECT 1 FROM filament_master_list WHERE filament_name = ?1)",
+            [entry().filament_name],
+            |row| row.get::<_, bool>(0),
+        )
+        .unwrap());
+    let receipt = db
+        .get_catalog_refresh_job("library-a", "job-a")
+        .unwrap()
+        .unwrap();
+    assert_eq!(receipt.status, "RUNNING");
+    assert!(receipt.result.is_none());
+}
+
+#[test]
 fn late_receipt_failure_rolls_back_catalog_and_keeps_job_running() {
     let library = TestLibrary::new();
     let db = library.open();
