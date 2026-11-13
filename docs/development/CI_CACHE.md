@@ -60,7 +60,7 @@ not available to the default branch.
 Each native job records its clock in its first step, before checkout and setup.
 After all verification gates and log uploads, the
 [budget planner](../../scripts/plan-rust-cache-save.mjs) checks the remaining time
-against the job's limit (60 minutes on both macOS and Windows). Cache
+against the job's limit (75 minutes on macOS and 60 minutes on Windows). Cache
 maintenance starts only when at least ten minutes remain. A missing or invalid
 clock disables saving; it never authorizes a write. The reserve covers one minute
 each for marker preparation and cleanup, five minutes for packing/uploading, and
@@ -95,8 +95,9 @@ build behavior.
 
 ## Cold native builds
 
-Both native smoke jobs have a finite 60-minute budget. Every verification,
-Companion, database-upgrade and packaged-app gate remains blocking. The cache
+The macOS smoke has a 75-minute budget to finish packaging and installation
+checks on slower runners. The Windows smoke has a 60-minute budget. Every
+verification, Companion, database-upgrade and packaged-app gate remains blocking. The cache
 planner uses the actual job deadline and preserves the maintenance reserve and
 step limits above. Cache packing is optional maintenance, never a substitute for
 completed application checks. Publication requires a complete successful main
