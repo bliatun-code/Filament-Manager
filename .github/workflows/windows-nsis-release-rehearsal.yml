@@ -1,0 +1,292 @@
+name: Windows NSIS release rehearsal
+
+on:
+  workflow_dispatch:
+  pull_request:
+    branches: [main]
+    paths:
+      - ".github/workflows/windows-nsis-release-rehearsal.yml"
+      - "scripts/*windows-nsis*"
+      - "scripts/smoke-windows-msi.ps1"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: windows-nsis-release-rehearsal-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  historical-fixtures:
+    name: Prepare sanitized NSIS release databases
+    if: github.event_name == 'pull_request' || github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    outputs:
+      migration-sha256: ${{ steps.migration-fixture.outputs.sha256 }}
+    steps:
+      - name: Checkout candidate source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Checkout pinned v0.28.0 source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: 76cba513eadd5137d6703f9abd1c0452531ef788
+          path: previous-release-v0.28.0
+          persist-credentials: false
+
+      - name: Set up Node
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 26
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            previous-release-v0.28.0/package-lock.json
+
+      - name: Set up npm 12
+        uses: ./.github/actions/setup-npm
+
+      - name: Prepare historical release databases
+        uses: ./.github/actions/prepare-release-fixtures
+
+      - name: Prepare the synthetic installer migration library
+        id: migration-fixture
+        run: |
+          set -euo pipefail
+          fixtures="$RUNNER_TEMP/nsis-rehearsal-fixtures"
+          mkdir -p "$fixtures"
+          cp -R -- "$RUNNER_TEMP/filament-manager-v0.28.0-fixture" "$RUNNER_TEMP/filament-manager-v0.30.0-fixture" "$fixtures/"
+          fixture="$fixtures/filament-manager-nsis-migration.db"
+          npm run qa:release:upgrade-ci-fixture -- --output="$fixture"
+          digest=$(sha256sum "$fixture")
+          echo "sha256=${digest%% *}" >> "$GITHUB_OUTPUT"
+
+      - name: Upload the sanitized databases
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: nsis-rehearsal-fixtures-${{ github.run_id }}
+          path: ${{ runner.temp }}/nsis-rehearsal-fixtures
+          if-no-files-found: error
+          overwrite: true
+          retention-days: 1
+
+  build-candidate:
+    name: Build and verify the optimized Windows NSIS candidate
+    if: github.event_name == 'pull_request' || github.ref == 'refs/heads/main'
+    runs-on: windows-2025
+    timeout-minutes: 60
+    outputs:
+      version: ${{ steps.configure.outputs.version }}
+      installer-sha256: ${{ steps.verify.outputs.installer-sha256 }}
+      payload-sha256: ${{ steps.verify.outputs.payload-sha256 }}
+    steps:
+      - name: Checkout candidate source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Node
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 26
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            ui/package-lock.json
+
+      - name: Set up npm 12
+        uses: ./.github/actions/setup-npm
+
+      - name: Read Rust toolchain
+        id: rust-toolchain
+        run: node ./scripts/read-rust-toolchain.mjs --github-output
+
+      - name: Set up Rust
+        uses: dtolnay/rust-toolchain@683b588c487a69d01f6c6ddf40f036ff682cc2c8 # master
+        with:
+          toolchain: ${{ steps.rust-toolchain.outputs.toolchain }}
+          targets: x86_64-pc-windows-msvc
+
+      - name: Install root dependencies
+        run: npm ci
+
+      - name: Install UI dependencies
+        run: npm --prefix ./ui ci
+
+      - name: Prepare the per-user release candidate configuration
+        id: configure
+        shell: pwsh
+        env:
+          NSIS_CONFIG_PATH: ${{ runner.temp }}/filament-manager-nsis-rehearsal.json
+        run: |
+          npm run check:version
+          if ($LASTEXITCODE -ne 0) { throw "Version consistency failed." }
+          $version = node ./scripts/prepare-windows-nsis-rehearsal.mjs --output "$env:NSIS_CONFIG_PATH"
+          if ($LASTEXITCODE -ne 0) { throw "Could not prepare the NSIS candidate configuration." }
+          "version=$version" >> $env:GITHUB_OUTPUT
+
+      - name: Build the Windows x64 NSIS candidate in release profile
+        env:
+          CARGO_INCREMENTAL: "0"
+          FILAMENT_MANAGER_UPDATE_METADATA_URL: ${{ vars.FILAMENT_MANAGER_UPDATE_METADATA_URL }}
+          NSIS_CONFIG_PATH: ${{ runner.temp }}/filament-manager-nsis-rehearsal.json
+        run: node ./scripts/run-tauri.mjs build --bundles nsis --target x86_64-pc-windows-msvc --config "$env:NSIS_CONFIG_PATH" -- --locked
+
+      - name: Verify, normalize and checksum the candidate
+        id: verify
+        shell: pwsh
+        env:
+          NSIS_VERSION: ${{ steps.configure.outputs.version }}
+          NSIS_STAGING_DIR: ${{ runner.temp }}/filament-manager-nsis-staging
+        run: |
+          git diff --exit-code -- package.json package-lock.json Cargo.toml Cargo.lock src-tauri/Cargo.toml src-tauri/tauri.conf.json src-tauri/tauri.windows.conf.json
+          if ($LASTEXITCODE -ne 0) { throw "NSIS rehearsal must not change versioned manifests." }
+          $app = Get-Content -LiteralPath "src-tauri/tauri.conf.json" -Raw | ConvertFrom-Json
+          $checked = ./scripts/verify-windows-nsis-rehearsal.ps1 `
+            -Directory "$env:NSIS_STAGING_DIR" `
+            -StageFrom "target/x86_64-pc-windows-msvc/release/bundle/nsis" `
+            -ExpectedProductName $app.productName `
+            -ExpectedVersion "$env:NSIS_VERSION"
+          "installer-sha256=$($checked.InstallerSha256)" >> $env:GITHUB_OUTPUT
+          "payload-sha256=$($checked.PayloadSha256)" >> $env:GITHUB_OUTPUT
+
+      - name: Upload the checked NSIS candidate for rehearsal
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: filament-manager-nsis-rehearsal-${{ github.run_id }}
+          path: |
+            ${{ runner.temp }}/filament-manager-nsis-staging/*.exe
+            ${{ runner.temp }}/filament-manager-nsis-staging/SHA256SUMS-windows.txt
+          if-no-files-found: error
+          overwrite: true
+          retention-days: 7
+
+  test-candidate:
+    name: Test NSIS release candidate (${{ matrix.gate }})
+    needs: [historical-fixtures, build-candidate]
+    runs-on: windows-2025
+    timeout-minutes: 35
+    strategy:
+      fail-fast: false
+      matrix:
+        gate: [packaged, migration]
+    steps:
+      - name: Checkout test harness
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Node
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 26
+          cache: npm
+
+      - name: Set up npm 12
+        uses: ./.github/actions/setup-npm
+
+      - name: Install test dependencies
+        run: npm ci
+
+      - name: Download sanitized databases
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: nsis-rehearsal-fixtures-${{ github.run_id }}
+          path: ${{ runner.temp }}/nsis-rehearsal-fixtures
+
+      - name: Download the checked release candidate
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: filament-manager-nsis-rehearsal-${{ github.run_id }}
+          path: ${{ runner.temp }}/nsis-rehearsal-candidate
+
+      - name: Reverify the downloaded installer and payload
+        id: candidate
+        shell: pwsh
+        env:
+          NSIS_VERSION: ${{ needs.build-candidate.outputs.version }}
+          NSIS_INSTALLER_SHA256: ${{ needs.build-candidate.outputs.installer-sha256 }}
+          NSIS_PAYLOAD_SHA256: ${{ needs.build-candidate.outputs.payload-sha256 }}
+          NSIS_CANDIDATE_DIR: ${{ runner.temp }}/nsis-rehearsal-candidate
+        run: |
+          $app = Get-Content -LiteralPath "src-tauri/tauri.conf.json" -Raw | ConvertFrom-Json
+          $checked = ./scripts/verify-windows-nsis-rehearsal.ps1 `
+            -Directory "$env:NSIS_CANDIDATE_DIR" `
+            -ExpectedProductName $app.productName `
+            -ExpectedVersion "$env:NSIS_VERSION" `
+            -ExpectedInstallerSha256 "$env:NSIS_INSTALLER_SHA256"
+          if ($checked.PayloadSha256 -cne $env:NSIS_PAYLOAD_SHA256) {
+            throw "The downloaded NSIS candidate payload hash has changed."
+          }
+          "installer=$($checked.Installer)" >> $env:GITHUB_OUTPUT
+
+      - name: Test clean installation, historical database upgrades and packaged E2E
+        if: matrix.gate == 'packaged'
+        shell: pwsh
+        env:
+          NSIS_INSTALLER: ${{ steps.candidate.outputs.installer }}
+          NSIS_VERSION: ${{ needs.build-candidate.outputs.version }}
+          NSIS_PAYLOAD_SHA256: ${{ needs.build-candidate.outputs.payload-sha256 }}
+          NSIS_SMOKE_LOG_DIR: ${{ runner.temp }}/nsis-rehearsal-smoke
+          NSIS_FIXTURE_DIR: ${{ runner.temp }}/nsis-rehearsal-fixtures
+        run: |
+          $app = Get-Content -LiteralPath "src-tauri/tauri.conf.json" -Raw | ConvertFrom-Json
+          $legacyDb = Join-Path "$env:NSIS_FIXTURE_DIR" "filament-manager-v0.28.0-fixture/filament-manager-v0.28.0.db"
+          $legacyManifest = Join-Path "$env:NSIS_FIXTURE_DIR" "filament-manager-v0.28.0-fixture/filament-manager-v0.28.0.json"
+          node ./scripts/prepare-previous-release-upgrade-fixture.mjs --verify "--database=$legacyDb" "--manifest=$legacyManifest"
+          if ($LASTEXITCODE -ne 0) { throw "The v0.28 fixture did not match its manifest." }
+          ./scripts/smoke-windows-msi.ps1 `
+            -NsisPath "$env:NSIS_INSTALLER" `
+            -ExpectedNsisVersion "$env:NSIS_VERSION" `
+            -ExpectedPayloadSha256 "$env:NSIS_PAYLOAD_SHA256" `
+            -ExpectedProductName $app.productName `
+            -ExpectedExecutableName "bambu-filament-manager.exe" `
+            -ExpectedWindowTitles @($app.productName, "Dashboard") `
+            -ExpectedInstallDirectory (Join-Path $env:LOCALAPPDATA $app.productName) `
+            -ExpectedAppDataDirectory (Join-Path $env:LOCALAPPDATA $app.identifier) `
+            -ExpectedDatabaseName "filament-manager.db" `
+            -LogDirectory "$env:NSIS_SMOKE_LOG_DIR" `
+            -SignaturePolicy "UnsignedRequired" `
+            -UpgradeFixturePath $legacyDb `
+            -UpgradeSourceRelease "v0.28.0" `
+            -CompatibilityFixturePath (Join-Path "$env:NSIS_FIXTURE_DIR" "filament-manager-v0.30.0-fixture/filament-manager-v0.30.0.db") `
+            -RunPackagedDesktopE2E `
+            -RunPackagedHostClientE2E `
+            -LaunchTimeoutSeconds 120
+
+      - name: Test migration from the latest published MSI
+        if: matrix.gate == 'migration'
+        shell: pwsh
+        env:
+          NSIS_INSTALLER: ${{ steps.candidate.outputs.installer }}
+          NSIS_VERSION: ${{ needs.build-candidate.outputs.version }}
+          NSIS_SMOKE_LOG_DIR: ${{ runner.temp }}/nsis-rehearsal-smoke
+          NSIS_FIXTURE_DIR: ${{ runner.temp }}/nsis-rehearsal-fixtures
+          NSIS_MIGRATION_FIXTURE_SHA256: ${{ needs.historical-fixtures.outputs.migration-sha256 }}
+        run: |
+          ./scripts/smoke-windows-nsis-pilot.ps1 `
+            -Installer "$env:NSIS_INSTALLER" `
+            -ExpectedNsisVersion "$env:NSIS_VERSION" `
+            -SourceManifest "scripts/windows-nsis-msi-sources.json" `
+            -SourceVersion "v0.35.1" `
+            -Scenario "standard" `
+            -Logs "$env:NSIS_SMOKE_LOG_DIR" `
+            -Fixture (Join-Path "$env:NSIS_FIXTURE_DIR" "filament-manager-nsis-migration.db") `
+            -FixtureSha256 "$env:NSIS_MIGRATION_FIXTURE_SHA256"
+
+      - name: Upload rehearsal diagnostics
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: nsis-rehearsal-${{ matrix.gate }}-logs-${{ github.run_id }}
+          # The packaged E2E subdirectories are private and never uploaded.
+          path: |
+            ${{ runner.temp }}/nsis-rehearsal-smoke/*.log
+            ${{ runner.temp }}/nsis-rehearsal-smoke/*.stderr
+            ${{ runner.temp }}/nsis-rehearsal-smoke/smoke-summary.txt
+          if-no-files-found: warn
+          overwrite: true
+          retention-days: 7

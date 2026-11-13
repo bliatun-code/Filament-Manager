@@ -1,8 +1,20 @@
-[CmdletBinding()]
+[CmdletBinding(DefaultParameterSetName = "Msi")]
 param(
-    [Parameter(Mandatory = $true)]
+    [Parameter(Mandatory = $true, ParameterSetName = "Msi")]
     [ValidateNotNullOrEmpty()]
     [string]$MsiPath,
+
+    [Parameter(Mandatory = $true, ParameterSetName = "Nsis")]
+    [ValidateNotNullOrEmpty()]
+    [string]$NsisPath,
+
+    [Parameter(Mandatory = $true, ParameterSetName = "Nsis")]
+    [ValidatePattern('^[0-9]+\.[0-9]+\.[0-9]+(?:-[0-9A-Za-z.-]+)?$')]
+    [string]$ExpectedNsisVersion,
+
+    [Parameter(Mandatory = $true, ParameterSetName = "Nsis")]
+    [ValidatePattern('^[0-9a-fA-F]{64}$')]
+    [string]$ExpectedPayloadSha256,
 
     [Parameter(Mandatory = $true)]
     [ValidateNotNullOrEmpty()]
@@ -63,8 +75,13 @@ $ErrorActionPreference = "Stop"
 Set-StrictMode -Version Latest
 
 if ([Environment]::OSVersion.Platform -ne [PlatformID]::Win32NT) {
-    throw "The Windows MSI smoke test must run on Windows."
+    throw "The Windows installer smoke test must run on Windows."
 }
+$isNsis = $PSCmdlet.ParameterSetName -eq "Nsis"
+if ($isNsis -and ($env:GITHUB_ACTIONS -cne "true" -or $env:RUNNER_ENVIRONMENT -cne "github-hosted")) {
+    throw "The NSIS release rehearsal requires a disposable GitHub-hosted Windows profile."
+}
+$installerType = if ($isNsis) { "NSIS" } else { "MSI" }
 
 Add-Type -TypeDefinition @'
 using System;
@@ -467,6 +484,26 @@ function Invoke-MsiExec {
     }
 }
 
+function Invoke-NsisInstaller {
+    param([string]$Executable, [string]$OutputLog)
+
+    $process = Start-Process `
+        -FilePath $Executable `
+        -ArgumentList "/S" `
+        -RedirectStandardOutput $OutputLog `
+        -RedirectStandardError "$OutputLog.stderr" `
+        -PassThru `
+        -Wait
+    try {
+        if ($process.ExitCode -ne 0) {
+            throw "NSIS command failed with exit code $($process.ExitCode): $Executable"
+        }
+    }
+    finally {
+        $process.Dispose()
+    }
+}
+
 function Invoke-DatabaseVerification {
     param([Parameter(Mandatory = $true)][string]$DatabasePath)
 
@@ -668,11 +705,13 @@ function Stop-ProcessesForExactExecutable {
     return $matchingProcesses.Count
 }
 
-$resolvedMsiPath = (Resolve-Path -LiteralPath $MsiPath).Path
-$msiFile = Get-Item -LiteralPath $resolvedMsiPath
-if ($msiFile.Length -le 0) {
-    throw "MSI is empty: $resolvedMsiPath"
+$installerPath = if ($isNsis) { $NsisPath } else { $MsiPath }
+$resolvedInstallerPath = (Resolve-Path -LiteralPath $installerPath).Path
+if (-not (Test-Path -LiteralPath $resolvedInstallerPath -PathType Leaf) -or
+    (Get-Item -LiteralPath $resolvedInstallerPath).Length -le 0) {
+    throw "$installerType installer is missing or empty: $resolvedInstallerPath"
 }
+$resolvedMsiPath = if ($isNsis) { $null } else { $resolvedInstallerPath }
 
 if ([IO.Path]::GetFileName($ExpectedExecutableName) -ne $ExpectedExecutableName) {
     throw "ExpectedExecutableName must be a filename, not a path."
@@ -767,9 +806,10 @@ if ([string]::Equals(
 New-Item -ItemType Directory -Path $LogDirectory -Force | Out-Null
 $resolvedLogDirectory = (Resolve-Path -LiteralPath $LogDirectory).Path
 $transcriptPath = Join-Path $resolvedLogDirectory "smoke-transcript.log"
-$installLogPath = Join-Path $resolvedLogDirectory "msi-install.log"
-$uninstallLogPath = Join-Path $resolvedLogDirectory "msi-uninstall.log"
-$cleanupLogPath = Join-Path $resolvedLogDirectory "msi-cleanup.log"
+$installerLogPrefix = $installerType.ToLowerInvariant()
+$installLogPath = Join-Path $resolvedLogDirectory "$installerLogPrefix-install.log"
+$uninstallLogPath = Join-Path $resolvedLogDirectory "$installerLogPrefix-uninstall.log"
+$cleanupLogPath = Join-Path $resolvedLogDirectory "$installerLogPrefix-cleanup.log"
 $appStdoutPath = Join-Path $resolvedLogDirectory "app-stdout.log"
 $appStderrPath = Join-Path $resolvedLogDirectory "app-stderr.log"
 $backgroundAppStdoutPath = Join-Path $resolvedLogDirectory "app-background-stdout.log"
@@ -785,6 +825,8 @@ if ([string]::IsNullOrWhiteSpace($desktopDirectory) -or [string]::IsNullOrWhiteS
 $desktopShortcutPath = Join-Path $desktopDirectory "$ExpectedProductName.lnk"
 $startMenuProductDirectory = Join-Path $programsDirectory $ExpectedProductName
 $startMenuShortcutPath = Join-Path $startMenuProductDirectory "$ExpectedProductName.lnk"
+$nsisRegistrationPath = "HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall\$ExpectedProductName"
+$nsisUninstallerPath = Join-Path $resolvedInstallDirectory "uninstall.exe"
 $desktopLifecyclePreferencesPath = Join-Path $resolvedAppDataDirectory "desktop-lifecycle.json"
 $runRegistryPath = "HKCU:\Software\Microsoft\Windows\CurrentVersion\Run"
 $startupApprovedRegistryPath = "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\StartupApproved\Run"
@@ -877,45 +919,76 @@ try {
         }
     }
 
-    $msiIdentity = Get-MsiIdentity -Path $resolvedMsiPath
-    if (-not [string]::Equals(
-        $msiIdentity.ProductName,
-        $ExpectedProductName,
-        [StringComparison]::Ordinal
-    )) {
-        throw "MSI ProductName mismatch: expected '$ExpectedProductName', found '$($msiIdentity.ProductName)'."
+    if ($isNsis) {
+        if (Test-Path -LiteralPath $nsisRegistrationPath) {
+            throw "Clean-install precondition failed; NSIS is already registered for the current user."
+        }
     }
-    if ($msiIdentity.ProductCode -notmatch '^\{[0-9A-Fa-f]{8}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{12}\}$') {
-        throw "MSI ProductCode is invalid: $($msiIdentity.ProductCode)"
-    }
-    $productCode = $msiIdentity.ProductCode
-    $initialProductState = Get-MsiProductState -ProductCode $productCode
-    if ($initialProductState -ne -1) {
-        throw "Clean-install precondition failed; Windows Installer already reports product state $initialProductState for $productCode."
+    else {
+        $msiIdentity = Get-MsiIdentity -Path $resolvedMsiPath
+        if (-not [string]::Equals(
+            $msiIdentity.ProductName,
+            $ExpectedProductName,
+            [StringComparison]::Ordinal
+        )) {
+            throw "MSI ProductName mismatch: expected '$ExpectedProductName', found '$($msiIdentity.ProductName)'."
+        }
+        if ($msiIdentity.ProductCode -notmatch '^\{[0-9A-Fa-f]{8}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{12}\}$') {
+            throw "MSI ProductCode is invalid: $($msiIdentity.ProductCode)"
+        }
+        $productCode = $msiIdentity.ProductCode
+        $initialProductState = Get-MsiProductState -ProductCode $productCode
+        if ($initialProductState -ne -1) {
+            throw "Clean-install precondition failed; Windows Installer already reports product state $initialProductState for $productCode."
+        }
     }
 
     if ($SignaturePolicy -eq "UnsignedRequired") {
-        Assert-UnsignedAuthenticode -Path $resolvedMsiPath
+        if ($isNsis) {
+            Assert-UnsignedAuthenticode -Path $resolvedInstallerPath
+        }
+        else {
+            Assert-UnsignedAuthenticode -Path $resolvedMsiPath
+        }
     }
     elseif ($SignaturePolicy -eq "Required") {
         if ([string]::IsNullOrWhiteSpace($ExpectedPublisherSubject)) {
             throw "ExpectedPublisherSubject is required when SignaturePolicy is Required."
         }
         & (Join-Path $PSScriptRoot "verify-windows-authenticode.ps1") `
-            -FilePath $resolvedMsiPath `
+            -FilePath $resolvedInstallerPath `
             -ExpectedPublisherSubject $ExpectedPublisherSubject
     }
 
     $installationAttempted = $true
-    Invoke-MsiExec -Action "/i" -Target $resolvedMsiPath -LogPath $installLogPath
+    if ($isNsis) {
+        Invoke-NsisInstaller -Executable $resolvedInstallerPath -OutputLog $installLogPath
+    }
+    else {
+        Invoke-MsiExec -Action "/i" -Target $resolvedMsiPath -LogPath $installLogPath
+    }
 
     $installedExecutablePath = Join-Path $resolvedInstallDirectory $ExpectedExecutableName
     if (-not (Test-Path -LiteralPath $installedExecutablePath -PathType Leaf)) {
         throw "Installed executable was not found: $installedExecutablePath"
     }
-    $installedProductState = Get-MsiProductState -ProductCode $productCode
-    if ($installedProductState -ne 5) {
-        throw "Install did not register $productCode for the current user; expected Windows Installer product state 5, found $installedProductState."
+    if ($isNsis) {
+        $registration = Get-ItemProperty -LiteralPath $nsisRegistrationPath
+        if ($registration.DisplayName -cne $ExpectedProductName -or
+            $registration.DisplayVersion -cne $ExpectedNsisVersion -or
+            $registration.InstallLocation.Trim('"') -ne $resolvedInstallDirectory -or
+            $registration.UninstallString.Trim('"') -ne $nsisUninstallerPath) {
+            throw "NSIS did not register the expected current-user product identity."
+        }
+        if ((Get-FileHash -LiteralPath $installedExecutablePath -Algorithm SHA256).Hash -ne $ExpectedPayloadSha256) {
+            throw "Installed executable differs from the verified NSIS payload."
+        }
+    }
+    else {
+        $installedProductState = Get-MsiProductState -ProductCode $productCode
+        if ($installedProductState -ne 5) {
+            throw "Install did not register $productCode for the current user; expected Windows Installer product state 5, found $installedProductState."
+        }
     }
     if (-not (Test-Path -LiteralPath $desktopShortcutPath -PathType Leaf)) {
         throw "Install did not create the expected Desktop shortcut: $desktopShortcutPath"
@@ -923,7 +996,11 @@ try {
     if (-not (Test-Path -LiteralPath $startMenuShortcutPath -PathType Leaf)) {
         throw "Install did not create the expected Start Menu shortcut: $startMenuShortcutPath"
     }
-    if (-not (Test-UserPathContainsDirectory -Directory $resolvedInstallDirectory)) {
+    $installDirectoryInPath = Test-UserPathContainsDirectory -Directory $resolvedInstallDirectory
+    if ($isNsis -and $installDirectoryInPath) {
+        throw "A clean NSIS install must not add the install directory to the user PATH."
+    }
+    if (-not $isNsis -and -not $installDirectoryInPath) {
         throw "Install did not add the install directory to the user PATH."
     }
     if ($SignaturePolicy -eq "UnsignedRequired") {
@@ -954,7 +1031,7 @@ try {
         $upgradeSmokeExitCode = $LASTEXITCODE
         $upgradeSmokeOutput | ForEach-Object { Write-Host $_ }
         if ($upgradeSmokeExitCode -ne 0) {
-            throw "Installed MSI database compatibility smoke failed with exit code $upgradeSmokeExitCode."
+            throw "Installed $installerType database compatibility smoke failed with exit code $upgradeSmokeExitCode."
         }
         $previousReleaseDatabaseGateSummary = "$UpgradeSourceRelease, two installed-binary launches"
     }
@@ -980,7 +1057,7 @@ try {
         )
         & $nodeCommand.Source @compatibilitySmokeArguments
         if ($LASTEXITCODE -ne 0) {
-            throw "Installed MSI v0.30 database compatibility smoke failed."
+            throw "Installed $installerType v0.30 database compatibility smoke failed."
         }
         $schema7DatabaseGateSummary = "v0.30.0, two installed-binary launches"
     }
@@ -1008,7 +1085,7 @@ try {
         $packagedDesktopE2eExitCode = $LASTEXITCODE
         $packagedDesktopE2eOutput | ForEach-Object { Write-Host $_ }
         if ($packagedDesktopE2eExitCode -ne 0) {
-            throw "Installed MSI packaged desktop mutating E2E failed with exit code $packagedDesktopE2eExitCode."
+            throw "Installed $installerType packaged desktop mutating E2E failed with exit code $packagedDesktopE2eExitCode."
         }
         $packagedDesktopE2eSummaryPath = Join-Path $packagedDesktopE2eLogDirectory "summary.json"
         if (-not (Test-Path -LiteralPath $packagedDesktopE2eSummaryPath -PathType Leaf)) {
@@ -1062,7 +1139,7 @@ try {
         $packagedHostClientE2eExitCode = $LASTEXITCODE
         $packagedHostClientE2eOutput | ForEach-Object { Write-Host $_ }
         if ($packagedHostClientE2eExitCode -ne 0) {
-            throw "Installed MSI packaged Host-Client mutating E2E failed with exit code $packagedHostClientE2eExitCode."
+            throw "Installed $installerType packaged Host-Client mutating E2E failed with exit code $packagedHostClientE2eExitCode."
         }
         $packagedHostClientE2eSummaryPath = Join-Path $packagedHostClientE2eLogDirectory "summary.json"
         if (-not (Test-Path -LiteralPath $packagedHostClientE2eSummaryPath -PathType Leaf)) {
@@ -1279,7 +1356,12 @@ try {
     }
 
     $databaseHashBeforeUninstall = (Get-FileHash -LiteralPath $databasePath -Algorithm SHA256).Hash
-    Invoke-MsiExec -Action "/x" -Target $productCode -LogPath $uninstallLogPath
+    if ($isNsis) {
+        Invoke-NsisInstaller -Executable $nsisUninstallerPath -OutputLog $uninstallLogPath
+    }
+    else {
+        Invoke-MsiExec -Action "/x" -Target $productCode -LogPath $uninstallLogPath
+    }
     $uninstallSucceeded = $true
 
     if (Test-Path -LiteralPath $installedExecutablePath) {
@@ -1288,9 +1370,16 @@ try {
     if (Test-Path -LiteralPath $resolvedInstallDirectory) {
         throw "Uninstall left the install directory behind: $resolvedInstallDirectory"
     }
-    $uninstalledProductState = Get-MsiProductState -ProductCode $productCode
-    if ($uninstalledProductState -ne -1) {
-        throw "Uninstall left Windows Installer product state $uninstalledProductState behind for $productCode."
+    if ($isNsis) {
+        if (Test-Path -LiteralPath $nsisRegistrationPath) {
+            throw "Uninstall left the NSIS current-user registration behind."
+        }
+    }
+    else {
+        $uninstalledProductState = Get-MsiProductState -ProductCode $productCode
+        if ($uninstalledProductState -ne -1) {
+            throw "Uninstall left Windows Installer product state $uninstalledProductState behind for $productCode."
+        }
     }
     if (Test-Path -LiteralPath $desktopShortcutPath) {
         throw "Uninstall left the Desktop shortcut behind: $desktopShortcutPath"
@@ -1323,10 +1412,16 @@ try {
     }
     Invoke-DatabaseVerification -DatabasePath $databasePath
 
+    $registrationSummary = if ($isNsis) {
+        @("Version: $ExpectedNsisVersion", "NSIS current-user registration removed: yes")
+    }
+    else {
+        @("ProductCode: $productCode", "Windows Installer current-user registration removed: yes")
+    }
     $summary = @(
-        "MSI: $resolvedMsiPath",
-        "Product: $($msiIdentity.ProductName)",
-        "ProductCode: $productCode",
+        "${installerType}: $resolvedInstallerPath",
+        "Product: $ExpectedProductName",
+        $registrationSummary,
         "Executable: $installedExecutablePath",
         "Observed window title: $observedWindowTitle",
         "Database: $databasePath",
@@ -1336,9 +1431,8 @@ try {
         "Single-instance window restore retained PID: $backgroundPrimaryProcessId",
         "Close-to-tray kept the primary process alive: yes",
         "Stable and legacy autostart registry values removed: yes",
-        "Windows Installer current-user registration removed: yes",
         "Desktop and Start Menu shortcuts removed: yes",
-        "User PATH entry removed: yes",
+        "User PATH entry absent: yes",
         "Signature policy: $SignaturePolicy",
         "Previous-release database gate: $previousReleaseDatabaseGateSummary",
         "Schema-7 database gate: $schema7DatabaseGateSummary",
@@ -1347,7 +1441,7 @@ try {
         "Result: PASS"
     ) -join [Environment]::NewLine
     [IO.File]::WriteAllText($summaryPath, "$summary$([Environment]::NewLine)")
-    Write-Host "Windows MSI clean install, desktop lifecycle, database, retention and uninstall smoke passed."
+    Write-Host "Windows $installerType clean install, desktop lifecycle, database, retention and uninstall smoke passed."
 }
 finally {
     $applicationStoppedForCleanup = $true
@@ -1526,11 +1620,15 @@ finally {
         $applicationStoppedForCleanup -and
         $packagedHostClientHarnessCleanupSafe -and
         $installationAttempted -and
-        -not $uninstallSucceeded -and
-        $null -ne $productCode
+        -not $uninstallSucceeded
     ) {
         try {
-            Invoke-MsiExec -Action "/x" -Target $productCode -LogPath $cleanupLogPath
+            if ($isNsis -and (Test-Path -LiteralPath $nsisUninstallerPath -PathType Leaf)) {
+                Invoke-NsisInstaller -Executable $nsisUninstallerPath -OutputLog $cleanupLogPath
+            }
+            elseif (-not $isNsis -and $null -ne $productCode) {
+                Invoke-MsiExec -Action "/x" -Target $productCode -LogPath $cleanupLogPath
+            }
         }
         catch {
             Write-Warning "Failed to uninstall the app during smoke cleanup: $($_.Exception.Message)"
