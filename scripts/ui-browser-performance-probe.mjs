@@ -76,11 +76,18 @@ function parsePositiveNumber(argv, name, fallback, integer = false) {
 }
 
 export function parseUiBrowserPerformanceOptions(argv) {
+  const sourcePath = parseOptionValue(argv, "--source");
+  const spools = parsePositiveNumber(argv, "--spools", null, true);
+  if (sourcePath && spools) {
+    throw new Error("--spools uses the generated fixture and cannot be combined with --source.");
+  }
   return {
     headless: !argv.includes("--headful"),
     json: argv.includes("--json"),
+    preview: argv.includes("--preview"),
     samples: parsePositiveNumber(argv, "--samples", DEFAULT_SAMPLES, true),
-    sourcePath: parseOptionValue(argv, "--source"),
+    sourcePath,
+    spools,
     startupBudgetMs: parsePositiveNumber(
       argv,
       "--startup-budget-ms",
@@ -104,10 +111,84 @@ export function uiBrowserPerformancePageOrder() {
   return PERFORMANCE_PAGE_SPECS.map(({ key }) => key);
 }
 
-async function createUiViteServer(options) {
+async function createUiViteServer(previewBuild) {
   const viteEntry = requireFromUi.resolve("vite");
-  const { createServer } = await import(pathToFileURL(viteEntry).href);
-  return createServer(options);
+  const { createServer, preview } = await import(pathToFileURL(viteEntry).href);
+  const config = {
+    configFile: resolve("ui", "vite.config.ts"),
+    logLevel: "error",
+    root: resolve("ui"),
+  };
+  const network = { host: "127.0.0.1", port: 0 };
+  if (previewBuild) {
+    return preview({ ...config, preview: network });
+  }
+  const server = await createServer({ ...config, server: network });
+  try {
+    await server.listen();
+    return server;
+  } catch (error) {
+    await server.close();
+    throw error;
+  }
+}
+
+function expandGeneratedInventory(dbPath, spoolCount) {
+  const db = new Database(dbPath, { fileMustExist: true });
+  try {
+    const existingCount = db.prepare("SELECT COUNT(*) AS count FROM filament_spools").get().count;
+    assert.ok(spoolCount > existingCount, `--spools must exceed the base fixture's ${existingCount} spools.`);
+    const extraCount = spoolCount - existingCount;
+    const materials = ["PLA", "PETG", "ABS", "ASA", "TPU", "PA"];
+    const colors = ["Onyx", "Glacier", "Amber", "Pine", "Coral", "Chalk", "Plum", "Slate"];
+    const swatches = ["#20232A", "#6AAAC5", "#DE9B38", "#3D7953", "#D4706D", "#E5E3D9", "#77557A", "#778390"];
+    const vendors = ["Bambu Lab", "eSUN", "Prusament", "Polymaker", "Generic"];
+    const statuses = ["IN_STOCK", "IN_STOCK", "IN_STOCK", "EMPTY", "LOST"];
+    const locations = db.prepare("SELECT id FROM inventory_locations ORDER BY id").pluck().all();
+    const masterInsert = db.prepare(`
+      INSERT INTO filament_master_list (id, material, filament_name, color_name, hex_color, vendor)
+      VALUES (?, ?, ?, ?, ?, ?)
+    `);
+    const spoolInsert = db.prepare(`
+      INSERT INTO filament_spools
+        (id, master_id, status, initial_weight_g, current_weight_g, remaining_g, location_id)
+      VALUES (?, ?, ?, 1000, ?, ?, ?)
+    `);
+    const lastIndex = extraCount - 1;
+    const searchIndex = statuses[lastIndex % statuses.length] === "EMPTY" ? lastIndex - 1 : lastIndex;
+    db.transaction(() => {
+      const masterCount = Math.min(extraCount, materials.length * colors.length * vendors.length);
+      for (let index = 0; index < masterCount; index += 1) {
+        const material = materials[index % materials.length];
+        const colorIndex = Math.floor(index / materials.length) % colors.length;
+        const vendor = vendors[Math.floor(index / (materials.length * colors.length))];
+        masterInsert.run(
+          `zz-qa-master-${index}`,
+          material,
+          `${vendor} ${material}`,
+          colors[colorIndex],
+          swatches[colorIndex],
+          vendor,
+        );
+      }
+      for (let index = 0; index < extraCount; index += 1) {
+        const status = statuses[index % statuses.length];
+        const remaining = status === "EMPTY" ? 0 : 80 + (index * 37) % 921;
+        const spoolId = `zz-qa-spool-${String(index).padStart(8, "0")}`;
+        spoolInsert.run(
+          spoolId,
+          `zz-qa-master-${index % masterCount}`,
+          status,
+          remaining,
+          remaining,
+          locations[index % locations.length] ?? null,
+        );
+      }
+    })();
+    return `zz-qa-spool-${String(searchIndex).padStart(8, "0")}`;
+  } finally {
+    db.close();
+  }
 }
 
 function mapSpoolRows(db) {
@@ -548,11 +629,8 @@ export function buildUiBrowserPerformanceFixture(dbPath) {
         tray_available: true,
       },
       evidence: {
-        dashboard: String(dashboardOnHandSpoolCount(spoolRows)),
-        inventory:
-          spoolRows[0]?.master.color_name ??
-          spoolRows[0]?.master.filament_name ??
-          null,
+        dashboard: new Intl.NumberFormat("en-US").format(dashboardOnHandSpoolCount(spoolRows)),
+        inventory: String(spoolRows.filter(({ spool }) => spool.status !== "EMPTY").length),
         loans:
           evidenceLoan?.loan.counterparty_name ??
           evidenceLoan?.loan.borrower_name ??
@@ -775,12 +853,24 @@ async function waitForRenderedEvidence(page, label, marker, timeoutMs) {
   await page
     .getByRole("heading", { exact: true, name: label })
     .waitFor({ state: "visible", timeout: timeoutMs });
-  if (marker) {
+  if (marker && label === "Inventory") {
+    await page.locator(".inventory-result-summary")
+      .getByText(marker, { exact: true })
+      .waitFor({ state: "visible", timeout: timeoutMs });
+    if (marker !== "0") {
+      await page.locator(".inventory-product-card, .inventory-list-row").first()
+        .waitFor({ state: "visible", timeout: timeoutMs });
+    }
+  } else if (marker) {
     await page
       .getByText(String(marker))
       .first()
       .waitFor({ state: "visible", timeout: timeoutMs });
   }
+  await waitForPaint(page);
+}
+
+async function waitForPaint(page) {
   await page.evaluate(
     () =>
       new Promise((resolveFrame) =>
@@ -791,7 +881,26 @@ async function waitForRenderedEvidence(page, label, marker, timeoutMs) {
   );
 }
 
-async function runBrowserSample({ baseUrl, browser, fixture, timeoutMs }) {
+async function measureInventorySearch(page, spoolId, timeoutMs) {
+  const inventory = page.locator("#inventory-stock-panel");
+  const search = page.getByRole("searchbox");
+  const summary = page.locator(".inventory-result-summary [aria-live=polite]").first();
+  const initialCount = await summary.locator(".tabular-nums").innerText({ timeout: timeoutMs });
+  const result = inventory.getByText(`#${spoolId.slice(-6)}`, { exact: true }).first();
+  const startedAt = performance.now();
+  await search.fill(spoolId, { timeout: timeoutMs });
+  await result.waitFor({ state: "visible", timeout: timeoutMs });
+  assert.equal(await summary.innerText(), "1 spool");
+  await waitForPaint(page);
+  const searchMs = performance.now() - startedAt;
+  const resetStartedAt = performance.now();
+  await search.fill("", { timeout: timeoutMs });
+  await summary.getByText(initialCount, { exact: true }).waitFor({ state: "visible", timeout: timeoutMs });
+  await waitForPaint(page);
+  return { searchMs, resetMs: performance.now() - resetStartedAt };
+}
+
+async function runBrowserSample({ baseUrl, browser, fixture, inventorySearchId, timeoutMs }) {
   const context = await browser.newContext();
   const calls = [];
   const pageErrors = [];
@@ -868,6 +977,7 @@ async function runBrowserSample({ baseUrl, browser, fixture, timeoutMs }) {
     }
     const startupReadyMs = performance.now() - startupStartedAt;
     const transitions = {};
+    let inventorySearch = null;
 
     for (const spec of PERFORMANCE_PAGE_SPECS) {
       const commandCountBefore = calls.filter(
@@ -887,6 +997,9 @@ async function runBrowserSample({ baseUrl, browser, fixture, timeoutMs }) {
         `${spec.label} did not issue its data-backed ${spec.criticalCommand} request.`,
       );
       transitions[spec.key] = performance.now() - startedAt;
+      if (spec.key === "inventory" && inventorySearchId) {
+        inventorySearch = await measureInventorySearch(page, inventorySearchId, timeoutMs);
+      }
     }
 
     if (pageErrors.length > 0) {
@@ -896,6 +1009,7 @@ async function runBrowserSample({ baseUrl, browser, fixture, timeoutMs }) {
       );
     }
     return {
+      inventorySearch,
       startupReadyMs,
       transitions,
     };
@@ -915,6 +1029,9 @@ export async function runUiBrowserPerformanceProbe(options) {
       profile: generatedFixture ? "base" : "rich",
       sourcePath: options.sourcePath ?? generatedFixture.outputPath,
     });
+    const inventorySearchId = options.spools
+      ? expandGeneratedInventory(preparedDatabase.targetPath, options.spools)
+      : null;
     const fixture = buildUiBrowserPerformanceFixture(
       preparedDatabase.targetPath,
     );
@@ -925,17 +1042,7 @@ export async function runUiBrowserPerformanceProbe(options) {
       "The browser performance probe requires inventory, printer, and loan fixture data.",
     );
 
-    server = await createUiViteServer({
-      configFile: resolve("ui", "vite.config.ts"),
-      logLevel: "error",
-      root: resolve("ui"),
-      server: {
-        host: "127.0.0.1",
-        port: 0,
-        strictPort: false,
-      },
-    });
-    await server.listen();
+    server = await createUiViteServer(options.preview);
     const address = server.httpServer?.address();
     if (!address || typeof address === "string") {
       throw new Error("Vite did not expose a local performance probe port.");
@@ -948,6 +1055,7 @@ export async function runUiBrowserPerformanceProbe(options) {
         baseUrl,
         browser,
         fixture,
+        inventorySearchId,
         timeoutMs: options.startupBudgetMs * 2,
       });
     }
@@ -958,6 +1066,7 @@ export async function runUiBrowserPerformanceProbe(options) {
           baseUrl,
           browser,
           fixture,
+          inventorySearchId,
           timeoutMs: options.startupBudgetMs * 2,
         }),
       );
@@ -996,6 +1105,12 @@ export async function runUiBrowserPerformanceProbe(options) {
         printers: fixture.printerRows.length,
         spools: fixture.spoolRows.length,
       },
+      ...(inventorySearchId ? {
+        inventorySearch: {
+          filter: summarize(samples.map(({ inventorySearch }) => inventorySearch.searchMs)),
+          reset: summarize(samples.map(({ inventorySearch }) => inventorySearch.resetMs)),
+        },
+      } : {}),
       samples: options.samples,
       startup,
       transitions,
@@ -1069,6 +1184,10 @@ async function main() {
       ...Object.entries(result.transitions).map(
         ([page, measurement]) => `  ${page}: ${formatMeasurement(measurement)}`,
       ),
+      ...(result.inventorySearch ? [
+        `  Inventory filter: ${formatMeasurement(result.inventorySearch.filter)}`,
+        `  Inventory reset: ${formatMeasurement(result.inventorySearch.reset)}`,
+      ] : []),
       result.violations.length === 0
         ? "  Result: within advisory local budgets."
         : `  Advisory violations:\n${result.violations.map((violation) => `    - ${violation}`).join("\n")}`,

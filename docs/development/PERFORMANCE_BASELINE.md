@@ -137,3 +137,34 @@ render-window, and bundle guards remain the release gates.
 Do not lower or raise the committed defaults from a single run. Compare several
 warm runs on the same machine, inspect the bundle contract, and keep the
 deterministic request/render guards as the release authority.
+
+## Inventory React Compiler pilot
+
+The regular build leaves React Compiler off. Set
+`FILAMENT_MANAGER_INVENTORY_REACT_COMPILER=1` for the production build to
+compile the spool collection with React Compiler 1.0.
+
+```sh
+npm --prefix ui run build
+npm run qa:performance:browser -- --preview --spools=10000 --samples=5 --warmup-runs=2 --transition-budget-ms=5000 --json
+FILAMENT_MANAGER_INVENTORY_REACT_COMPILER=1 npm --prefix ui run build
+npm run qa:performance:browser -- --preview --spools=10000 --samples=5 --warmup-runs=2 --transition-budget-ms=5000 --json
+npm run check:ui-bundle-chunks
+```
+
+`--preview` serves the current build from `ui/dist`. `--spools` expands an
+isolated copy of the generated SQLite fixture and adds Inventory filter and
+reset timings. Alternate the two builds when repeating the comparison.
+
+Ten timed Chromium samples per build on the same Mac gave these median times
+in milliseconds.
+
+| Inventory action | Regular | Compiler |
+| --- | ---: | ---: |
+| Open from Dashboard | 1,382 | 1,407 |
+| Filter to a known spool | 94 | 94 |
+| Clear the filter | 133 | 133 |
+
+The bundle contained React's memo cache in the compiled collection, whose
+uncompressed size grew from 9,951 to 11,450 bytes. The timing ranges overlapped
+for all three actions. Keep the compiler off for regular builds.

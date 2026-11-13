@@ -64,8 +64,10 @@ test("browser performance options keep wall-clock work advisory and local", () =
   assert.deepEqual(parseUiBrowserPerformanceOptions([]), {
     headless: true,
     json: false,
+    preview: false,
     samples: 3,
     sourcePath: null,
+    spools: null,
     startupBudgetMs: 5_000,
     transitionBudgetMs: 1_500,
     warmupRuns: 1,
@@ -74,9 +76,9 @@ test("browser performance options keep wall-clock work advisory and local", () =
     parseUiBrowserPerformanceOptions([
       "--headful",
       "--json",
+      "--preview",
+      "--spools=10000",
       "--samples=5",
-      "--source",
-      "fixture.db",
       "--startup-budget-ms=6000",
       "--transition-budget-ms",
       "2000",
@@ -85,12 +87,18 @@ test("browser performance options keep wall-clock work advisory and local", () =
     {
       headless: false,
       json: true,
+      preview: true,
       samples: 5,
-      sourcePath: "fixture.db",
+      sourcePath: null,
+      spools: 10_000,
       startupBudgetMs: 6_000,
       transitionBudgetMs: 2_000,
       warmupRuns: 2,
     },
+  );
+  assert.throws(
+    () => parseUiBrowserPerformanceOptions(["--spools=10000", "--source=fixture.db"]),
+    /cannot be combined with --source/,
   );
   assert.throws(
     () => parseUiBrowserPerformanceOptions(["--samples=1.5"]),

@@ -146,6 +146,8 @@ export function InventorySpoolCollection({
   totalSpoolCount,
   slotLabelById,
 }: InventorySpoolCollectionProps) {
+  "use memo";
+
   const { locale, t } = useI18n();
   const collectionId = useId();
   const [visibleRollLimitsByGroup, setVisibleRollLimitsByGroup] = useState<Map<string, number>>(

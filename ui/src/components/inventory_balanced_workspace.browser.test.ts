@@ -4,17 +4,41 @@ import { fileURLToPath } from "node:url";
 import { mkdir } from "node:fs/promises";
 import { resolve } from "node:path";
 import { chromium } from "playwright";
-import { build } from "vite";
-import react from "@vitejs/plugin-react";
-import tailwindcss from "@tailwindcss/vite";
+import { build, loadConfigFromFile } from "vite";
 import AxeBuilder from "@axe-core/playwright";
 
 // The complete 21-locale screenshot/axe matrix needs headroom on shared CI runners.
 // Individual interactions still fail within the eight-second page timeout below.
 test("balanced inventory preserves per-roll weights, filtering, selection and confirmed loan returns", {timeout:600_000}, async testContext => {
- const built=await build({root:fileURLToPath(new URL("../../",import.meta.url)),configFile:false,logLevel:"error",define:{"process.env.NODE_ENV":JSON.stringify("production")},plugins:[tailwindcss(),react()],build:{write:false,minify:false,cssCodeSplit:false,lib:{entry:fileURLToPath(new URL("../../test-fixtures/inventory_balanced_workspace_entry.tsx",import.meta.url)),formats:["iife"],name:"InventoryPreview"}}});
+ const root = fileURLToPath(new URL("../../", import.meta.url));
+ const loadedConfig = await loadConfigFromFile(
+  { command: "build", mode: "production" },
+  resolve(root, "vite.config.ts"),
+ );
+ assert.ok(loadedConfig);
+ const built = await build({
+  root,
+  configFile: false,
+  logLevel: "error",
+  define: { "process.env.NODE_ENV": JSON.stringify("production") },
+  plugins: loadedConfig.config.plugins,
+  build: {
+   write: false,
+   minify: false,
+   cssCodeSplit: false,
+   lib: {
+    entry: resolve(root, "test-fixtures/inventory_balanced_workspace_entry.tsx"),
+    formats: ["iife"],
+    name: "InventoryPreview",
+   },
+  },
+ });
  const output=(Array.isArray(built)?built:[built]).flatMap(r=>r.output);
  const script=output.find(o=>o.type==="chunk"&&o.isEntry);assert.ok(script?.type==="chunk");
+ const usesCompilerRuntime = Object.keys(script.modules).some(
+  id => id.replaceAll("\\", "/").endsWith("/react/compiler-runtime.js"),
+ );
+ assert.equal(usesCompilerRuntime, process.env.FILAMENT_MANAGER_INVENTORY_REACT_COMPILER === "1");
  const css=output.filter(o=>o.type==="asset"&&o.fileName.endsWith(".css")).map(o=>o.source).join("\n");
  const out=resolve("release-artifacts/visual-qa/inventory-balanced");await mkdir(out,{recursive:true});
  const browser=await chromium.launch();
