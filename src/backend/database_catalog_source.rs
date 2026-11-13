@@ -76,9 +76,22 @@ pub(crate) fn import_source_vendor_catalog_in_transaction(
         ));
     }
 
-    // Supplementary data cannot establish that an existing row is obsolete
-    // or now available. Only consider whether its identity already exists.
+    let esun_refresh =
+        mode == SourceCatalogImportMode::Refresh && vendor.eq_ignore_ascii_case("eSUN");
+    // eSUN's storefront and supplemental registry may spell the same entry
+    // with different casing. Keep the existing row ID when the storefront returns.
     let lookup_sql = match mode {
+        SourceCatalogImportMode::Refresh if esun_refresh => {
+            "SELECT id, vendor, catalog_user_edited != 0
+             FROM filament_master_list
+             WHERE material = ?1 COLLATE NOCASE
+               AND filament_name = ?2 COLLATE NOCASE
+               AND color_name = ?3 COLLATE NOCASE
+             ORDER BY (vendor = ?4 COLLATE NOCASE) DESC,
+                      (material = ?1 AND filament_name = ?2 AND color_name = ?3) DESC,
+                      id
+             LIMIT 1"
+        }
         SourceCatalogImportMode::Refresh => {
             "SELECT id, vendor, catalog_user_edited != 0
              FROM filament_master_list
@@ -86,12 +99,15 @@ pub(crate) fn import_source_vendor_catalog_in_transaction(
              LIMIT 1"
         }
         SourceCatalogImportMode::InsertMissing => {
+            // Supplemental data cannot establish a lifecycle transition.
             "SELECT id, vendor, catalog_user_edited != 0
              FROM filament_master_list
              WHERE trim(material) = ?1 COLLATE NOCASE
                AND trim(filament_name) = ?2 COLLATE NOCASE
                AND trim(color_name) = ?3 COLLATE NOCASE
-             ORDER BY (trim(vendor) = ?4 COLLATE NOCASE) DESC
+             ORDER BY (trim(vendor) = ?4 COLLATE NOCASE) DESC,
+                      (material = ?1 AND filament_name = ?2 AND color_name = ?3) DESC,
+                      id
              LIMIT 1"
         }
     };
@@ -119,9 +135,10 @@ pub(crate) fn import_source_vendor_catalog_in_transaction(
         }
 
         let lookup_params = [entry_material, filament_name, color_name, vendor];
-        let lookup_params = match mode {
-            SourceCatalogImportMode::Refresh => &lookup_params[..3],
-            SourceCatalogImportMode::InsertMissing => &lookup_params[..],
+        let lookup_params = if mode == SourceCatalogImportMode::InsertMissing || esun_refresh {
+            &lookup_params[..]
+        } else {
+            &lookup_params[..3]
         };
         let existing: Option<(String, String, bool)> = lookup
             .query_row(params_from_iter(lookup_params), |row| {
@@ -215,7 +232,10 @@ fn invalid_source_entry(message: &str) -> InventoryError {
 
 #[cfg(test)]
 mod tests {
-    use super::{import_source_vendor_catalog, SourceCatalogImportStats};
+    use super::{
+        import_source_vendor_catalog, import_source_vendor_catalog_in_transaction,
+        SourceCatalogImportMode, SourceCatalogImportStats,
+    };
     use crate::backend::database_catalog_inputs::SourceCatalogEntryInput;
     use rusqlite::{params, Connection};
 
@@ -372,6 +392,131 @@ mod tests {
             )
             .expect("read reactivated row");
         assert_eq!(row, (0, None, "https://new.example/pla".to_string(), 1000,));
+    }
+
+    #[test]
+    fn esun_refresh_updates_the_supplemental_row_when_casing_changes() {
+        let mut connection = database();
+        let transaction = connection.transaction().unwrap();
+        let supplemental = SourceCatalogEntryInput {
+            product_url: "https://tigersystem.io/en/catalog/42",
+            ..source_entry()
+        };
+        let stats = import_source_vendor_catalog_in_transaction(
+            &transaction,
+            "eSUN",
+            "PLA",
+            "2026-08-28 00:00:00",
+            &[supplemental],
+            SourceCatalogImportMode::InsertMissing,
+        )
+        .unwrap();
+        assert_eq!(stats.inserted_count, 1);
+        transaction.commit().unwrap();
+        let id: String = connection
+            .query_row("SELECT id FROM filament_master_list", [], |row| row.get(0))
+            .unwrap();
+        connection
+            .execute("UPDATE filament_master_list SET is_discontinued = 1", [])
+            .unwrap();
+
+        let official = SourceCatalogEntryInput {
+            filament_name: "PLA BASIC",
+            color_name: "BLACK",
+            hex_color: Some("#121212"),
+            ..source_entry()
+        };
+        let stats = import_source_vendor_catalog(
+            &connection,
+            "eSUN",
+            "PLA",
+            "2026-08-28 00:00:00",
+            &[official],
+        )
+        .unwrap();
+        assert_eq!(stats.inserted_count, 0);
+        assert_eq!(stats.updated_count, 1);
+        assert_eq!(stats.reactivated_count, 1);
+        let refreshed: (String, String, String, String, i64) = connection
+            .query_row(
+                "SELECT id, color_name, hex_color, product_url, is_discontinued
+                 FROM filament_master_list",
+                [],
+                |row| {
+                    Ok((
+                        row.get(0)?,
+                        row.get(1)?,
+                        row.get(2)?,
+                        row.get(3)?,
+                        row.get(4)?,
+                    ))
+                },
+            )
+            .unwrap();
+        assert_eq!(
+            refreshed,
+            (
+                id,
+                "Black".into(),
+                "#121212".into(),
+                "https://new.example/pla".into(),
+                0
+            )
+        );
+    }
+
+    #[test]
+    fn esun_refresh_prefers_the_vendor_then_exact_casing() {
+        let connection = database();
+        insert_existing(&connection, "alternate", "eSun", false, false);
+        connection
+            .execute(
+                "UPDATE filament_master_list SET color_name = 'black' WHERE id = 'alternate'",
+                [],
+            )
+            .unwrap();
+        insert_existing(&connection, "exact", "eSun", false, false);
+        connection
+            .execute(
+                "UPDATE filament_master_list SET color_name = 'BLACK' WHERE id = 'exact'",
+                [],
+            )
+            .unwrap();
+        insert_existing(&connection, "generic", "Generic", false, false);
+
+        for (color_name, expected_id) in [("BLACK", "exact"), ("Black", "alternate")] {
+            let entry = SourceCatalogEntryInput {
+                color_name,
+                product_url: "https://new.example/pla",
+                ..source_entry()
+            };
+            let stats = import_source_vendor_catalog(
+                &connection,
+                "eSUN",
+                "PLA",
+                "2026-08-28 00:00:00",
+                &[entry],
+            )
+            .unwrap();
+            assert_eq!(stats.updated_count, 1);
+            assert_eq!(stats.skipped_vendor_conflict_count, 0);
+            let ids = connection
+                .prepare(
+                    "SELECT id FROM filament_master_list WHERE product_url = 'https://new.example/pla'",
+                )
+                .unwrap()
+                .query_map([], |row| row.get::<_, String>(0))
+                .unwrap()
+                .collect::<Result<Vec<_>, _>>()
+                .unwrap();
+            assert_eq!(ids, [expected_id]);
+            connection
+                .execute(
+                    "UPDATE filament_master_list SET product_url = 'https://old.example/pla' WHERE id = ?1",
+                    [expected_id],
+                )
+                .unwrap();
+        }
     }
 
     #[test]
