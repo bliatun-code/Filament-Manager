@@ -95,7 +95,7 @@ test("every reviewed Rust workflow setup installs the exact toolchain", () => {
   const setupSteps = workflows.flatMap(([name, workflow]) =>
     rustSetupSteps(workflow).map((step) => [name, step]),
   );
-  assert.equal(setupSteps.length, 7);
+  assert.equal(setupSteps.length, 8);
 
   for (const [name, step] of setupSteps) {
     assert.match(
@@ -113,7 +113,7 @@ test("every reviewed Rust workflow setup installs the exact toolchain", () => {
 
 test("every Rust setup reads the sole release pin after Node 26 is installed", () => {
   for (const [workflowIndex, jobNames] of [
-    [0, ["shared-contracts", "migration-integrity", "macos-smoke", "windows-smoke"]],
+    [0, ["shared-contracts", "migration-integrity", "macos-ui", "macos-smoke", "windows-smoke"]],
     [1, ["build-macos-dmg", "build-windows-nsis"]],
     [2, ["cargo-audit"]],
   ]) {
@@ -129,7 +129,7 @@ test("every Rust setup reads the sole release pin after Node 26 is installed", (
   }
 });
 
-test("both required smoke jobs check Rust 1.90 before full verification", () => {
+test("both native jobs check Rust 1.90 before running the Rust tests", () => {
   const ciWorkflow = workflows[0][1];
   for (const jobName of ["macos-smoke", "windows-smoke"]) {
     const job = workflowJob(ciWorkflow, jobName);
@@ -151,7 +151,9 @@ test("both required smoke jobs check Rust 1.90 before full verification", () => 
     const reviewedSetupIndex = job.indexOf("- name: Setup Rust\n");
     const identifyCacheIndex = job.indexOf("- name: Identify Rust cache");
     const cacheIndex = job.indexOf("- name: Restore Rust dependencies");
-    const verificationIndex = job.indexOf("- name: Run full verification");
+    const verificationIndex = job.indexOf(jobName === "macos-smoke"
+      ? "- name: Run Rust verification"
+      : "- name: Run full verification");
     assert.ok(
       msrvSetupIndex < identifyCacheIndex && reviewedSetupIndex < identifyCacheIndex,
       `${jobName} must install both compilers before computing the cache key`,
@@ -159,7 +161,7 @@ test("both required smoke jobs check Rust 1.90 before full verification", () => 
     assert.ok(identifyCacheIndex < cacheIndex, `${jobName} must identify its environment before restoring`);
     assert.ok(
       cacheIndex < msrvCheckIndex && msrvCheckIndex < verificationIndex,
-      `${jobName} must check the lower bound after restoring dependencies and before full verification`,
+      `${jobName} must check the lower bound after restoring dependencies and before Rust verification`,
     );
     assert.equal(
       (job.match(/\bCARGO_TARGET_DIR:/g) ?? []).length,
@@ -342,9 +344,11 @@ test("cache maintenance reserves time before the job deadline and reports degrad
 
 test("cache hits cannot skip native verification or packaged application gates", () => {
   const ciWorkflow = workflows[0][1];
-  const commonGates = ["Check Rust MSRV", "Run full verification"];
+  const commonGates = ["Check Rust MSRV"];
   const nativeGates = {
     "macos-smoke": [
+      "Build production UI for native tests",
+      "Run Rust verification",
       "Run data-backed Companion E2E",
       "Build database upgrade candidate",
       "Prepare sanitized historical database fixture",
@@ -353,6 +357,7 @@ test("cache hits cannot skip native verification or packaged application gates",
       "Exercise packaged macOS mutating E2E",
     ],
     "windows-smoke": [
+      "Run full verification",
       "Run static path portability contract",
       "Run static command portability contract",
       "Run portability checks",

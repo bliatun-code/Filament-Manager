@@ -31,7 +31,7 @@ permissions:
 jobs:
   validate-release:
     name: Validate release request
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     timeout-minutes: 10
     outputs:
       package-version: ${{ steps['release-request'].outputs['package-version'] }}
@@ -126,7 +126,7 @@ jobs:
   prepare-previous-release-fixture:
     name: Prepare historical release database fixtures
     needs: validate-release
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     timeout-minutes: 15
     permissions:
       contents: read
@@ -855,7 +855,7 @@ jobs:
   generate-release-sbom:
     name: Generate source dependency SBOM
     needs: validate-release
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     timeout-minutes: 10
     permissions:
       contents: read
@@ -933,7 +933,7 @@ jobs:
       github.ref_type == 'tag' &&
       github.ref == format('refs/tags/{0}', needs['validate-release'].outputs['release-tag']) &&
       github.event.repository.private == false
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     timeout-minutes: 10
     permissions:
       actions: read
@@ -1049,7 +1049,7 @@ jobs:
         (github.event.repository.private == true && needs['attest-public-release'].result == 'skipped')
       )
     environment: github-release
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     timeout-minutes: 10
     permissions:
       checks: read

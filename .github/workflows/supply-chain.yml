@@ -39,7 +39,7 @@ permissions:
 jobs:
   npm-audit:
     name: npm vulnerabilities and licenses
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     timeout-minutes: 15
     steps:
       - name: Checkout
@@ -63,7 +63,7 @@ jobs:
 
   cargo-audit:
     name: Cargo vulnerabilities and licenses
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     timeout-minutes: 30
     env:
       CARGO_TERM_COLOR: always
@@ -101,7 +101,7 @@ jobs:
 
   sbom-smoke:
     name: SBOM generation
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     timeout-minutes: 10
     steps:
       - name: Checkout

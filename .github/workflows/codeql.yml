@@ -24,7 +24,7 @@ jobs:
   analyze:
     name: Analyze ${{ matrix.language }}
     if: github.event.repository.private == false
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     timeout-minutes: 20
     strategy:
       fail-fast: false

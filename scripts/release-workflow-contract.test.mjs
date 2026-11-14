@@ -1358,7 +1358,7 @@ test("CI rejects published migration rewrites and exercises both database paths"
     "node ./scripts/check-database-migrations.mjs",
   );
   assert.match(migrationJob, /name: Database Migration Integrity/);
-  assert.match(migrationJob, /runs-on: ubuntu-latest/);
+  assert.match(migrationJob, /runs-on: ubuntu-26\.04/);
   assert.match(migrationJob, /fetch-depth: 0/);
   assert.match(migrationJob, /persist-credentials: false/);
   assert.match(
@@ -1388,6 +1388,7 @@ test("CI rejects published migration rewrites and exercises both database paths"
 });
 
 test("CI executes real browser accessibility and sanitized Companion workflows", () => {
+  const macosUiJob = readSection(ciWorkflow, "  macos-ui:", "  shared-contracts:");
   const sharedContractsJob = readSection(
     ciWorkflow,
     "  shared-contracts:",
@@ -1413,10 +1414,10 @@ test("CI executes real browser accessibility and sanitized Companion workflows",
 
   assert.equal(
     (ciWorkflow.match(/uses: actions\/checkout@/g) ?? []).length,
-    4,
+    5,
     "CI must check out the repository once in every verification job",
   );
-  for (const job of [sharedContractsJob, migrationJob, macosJob, windowsJob]) {
+  for (const job of [macosUiJob, sharedContractsJob, migrationJob, macosJob, windowsJob]) {
     assert.match(
       job,
       /uses: actions\/checkout@[^\r\n]+\s+with:\s+(?:[^\r\n]*\r?\n)*?\s+persist-credentials: false/,
@@ -1426,12 +1427,18 @@ test("CI executes real browser accessibility and sanitized Companion workflows",
 
   assert.match(packageManifest.scripts.smoke, /npm run test:a11y:app-modal/);
   assert.match(packageManifest.scripts.smoke, /npm run test:a11y:data-backed/);
-  assertStepOrder(macosJob, [
+  assertStepOrder(macosUiJob, [
     "Install root dependencies",
     "Install Playwright Chromium",
     "Install Playwright WebKit",
     "Run Companion mobile WebKit smoke",
-    "Run full verification",
+    "Run UI verification",
+  ]);
+  assertStepOrder(macosJob, [
+    "Install root dependencies",
+    "Install Playwright Chromium",
+    "Build production UI for native tests",
+    "Run Rust verification",
     "Run data-backed Companion E2E",
   ]);
   assertStepOrder(windowsJob, [
@@ -1440,7 +1447,7 @@ test("CI executes real browser accessibility and sanitized Companion workflows",
     "Run full verification",
   ]);
   assert.match(
-    macosJob,
+    macosUiJob,
     /- name: Install Playwright Chromium\s+run: node \.\/node_modules\/playwright\/cli\.js install chromium/,
   );
   assert.match(
@@ -1448,11 +1455,11 @@ test("CI executes real browser accessibility and sanitized Companion workflows",
     /- name: Install Playwright Chromium\s+run: node \.\/node_modules\/playwright\/cli\.js install chromium/,
   );
   assert.match(
-    macosJob,
+    macosUiJob,
     /- name: Install Playwright WebKit\s+timeout-minutes: 5\s+run: node \.\/node_modules\/playwright\/cli\.js install webkit/,
   );
   assert.match(
-    macosJob,
+    macosUiJob,
     /- name: Run Companion mobile WebKit smoke\s+timeout-minutes: 5\s+env:\s+COMPANION_QA_BROWSER: webkit\s+run: npm run qa:visual:companion:balanced -- --smoke/,
   );
   assert.match(
@@ -1504,7 +1511,7 @@ test("macOS CI makes the sanitized database upgrade smoke a release gate", () =>
     /required_checks=\("Database Migration Integrity" "macOS Smoke" "Windows Smoke"\)/,
   );
   assertStepOrder(macosJob, [
-    "Run full verification",
+    "Run Rust verification",
     "Run data-backed Companion E2E",
     "Build database upgrade candidate",
     "Prepare sanitized historical database fixture",
@@ -1647,7 +1654,7 @@ test("release and CI use the npm 12 setup before preparing or verifying historic
     assert.match(job, /- name: Set up npm 12\s+uses: \.\/\.github\/actions\/setup-npm/);
     assertStepOrder(job, ["Setup Node", "Set up npm 12", npmStep]);
   }
-  assert.match(migrationJob, /runs-on: ubuntu-latest/);
+  assert.match(migrationJob, /runs-on: ubuntu-26\.04/);
   assert.match(migrationJob, /git worktree add --detach previous-release-v0\.28\.0 76cba513eadd5137d6703f9abd1c0452531ef788/);
   assert.match(migrationJob, /- name: Set up npm 12\s+uses: \.\/\.github\/actions\/setup-npm/);
   assert.match(migrationJob, /- name: Prepare historical release databases\s+uses: \.\/\.github\/actions\/prepare-release-fixtures/);
