@@ -74,7 +74,12 @@ installer and payload match the verified build. On a clean hosted Windows
 profile, it checks the per-user install, application launch, fresh database,
 historical database upgrade, Host/Client, persistence, portable backup and
 uninstall. A separate migration gate exercises the upgrade from the
-published v0.35.1 MSI.
+published v0.35.1 MSI. The published-NSIS gate verifies the v0.36.1 checksum
+and build provenance before installing that exact release on its own runner.
+It opens a synthetic library in v0.36.1, upgrades interactively in place, and
+checks that the new app opens the same data, the launch-at-login choice survives,
+the older installer cannot replace the candidate, and uninstall retains the
+library.
 
 The installed desktop and Host/Client tests verify that a catalog batch
 replayed after restart returns the same rolls without duplicate loans or
@@ -113,7 +118,8 @@ distribution channel, but not the configured update metadata URL.
 
 Run **Windows NSIS release rehearsal** on `main` in GitHub Actions to build
 and test a per-user x64 release candidate. The workflow downloads the checked
-candidate by digest and uses it for both the installed-app release gates and
-the MSI migration gate. When the repository version still matches the newest
-supported MSI, the candidate uses the next patch version with `-rc.1` in a
-temporary build config. The rehearsal uploads workflow artifacts for testing.
+candidate by digest and uses it for the installed-app, MSI migration and
+published NSIS upgrade gates. While the repository version still matches the
+published NSIS baseline, the rehearsal candidate uses the next patch version
+with `-rc.1` in a temporary build config. Use the rehearsal to exercise the
+upgrade from v0.36.1 while manual release builds on main still build v0.36.1. The rehearsal uploads workflow artifacts for testing.

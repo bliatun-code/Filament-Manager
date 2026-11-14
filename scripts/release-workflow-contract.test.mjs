@@ -303,25 +303,33 @@ test("release workflow gates tag and manual installer builds", () => {
 
   assert.match(windowsMigrationJob, /needs:\s*\n\s+- validate-release\s*\n\s+- prepare-previous-release-fixture\s*\n\s+- build-windows-nsis/);
   assert.match(windowsMigrationJob, /runs-on: windows-2025/);
+  assert.match(windowsMigrationJob, /source: \[msi, nsis\]/);
+  assert.match(windowsMigrationJob, /if: matrix\.source == 'msi'/);
+  assert.match(windowsMigrationJob, /if: >-\s+matrix\.source == 'nsis' &&/);
+  assert.match(windowsMigrationJob, /"installer=\$\(\$checked\.Installer\)" >> \$env:GITHUB_OUTPUT/);
   assert.doesNotMatch(windowsMigrationJob, /environment:|permissions:|--bundles/);
   assert.match(windowsMigrationJob, /name: filament-manager-nsis-migration-fixture-\$\{\{ github\.run_id \}\}/);
   assert.match(windowsMigrationJob, /NSIS_MIGRATION_FIXTURE_SHA256: \$\{\{ needs\['prepare-previous-release-fixture'\]\.outputs\['migration-sha256'\] \}\}/);
   assert.match(windowsMigrationJob, /NSIS_INSTALLER_SHA256: \$\{\{ needs\['build-windows-nsis'\]\.outputs\['installer-sha256'\] \}\}/);
   assert.match(windowsMigrationJob, /NSIS_PAYLOAD_SHA256: \$\{\{ needs\['build-windows-nsis'\]\.outputs\['payload-sha256'\] \}\}/);
   assert.match(windowsMigrationJob, /\.\/scripts\/verify-windows-nsis-rehearsal\.ps1[\s\S]*?-ExpectedInstallerSha256 "\$env:NSIS_INSTALLER_SHA256"[\s\S]*?\$checked\.PayloadSha256 -cne \$env:NSIS_PAYLOAD_SHA256[\s\S]*?\.\/scripts\/smoke-windows-nsis-pilot\.ps1/);
-  assert.match(windowsMigrationJob, /-Installer \$checked\.Installer/);
+  assert.match(windowsMigrationJob, /-Installer "\$env:NSIS_INSTALLER"/);
   assert.match(windowsMigrationJob, /-SourceManifest "scripts\/windows-nsis-msi-sources\.json"/);
   assert.match(windowsMigrationJob, /-SourceVersion "v0\.35\.1"/);
   assert.match(windowsMigrationJob, /-FixtureSha256 "\$env:NSIS_MIGRATION_FIXTURE_SHA256"/);
   assert.match(fixtureJob, /migration-sha256: \$\{\{ steps\.migration-fixture\.outputs\.sha256 \}\}/);
   assert.match(fixtureJob, /npm run qa:release:upgrade-ci-fixture -- --output="\$fixture"\s+digest=\$\(sha256sum "\$fixture"\)\s+echo "sha256=\$\{digest%% \*\}"/);
   assert.match(fixtureJob, /Upload the synthetic MSI migration fixture[\s\S]*?name: filament-manager-nsis-migration-fixture-\$\{\{ github\.run_id \}\}[\s\S]*?if-no-files-found: error/);
+   assert.match(windowsMigrationJob, /Exercise upgrade from the published NSIS[\s\S]*?-PublishedNsis[\s\S]*?-ExpectedInstallerSha256 "\$env:NSIS_INSTALLER_SHA256"[\s\S]*?-FixtureSha256 "\$env:NSIS_MIGRATION_FIXTURE_SHA256"/);
+  assert.match(windowsMigrationJob, /github\.event_name != 'workflow_dispatch' \|\|\s+steps\.candidate\.outputs\['published-nsis-tag'\] != format\('v\{0\}', needs\['validate-release'\]\.outputs\['package-version'\]\)/);
   assertStepOrder(windowsMigrationJob, [
     "Set up npm 12",
     "Install test dependencies",
-    "Download the synthetic MSI migration fixture",
+    "Download the synthetic installer upgrade fixture",
     "Download release NSIS candidate for migration",
+    "Verify downloaded NSIS candidate for upgrade",
     "Exercise migration from the latest published MSI",
+    "Exercise upgrade from the published NSIS",
     "Upload release NSIS migration logs",
   ]);
 
