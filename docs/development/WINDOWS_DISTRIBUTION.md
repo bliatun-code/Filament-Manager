@@ -63,6 +63,11 @@ program and its launch-at-login entries and retains the library.
 
 ## Automated installer smoke test
 
+Ordinary `Windows Smoke` builds a debug NSIS installer with the per-user
+template used by releases. It verifies the installer and x64 payload, checks
+the installer hash before execution, and exercises a clean install, the
+packaged desktop and Host/Client flows, and uninstall.
+
 Before publication, CI verifies the NSIS bootstrap, x64 application payload,
 product name, version and unsigned status. It checks that the downloaded
 installer and payload match the verified build. On a clean hosted Windows

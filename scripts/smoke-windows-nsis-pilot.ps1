@@ -72,7 +72,7 @@ if ($Scenario -eq "interactive") {
 function Invoke-PilotInstaller {
     param([string]$FilePath, [string[]]$InstallerArguments, [int]$ExpectedExitCode = 0)
 
-    $process = Start-Process -FilePath $FilePath -ArgumentList $InstallerArguments -Wait -PassThru
+    $process = Start-Process -FilePath $FilePath -ArgumentList $InstallerArguments -NoNewWindow -Wait -PassThru
     try {
         if ($process.ExitCode -ne $ExpectedExitCode) {
             throw "Unexpected exit code $($process.ExitCode) for $FilePath. Expected $ExpectedExitCode."
@@ -348,6 +348,20 @@ function Assert-Absent {
     }
 }
 
+function Wait-PilotUninstall {
+    param([string[]]$Paths, [int]$TimeoutMilliseconds = 10000)
+
+    # The NSIS uninstaller can finish in a temporary child process.
+    $clock = [Diagnostics.Stopwatch]::StartNew()
+    do {
+        $remaining = @($Paths | Where-Object { Test-Path -LiteralPath $_ })
+        if ($remaining.Count -eq 0) { return }
+        Start-Sleep -Milliseconds 100
+    } while ($clock.ElapsedMilliseconds -lt $TimeoutMilliseconds)
+
+    Assert-Absent $Paths
+}
+
 function Test-InstalledApp {
     param([string]$Label, [switch]$Legacy)
 
@@ -550,7 +564,7 @@ try {
     else {
         Invoke-PilotInstaller $uninstaller @("/S")
     }
-    Assert-Absent @($installedApp, $uninstaller, $nsisEntry, $startMenuShortcut, $desktopShortcut, $roamingDirectory)
+    Wait-PilotUninstall @($installedApp, $uninstaller, $nsisEntry, $startMenuShortcut, $desktopShortcut, $roamingDirectory)
     Assert-Autostart $false
     & node $databaseCheck verify $database $snapshot
     if ($LASTEXITCODE -ne 0) { throw "NSIS uninstall did not preserve the library." }
@@ -562,7 +576,7 @@ try {
         Assert-Autostart $false
         Test-InstalledApp "NSIS-clean-install"
         Invoke-PilotInstaller $uninstaller @("/S")
-        Assert-Absent @($installedApp, $uninstaller, $nsisEntry, $startMenuShortcut, $desktopShortcut, $roamingDirectory)
+        Wait-PilotUninstall @($installedApp, $uninstaller, $nsisEntry, $startMenuShortcut, $desktopShortcut, $roamingDirectory)
         & node $databaseCheck verify $database $snapshot
         if ($LASTEXITCODE -ne 0) { throw "Clean NSIS install and uninstall changed the library." }
     }

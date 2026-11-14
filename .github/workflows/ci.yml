@@ -451,61 +451,80 @@ jobs:
       - name: Run full verification
         run: npm run verify
 
-      - name: Prepare MSI smoke version override
-        env:
-          MSI_VERSION_CONFIG_PATH: ${{ runner.temp }}/filament-manager-msi-smoke-version.json
-        run: node ./scripts/normalize-msi-version.mjs --output "$env:MSI_VERSION_CONFIG_PATH"
-
-      - name: Build MSI smoke bundle
-        env:
-          MSI_VERSION_CONFIG_PATH: ${{ runner.temp }}/filament-manager-msi-smoke-version.json
-        run: node ./scripts/run-tauri.mjs build --debug --bundles msi --config "$env:MSI_VERSION_CONFIG_PATH"
-
-      - name: Verify MSI smoke bundle
+      - name: Prepare per-user NSIS smoke configuration
+        id: nsis-config
         shell: pwsh
         env:
-          MSI_VERSION_CONFIG_PATH: ${{ runner.temp }}/filament-manager-msi-smoke-version.json
+          NSIS_CONFIG_PATH: ${{ runner.temp }}/filament-manager-nsis-ci.json
         run: |
-          $tauriConfig = Get-Content -LiteralPath "src-tauri/tauri.conf.json" -Raw | ConvertFrom-Json
-          $msiVersionConfig = Get-Content -LiteralPath $env:MSI_VERSION_CONFIG_PATH -Raw | ConvertFrom-Json
-          ./scripts/verify-windows-msi.ps1 `
-            -MsiDirectory "target/debug/bundle/msi" `
-            -ExpectedProductName $tauriConfig.productName `
-            -ExpectedProductVersion $msiVersionConfig.bundle.windows.wix.version `
-            -ExpectedArchitecture "x64" `
-            -NormalizedFileName "Filament-Manager_$($tauriConfig.version)_x64_en-US.msi"
-
-      - name: Exercise clean MSI installation
-        shell: pwsh
-        env:
-          WINDOWS_MSI_SMOKE_LOG_DIR: ${{ runner.temp }}/filament-manager-windows-msi-smoke
-        run: |
-          $tauriConfig = Get-Content -LiteralPath "src-tauri/tauri.conf.json" -Raw | ConvertFrom-Json
-          $msiFiles = @(Get-ChildItem -LiteralPath "target/debug/bundle/msi" -Filter "*.msi" -File)
-          if ($msiFiles.Count -ne 1) {
-            throw "Expected exactly one verified debug MSI; found $($msiFiles.Count)."
+          $config = Get-Content -LiteralPath "src-tauri/tauri.conf.json" -Raw | ConvertFrom-Json
+          $version = node ./scripts/prepare-windows-nsis-rehearsal.mjs --output "$env:NSIS_CONFIG_PATH"
+          if ($LASTEXITCODE -ne 0 -or $version -cne $config.version) {
+            throw "The NSIS configuration must use the exact app version $($config.version)."
           }
+          "version=$version" >> $env:GITHUB_OUTPUT
 
+      - name: Build NSIS smoke bundle
+        env:
+          NSIS_CONFIG_PATH: ${{ runner.temp }}/filament-manager-nsis-ci.json
+        run: node ./scripts/run-tauri.mjs build --debug --bundles nsis --config "$env:NSIS_CONFIG_PATH" -- --locked
+
+      - name: Verify NSIS smoke bundle
+        id: nsis-verify
+        shell: pwsh
+        env:
+          NSIS_VERSION: ${{ steps.nsis-config.outputs.version }}
+          NSIS_STAGING_DIR: ${{ runner.temp }}/filament-manager-nsis-ci-staging
+        run: |
+          git diff --exit-code -- Cargo.lock src-tauri/tauri.conf.json src-tauri/tauri.windows.conf.json
+          if ($LASTEXITCODE -ne 0) { throw "Building NSIS must not change the checked-in lockfile or Tauri configuration." }
+          $tauriConfig = Get-Content -LiteralPath "src-tauri/tauri.conf.json" -Raw | ConvertFrom-Json
+          $checked = ./scripts/verify-windows-nsis-rehearsal.ps1 `
+            -Directory "$env:NSIS_STAGING_DIR" `
+            -StageFrom "target/debug/bundle/nsis" `
+            -ExpectedProductName $tauriConfig.productName `
+            -ExpectedVersion "$env:NSIS_VERSION"
+          "installer=$($checked.Installer)" >> $env:GITHUB_OUTPUT
+          "installer-sha256=$($checked.InstallerSha256)" >> $env:GITHUB_OUTPUT
+          "payload-sha256=$($checked.PayloadSha256)" >> $env:GITHUB_OUTPUT
+
+      - name: Exercise clean NSIS installation
+        shell: pwsh
+        env:
+          NSIS_INSTALLER: ${{ steps.nsis-verify.outputs.installer }}
+          NSIS_INSTALLER_SHA256: ${{ steps.nsis-verify.outputs.installer-sha256 }}
+          NSIS_PAYLOAD_SHA256: ${{ steps.nsis-verify.outputs.payload-sha256 }}
+          NSIS_VERSION: ${{ steps.nsis-config.outputs.version }}
+          NSIS_SMOKE_LOG_DIR: ${{ runner.temp }}/filament-manager-windows-nsis-smoke
+        run: |
+          $installerHash = (Get-FileHash -LiteralPath $env:NSIS_INSTALLER -Algorithm SHA256).Hash.ToLowerInvariant()
+          if ($installerHash -cne $env:NSIS_INSTALLER_SHA256) { throw "The NSIS installer differs from the checked build." }
+          $tauriConfig = Get-Content -LiteralPath "src-tauri/tauri.conf.json" -Raw | ConvertFrom-Json
           ./scripts/smoke-windows-msi.ps1 `
-            -MsiPath $msiFiles[0].FullName `
+            -NsisPath "$env:NSIS_INSTALLER" `
+            -ExpectedNsisVersion "$env:NSIS_VERSION" `
+            -ExpectedPayloadSha256 "$env:NSIS_PAYLOAD_SHA256" `
             -ExpectedProductName $tauriConfig.productName `
             -ExpectedExecutableName "bambu-filament-manager.exe" `
             -ExpectedWindowTitles @($tauriConfig.productName, "Dashboard") `
             -ExpectedInstallDirectory (Join-Path $env:LOCALAPPDATA $tauriConfig.productName) `
             -ExpectedAppDataDirectory (Join-Path $env:LOCALAPPDATA $tauriConfig.identifier) `
             -ExpectedDatabaseName "filament-manager.db" `
-            -LogDirectory $env:WINDOWS_MSI_SMOKE_LOG_DIR `
+            -LogDirectory "$env:NSIS_SMOKE_LOG_DIR" `
             -SignaturePolicy "UnsignedRequired" `
             -RunPackagedDesktopE2E `
             -RunPackagedHostClientE2E `
             -LaunchTimeoutSeconds 90
 
-      - name: Upload MSI smoke logs
+      - name: Upload NSIS smoke logs
         if: always()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
-          name: filament-manager-windows-msi-smoke-${{ github.run_id }}
-          path: ${{ runner.temp }}/filament-manager-windows-msi-smoke
+          name: filament-manager-windows-nsis-smoke-${{ github.run_id }}
+          path: |
+            ${{ runner.temp }}/filament-manager-windows-nsis-smoke/*.log
+            ${{ runner.temp }}/filament-manager-windows-nsis-smoke/*.stderr
+            ${{ runner.temp }}/filament-manager-windows-nsis-smoke/smoke-summary.txt
           if-no-files-found: warn
           overwrite: true
           retention-days: 7

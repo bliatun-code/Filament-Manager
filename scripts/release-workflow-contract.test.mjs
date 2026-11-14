@@ -1272,7 +1272,7 @@ test("Windows MSI PATH feature is user-scoped and independently selectable", () 
   );
 });
 
-test("Windows CI runs separate builtin portability contracts before toolchain setup", () => {
+test("Windows CI checks portability first and tests the verified NSIS installer", () => {
   const windowsJob = readSection(ciWorkflow, "  windows-smoke:");
 
   assert.match(
@@ -1291,37 +1291,52 @@ test("Windows CI runs separate builtin portability contracts before toolchain se
     "Install root dependencies",
     "Run portability checks",
     "Run full verification",
-    "Prepare MSI smoke version override",
-    "Build MSI smoke bundle",
-    "Verify MSI smoke bundle",
-    "Exercise clean MSI installation",
-    "Upload MSI smoke logs",
+    "Prepare per-user NSIS smoke configuration",
+    "Build NSIS smoke bundle",
+    "Verify NSIS smoke bundle",
+    "Exercise clean NSIS installation",
+    "Upload NSIS smoke logs",
   ]);
+  assert.match(windowsJob, /name: Windows Smoke/);
   assert.match(windowsJob, /timeout-minutes: 60/);
+  assert.match(windowsJob, /node \.\/scripts\/prepare-windows-nsis-rehearsal\.mjs --output "\$env:NSIS_CONFIG_PATH"/);
+  assert.match(windowsJob, /\$LASTEXITCODE -ne 0 -or \$version -cne \$config\.version/);
   assert.match(
     windowsJob,
-    /node \.\/scripts\/run-tauri\.mjs build --debug --bundles msi --config "\$env:MSI_VERSION_CONFIG_PATH"/,
+    /node \.\/scripts\/run-tauri\.mjs build --debug --bundles nsis --config "\$env:NSIS_CONFIG_PATH" -- --locked/,
   );
-  assert.match(windowsJob, /-MsiDirectory "target\/debug\/bundle\/msi"/);
-  assert.match(windowsJob, /-ExpectedArchitecture "x64"/);
+  const verifyStep = readSection(windowsJob, "      - name: Verify NSIS smoke bundle", "      - name: Exercise clean NSIS installation");
+  assert.match(verifyStep, /git diff --exit-code -- Cargo\.lock src-tauri\/tauri\.conf\.json src-tauri\/tauri\.windows\.conf\.json/);
+  assert.match(verifyStep, /\.\/scripts\/verify-windows-nsis-rehearsal\.ps1/);
+  assert.match(verifyStep, /-StageFrom "target\/debug\/bundle\/nsis"/);
+  assert.match(verifyStep, /-ExpectedVersion "\$env:NSIS_VERSION"/);
+  for (const [output, property] of [["installer", "Installer"], ["installer-sha256", "InstallerSha256"], ["payload-sha256", "PayloadSha256"]]) {
+    assert.ok(verifyStep.includes(`"${output}=$($checked.${property})" >> $env:GITHUB_OUTPUT`));
+  }
+  const installationStep = readSection(windowsJob, "      - name: Exercise clean NSIS installation", "      - name: Upload NSIS smoke logs");
+  for (const [environment, output] of [["NSIS_INSTALLER", "installer"], ["NSIS_INSTALLER_SHA256", "installer-sha256"], ["NSIS_PAYLOAD_SHA256", "payload-sha256"]]) {
+    assert.ok(installationStep.includes(`${environment}: \${{ steps.nsis-verify.outputs.${output} }}`));
+  }
+  assert.match(installationStep, /Get-FileHash -LiteralPath \$env:NSIS_INSTALLER -Algorithm SHA256/);
+  assert.match(installationStep, /\$installerHash -cne \$env:NSIS_INSTALLER_SHA256/);
+  assert.match(installationStep, /\.\/scripts\/smoke-windows-msi\.ps1/);
+  assert.match(installationStep, /-NsisPath "\$env:NSIS_INSTALLER"/);
+  assert.match(installationStep, /-ExpectedNsisVersion "\$env:NSIS_VERSION"/);
+  assert.match(installationStep, /-ExpectedPayloadSha256 "\$env:NSIS_PAYLOAD_SHA256"/);
+  assert.doesNotMatch(windowsJob, /--bundles msi|verify-windows-msi\.ps1|-MsiPath\b/);
   assert.match(
-    windowsJob,
-    /-NormalizedFileName "Filament-Manager_\$\(\$tauriConfig\.version\)_x64_en-US\.msi"/,
-  );
-  assert.match(windowsJob, /\.\/scripts\/smoke-windows-msi\.ps1/);
-  assert.match(
-    windowsJob,
+    installationStep,
     /-ExpectedExecutableName "bambu-filament-manager\.exe"/,
   );
   assert.match(
-    windowsJob,
+    installationStep,
     /-ExpectedWindowTitles @\(\$tauriConfig\.productName, "Dashboard"\)/,
   );
-  assert.match(windowsJob, /-ExpectedDatabaseName "filament-manager\.db"/);
-  assert.match(windowsJob, /-SignaturePolicy "UnsignedRequired"/);
+  assert.match(installationStep, /-ExpectedDatabaseName "filament-manager\.db"/);
+  assert.match(installationStep, /-SignaturePolicy "UnsignedRequired"/);
   assert.match(
     windowsJob,
-    /- name: Upload MSI smoke logs\s+if: always\(\)[\s\S]*?if-no-files-found: warn[\s\S]*?retention-days: 7/,
+    /- name: Upload NSIS smoke logs\s+if: always\(\)[\s\S]*?if-no-files-found: warn[\s\S]*?retention-days: 7/,
   );
 });
 
