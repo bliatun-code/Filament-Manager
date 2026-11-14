@@ -177,13 +177,10 @@ fn build_update_result_from_metadata(
     // malformed asset cannot change the version result or the fixed release page.
     if result.status == AppUpdateStatus::UpdateAvailable
         && metadata_url.as_str() == GITHUB_UPDATE_METADATA_URL
+        && let Some(target) = platform
+        && let Ok(assets) = serde_json::from_slice::<GitHubReleaseAssets>(body)
     {
-        if let (Some(target), Ok(assets)) = (
-            platform,
-            serde_json::from_slice::<GitHubReleaseAssets>(body),
-        ) {
-            result.installer = official_installer(assets, &release.tag_name, &version, target);
-        }
+        result.installer = official_installer(assets, &release.tag_name, &version, target);
     }
     Ok(result)
 }
