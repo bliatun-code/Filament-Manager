@@ -1,15 +1,20 @@
-[CmdletBinding()]
+[CmdletBinding(DefaultParameterSetName = "Msi")]
 param(
     [Parameter(Mandatory = $true)][string]$Installer,
     [Parameter(Mandatory = $true)][string]$Logs,
     [Parameter(Mandatory = $true)][string]$Fixture,
     [Parameter(Mandatory = $true)][ValidatePattern("^[0-9a-fA-F]{64}$")][string]$FixtureSha256,
-    [Parameter(Mandatory = $true)][string]$SourceManifest,
-    [Parameter(Mandatory = $true)][ValidatePattern('^v[0-9]+\.[0-9]+\.[0-9]+$')][string]$SourceVersion,
+    [Parameter(Mandatory = $true, ParameterSetName = "Msi")][string]$SourceManifest,
+    [Parameter(Mandatory = $true, ParameterSetName = "Msi")]
+    [ValidatePattern('^v[0-9]+\.[0-9]+\.[0-9]+$')][string]$SourceVersion,
+    [Parameter(Mandatory = $true, ParameterSetName = "Nsis")][switch]$PublishedNsis,
+    [Parameter(Mandatory = $true, ParameterSetName = "Nsis")]
+    [ValidatePattern('^[0-9a-fA-F]{64}$')][string]$ExpectedInstallerSha256,
     [Parameter(Mandatory = $true)][string]$ExpectedNsisVersion,
+    [Parameter(ParameterSetName = "Msi")]
     [ValidateSet("standard", "custom-directory", "running-app", "interactive")][string]$Scenario = "standard",
-    [string]$NextInstaller,
-    [string]$NextVersion
+    [Parameter(ParameterSetName = "Msi")][string]$NextInstaller,
+    [Parameter(ParameterSetName = "Msi")][string]$NextVersion
 )
 
 Set-StrictMode -Version Latest
@@ -26,16 +31,34 @@ foreach ($name in @("FILAMENT_MANAGER_DB_PATH", "BAMBU_DB_PATH")) {
 }
 
 $config = Get-Content (Join-Path $PSScriptRoot "../src-tauri/tauri.conf.json") -Raw | ConvertFrom-Json
-$sources = Get-Content -LiteralPath $SourceManifest -Raw | ConvertFrom-Json -AsHashtable
-$source = $sources[$SourceVersion]
-$assetName = "Filament-Manager_$($SourceVersion.Substring(1))_x64_en-US.msi"
-if ($null -eq $source -or $source.asset -cne $assetName -or
-    $source.sha256 -cnotmatch '^[0-9a-f]{64}$' -or
-    $source.productCode -notmatch '^\{[0-9A-F]{8}-(?:[0-9A-F]{4}-){3}[0-9A-F]{12}\}$') {
-    throw "No valid published MSI metadata for $SourceVersion."
+if ($PublishedNsis) {
+    $source = Get-Content -LiteralPath (Join-Path $PSScriptRoot "windows-nsis-upgrade-source.json") -Raw |
+        ConvertFrom-Json -AsHashtable
+    if ($source.tag -cnotmatch '^v[0-9]+\.[0-9]+\.[0-9]+$' -or
+        $source.commit -cnotmatch '^[0-9a-f]{40}$' -or $source.sha256 -cnotmatch '^[0-9a-f]{64}$') {
+        throw "Published NSIS metadata requires a stable tag, commit and installer SHA-256."
+    }
+    $SourceVersion = $source.tag
+    $baselineVersion = $SourceVersion.Substring(1)
+    if ([semver]$ExpectedNsisVersion -le [semver]$baselineVersion) {
+        throw "The NSIS candidate must be newer than the published $SourceVersion NSIS."
+    }
+    $assetName = "Filament-Manager_${baselineVersion}_x64-setup.exe"
+    $productCode = $null
 }
-if ($Scenario -eq "interactive" -and (-not $NextInstaller -or -not $NextVersion)) {
-    throw "The interactive scenario needs two successive NSIS installers."
+else {
+    $sources = Get-Content -LiteralPath $SourceManifest -Raw | ConvertFrom-Json -AsHashtable
+    $source = $sources[$SourceVersion]
+    $assetName = "Filament-Manager_$($SourceVersion.Substring(1))_x64_en-US.msi"
+    if ($null -eq $source -or $source.asset -cne $assetName -or
+        $source.sha256 -cnotmatch '^[0-9a-f]{64}$' -or
+        $source.productCode -notmatch '^\{[0-9A-F]{8}-(?:[0-9A-F]{4}-){3}[0-9A-F]{12}\}$') {
+        throw "No valid published MSI metadata for $SourceVersion."
+    }
+    if ($Scenario -eq "interactive" -and (-not $NextInstaller -or -not $NextVersion)) {
+        throw "The interactive scenario needs two successive NSIS installers."
+    }
+    $productCode = $source.productCode
 }
 
 $product = $config.productName
@@ -57,7 +80,6 @@ $runRegistry = "HKCU:\Software\Microsoft\Windows\CurrentVersion\Run"
 $approvalRegistry = "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\StartupApproved\Run"
 $autostartId = $config.identifier
 $autostartCommand = '"{0}" --background' -f $installedApp
-$productCode = $source.productCode
 
 # Cover an absent registration, Windows-approved startup and Windows-disabled startup.
 $approval = switch ($SourceVersion) {
@@ -65,7 +87,7 @@ $approval = switch ($SourceVersion) {
     "v0.35.0" { [byte[]](3, 0, 0, 0, 1, 2, 3, 4, 5, 6, 7, 8) }
     default { [byte[]](2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0) }
 }
-if ($Scenario -eq "interactive") {
+if ($PublishedNsis -or $Scenario -eq "interactive") {
     $approval = [byte[]](3, 0, 0, 0, 1, 2, 3, 4, 5, 6, 7, 8)
 }
 
@@ -81,6 +103,32 @@ function Invoke-PilotInstaller {
     finally {
         $process.Dispose()
     }
+}
+
+function Get-PublishedNsis {
+    $downloadDirectory = Join-Path $env:RUNNER_TEMP "filament-manager-published-nsis"
+    New-Item -ItemType Directory -Path $downloadDirectory | Out-Null
+    $repository = "bliatun-code/Filament-Manager"
+    $manifestName = "SHA256SUMS-windows.txt"
+    $provenanceName = "Filament-Manager_${baselineVersion}_provenance.sigstore.json"
+    $baseUri = "https://github.com/$repository/releases/download/$SourceVersion"
+    foreach ($file in @($assetName, $manifestName, $provenanceName)) {
+        & curl.exe --fail --location --silent --show-error --retry 3 --max-time 90 `
+            --output (Join-Path $downloadDirectory $file) "$baseUri/$file"
+        if ($LASTEXITCODE -ne 0) { throw "Could not download $file from the published $SourceVersion release." }
+    }
+
+    $verified = & (Join-Path $PSScriptRoot "verify-windows-nsis-rehearsal.ps1") `
+        -Directory $downloadDirectory `
+        -ExpectedProductName $product `
+        -ExpectedVersion $baselineVersion `
+        -ExpectedInstallerSha256 $source.sha256
+    & gh attestation verify $verified.Installer --repo $repository `
+        --signer-workflow "$repository/.github/workflows/release-build.yml" `
+        --source-ref "refs/tags/$SourceVersion" --source-digest $source.commit `
+        --bundle (Join-Path $downloadDirectory $provenanceName) | Write-Host
+    if ($LASTEXITCODE -ne 0) { throw "Build provenance verification failed for $SourceVersion." }
+    return $verified
 }
 
 function Invoke-InteractiveInstaller {
@@ -416,8 +464,8 @@ function Assert-CandidateInstalled {
         $entry.UninstallString.Trim('"') -ne $uninstaller) {
         throw "The NSIS entry does not match the expected per-user product identity."
     }
-    if ((Get-FileHash -LiteralPath $installedApp).Hash -cne $PayloadHash) {
-        throw "The installed executable does not match the built NSIS candidate."
+    if ((Get-FileHash -LiteralPath $installedApp).Hash -ne $PayloadHash) {
+        throw "The installed executable does not match the verified NSIS payload."
     }
     $shell = New-Object -ComObject WScript.Shell
     try {
@@ -461,30 +509,38 @@ try {
     Assert-Absent @($defaultInstallDirectory, $installDirectory, $dataDirectory, $roamingDirectory, $nsisEntry, $startMenuShortcut, $desktopShortcut)
     Assert-Autostart $false
     Assert-InstallerPath $false
-    if ((Get-MsiState $productCode) -ne -1) { throw "The baseline MSI is already registered." }
-
     $Installer = (Resolve-Path -LiteralPath $Installer).Path
     $candidateHash = Get-PilotPayloadHash $Installer "initial"
-    $sourceMsi = Join-Path $env:RUNNER_TEMP $assetName
-    $sourceUri = "https://github.com/bliatun-code/Filament-Manager/releases/download/$SourceVersion/$assetName"
-    & curl.exe --fail --location --silent --show-error --retry 3 --max-time 90 --output $sourceMsi $sourceUri
-    if ($LASTEXITCODE -ne 0) { throw "The released MSI could not be downloaded." }
-    if ((Get-FileHash -LiteralPath $sourceMsi).Hash -ne $source.sha256) {
-        throw "The published $SourceVersion MSI did not match its pinned SHA-256."
+    if ($PublishedNsis) {
+        $published = Get-PublishedNsis
+        Write-Host "Installing the verified public Filament Manager $SourceVersion NSIS."
+        Invoke-PilotInstaller $published.Installer @("/S")
+        Assert-CandidateInstalled $baselineVersion $published.PayloadSha256
+        Assert-InstallerPath $false
     }
+    else {
+        if ((Get-MsiState $productCode) -ne -1) { throw "The baseline MSI is already registered." }
+        $sourceMsi = Join-Path $env:RUNNER_TEMP $assetName
+        $sourceUri = "https://github.com/bliatun-code/Filament-Manager/releases/download/$SourceVersion/$assetName"
+        & curl.exe --fail --location --silent --show-error --retry 3 --max-time 90 --output $sourceMsi $sourceUri
+        if ($LASTEXITCODE -ne 0) { throw "The released MSI could not be downloaded." }
+        if ((Get-FileHash -LiteralPath $sourceMsi).Hash -ne $source.sha256) {
+            throw "The published $SourceVersion MSI did not match its pinned SHA-256."
+        }
 
-    $msiLog = Join-Path $Logs "baseline-msi-install.log"
-    $msiexec = Join-Path $env:SystemRoot "System32\msiexec.exe"
-    Write-Host "Installing the published Filament Manager $SourceVersion MSI."
-    $msiArguments = @("/i", ('"{0}"' -f $sourceMsi), "/qn", "/norestart", "/L*V", ('"{0}"' -f $msiLog))
-    if ($Scenario -eq "custom-directory") {
-        $msiArguments += 'INSTALLDIR="{0}"' -f $installDirectory
+        $msiLog = Join-Path $Logs "baseline-msi-install.log"
+        $msiexec = Join-Path $env:SystemRoot "System32\msiexec.exe"
+        Write-Host "Installing the published Filament Manager $SourceVersion MSI."
+        $msiArguments = @("/i", ('"{0}"' -f $sourceMsi), "/qn", "/norestart", "/L*V", ('"{0}"' -f $msiLog))
+        if ($Scenario -eq "custom-directory") {
+            $msiArguments += 'INSTALLDIR="{0}"' -f $installDirectory
+        }
+        Invoke-PilotInstaller $msiexec $msiArguments
+        if ((Get-MsiState $productCode) -ne 5) { throw "Windows Installer did not report the MSI as installed." }
+        Assert-InstallerPath $true
     }
-    Invoke-PilotInstaller $msiexec $msiArguments
-    if ((Get-MsiState $productCode) -ne 5) { throw "Windows Installer did not report the MSI as installed." }
-    Assert-InstallerPath $true
     $baselineHash = (Get-FileHash -LiteralPath $installedApp).Hash
-    if ($baselineHash -ceq $candidateHash) { throw "The released MSI and candidate must install different binaries." }
+    if ($baselineHash -ceq $candidateHash) { throw "The published package and candidate must install different binaries." }
 
     $databaseCheck = Join-Path $PSScriptRoot "windows-nsis-pilot-database.mjs"
     $snapshot = Join-Path $env:RUNNER_TEMP "filament-manager-nsis-library.json"
@@ -495,7 +551,7 @@ try {
     Copy-Item -LiteralPath $Fixture -Destination $database
     & node $databaseCheck capture $database $snapshot
     if ($LASTEXITCODE -ne 0) { throw "Could not capture the expected library state." }
-    Test-InstalledApp "MSI" -Legacy
+    Test-InstalledApp "published-$SourceVersion" -Legacy
     Set-TestAutostart
     Assert-Autostart $true
 
@@ -530,8 +586,11 @@ try {
         }
     }
 
-    Write-Host "Migrating the installed MSI to the NSIS candidate."
-    if ($Scenario -eq "interactive") {
+    Write-Host "Upgrading the installed $SourceVersion package to NSIS $ExpectedNsisVersion in place."
+    if ($PublishedNsis -and (Get-FileHash -LiteralPath $Installer -Algorithm SHA256).Hash -ne $ExpectedInstallerSha256) {
+        throw "The candidate installer changed after download verification."
+    }
+    if ($PublishedNsis -or $Scenario -eq "interactive") {
         Invoke-InteractiveInstaller $Installer
     }
     elseif ($Scenario -eq "custom-directory") {
@@ -541,13 +600,21 @@ try {
     else {
         Invoke-PilotInstaller $Installer @("/S")
     }
-    if ((Get-MsiState $productCode) -ne -1) { throw "Windows Installer still reports the previous MSI as installed." }
+    if (-not $PublishedNsis -and (Get-MsiState $productCode) -ne -1) {
+        throw "Windows Installer still reports the previous MSI as installed."
+    }
     Assert-CandidateInstalled $ExpectedNsisVersion $candidateHash
     Assert-InstallerPath $false
     Assert-Autostart $true
     Test-InstalledApp "NSIS"
 
-    if ($Scenario -eq "interactive") {
+    if ($PublishedNsis) {
+        Invoke-PilotInstaller $published.Installer @("/S") -ExpectedExitCode 1
+        Assert-CandidateInstalled $ExpectedNsisVersion $candidateHash
+        Assert-Autostart $true
+        Invoke-PilotInstaller $uninstaller @("/S")
+    }
+    elseif ($Scenario -eq "interactive") {
         Write-Host "Updating the existing NSIS installation to $NextVersion through the normal dialog."
         $NextInstaller = (Resolve-Path -LiteralPath $NextInstaller).Path
         $nextHash = Get-PilotPayloadHash $NextInstaller "next"
@@ -580,7 +647,8 @@ try {
         & node $databaseCheck verify $database $snapshot
         if ($LASTEXITCODE -ne 0) { throw "Clean NSIS install and uninstall changed the library." }
     }
-    Write-Host "Passed the published $SourceVersion MSI to NSIS migration ($Scenario)."
+    $sourceType = if ($PublishedNsis) { "NSIS" } else { "MSI" }
+    Write-Host "Passed the published $SourceVersion $sourceType to NSIS $ExpectedNsisVersion upgrade ($Scenario)."
 }
 finally {
     Stop-Transcript

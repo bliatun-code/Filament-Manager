@@ -6,6 +6,7 @@ on:
     branches: [main]
     paths:
       - ".github/workflows/windows-nsis-release-rehearsal.yml"
+      - ".github/workflows/release-build.yml"
       - "scripts/*windows-nsis*"
       - "scripts/smoke-windows-msi.ps1"
 
@@ -124,7 +125,7 @@ jobs:
         run: |
           npm run check:version
           if ($LASTEXITCODE -ne 0) { throw "Version consistency failed." }
-          $version = node ./scripts/prepare-windows-nsis-rehearsal.mjs --output "$env:NSIS_CONFIG_PATH"
+          $version = node ./scripts/prepare-windows-nsis-rehearsal.mjs --test-published-upgrade --output "$env:NSIS_CONFIG_PATH"
           if ($LASTEXITCODE -ne 0) { throw "Could not prepare the NSIS candidate configuration." }
           "version=$version" >> $env:GITHUB_OUTPUT
 
@@ -172,7 +173,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        gate: [packaged, migration]
+        gate: [packaged, migration, published-upgrade]
     steps:
       - name: Checkout test harness
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -273,6 +274,26 @@ jobs:
             -SourceManifest "scripts/windows-nsis-msi-sources.json" `
             -SourceVersion "v0.35.1" `
             -Scenario "standard" `
+            -Logs "$env:NSIS_SMOKE_LOG_DIR" `
+            -Fixture (Join-Path "$env:NSIS_FIXTURE_DIR" "filament-manager-nsis-migration.db") `
+            -FixtureSha256 "$env:NSIS_MIGRATION_FIXTURE_SHA256"
+
+      - name: Test upgrade from the published NSIS
+        if: matrix.gate == 'published-upgrade'
+        shell: pwsh
+        env:
+          NSIS_INSTALLER: ${{ steps.candidate.outputs.installer }}
+          NSIS_INSTALLER_SHA256: ${{ needs.build-candidate.outputs.installer-sha256 }}
+          NSIS_VERSION: ${{ needs.build-candidate.outputs.version }}
+          NSIS_SMOKE_LOG_DIR: ${{ runner.temp }}/nsis-rehearsal-smoke
+          NSIS_FIXTURE_DIR: ${{ runner.temp }}/nsis-rehearsal-fixtures
+          NSIS_MIGRATION_FIXTURE_SHA256: ${{ needs.historical-fixtures.outputs.migration-sha256 }}
+        run: |
+          ./scripts/smoke-windows-nsis-pilot.ps1 `
+            -PublishedNsis `
+            -Installer "$env:NSIS_INSTALLER" `
+            -ExpectedInstallerSha256 "$env:NSIS_INSTALLER_SHA256" `
+            -ExpectedNsisVersion "$env:NSIS_VERSION" `
             -Logs "$env:NSIS_SMOKE_LOG_DIR" `
             -Fixture (Join-Path "$env:NSIS_FIXTURE_DIR" "filament-manager-nsis-migration.db") `
             -FixtureSha256 "$env:NSIS_MIGRATION_FIXTURE_SHA256"

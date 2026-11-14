@@ -773,13 +773,17 @@ jobs:
           retention-days: 7
 
   smoke-windows-nsis-migration:
-    name: Smoke Windows MSI to NSIS migration
+    name: Smoke Windows to NSIS upgrade (${{ matrix.source }})
     needs:
       - validate-release
       - prepare-previous-release-fixture
       - build-windows-nsis
     runs-on: windows-2025
     timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      matrix:
+        source: [msi, nsis]
     steps:
       - name: Checkout release source
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -798,7 +802,7 @@ jobs:
       - name: Install test dependencies
         run: npm ci
 
-      - name: Download the synthetic MSI migration fixture
+      - name: Download the synthetic installer upgrade fixture
         uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           name: filament-manager-nsis-migration-fixture-${{ github.run_id }}
@@ -810,16 +814,14 @@ jobs:
           name: filament-manager-windows-nsis-${{ github.run_id }}
           path: ${{ runner.temp }}/filament-manager-windows-release-candidate
 
-      - name: Exercise migration from the latest published MSI
+      - name: Verify downloaded NSIS candidate for upgrade
+        id: candidate
         shell: pwsh
         env:
           RELEASE_VERSION: ${{ needs['validate-release'].outputs['package-version'] }}
           NSIS_CANDIDATE_DIR: ${{ runner.temp }}/filament-manager-windows-release-candidate
           NSIS_INSTALLER_SHA256: ${{ needs['build-windows-nsis'].outputs['installer-sha256'] }}
           NSIS_PAYLOAD_SHA256: ${{ needs['build-windows-nsis'].outputs['payload-sha256'] }}
-          NSIS_MIGRATION_FIXTURE: ${{ runner.temp }}/filament-manager-nsis-migration-fixture/filament-manager-nsis-migration.db
-          NSIS_MIGRATION_FIXTURE_SHA256: ${{ needs['prepare-previous-release-fixture'].outputs['migration-sha256'] }}
-          NSIS_SMOKE_LOG_DIR: ${{ runner.temp }}/filament-manager-windows-release-nsis-migration
         run: |
           $tauriConfig = Get-Content -LiteralPath "src-tauri/tauri.conf.json" -Raw | ConvertFrom-Json
           $checked = ./scripts/verify-windows-nsis-rehearsal.ps1 `
@@ -830,8 +832,22 @@ jobs:
           if ($checked.PayloadSha256 -cne $env:NSIS_PAYLOAD_SHA256) {
             throw "The downloaded NSIS candidate payload hash has changed."
           }
+          $source = Get-Content -LiteralPath "scripts/windows-nsis-upgrade-source.json" -Raw | ConvertFrom-Json
+          "published-nsis-tag=$($source.tag)" >> $env:GITHUB_OUTPUT
+          "installer=$($checked.Installer)" >> $env:GITHUB_OUTPUT
+
+      - name: Exercise migration from the latest published MSI
+        if: matrix.source == 'msi'
+        shell: pwsh
+        env:
+          RELEASE_VERSION: ${{ needs['validate-release'].outputs['package-version'] }}
+          NSIS_INSTALLER: ${{ steps.candidate.outputs.installer }}
+          NSIS_MIGRATION_FIXTURE: ${{ runner.temp }}/filament-manager-nsis-migration-fixture/filament-manager-nsis-migration.db
+          NSIS_MIGRATION_FIXTURE_SHA256: ${{ needs['prepare-previous-release-fixture'].outputs['migration-sha256'] }}
+          NSIS_SMOKE_LOG_DIR: ${{ runner.temp }}/filament-manager-windows-release-nsis-migration
+        run: |
           ./scripts/smoke-windows-nsis-pilot.ps1 `
-            -Installer $checked.Installer `
+            -Installer "$env:NSIS_INSTALLER" `
             -ExpectedNsisVersion "$env:RELEASE_VERSION" `
             -SourceManifest "scripts/windows-nsis-msi-sources.json" `
             -SourceVersion "v0.35.1" `
@@ -840,11 +856,36 @@ jobs:
             -Fixture "$env:NSIS_MIGRATION_FIXTURE" `
             -FixtureSha256 "$env:NSIS_MIGRATION_FIXTURE_SHA256"
 
+      - name: Exercise upgrade from the published NSIS
+        if: >-
+          matrix.source == 'nsis' &&
+          (
+            github.event_name != 'workflow_dispatch' ||
+            steps.candidate.outputs['published-nsis-tag'] != format('v{0}', needs['validate-release'].outputs['package-version'])
+          )
+        shell: pwsh
+        env:
+          RELEASE_VERSION: ${{ needs['validate-release'].outputs['package-version'] }}
+          NSIS_INSTALLER: ${{ steps.candidate.outputs.installer }}
+          NSIS_INSTALLER_SHA256: ${{ needs['build-windows-nsis'].outputs['installer-sha256'] }}
+          NSIS_MIGRATION_FIXTURE: ${{ runner.temp }}/filament-manager-nsis-migration-fixture/filament-manager-nsis-migration.db
+          NSIS_MIGRATION_FIXTURE_SHA256: ${{ needs['prepare-previous-release-fixture'].outputs['migration-sha256'] }}
+          NSIS_SMOKE_LOG_DIR: ${{ runner.temp }}/filament-manager-windows-release-nsis-migration
+        run: |
+          ./scripts/smoke-windows-nsis-pilot.ps1 `
+            -PublishedNsis `
+            -Installer "$env:NSIS_INSTALLER" `
+            -ExpectedInstallerSha256 "$env:NSIS_INSTALLER_SHA256" `
+            -ExpectedNsisVersion "$env:RELEASE_VERSION" `
+            -Logs "$env:NSIS_SMOKE_LOG_DIR" `
+            -Fixture "$env:NSIS_MIGRATION_FIXTURE" `
+            -FixtureSha256 "$env:NSIS_MIGRATION_FIXTURE_SHA256"
+
       - name: Upload release NSIS migration logs
         if: always()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
-          name: filament-manager-windows-release-nsis-migration-${{ github.run_id }}
+          name: filament-manager-windows-release-nsis-${{ matrix.source }}-upgrade-${{ github.run_id }}
           path: |
             ${{ runner.temp }}/filament-manager-windows-release-nsis-migration/*.log
             ${{ runner.temp }}/filament-manager-windows-release-nsis-migration/*.stderr
