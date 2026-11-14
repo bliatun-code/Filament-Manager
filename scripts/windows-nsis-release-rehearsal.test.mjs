@@ -11,15 +11,21 @@ const workflow = readFileSync(".github/workflows/windows-nsis-release-rehearsal.
 const smoke = readFileSync("scripts/smoke-windows-msi.ps1", "utf8");
 const verify = readFileSync("scripts/verify-windows-nsis-rehearsal.ps1", "utf8");
 const sourceTags = ["v0.35.0", "v0.33.0", "v0.35.1", "v0.34.0"];
+const published = JSON.parse(readFileSync("scripts/windows-nsis-upgrade-source.json", "utf8"));
+const pilot = readFileSync("scripts/smoke-windows-nsis-pilot.ps1", "utf8").replaceAll("\r\n", "\n");
 
 test("NSIS rehearsal uses a greater candidate version without mutating the released version", () => {
   assert.equal(selectNsisRehearsalVersion("0.35.1", sourceTags), "0.35.2-rc.1");
   assert.equal(selectNsisRehearsalVersion("0.35.10", sourceTags), "0.35.10");
   assert.equal(selectNsisRehearsalVersion("0.36.0", sourceTags), "0.36.0");
+  assert.equal(selectNsisRehearsalVersion("0.36.1", sourceTags), "0.36.1");
+  assert.equal(selectNsisRehearsalVersion("0.36.1", [...sourceTags, published.tag]), "0.36.2-rc.1");
+  assert.equal(selectNsisRehearsalVersion("0.36.2", [...sourceTags, published.tag]), "0.36.2");
+  assert.throws(() => selectNsisRehearsalVersion("0.36.0", [...sourceTags, published.tag]), /older than/);
   assert.throws(() => selectNsisRehearsalVersion("0.35.0", sourceTags), /older than/);
   assert.throws(() => selectNsisRehearsalVersion("0.35.1-rc.1", sourceTags), /stable Windows version/);
-  assert.throws(() => selectNsisRehearsalVersion("0.35.1", []), /pinned MSI/);
-  assert.throws(() => selectNsisRehearsalVersion("0.35.1", ["0.35.0"]), /pinned MSI/);
+  assert.throws(() => selectNsisRehearsalVersion("0.35.1", []), /pinned Windows/);
+  assert.throws(() => selectNsisRehearsalVersion("0.35.1", ["0.35.0"]), /pinned Windows/);
   assert.throws(() => selectNsisRehearsalVersion("0.35.65535", ["v0.35.65535"]), /Bump the package version/);
 });
 
@@ -59,13 +65,14 @@ test("NSIS candidate builds from manual main or a scoped PR without release perm
   assert.match(workflow, /if: github\.event_name == 'pull_request' \|\| github\.ref == 'refs\/heads\/main'/);
   assert.match(workflow, /^permissions:\n  contents: read$/m);
   assert.doesNotMatch(workflow, /^  push:|^\s+\w[^:]*: write|gh release|attestations:|github-release/m);
+  assert.match(workflow, /prepare-windows-nsis-rehearsal\.mjs --test-published-upgrade --output/);
   assert.match(workflow, /build --bundles nsis --target x86_64-pc-windows-msvc/);
   assert.doesNotMatch(workflow, /build .*--debug/);
   assert.match(workflow, /target\/x86_64-pc-windows-msvc\/release\/bundle\/nsis/);
 });
 
-test("both fresh-profile gates download and verify the same NSIS installer and payload", () => {
-  assert.match(workflow, /gate: \[packaged, migration\]/);
+test("all fresh-profile gates download and verify the same NSIS installer and payload", () => {
+  assert.match(workflow, /gate: \[packaged, migration, published-upgrade\]/);
   assert.equal((workflow.match(/name: filament-manager-nsis-rehearsal-\$\{\{ github\.run_id \}\}/g) ?? []).length, 2);
   assert.match(workflow, /needs\.build-candidate\.outputs\.installer-sha256/);
   assert.match(workflow, /needs\.build-candidate\.outputs\.payload-sha256/);
@@ -91,4 +98,19 @@ test("NSIS release rehearsals reuse the installed Windows historical, mutating a
   const diagnostics = workflow.split("      - name: Upload rehearsal diagnostics").at(-1);
   assert.match(diagnostics, /nsis-rehearsal-smoke\/\*\.log/);
   assert.doesNotMatch(diagnostics, /nsis-rehearsal-smoke\s*$|\*\*/m);
+});
+
+test("published NSIS upgrade uses a pinned, proven build and the real per-user install paths", () => {
+  assert.equal(published.tag, "v0.36.1");
+  assert.match(published.commit, /^[0-9a-f]{40}$/);
+  assert.match(published.sha256, /^[0-9a-f]{64}$/);
+  assert.match(workflow, /if: matrix\.gate == 'published-upgrade'[\s\S]*?-PublishedNsis[\s\S]*?-ExpectedInstallerSha256 "\$env:NSIS_INSTALLER_SHA256"[\s\S]*?-FixtureSha256 "\$env:NSIS_MIGRATION_FIXTURE_SHA256"/);
+  assert.match(pilot, /\[semver\]\$ExpectedNsisVersion -le \[semver\]\$baselineVersion/);
+  assert.match(pilot, /releases\/download\/\$SourceVersion[\s\S]*?-ExpectedInstallerSha256 \$source\.sha256/);
+  assert.match(pilot, /gh attestation verify \$verified\.Installer[\s\S]*?--signer-workflow "\$repository\/\.github\/workflows\/release-build\.yml"[\s\S]*?--source-ref "refs\/tags\/\$SourceVersion" --source-digest \$source\.commit[\s\S]*?--bundle/);
+  assert.match(pilot, /\$published = Get-PublishedNsis[\s\S]*?Invoke-PilotInstaller \$published\.Installer[\s\S]*?Assert-CandidateInstalled \$baselineVersion \$published\.PayloadSha256/);
+  assert.match(pilot, /capture \$database \$snapshot[\s\S]*?Test-InstalledApp "published-\$SourceVersion" -Legacy[\s\S]*?Set-TestAutostart[\s\S]*?Assert-Autostart \$true/);
+  assert.match(pilot, /Upgrading the installed[\s\S]*?\(Get-FileHash -LiteralPath \$Installer -Algorithm SHA256\)\.Hash -ne \$ExpectedInstallerSha256[\s\S]*?if \(\$PublishedNsis -or \$Scenario -eq "interactive"\) \{\s*Invoke-InteractiveInstaller \$Installer/);
+  assert.match(pilot, /Test-InstalledApp "NSIS"[\s\S]*?Invoke-PilotInstaller \$published\.Installer @\("\/S"\) -ExpectedExitCode 1[\s\S]*?Assert-CandidateInstalled \$ExpectedNsisVersion \$candidateHash[\s\S]*?Assert-Autostart \$true/);
+  assert.match(pilot, /Wait-PilotUninstall @\(\$installedApp,[\s\S]*?Assert-Autostart \$false[\s\S]*?node \$databaseCheck verify \$database \$snapshot/);
 });

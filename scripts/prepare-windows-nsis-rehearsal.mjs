@@ -22,22 +22,22 @@ function compareVersions(left, right) {
   return 0;
 }
 
-export function selectNsisRehearsalVersion(packageVersion, msiSourceTags) {
+export function selectNsisRehearsalVersion(packageVersion, sourceTags) {
   const version = versionFields(packageVersion);
-  if (!msiSourceTags.length || msiSourceTags.some((tag) => !tag.startsWith("v"))) {
-    throw new Error("The release rehearsal requires pinned MSI release tags.");
+  if (!sourceTags.length || sourceTags.some((tag) => !tag.startsWith("v"))) {
+    throw new Error("The release rehearsal requires pinned Windows release tags.");
   }
-  const versions = msiSourceTags.map((tag) => versionFields(tag.slice(1)));
-  const newestMsiVersion = versions.sort(compareVersions).at(-1);
-  const comparison = compareVersions(version, newestMsiVersion);
+  const versions = sourceTags.map((tag) => versionFields(tag.slice(1)));
+  const latestSourceVersion = versions.sort(compareVersions).at(-1);
+  const comparison = compareVersions(version, latestSourceVersion);
   if (comparison < 0) {
-    throw new Error("The rehearsal source version is older than a supported MSI.");
+    throw new Error("The rehearsal source version is older than a supported Windows release.");
   }
   if (comparison > 0) return packageVersion;
 
   const [major, minor, patch] = version;
   if (patch === 65_535) {
-    throw new Error("Bump the package version before rehearsing an upgrade from this MSI.");
+    throw new Error("Bump the package version before rehearsing an upgrade from this Windows release.");
   }
   // The last released package can still be checked out on main. Give only the
   // test candidate a higher patch version so the downgrade guard stays active.
@@ -69,12 +69,21 @@ export function prepareNsisRehearsalConfig(packageVersion, sourceTags, installer
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1])).href) {
-  const { values } = parseArgs({ options: { output: { type: "string" } } });
+  const { values } = parseArgs({
+    options: {
+      output: { type: "string" },
+      "test-published-upgrade": { type: "boolean" },
+    },
+  });
   if (!values.output) throw new Error("A temporary --output configuration path is required.");
   const readJson = (path) => JSON.parse(readFileSync(path, "utf8"));
+  const sourceTags = Object.keys(readJson("scripts/windows-nsis-msi-sources.json"));
+  if (values["test-published-upgrade"]) {
+    sourceTags.push(readJson("scripts/windows-nsis-upgrade-source.json").tag);
+  }
   const config = prepareNsisRehearsalConfig(
     readJson("package.json").version,
-    Object.keys(readJson("scripts/windows-nsis-msi-sources.json")),
+    sourceTags,
     readJson("scripts/windows-nsis-pilot.json"),
   );
   writeFileSync(values.output, `${JSON.stringify(config, null, 2)}\n`, { flag: "wx" });
