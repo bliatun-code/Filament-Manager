@@ -20,7 +20,7 @@ jobs:
   historical-fixtures:
     name: Prepare sanitized NSIS release databases
     if: github.event_name == 'pull_request' || github.ref == 'refs/heads/main'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     timeout-minutes: 15
     outputs:
       migration-sha256: ${{ steps.migration-fixture.outputs.sha256 }}

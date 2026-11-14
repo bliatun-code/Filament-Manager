@@ -1,9 +1,11 @@
 # Native CI Rust Dependency Cache
 
-The macOS and Windows smoke jobs in [CI](../../.github/workflows/ci.yml) cache Cargo
+The macOS native and Windows smoke jobs in [CI](../../.github/workflows/ci.yml) cache Cargo
 registry/git downloads and compiled dependencies. MSRV checks, full verification,
 database upgrades, bundle builds, and installed application tests still run on
 every relevant push and pull request. No gate depends on a cache hit.
+The macOS UI and browser job runs in parallel. The required `macOS Smoke`
+check waits for both jobs to succeed.
 
 ## Scope and keys
 

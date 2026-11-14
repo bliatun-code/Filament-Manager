@@ -212,13 +212,25 @@ test("required platform jobs keep every documented gate blocking", () => {
   );
 
   const macosJob = section(ciWorkflow, "  macos-smoke:", "  windows-smoke:");
+  const macosUiJob = section(ciWorkflow, "  macos-ui:", "  shared-contracts:");
+  const macosResult = section(ciWorkflow, "  macos-smoke-result:", "  macos-ui:");
   const windowsJob = section(ciWorkflow, "  windows-smoke:");
   const companionE2eStep = section(
     macosJob,
     "      - name: Run data-backed Companion E2E",
     "      - name: Build database upgrade candidate",
   );
-  assert.match(macosJob, /run: npm run verify/);
+  assert.match(macosUiJob, /run: npm run smoke/);
+  assert.match(macosJob, /run: npm run test:rust/);
+  assert.doesNotMatch(macosJob, /^    needs:/m);
+  assert.doesNotMatch(macosUiJob, /^    needs:/m);
+  assert.match(macosResult, /^    name: macOS Smoke$/m);
+  assert.match(macosResult, /^    needs: \[macos-ui, macos-smoke\]$/m);
+  assert.match(macosResult, /^    if: \$\{\{ always\(\) \}\}$/m);
+  assert.match(macosResult, /UI_RESULT: \$\{\{ needs\.macos-ui\.result \}\}/);
+  assert.match(macosResult, /NATIVE_RESULT: \$\{\{ needs\.macos-smoke\.result \}\}/);
+  assert.match(macosResult, /if \[\[ "\$UI_RESULT" != "success" \|\| "\$NATIVE_RESULT" != "success" \]\]; then[\s\S]*?exit 1/);
+  assert.equal((ciWorkflow.match(/^    name: macOS Smoke$/gm) ?? []).length, 1);
   assert.match(companionE2eStep, /npm run qa:visual:companion:data-e2e/);
   assert.doesNotMatch(companionE2eStep, /continue-on-error:\s*true/);
   assert.match(windowsJob, /run: npm run verify/);
