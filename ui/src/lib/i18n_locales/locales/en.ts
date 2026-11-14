@@ -1923,6 +1923,7 @@ export const enDictionary: DictionaryNode = {
       updateChannelDisabled:
         "This build has no public update channel. Check the source where you downloaded the app for newer releases.",
       viewRelease: "View release",
+      downloadInstaller: "Download for {platform}",
       tabGeneral: "General",
       tabFilamentDefaults: "Filament defaults",
       tabLibrary: "Library & web app",

@@ -18,6 +18,7 @@ test("update banner announces the available version without installing it", () =
         latest_version: "0.22.2",
         release_url:
           "https://github.com/bliatun-code/Filament-Manager/releases/latest",
+        installer: null,
         status: "UPDATE_AVAILABLE",
         update_channel: "PUBLIC_METADATA",
       },

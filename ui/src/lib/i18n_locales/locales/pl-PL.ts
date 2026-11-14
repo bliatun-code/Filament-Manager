@@ -1306,6 +1306,7 @@ export const plPLDictionary: DictionaryNode = {
     "updateInfoUnavailable": "Informacje o wydaniu są obecnie niedostępne. Spróbuj ponownie później.",
     "updateChannelDisabled": "Ta kompilacja nie ma publicznego kanału aktualizacji. Sprawdź dostępność nowszych wydań w miejscu, z którego pobrano aplikację.",
     "viewRelease": "Zobacz wydanie",
+    "downloadInstaller": "Pobierz dla {platform}",
     "applicationDiagnosticsTitle": "Diagnostyka aplikacji",
     "applicationDiagnosticsDescription": "Sprawdź stan lokalnej bazy danych i pobierz oczyszczony plik pomocy bez zawartości magazynu ani danych logowania.",
     "diagnosticsHealthy": "Prawidłowy",

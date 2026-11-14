@@ -1906,6 +1906,7 @@ export const deDictionary: DictionaryNode = {
     updateChannelDisabled:
       "Dieser Build hat keinen öffentlichen Update-Kanal. Suche dort, wo du die App heruntergeladen hast, nach neueren Versionen.",
     viewRelease: "Veröffentlichung ansehen",
+    downloadInstaller: "Für {platform} herunterladen",
     tabGeneral: "Allgemein",
     tabFilamentDefaults: "Filamentstandards",
     tabLibrary: "Bibliothek & Web-App",

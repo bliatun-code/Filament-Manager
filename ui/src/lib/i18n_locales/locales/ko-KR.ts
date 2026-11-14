@@ -1647,6 +1647,7 @@ export const koKRDictionary: DictionaryNode = {
     "updateInfoUnavailable": "현재 릴리스 정보를 확인할 수 없습니다. 나중에 다시 시도하세요.",
     "updateChannelDisabled": "이 빌드에는 공개 업데이트 채널이 없습니다. 새 릴리스가 있는지 앱을 다운로드한 배포처를 확인하세요.",
     "viewRelease": "릴리스 보기",
+    "downloadInstaller": "{platform}용 다운로드",
     "tabGeneral": "일반",
     "tabFilamentDefaults": "필라멘트 기본 설정",
     "tabLibrary": "도서관 및 웹 앱",

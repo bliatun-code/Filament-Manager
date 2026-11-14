@@ -1,5 +1,5 @@
-import { latestReleaseUrl } from "./app_metadata";
-import type { AppUpdateCheckResult } from "./tauri_maintenance_client";
+import { APP_REPOSITORY_URL, latestReleaseUrl, releasedAppTag } from "./app_metadata";
+import type { AppUpdateCheckResult, AppUpdateInstaller } from "./tauri_maintenance_client";
 import type { MessageParams } from "../../../src-tauri/companion_browser/message_format.js";
 
 export type AppUpdateCheckState =
@@ -59,6 +59,23 @@ export function appUpdateCheckMessage(
 export function trustedReleaseUrl(result: AppUpdateCheckResult): string {
   const expected = latestReleaseUrl();
   return result.release_url === expected ? result.release_url : expected;
+}
+
+export function trustedUpdateInstaller(result: AppUpdateCheckResult): AppUpdateInstaller | null {
+  if (result.status !== "UPDATE_AVAILABLE" || result.update_channel !== "PUBLIC_METADATA") {
+    return null;
+  }
+  const tag = releasedAppTag(result.latest_version);
+  if (!tag || tag !== result.latest_tag || result.release_url !== latestReleaseUrl()) {
+    return null;
+  }
+  const installer = result.installer;
+  const suffix = installer?.platform === "macos" ? "universal.dmg"
+    : installer?.platform === "windows_x64" ? "x64-setup.exe"
+    : null;
+  if (!installer || !suffix) return null;
+  const expected = `${APP_REPOSITORY_URL}/releases/download/${tag}/Filament-Manager_${tag.slice(1)}_${suffix}`;
+  return installer.url === expected ? installer : null;
 }
 
 export function shouldShowReleaseAction(state: AppUpdateCheckState): boolean {

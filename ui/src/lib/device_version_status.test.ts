@@ -16,7 +16,7 @@ const validation: LibrarySyncHostValidationResult = {
 };
 const updateState: AppUpdateCheckState = {
   status: "SUCCESS",
-  result: { current_version: "0.32.1", latest_version: "0.32.1", latest_tag: "v0.32.1", release_url: latestReleaseUrl(), update_channel: "PUBLIC_METADATA", status: "UP_TO_DATE" },
+  result: { current_version: "0.32.1", latest_version: "0.32.1", latest_tag: "v0.32.1", release_url: latestReleaseUrl(), installer: null, update_channel: "PUBLIC_METADATA", status: "UP_TO_DATE" },
 };
 const input = { appVersion: "0.32.1", settings, validation, updateState };
 

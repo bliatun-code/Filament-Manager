@@ -41,9 +41,16 @@ The endpoint must:
   }
   ```
 
-The app compares the semantic version only. It does not run an installer or
-trust a download URL from the response. **View release** remains pinned to the
-project's known GitHub release page.
+The semantic version is sufficient for a version check. The canonical GitHub
+endpoint can additionally provide the local desktop's installer. The release
+must have a stable `vMAJOR.MINOR.PATCH` tag and list one uploaded, nonempty
+asset matching the exact name and URL for that tag. macOS uses the Universal
+DMG and Windows x64 uses the NSIS setup EXE. The app opens the official package
+in the browser only when the user selects it. **View release** remains pinned
+to the project's GitHub release page and works with tag-only feeds, missing
+assets and unsupported platforms. In the Client's device panel, the download
+belongs to **This device**. The Host's platform is unknown and its update still
+uses the release page.
 
 Do not place access tokens in the URL. Invalid configuration, an absent
 endpoint, redirects, network failures, non-success responses, oversized

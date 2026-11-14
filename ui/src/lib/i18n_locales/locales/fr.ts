@@ -1948,6 +1948,7 @@ export const frDictionary: DictionaryNode = {
     updateChannelDisabled:
       "Cette version ne dispose d’aucun canal de mise à jour public. Vérifiez si une version plus récente est disponible là où vous avez téléchargé l’application.",
     viewRelease: "Voir la version",
+    downloadInstaller: "Télécharger pour {platform}",
     tabGeneral: "Général",
     tabFilamentDefaults: "Valeurs par défaut du filament",
     tabLibrary: "Bibliothèque et web app",

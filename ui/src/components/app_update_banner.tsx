@@ -1,5 +1,6 @@
 import type { MessageParams } from "../../../src-tauri/companion_browser/message_format.js";
 import type { AppUpdateCheckResult } from "../lib/tauri_maintenance_client";
+import { AppUpdateDownloadLink } from "./app_update_download_link";
 
 type TranslateFn = (key: string, fallback: string, params?: MessageParams) => string;
 
@@ -33,10 +34,15 @@ export function AppUpdateBanner({
         })}
       </p>
       <div className="flex flex-wrap items-center gap-2">
+        <AppUpdateDownloadLink
+          className="rounded-lg border border-cyan-300 bg-white px-3 py-1.5 font-semibold text-cyan-950 transition hover:border-cyan-400 hover:bg-cyan-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500 dark:border-cyan-800 dark:bg-slate-950/70 dark:text-cyan-100 dark:hover:bg-cyan-950"
+          result={result}
+          t={t}
+        />
         <button
           type="button"
           onClick={onViewRelease}
-          className="rounded-lg border border-cyan-300 bg-white px-3 py-1.5 font-semibold text-cyan-950 transition hover:border-cyan-400 hover:bg-cyan-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500 dark:border-cyan-800 dark:bg-slate-950/70 dark:text-cyan-100 dark:hover:bg-cyan-950"
+          className="rounded-lg px-3 py-1.5 font-medium text-cyan-800 transition hover:bg-cyan-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500 dark:text-cyan-200 dark:hover:bg-cyan-950"
         >
           {t("settings.viewRelease", "View release")}
         </button>

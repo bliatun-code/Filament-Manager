@@ -1550,6 +1550,7 @@ export const ruRUDictionary: DictionaryNode = {
     "updateInfoUnavailable": "Информация о выпуске сейчас недоступна. Повторите попытку позже.",
     "updateChannelDisabled": "У этой сборки нет общедоступного канала обновлений. Проверьте наличие новых выпусков в источнике, из которого вы скачали приложение.",
     "viewRelease": "Посмотреть выпуск",
+    "downloadInstaller": "Скачать для {platform}",
     "applicationDiagnosticsTitle": "Диагностика приложения",
     "applicationDiagnosticsDescription": "Проверьте состояние локальной базы данных и скачайте очищенный файл поддержки без содержимого инвентаря и учетных данных.",
     "diagnosticsHealthy": "Исправно",

@@ -28,6 +28,7 @@ import {
   settingsSectionLabelClass,
 } from "../lib/settings_ui_classes";
 import type { ReactNode } from "react";
+import { AppUpdateDownloadLink } from "./app_update_download_link";
 
 function GeneralSection({ children, eyebrow, description }: {children: ReactNode; eyebrow?: ReactNode; description?: ReactNode}) {
   return <section className="settings-general-section">
@@ -364,6 +365,13 @@ export function SettingsGeneralTab({
                 ? t("settings.checkingForUpdates", "Checking…")
                 : t("settings.checkForUpdates", "Check for updates")}
             </button>
+            {tauri && updateCheck.state.status === "SUCCESS" ? (
+              <AppUpdateDownloadLink
+                className={settingsActionButtonClass("accent")}
+                result={updateCheck.state.result}
+                t={t}
+              />
+            ) : null}
             {shouldShowReleaseAction(updateCheck.state) ? (
               <button
                 type="button"
@@ -372,7 +380,7 @@ export function SettingsGeneralTab({
                     void openExternalUrl(trustedReleaseUrl(updateCheck.state.result));
                   }
                 }}
-                className={settingsActionButtonClass("accent")}
+                className={settingsActionButtonClass()}
               >
                 {t("settings.viewRelease", "View release")}
               </button>

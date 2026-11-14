@@ -1647,6 +1647,7 @@ export const ukUADictionary: DictionaryNode = {
     "updateInfoUnavailable": "Інформація про випуск зараз недоступна. Спробуйте пізніше.",
     "updateChannelDisabled": "Ця збірка не має загальнодоступного каналу оновлень. Перевірте наявність новіших випусків у джерелі, з якого ви завантажили застосунок.",
     "viewRelease": "Переглянути випуск",
+    "downloadInstaller": "Завантажити для {platform}",
     "tabGeneral": "Загальні",
     "tabFilamentDefaults": "За заздалегідь встановлені параметри",
     "tabLibrary": "Бібліотека та веб-програма",

@@ -7,6 +7,7 @@ import type { MessageParams } from "../../../src-tauri/companion_browser/message
 import { settingsActionButtonClass, settingsCompactInfoPanelClass, settingsSurfacePanelClass } from "../lib/settings_ui_classes";
 import { openExternalUrl } from "../lib/tauri_maintenance_client";
 import type { LibrarySyncHostValidationResult, LibrarySyncSettings } from "../lib/tauri_client";
+import { AppUpdateDownloadLink } from "./app_update_download_link";
 
 export function SettingsDeviceVersionPanel({
   appVersion,
@@ -57,6 +58,13 @@ export function SettingsDeviceVersionPanel({
               <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">{versions.host.source === "checked"
                 ? t("settings.hostVersionChecked", "From the last host check")
                 : t("settings.hostVersionCached", "From the last host snapshot")}</p>
+            ) : null}
+            {tauri && device.id === "local" && device.status === "update" && updates?.state.status === "SUCCESS" ? (
+              <AppUpdateDownloadLink
+                className={`mt-2 ${settingsActionButtonClass("accent", "compact")}`}
+                result={updates.state.result}
+                t={t}
+              />
             ) : null}
           </div>
         ))}

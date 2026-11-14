@@ -50,6 +50,12 @@
       "screenshot": "docs/images/v0.35.0/settings.png"
     },
     {
+      "surface": "desktop",
+      "key": "settings.downloadInstaller",
+      "meaning": "Opens the official installer download for a newer release of the app on this device. The platform parameter is the unchanged platform name, either macOS or Windows x64.",
+      "screenshot": "docs/images/v0.35.0/settings.png"
+    },
+    {
       "surface": "companion",
       "key": "errors.inventoryBulkReactivationRequiresWeight",
       "meaning": "The entire bulk status change was rejected because an empty roll has no positive measured filament weight. Weigh that roll before retrying the selection.",

@@ -1647,6 +1647,7 @@ export const zhTWDictionary: DictionaryNode = {
     "updateInfoUnavailable": "目前無法取得發布資訊。請稍後再試。",
     "updateChannelDisabled": "此組建沒有公開更新管道。請至下載此應用程式的來源檢視是否有較新的版本。",
     "viewRelease": "檢視發布版本",
+    "downloadInstaller": "下載 {platform} 版",
     "tabGeneral": "一般",
     "tabFilamentDefaults": "耗材預設值",
     "tabLibrary": "資料庫與 Web 應用程式",

@@ -1647,6 +1647,7 @@ export const fiFIDictionary: DictionaryNode = {
     "updateInfoUnavailable": "Julkaisutietoja ei ole juuri nyt saatavilla. Yritä myöhemmin uudelleen.",
     "updateChannelDisabled": "Tässä koontiversiossa ei ole julkista päivityskanavaa. Tarkista uudemmat julkaisut siitä lähteestä, josta latasit sovelluksen.",
     "viewRelease": "Näytä julkaisu",
+    "downloadInstaller": "Lataa alustalle {platform}",
     "tabGeneral": "Yleiset",
     "tabFilamentDefaults": "Filamentin oletusasetukset",
     "tabLibrary": "Kirjasto ja verkkosovellus",

@@ -7,6 +7,7 @@ import {
   appUpdateCheckMessage,
   shouldShowReleaseAction,
   trustedReleaseUrl,
+  trustedUpdateInstaller,
   type AppUpdateCheckState,
 } from "./app_update_check";
 import type { AppUpdateCheckResult } from "./tauri_maintenance_client";
@@ -20,6 +21,7 @@ function result(
     latest_tag: "v0.22.0",
     latest_version: "0.22.0",
     release_url: releaseUrl,
+    installer: null,
     status,
     update_channel: status === "UPDATE_CHANNEL_DISABLED" ? "DISABLED" : "PUBLIC_METADATA",
   };
@@ -62,6 +64,27 @@ test("release action is shown only for a newer published version", () => {
 test("release action is pinned to the repository release page", () => {
   const untrusted = result("UPDATE_AVAILABLE", "https://example.invalid/release");
   assert.equal(trustedReleaseUrl(untrusted), latestReleaseUrl());
+});
+
+test("the download link revalidates the exact official version and asset", () => {
+  const installer = {
+    platform: "macos" as const,
+    url: "https://github.com/bliatun-code/Filament-Manager/releases/download/v0.22.0/Filament-Manager_0.22.0_universal.dmg",
+  };
+  const validated = { ...result("UPDATE_AVAILABLE"), installer };
+  assert.deepEqual(trustedUpdateInstaller(validated), installer);
+  assert.equal(trustedUpdateInstaller({ ...validated, status: "UP_TO_DATE" }), null);
+  assert.equal(trustedUpdateInstaller({ ...validated, latest_tag: "v0.22.1" }), null);
+  assert.equal(trustedUpdateInstaller({ ...validated, latest_version: "0.22.0-rc.1" }), null);
+  assert.equal(trustedUpdateInstaller({ ...validated, update_channel: "DISABLED" }), null);
+  assert.equal(trustedUpdateInstaller({
+    ...validated,
+    installer: { ...installer, url: installer.url.replace("github.com", "example.invalid") },
+  }), null);
+  assert.equal(trustedUpdateInstaller({
+    ...validated,
+    installer: { ...installer, platform: "windows_x64" },
+  }), null);
 });
 
 test("all update-check states remain explicit", () => {

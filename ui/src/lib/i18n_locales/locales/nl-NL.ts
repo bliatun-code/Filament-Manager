@@ -1306,6 +1306,7 @@ export const nlNLDictionary: DictionaryNode = {
     "updateInfoUnavailable": "Release-informatie is momenteel niet beschikbaar. Probeer het later opnieuw.",
     "updateChannelDisabled": "Deze build heeft geen openbaar updatekanaal. Controleer op nieuwere versies bij de bron waar je de app hebt gedownload.",
     "viewRelease": "Versie bekijken",
+    "downloadInstaller": "Downloaden voor {platform}",
     "applicationDiagnosticsTitle": "Toepassingsdiagnose",
     "applicationDiagnosticsDescription": "Controleer de lokale database en download een opgeschoond ondersteuningsbestand zonder inventarisinhoud of inloggegevens.",
     "diagnosticsHealthy": "In orde",
