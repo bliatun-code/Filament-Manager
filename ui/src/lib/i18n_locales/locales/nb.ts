@@ -1930,6 +1930,7 @@ export const nbDictionary: DictionaryNode = {
       updateChannelDisabled:
         "Denne versjonen har ingen offentlig oppdateringskanal. Sjekk kilden du lastet ned appen fra for nyere utgivelser.",
       viewRelease: "Vis utgivelsen",
+      downloadInstaller: "Last ned for {platform}",
       tabGeneral: "Generelt",
       tabFilamentDefaults: "Filamentstandarder",
       tabLibrary: "Bibliotek og webapp",

@@ -1550,6 +1550,7 @@ export const daDKDictionary: DictionaryNode = {
     "updateInfoUnavailable": "Udgivelsesoplysninger er ikke tilgængelige lige nu. Prøv igen senere.",
     "updateChannelDisabled": "Denne build har ingen offentlig opdateringskanal. Se efter nyere udgivelser dér, hvor du hentede appen.",
     "viewRelease": "Vis udgivelse",
+    "downloadInstaller": "Download til {platform}",
     "applicationDiagnosticsTitle": "Programdiagnostik",
     "applicationDiagnosticsDescription": "Kontrollér den lokale databases tilstand, og download en renset supportfil uden lagerindhold eller loginoplysninger.",
     "diagnosticsHealthy": "I orden",

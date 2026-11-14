@@ -45,6 +45,11 @@ export type AppUpdateStatus =
 
 export type AppUpdateChannel = "DISABLED" | "PUBLIC_METADATA";
 
+export type AppUpdateInstaller = {
+  platform: "macos" | "windows_x64";
+  url: string;
+};
+
 export type DesktopLifecycleSettings = {
   continue_in_background: boolean;
   launch_at_login: boolean;
@@ -57,6 +62,7 @@ export type AppUpdateCheckResult = {
   latest_version: string | null;
   latest_tag: string | null;
   release_url: string;
+  installer: AppUpdateInstaller | null;
   status: AppUpdateStatus;
   update_channel: AppUpdateChannel;
 };

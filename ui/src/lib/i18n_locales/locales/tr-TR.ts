@@ -1306,6 +1306,7 @@ export const trTRDictionary: DictionaryNode = {
     "updateInfoUnavailable": "Sürüm bilgileri şu anda kullanılamıyor. Daha sonra tekrar deneyin.",
     "updateChannelDisabled": "Bu derlemenin genel kullanıma açık bir güncelleme kanalı yok. Daha yeni sürümler için uygulamayı indirdiğiniz kaynağı kontrol edin.",
     "viewRelease": "Sürümü görüntüle",
+    "downloadInstaller": "{platform} için indir",
     "applicationDiagnosticsTitle": "Uygulama tanılaması",
     "applicationDiagnosticsDescription": "Yerel veritabanının durumunu denetleyin ve envanter içeriği ya da kimlik bilgileri içermeyen temizlenmiş bir destek dosyası indirin.",
     "diagnosticsHealthy": "Sağlıklı",

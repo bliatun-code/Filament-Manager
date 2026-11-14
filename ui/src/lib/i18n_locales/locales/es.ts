@@ -1874,6 +1874,7 @@ export const esDictionary: DictionaryNode = {
     updateChannelDisabled:
       "Esta compilación no tiene un canal público de actualizaciones. Busca versiones más recientes en el lugar desde el que descargaste la aplicación.",
     viewRelease: "Ver versión",
+    downloadInstaller: "Descargar para {platform}",
     tabGeneral: "General",
     tabLibrary: "Biblioteca y web app",
     tabCompanion: "Acceso desde navegador",

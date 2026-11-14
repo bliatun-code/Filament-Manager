@@ -7,7 +7,7 @@ export const APP_REPOSITORY_URL = "https://github.com/bliatun-code/Filament-Mana
 
 type AppVersionUrlBuilder = (appVersion: string | null | undefined) => string;
 
-function releasedAppTag(appVersion: string | null | undefined): string | null {
+export function releasedAppTag(appVersion: string | null | undefined): string | null {
   const match = /^v?(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$/.exec(
     appVersion?.trim() ?? "",
   );

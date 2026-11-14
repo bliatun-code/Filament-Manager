@@ -1647,6 +1647,7 @@ export const jaJPDictionary: DictionaryNode = {
     "updateInfoUnavailable": "現在、リリース情報を取得できません。後でもう一度お試しください。",
     "updateChannelDisabled": "このビルドには公開更新チャネルがありません。新しいリリースについては、アプリをダウンロードした配布元を確認してください。",
     "viewRelease": "リリースを表示",
+    "downloadInstaller": "{platform} 用をダウンロード",
     "tabGeneral": "一般",
     "tabFilamentDefaults": "フィラメントのデフォルト設定",
     "tabLibrary": "ライブラリとウェブアプリ",

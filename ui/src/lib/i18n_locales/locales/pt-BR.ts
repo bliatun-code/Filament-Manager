@@ -1624,6 +1624,7 @@ export const ptBRDictionary: DictionaryNode = {
     updateChannelDisabled:
       "Esta versão não tem um canal público de atualizações. Procure versões mais recentes no local de onde você baixou o aplicativo.",
     viewRelease: "Ver versão",
+    downloadInstaller: "Baixar para {platform}",
     activeCleared: "Impressora ativa apagada.",
     activePrinter: "Impressora ativa",
     activeUpdated: "Impressora ativa atualizada.",

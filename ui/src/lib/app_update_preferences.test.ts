@@ -40,6 +40,7 @@ function updateResult(
     latest_tag: latestVersion ? `v${latestVersion}` : null,
     latest_version: latestVersion,
     release_url: "https://github.com/example/releases/latest",
+    installer: null,
     status,
     update_channel:
       status === "UPDATE_CHANNEL_DISABLED" ? "DISABLED" : "PUBLIC_METADATA",

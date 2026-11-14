@@ -1585,6 +1585,7 @@ export const itITDictionary: DictionaryNode = {
     updateChannelDisabled:
       "Questa build non dispone di un canale di aggiornamento pubblico. Cerca versioni più recenti nel luogo da cui hai scaricato l’app.",
     viewRelease: "Vedi versione",
+    downloadInstaller: "Scarica per {platform}",
     activeCleared: "Stampante attiva cancellata.",
     activePrinter: "Stampante attiva",
     activeUpdated: "Stampante attiva aggiornata.",

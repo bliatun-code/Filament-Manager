@@ -14,12 +14,12 @@ const settings: LibrarySyncSettings = { mode: "CLIENT", target_generation: 4, de
 const validation: LibrarySyncHostValidationResult = { base_url: settings.host_base_url!, reachable: true, ok: true, matches_library_id: true, pairing_checked: true, pairing_valid: true, target_generation: 4, app_version: "0.32.0", api_version: "v1", library_id: "library-a", device_name: "Workshop Host", sync_mode: "HOST", message: "ok" };
 const updates: AppUpdateContextValue = {
   automaticChecksEnabled: false, checkManually: async () => null, dismissAvailableUpdate: () => {}, setAutomaticChecksEnabled: () => {}, showUpdateNotification: false,
-  state: { status: "SUCCESS", result: { current_version: "0.32.1", latest_version: "0.32.1", latest_tag: "v0.32.1", release_url: latestReleaseUrl(), status: "UP_TO_DATE", update_channel: "PUBLIC_METADATA" } },
+  state: { status: "SUCCESS", result: { current_version: "0.32.1", latest_version: "0.32.1", latest_tag: "v0.32.1", release_url: latestReleaseUrl(), installer: null, status: "UP_TO_DATE", update_channel: "PUBLIC_METADATA" } },
 };
 
-function render({ cached = false, unknown = false } = {}) {
+function render({ cached = false, unknown = false, updateState = updates.state } = {}) {
   const snapshot = cached ? { captured_at: "2026-10-17T10:00:00Z", app_version: "0.31.0", library_id: "library-a", device_name: "Workshop Host", sync_mode: "HOST" } as NonNullable<LibrarySyncSettings["cached_snapshot"]> : null;
-  return renderToStaticMarkup(<AppUpdateContext.Provider value={updates}><SettingsDeviceVersionPanel appVersion="0.32.1" busy={false} onRefreshHost={() => {}} settings={{ ...settings, cached_snapshot: snapshot }} tauri t={t} validation={cached ? null : unknown ? { ...validation, app_version: undefined } : validation} /></AppUpdateContext.Provider>);
+  return renderToStaticMarkup(<AppUpdateContext.Provider value={{ ...updates, state: updateState }}><SettingsDeviceVersionPanel appVersion="0.32.1" busy={false} onRefreshHost={() => {}} settings={{ ...settings, cached_snapshot: snapshot }} tauri t={t} validation={cached ? null : unknown ? { ...validation, app_version: undefined } : validation} /></AppUpdateContext.Provider>);
 }
 
 test("device version panel shows separate device and named Host app versions and targeted update need", () => {
@@ -35,9 +35,24 @@ test("device version panel shows separate device and named Host app versions and
   assert.match(html, />Refresh host status</);
   assert.match(html, />Check for updates</);
   assert.match(html, />View release</);
+  assert.doesNotMatch(html, /Download for/);
   assert.match(html, /Catalog refresh runs on the host/);
   assert.match(html, /Updating this device does not update the host/);
   assert.doesNotMatch(html, /AMD-RYZEN|api_version|workshop\.local/);
+});
+
+test("the client download is displayed only under This device even when the Host needs an update", () => {
+  const url = "https://github.com/bliatun-code/Filament-Manager/releases/download/v0.36.1/Filament-Manager_0.36.1_universal.dmg";
+  const html = render({ updateState: { status: "SUCCESS", result: {
+    current_version: "0.32.1", latest_version: "0.36.1", latest_tag: "v0.36.1",
+    release_url: latestReleaseUrl(), installer: { platform: "macos", url },
+    status: "UPDATE_AVAILABLE", update_channel: "PUBLIC_METADATA",
+  } } });
+  const [local, host] = html.split('data-device-version="host"');
+  assert.ok(local.includes(`href="${url}"`));
+  assert.match(local, />Download for macOS</);
+  assert.doesNotMatch(host, /Download for|universal\.dmg/);
+  assert.match(host, />View release</);
 });
 
 test("cached and missing Host app versions are clearly distinguished from a current verification", () => {

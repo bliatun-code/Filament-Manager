@@ -1550,6 +1550,7 @@ export const huHUDictionary: DictionaryNode = {
     "updateInfoUnavailable": "A kiadási információk jelenleg nem érhetők el. Próbálja újra később.",
     "updateChannelDisabled": "Ennek a buildnek nincs nyilvános frissítési csatornája. Keressen újabb kiadásokat annál a forrásnál, ahonnan letöltötte az alkalmazást.",
     "viewRelease": "Kiadás megtekintése",
+    "downloadInstaller": "Letöltés erre a platformra: {platform}",
     "applicationDiagnosticsTitle": "Alkalmazásdiagnosztika",
     "applicationDiagnosticsDescription": "Ellenőrizze a helyi adatbázis állapotát, és töltsön le készletadatok és hitelesítő adatok nélküli, megtisztított támogatási fájlt.",
     "diagnosticsHealthy": "Rendben",

@@ -1647,6 +1647,7 @@ export const zhCNDictionary: DictionaryNode = {
     "updateInfoUnavailable": "目前无法获取发布信息。请稍后重试。",
     "updateChannelDisabled": "此构建没有公共更新渠道。请在下载此应用的来源处查看是否有更新版本。",
     "viewRelease": "查看发布版本",
+    "downloadInstaller": "下载 {platform} 版",
     "tabGeneral": "常规",
     "tabFilamentDefaults": "耗材默认设置",
     "tabLibrary": "资料库和 Web 应用",

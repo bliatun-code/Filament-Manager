@@ -734,6 +734,7 @@ export function resolveUiBrowserPerformanceInvoke(
         latest_tag: `v${fixture.appVersion}`,
         release_url:
           "https://github.com/bliatun-code/Filament-Manager/releases/latest",
+        installer: null,
         status: "UP_TO_DATE",
         update_channel: "PUBLIC_METADATA",
       };
