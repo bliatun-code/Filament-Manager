@@ -44,7 +44,10 @@ export async function verifyWindowsAppDatabase(databasePath) {
     throw new Error(`Database is missing or empty: ${resolvedDatabasePath}`);
   }
 
-  const database = new DatabaseSync(resolvedDatabasePath, { readOnly: true });
+  const database = new DatabaseSync(resolvedDatabasePath, {
+    readOnly: true,
+    timeout: 5_000,
+  });
 
   try {
     const quickCheck = database.prepare("PRAGMA quick_check").get()?.quick_check;

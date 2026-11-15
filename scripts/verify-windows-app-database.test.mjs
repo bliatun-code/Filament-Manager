@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
-import { spawnSync } from "node:child_process";
+import { spawn, spawnSync } from "node:child_process";
+import { once } from "node:events";
 import { mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
@@ -113,6 +114,44 @@ test("Windows app database verifier reads the active WAL without changing the li
     } finally {
       writer.close();
     }
+  });
+});
+
+test("Windows app database verifier waits for a database locked by another process", { timeout: 15_000 }, async () => {
+  await withTemporaryDirectory(async (directory) => {
+    const databasePath = join(directory, "filament-manager.db");
+    createDatabase(databasePath, REQUIRED_WINDOWS_SMOKE_TABLES);
+    const locker = spawn(process.execPath, ["--input-type=module", "-e", `
+      import { DatabaseSync } from "node:sqlite";
+      const database = new DatabaseSync(process.argv[1]);
+      database.exec("BEGIN EXCLUSIVE");
+      process.stdin.once("end", () => {
+        database.exec("ROLLBACK");
+        database.close();
+      });
+      process.stdin.resume();
+      console.log("locked");
+    `, databasePath], { stdio: ["pipe", "pipe", "inherit"], timeout: 12_000 });
+    const lockerClosed = once(locker, "close");
+    try {
+      await Promise.race([
+        once(locker.stdout, "data").then(([data]) => assert.equal(String(data).trim(), "locked")),
+        lockerClosed.then(([code, signal]) => assert.fail(`Lock process exited before acquiring the lock (${code ?? signal})`)),
+      ]);
+      const start = performance.now();
+      await assert.rejects(verifyWindowsAppDatabase(databasePath), {
+        code: "ERR_SQLITE_ERROR",
+        errcode: 5,
+      });
+      const waitMs = performance.now() - start;
+      assert.ok(waitMs >= 4_500, `Expected the verifier to wait for the busy timeout, waited ${Math.round(waitMs)} ms`);
+    } finally {
+      locker.stdin.end();
+      const [code, signal] = await lockerClosed;
+      assert.equal(code, 0, `Lock process exited with ${code ?? signal}`);
+    }
+
+    assert.equal((await verifyWindowsAppDatabase(databasePath)).schemaVersion, REQUIRED_WINDOWS_SMOKE_SCHEMA_VERSION);
   });
 });
 
