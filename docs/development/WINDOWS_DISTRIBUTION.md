@@ -74,9 +74,9 @@ installer and payload match the verified build. On a clean hosted Windows
 profile, it checks the per-user install, application launch, fresh database,
 historical database upgrade, Host/Client, persistence, portable backup and
 uninstall. A separate migration gate exercises the upgrade from the
-published v0.35.1 MSI. The published-NSIS gate verifies the v0.36.1 checksum
+published v0.35.1 MSI. The published-NSIS gate verifies the v0.36.2 checksum
 and build provenance before installing that exact release on its own runner.
-It opens a synthetic library in v0.36.1, upgrades interactively in place, and
+It opens a synthetic library in v0.36.2, upgrades interactively in place, and
 checks that the new app opens the same data, the launch-at-login choice survives,
 the older installer cannot replace the candidate, and uninstall retains the
 library.
@@ -121,5 +121,5 @@ and test a per-user x64 release candidate. The workflow downloads the checked
 candidate by digest and uses it for the installed-app, MSI migration and
 published NSIS upgrade gates. While the repository version still matches the
 published NSIS baseline, the rehearsal candidate uses the next patch version
-with `-rc.1` in a temporary build config. Use the rehearsal to exercise the
-upgrade from v0.36.1 while manual release builds on main still build v0.36.1. The rehearsal uploads workflow artifacts for testing.
+with `-rc.1` in a temporary build config. The rehearsal upgrades the pinned
+v0.36.2 installer and uploads workflow artifacts for testing.
