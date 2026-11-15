@@ -436,6 +436,13 @@ impl InventoryEngine {
         self.db.save_library_sync_cached_loans(rows)
     }
 
+    pub fn save_library_sync_cached_active_loans(
+        &self,
+        rows: &[SpoolLoanDetailsRow],
+    ) -> InventoryResult<()> {
+        self.db.save_library_sync_cached_active_loans(rows)
+    }
+
     pub fn save_library_sync_cached_consumption(
         &self,
         rows: &[FilamentConsumptionRow],

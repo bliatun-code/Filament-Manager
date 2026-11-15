@@ -7,6 +7,7 @@ use crate::backend::statistics::{
     FilamentConsumptionRow, StatisticsPeriod, StatisticsPeriodReport,
 };
 use crate::library_sync_blocking_executor::run_library_sync_blocking;
+use crate::library_sync_cache_refresh::fetch_and_cache_library_sync_active_loans;
 use crate::library_sync_command_support::{
     encode_library_sync_path_segment, library_sync_host_input, prepare_library_sync_host_checked,
     prepare_library_sync_host_read, require_host_filament_price_standards_capability,
@@ -210,7 +211,7 @@ pub(crate) async fn fetch_library_sync_loans(
     run_library_sync_blocking(move || fetch_library_sync_loans_blocking(&state, input)).await
 }
 
-fn fetch_library_sync_loans_blocking(
+pub(crate) fn fetch_library_sync_loans_blocking(
     state: &AppState,
     input: LibrarySyncSpoolListInput,
 ) -> Result<Vec<SpoolLoanDetailsRow>, String> {
@@ -233,6 +234,30 @@ fn fetch_library_sync_loans_blocking(
         health.device_name.as_deref(),
     )?;
 
+    Ok(rows)
+}
+
+#[tauri::command]
+pub(crate) async fn fetch_library_sync_active_loans(
+    state: tauri::State<'_, AppState>,
+    input: ValidateLibrarySyncHostInput,
+) -> Result<Vec<SpoolLoanDetailsRow>, String> {
+    let state = state.inner().clone();
+    run_library_sync_blocking(move || fetch_library_sync_active_loans_blocking(&state, input)).await
+}
+
+pub(crate) fn fetch_library_sync_active_loans_blocking(
+    state: &AppState,
+    input: ValidateLibrarySyncHostInput,
+) -> Result<Vec<SpoolLoanDetailsRow>, String> {
+    let (_, health, target) = prepare_library_sync_host_read(state, &input)?;
+    let rows = fetch_and_cache_library_sync_active_loans(state, &target)?;
+    save_library_sync_success(
+        state,
+        &target,
+        "Host active loan list refreshed.",
+        health.device_name.as_deref(),
+    )?;
     Ok(rows)
 }
 

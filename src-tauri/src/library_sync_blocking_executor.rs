@@ -313,6 +313,7 @@ mod tests {
             "fetch_library_sync_printer_overview",
             "fetch_library_sync_printer_settings",
             "fetch_library_sync_loans",
+            "fetch_library_sync_active_loans",
             "fetch_library_sync_filament_consumption",
             "fetch_library_sync_catalog_masters",
             "fetch_library_sync_wishlist_items",

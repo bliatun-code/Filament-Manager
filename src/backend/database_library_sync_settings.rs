@@ -2,6 +2,7 @@ use rusqlite::Connection;
 
 use super::database_ids::new_id;
 use super::database_library_sync_auth::clear_library_sync_client_auth_state;
+use super::database_library_sync_cache::CACHED_ACTIVE_LOANS_KEY;
 use super::database_library_sync_models::{
     LibrarySyncCachedFilamentConsumptionListRow, LibrarySyncCachedLoanListRow,
     LibrarySyncCachedPrinterOverviewRow, LibrarySyncCachedSnapshotRow,
@@ -18,6 +19,7 @@ const LIBRARY_SYNC_HOST_CACHE_KEYS: &[&str] = &[
     "library_sync_cached_locations_json",
     "library_sync_cached_printers_json",
     "library_sync_cached_loans_json",
+    CACHED_ACTIVE_LOANS_KEY,
     "library_sync_cached_consumption_json",
     "library_sync_cached_wishlist_json",
 ];
@@ -59,6 +61,8 @@ pub(crate) fn get_library_sync_settings(
     )?;
     let cached_loans =
         cached_setting::<LibrarySyncCachedLoanListRow>(conn, "library_sync_cached_loans_json")?;
+    let cached_active_loans =
+        cached_setting::<LibrarySyncCachedLoanListRow>(conn, CACHED_ACTIVE_LOANS_KEY)?;
     let cached_consumption = cached_setting::<LibrarySyncCachedFilamentConsumptionListRow>(
         conn,
         "library_sync_cached_consumption_json",
@@ -87,6 +91,7 @@ pub(crate) fn get_library_sync_settings(
         cached_spools,
         cached_printers,
         cached_loans,
+        cached_active_loans,
         cached_consumption,
         cached_wishlist,
     })

@@ -28,8 +28,11 @@ import {
   usePageRefreshState,
 } from "../lib/page_refresh_state";
 import {
+  activeLoanRowsForDisplay,
   loadLoanRowsPage,
+  mergeLoanHistoryAndActiveRows,
   returnInventoryLoan,
+  type LoanDataLoadResult,
   type NormalizedLoanDetailsRow,
 } from "../lib/loan_data_source";
 import {
@@ -73,15 +76,12 @@ export default function LoansPage({ embedded = false, onDataChanged, onOpenSpool
     librarySyncResolving,
     retryLibrarySyncRole,
   } = useLibrarySyncState(tauri);
-  const [clientLoanSource, setClientLoanSource] = useState<"LIVE" | "CACHED" | "OFFLINE">(
-    "LIVE",
-  );
-  const [clientLoanUpdatedAt, setClientLoanUpdatedAt] = useState<string | null>(null);
+  const [loanHistory, setLoanHistory] = useState<LoanDataLoadResult | null>(null);
+  const [activeLoanSnapshot, setActiveLoanSnapshot] = useState<LoanDataLoadResult | null>(null);
   const [filter, setFilter] = useState<LoanFilter>("ACTIVE");
   const [directionFilter, setDirectionFilter] = useState<LoanDirectionFilter>("ALL");
   const [search, setSearch] = useState("");
   const deferredSearch = useDeferredValue(search);
-  const [loans, setLoans] = useState<NormalizedLoanDetailsRow[]>([]);
   const [showLoanOutModal, setShowLoanOutModal] = useState(false);
   const [returnModalLoan, setReturnModalLoan] = useState<NormalizedLoanDetailsRow | null>(
     null,
@@ -105,21 +105,21 @@ export default function LoansPage({ embedded = false, onDataChanged, onOpenSpool
     reloadRequestRef.current = requestId;
     beginRefresh();
     try {
-      const result = await loadLoanRowsPage({
+      const options = {
         clientReadOnly,
         clientHostBaseUrl,
         clientLibraryId,
         clientTargetGeneration,
-        limit: 2000,
-      });
+      };
+      const [history, active] = await Promise.all([
+        loadLoanRowsPage(options),
+        loadLoanRowsPage({ ...options, activeOnly: true, limit: 2500 }),
+      ]);
       if (requestId !== reloadRequestRef.current) {
         return;
       }
-      if (clientReadOnly) {
-        setClientLoanSource(result.source);
-        setClientLoanUpdatedAt(result.updatedAt);
-      }
-      setLoans(result.rows);
+      setLoanHistory(history);
+      setActiveLoanSnapshot(active);
       // OFFLINE is a settled client fallback. The dedicated Host warning
       // explains it without layering a generic page error on top.
       completeRefresh();
@@ -171,10 +171,24 @@ export default function LoansPage({ embedded = false, onDataChanged, onOpenSpool
     setInfoMessage: setInfo,
   });
 
-  const filteredLoans = useMemo(
-    () => filterLoans(loans, directionFilter, filter, deferredSearch),
-    [deferredSearch, directionFilter, filter, loans],
+  const activeRows = useMemo(
+    () => activeLoanRowsForDisplay(activeLoanSnapshot, loanHistory),
+    [activeLoanSnapshot, loanHistory],
   );
+  const filteredLoans = useMemo(() => {
+    const historyRows = loanHistory?.rows ?? [];
+    const rows = filter === "ACTIVE"
+      ? activeRows
+      : filter === "ALL"
+        ? mergeLoanHistoryAndActiveRows(historyRows, activeRows)
+        : historyRows;
+    return filterLoans(rows, directionFilter, filter, deferredSearch);
+  }, [activeRows, deferredSearch, directionFilter, filter, loanHistory]);
+  const displayedSnapshot = filter === "ACTIVE" || (
+    filter === "ALL" && loanHistory?.source === "LIVE" && activeLoanSnapshot?.source !== "LIVE"
+  ) ? activeLoanSnapshot : loanHistory;
+  const clientLoanSource = displayedSnapshot?.source ?? "LIVE";
+  const clientLoanUpdatedAt = displayedSnapshot?.updatedAt ?? null;
   const clientHostWarningVisible = shouldShowClientSnapshotWarning({
     clientReadOnly,
     initialLoadSettled: librarySyncReady && !loading,
@@ -190,7 +204,7 @@ export default function LoansPage({ embedded = false, onDataChanged, onOpenSpool
     setInfo(null);
     try {
       const content = clientReadOnly
-        ? buildLoansCsv(loans, directionFilter)
+        ? buildLoansCsv(loanHistory?.rows ?? [], directionFilter)
         : (
             await exportLoansCsv(
               true,
@@ -255,14 +269,14 @@ export default function LoansPage({ embedded = false, onDataChanged, onOpenSpool
       return;
     }
     const activeLoan = desktopVisualQaScenario === "return-inbound-loan"
-      ? loans.find(
+      ? activeRows.find(
           (loan) =>
             loan.loan.spool_id === DESKTOP_VISUAL_QA_INBOUND_SPOOL_ID &&
             isInboundLoan(loan) &&
             isLoanCurrentlyActive(loan),
-        ) ?? loans.find((loan) => isInboundLoan(loan) && isLoanCurrentlyActive(loan))
-      : loans.find((loan) => isOutboundLoan(loan) && isLoanCurrentlyActive(loan)) ??
-        loans.find(isLoanCurrentlyActive);
+        ) ?? activeRows.find((loan) => isInboundLoan(loan) && isLoanCurrentlyActive(loan))
+      : activeRows.find((loan) => isOutboundLoan(loan) && isLoanCurrentlyActive(loan)) ??
+        activeRows.find(isLoanCurrentlyActive);
     if (!activeLoan) {
       return;
     }
@@ -275,7 +289,7 @@ export default function LoansPage({ embedded = false, onDataChanged, onOpenSpool
     desktopVisualQaReturnApplied,
     desktopVisualQaScenario,
     loading,
-    loans,
+    activeRows,
     openReturnModal,
     tauri,
   ]);
@@ -390,7 +404,7 @@ export default function LoansPage({ embedded = false, onDataChanged, onOpenSpool
             </PageHeaderButton>
             <PageHeaderButton
               onClick={() => void handleExportCsv()}
-              disabled={!tauri || busy || (clientReadOnly && loans.length === 0)}
+              disabled={!tauri || busy || (clientReadOnly && !loanHistory?.rows.length)}
             >
               {t("loans.exportCsv", "Export loans CSV")}
             </PageHeaderButton>
