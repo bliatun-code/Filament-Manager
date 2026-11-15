@@ -16,6 +16,7 @@ export type WishlistReceiptModalProps = Readonly<{
   errors: PurchaseReceiptMetadataValidationErrors;
   homeLocation: string;
   itemTitle: string;
+  locked?: boolean;
   maxQuantity: number;
   metadataDraft: PurchaseReceiptMetadataDraft;
   onCancel: () => void;
@@ -23,8 +24,11 @@ export type WishlistReceiptModalProps = Readonly<{
   onHomeLocationChange: (value: string) => void;
   onMetadataDraftChange: (draft: PurchaseReceiptMetadataDraft) => void;
   onQuantityChange: (value: string) => void;
+  onReconcile?: () => void | Promise<void>;
+  pendingMessage?: string;
   quantity: number;
   quantityValue: string;
+  retryDisabled?: boolean;
 }>;
 
 export function WishlistReceiptModal({
@@ -33,6 +37,7 @@ export function WishlistReceiptModal({
   errors,
   homeLocation,
   itemTitle,
+  locked = false,
   maxQuantity,
   metadataDraft,
   onCancel,
@@ -40,8 +45,11 @@ export function WishlistReceiptModal({
   onHomeLocationChange,
   onMetadataDraftChange,
   onQuantityChange,
+  onReconcile,
+  pendingMessage,
   quantity,
   quantityValue,
+  retryDisabled = false,
 }: WishlistReceiptModalProps) {
   const { t } = useI18n();
 
@@ -50,7 +58,7 @@ export function WishlistReceiptModal({
       cancelDisabled={busy}
       onCancel={onCancel}
       onSave={onConfirm}
-      saveDisabled={busy}
+      saveDisabled={busy || retryDisabled}
       saveLabel={t(
         "wishlist.receiveQuantity",
         "{count, plural, one {Receive # roll} other {Receive # rolls}}",
@@ -60,6 +68,17 @@ export function WishlistReceiptModal({
       title={t("wishlist.receivePurchase", "Receive purchase")}
     >
       <div className="space-y-4">
+        {pendingMessage ? <p role="status" className="text-sm">{pendingMessage}</p> : null}
+        {onReconcile ? (
+          <button
+            type="button"
+            className={`px-3 py-2 ${formInputChromeClassName}`}
+            disabled={busy}
+            onClick={() => { void onReconcile(); }}
+          >
+            {t("errors.wishlistReceiptReviewed", "I checked the order on the Host")}
+          </button>
+        ) : null}
         <label className="block">
           <span className="text-xs font-semibold text-slate-700 dark:text-slate-200">
             {t("wishlist.receivedQuantity", "Received quantity")}
@@ -71,7 +90,7 @@ export function WishlistReceiptModal({
             value={quantityValue}
             onChange={(event) => onQuantityChange(event.target.value)}
             className={`mt-1.5 w-full ${formInputChromeClassName}`}
-            disabled={busy}
+            disabled={busy || locked}
           />
         </label>
 
@@ -86,14 +105,14 @@ export function WishlistReceiptModal({
             value={homeLocation}
             onChange={(event) => onHomeLocationChange(event.target.value)}
             className={`mt-1.5 w-full ${formInputChromeClassName}`}
-            disabled={busy}
+            disabled={busy || locked}
           />
         </label>
 
         <PurchaseReceiptMetadataFields
           copy={purchaseReceiptMetadataFieldsCopy(t)}
           defaultCurrency={defaultPurchaseCurrency}
-          disabled={busy}
+          disabled={busy || locked}
           draft={metadataDraft}
           errors={errors}
           onChange={onMetadataDraftChange}

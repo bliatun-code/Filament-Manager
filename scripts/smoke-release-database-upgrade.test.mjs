@@ -36,6 +36,28 @@ const batchMigration = readFileSync(
   "utf8",
 );
 
+function candidateMigrations(databaseVariable) {
+  const migrationDirectory = new URL("../src/database/migrations/", import.meta.url);
+  const manifest = JSON.parse(readFileSync(new URL("manifest.json", migrationDirectory), "utf8"));
+  const statements = manifest.migrations
+    .filter((migration) => migration.role === "schema-migration" && migration.fromSchemaVersion >= 7)
+    .map((migration) => ({
+      from: migration.fromSchemaVersion,
+      to: migration.toSchemaVersion,
+      sql: readFileSync(new URL(migration.file, migrationDirectory), "utf8"),
+    }));
+  return `
+    ${databaseVariable}.transaction(() => {
+      for (const migration of ${JSON.stringify(statements)}) {
+        if (${databaseVariable}.pragma('user_version', { simple: true }) === migration.from) {
+          ${databaseVariable}.exec(migration.sql);
+          ${databaseVariable}.pragma('user_version = ' + migration.to);
+        }
+      }
+    })();
+  `;
+}
+
 function insertBatchReceipt(database) {
   database.prepare(
     "INSERT INTO catalog_spool_batches (batch_id, library_id, request_json, receipt_json, created_at) VALUES (?, ?, ?, ?, ?)",
@@ -644,7 +666,8 @@ setInterval(() => {}, 1000);
 // the shutdown handler is installed, so this regression cannot pass by timing.
 setTimeout(() => {
   const startupDb = new Database(process.env.FILAMENT_MANAGER_DB_PATH);
-  startupDb.pragma('user_version'); startupDb.close();
+  ${candidateMigrations("startupDb")}
+  startupDb.close();
   process.on('SIGTERM', () => { const db = new Database(process.env.FILAMENT_MANAGER_DB_PATH); db.exec('DELETE FROM catalog_spool_batches'); db.close(); process.exit(0); });
   writeFileSync(process.env.FILAMENT_MANAGER_DATABASE_READY_FILE, JSON.stringify({
     token: process.env.FILAMENT_MANAGER_DATABASE_READY_TOKEN, pid: process.pid,
@@ -654,7 +677,7 @@ setTimeout(() => {
 `, { mode: 0o700 });
     await assert.rejects(smokeReleaseDatabaseUpgrade({
       allowCurrentSchema: true, sourceRelease: "v0.29.0-test", databasePath, executablePath,
-      logDirectory: path.join(directory, "logs"), requireVisibleWindow: false,
+      logDirectory: path.join(directory, "logs"), requireVisibleWindow: false, launchTimeoutMs: 10_000,
     }), /catalog_spool_batches row count/);
   } finally {
     rmSync(directory, { force: true, recursive: true });
@@ -716,7 +739,8 @@ test("two acknowledged launches get different challenges and preserve the fixtur
 import Database from ${JSON.stringify(pathToFileURL(require.resolve("better-sqlite3")).href)};
 import { writeFileSync, realpathSync } from 'node:fs';
 const db = new Database(process.env.FILAMENT_MANAGER_DB_PATH);
-db.pragma('user_version'); db.close();
+${candidateMigrations("db")}
+db.close();
 writeFileSync(process.env.FILAMENT_MANAGER_DATABASE_READY_FILE, JSON.stringify({
   token:process.env.FILAMENT_MANAGER_DATABASE_READY_TOKEN, pid:process.pid,
   databasePath:realpathSync(process.env.FILAMENT_MANAGER_DB_PATH),

@@ -262,6 +262,20 @@ test("add filament task sheet exposes stock and wishlist flows from the same sel
   assert.match(html, /Add current selection to wishlist/);
 });
 
+test("a pending legacy receipt offers Host review in place of a second stock action", () => {
+  const state = createInitialCompanionState();
+  state.wishlistItems = [{
+    id: "wish-1", material: "PLA", filament_name: "Basic", color_name: "Blue",
+    vendor: "Bambu", status: "ON_ORDER", quantity: 2, created_at: "", updated_at: "",
+  }];
+  state.wishlistReceiptReviews.set("wish-1", { scope: "test", requestId: "request" });
+  const html = renderAddFilamentTaskSheetBody(state, false, (value) => String(value ?? ""));
+  assert.match(html, /Check the order on the Host before receiving any remaining rolls/);
+  assert.match(html, /data-action="wishlist-receipt-reviewed"/);
+  assert.match(html, /I checked the order on the Host/);
+  assert.doesNotMatch(html, /data-action="wishlist-stock-form"/);
+});
+
 test("wishlist purchase receipt fields localize in norwegian", () => {
   const state = createInitialCompanionState();
   state.locale = "nb";

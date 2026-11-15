@@ -36,7 +36,10 @@ export type ReceiveWishlistItemInput = {
   quantity: number;
   home_location?: string | null;
   purchase_metadata?: PurchaseReceiptMetadata;
+  request_id?: string;
 };
+
+type ReceiveHostWishlistItemInput = ReceiveWishlistItemInput & { retry?: boolean };
 
 export type WishlistReceiptResult = {
   spool_ids: string[];
@@ -84,7 +87,7 @@ export async function receiveWishlistItem(input: ReceiveWishlistItemInput) {
 export async function receiveLibrarySyncHostWishlistItem(
   baseUrl: string,
   expectedLibraryId: string | null | undefined,
-  input: ReceiveWishlistItemInput,
+  input: ReceiveHostWishlistItemInput,
 ) {
   return invoke<WishlistReceiptResult>(
     "receive_library_sync_host_wishlist_item",
@@ -95,7 +98,7 @@ export async function receiveLibrarySyncHostWishlistItem(
 export function buildLibrarySyncHostWishlistReceiptPayload(
   baseUrl: string,
   expectedLibraryId: string | null | undefined,
-  input: ReceiveWishlistItemInput,
+  input: ReceiveHostWishlistItemInput,
 ) {
   return {
     input: {
@@ -103,6 +106,8 @@ export function buildLibrarySyncHostWishlistReceiptPayload(
       expected_library_id: expectedLibraryId ?? null,
       item_id: input.item_id,
       quantity: input.quantity,
+      ...(input.request_id === undefined ? {} : { request_id: input.request_id }),
+      ...(input.retry ? { retry: true } : {}),
       ...(input.home_location === undefined ? {} : { home_location: input.home_location }),
       ...(input.purchase_metadata === undefined
         ? {}

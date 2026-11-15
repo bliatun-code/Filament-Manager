@@ -948,3 +948,49 @@ test("invalid catalog jobs never publish a fixture or modify the source database
     }
   }
 });
+
+test("release upgrade fixtures remove installation-local wishlist receipt requests", {
+  skip: process.platform === "win32",
+}, async () => {
+  const directory = mkdtempSync(path.join(tmpdir(), "release-wishlist-receipt-fixture-"));
+  const sourcePath = path.join(directory, "source.db");
+  const outputPath = path.join(directory, "sanitized.db");
+  const supplierReference = "private-wishlist-receipt-reference";
+  try {
+    createLegacyDatabase(sourcePath);
+    const source = new Database(sourcePath);
+    try {
+      source.exec(catalogJobMigration);
+      source.exec(batchMigration);
+      source.exec(readFileSync(new URL(
+        "../src/database/migrations/009_wishlist_receipt_requests.sql",
+        import.meta.url,
+      ), "utf8"));
+      source.pragma("user_version = 8");
+      source.prepare(
+        "INSERT INTO wishlist_receipt_requests (request_id, library_id, request_json, receipt_json) VALUES (?, ?, ?, ?)",
+      ).run(
+        "private-receipt-request",
+        "private-library",
+        JSON.stringify({ purchase_metadata: { supplier_reference: supplierReference } }),
+        JSON.stringify({ spool_ids: ["private-receipt-roll"] }),
+      );
+    } finally {
+      source.close();
+    }
+
+    const original = readFileSync(sourcePath);
+    await prepareReleaseUpgradeFixture({ sourcePath, outputPath });
+    const fixture = new Database(outputPath, { readonly: true });
+    try {
+      assert.equal(fixture.pragma("user_version", { simple: true }), 8);
+      assert.equal(fixture.prepare("SELECT count(*) AS count FROM wishlist_receipt_requests").get().count, 0);
+    } finally {
+      fixture.close();
+    }
+    assert.ok(!readFileSync(outputPath).includes(supplierReference));
+    assert.deepEqual(readFileSync(sourcePath), original);
+  } finally {
+    rmSync(directory, { force: true, recursive: true });
+  }
+});

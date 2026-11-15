@@ -63,7 +63,7 @@ test("wishlist receipt action forwards optional purchase metadata and reports su
   assert.match(handlerBlock, /purchase_metadata: purchaseMetadata/);
   assert.match(handlerBlock, /return true/);
   assert.match(handlerBlock, /catch \(stockError\)[\s\S]*return false/);
-  assert.match(handlerBlock, /commandErrorText\([\s\S]*stockError[\s\S]*,[\s\S]*t[\s\S]*\)/);
+  assert.match(handlerBlock, /commandErrorText\(\s*displayError,/);
 });
 
 test("detail save keeps purchase metadata and the batch lock in one payload", () => {

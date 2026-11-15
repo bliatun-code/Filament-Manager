@@ -75,3 +75,17 @@ test("receipt dialog disables every write control while submitting", () => {
   assert.match(locationInput, /disabled=""/);
   assert.equal((html.match(/<button[^>]*disabled=""/g) ?? []).length, 2);
 });
+
+test("an uncertain legacy receipt offers an acknowledgment while preventing a second write", () => {
+  const html = renderModal({
+    locked: true,
+    retryDisabled: true,
+    pendingMessage: "Check the order on the Host before receiving any remaining rolls.",
+    onReconcile: () => {},
+  });
+  assert.match(html, /role="status"[^>]*>Check the order on the Host/);
+  assert.match(html, /<button[^>]*disabled=""[^>]*>Receive 3 rolls<\/button>/);
+  const acknowledgement = html.match(/<button[^>]*>I checked the order on the Host<\/button>/)?.[0] ?? "";
+  assert.match(acknowledgement, /type="button"/);
+  assert.doesNotMatch(acknowledgement, /disabled=""/);
+});

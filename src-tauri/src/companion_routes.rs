@@ -24,7 +24,8 @@ use crate::companion_location_api::{
 };
 use crate::companion_state::CompanionApiState;
 use crate::companion_wishlist_write_api::{
-    handle_create_wishlist_item, handle_delete_wishlist_item, handle_receive_wishlist_item,
+    handle_create_wishlist_item, handle_delete_wishlist_item,
+    handle_receive_idempotent_wishlist_item, handle_receive_wishlist_item,
     handle_update_wishlist_item_status,
 };
 use axum::middleware;
@@ -135,6 +136,10 @@ fn build_router_with_security_config(
         .route(
             "/wishlist/{item_id}/receive",
             post(handle_receive_wishlist_item),
+        )
+        .route(
+            "/wishlist/{item_id}/receive-idempotent",
+            post(handle_receive_idempotent_wishlist_item),
         )
         .route(
             "/wishlist/{item_id}/delete",

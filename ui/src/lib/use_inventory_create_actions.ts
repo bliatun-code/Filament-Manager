@@ -1,5 +1,10 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useSyncExternalStore, type Dispatch, type SetStateAction } from "react";
-import { commandErrorText, createAppError } from "./error_text";
+import { appErrorCode, commandErrorText, createAppError } from "./error_text";
+import {
+  createWishlistReceiptAttempts,
+  isConfirmedWishlistReceipt,
+  MAX_WISHLIST_RECEIPT_QUANTITY,
+} from "../../../src-tauri/companion_browser/wishlist_receipt_attempt.js";
 import { catalogSpoolBatchErrorText } from "./catalog_spool_batch_errors";
 import { BambuBatchRegistrationController, type BambuBatchRegistrationDraft } from "./bambu_batch_registration";
 import { catalogSpoolBatchTargetKey, createCatalogSpoolBatch, type CatalogSpoolBatchTarget } from "./tauri_catalog_spool_batch_client";
@@ -20,7 +25,7 @@ import {
   createManualInventorySpool,
 } from "./spool_writes";
 import type { useI18n } from "./i18n";
-import type { MasterCatalogRow, WishlistItemRow } from "./tauri_client";
+import type { MasterCatalogRow, ReceiveWishlistItemInput, WishlistItemRow } from "./tauri_client";
 import {
   buildWishlistDraft,
   canStockWishlistItem,
@@ -38,6 +43,7 @@ function newRegistrationSpoolId(): string {
 }
 
 const batchControllers = new Map<string, BambuBatchRegistrationController>();
+const wishlistReceiptAttempts = createWishlistReceiptAttempts(() => globalThis.localStorage);
 function batchControllerFor(target: CatalogSpoolBatchTarget): BambuBatchRegistrationController | null {
   const key = catalogSpoolBatchTargetKey(target);
   if (!key || typeof window === "undefined") return null;
@@ -597,13 +603,52 @@ export function useInventoryCreateActions({
     }
   }
 
+  function wishlistReceiptScope(itemId: string) {
+    return JSON.stringify([
+      clientReadOnly ? clientHostBaseUrl?.trim().replace(/\/+$/, "") : "local",
+      clientLibraryId,
+      itemId,
+    ]);
+  }
+
+  function getPendingWishlistReceipt(itemId: string) {
+    const pending = wishlistReceiptAttempts.get(wishlistReceiptScope(itemId));
+    if (!pending) return null;
+    try {
+      const input = JSON.parse(pending.payload) as ReceiveWishlistItemInput | null;
+      if (input?.item_id === itemId && Number.isInteger(input.quantity) &&
+          input.quantity >= 1 && input.quantity <= MAX_WISHLIST_RECEIPT_QUANTITY) {
+        return {
+          input,
+          requestId: pending.requestId,
+          needsHostCheck: pending.requiresReview || pending.awaitingNative,
+        };
+      }
+    } catch {
+      // A malformed local draft cannot supply input for a retry.
+    }
+    return null;
+  }
+
+  async function reconcileWishlistReceipt(itemId: string, requestId: string) {
+    const scope = registrationScopeRef.current;
+    if (scope?.key !== registrationScopeKey || scope.inFlight ||
+        !wishlistReceiptAttempts.reconcile(wishlistReceiptScope(itemId), requestId)) return false;
+    setError(null);
+    await Promise.allSettled([
+      Promise.resolve().then(reloadSpools),
+      Promise.resolve().then(reloadWishlist),
+    ]);
+    return registrationScopeRef.current === scope;
+  }
+
   async function handleStockFromWishlist(
     item: WishlistItemRow,
     quantity: number,
     purchaseMetadata?: PurchaseReceiptMetadata,
     homeLocation?: string,
   ): Promise<boolean> {
-    if (!canStockWishlistItem(item.status)) {
+    if (!canStockWishlistItem(item.status) && !getPendingWishlistReceipt(item.id)) {
       return false;
     }
     if (!canStartWrite()) {
@@ -613,37 +658,45 @@ export function useInventoryCreateActions({
     if (!scope) return false;
     const isCurrent = () => registrationScopeRef.current === scope;
     setConfirmWishlistRemoveId(null);
+    setError(null);
+    setInfoMessage(null);
+    const receiptScope = wishlistReceiptScope(item.id);
+    const input = {
+      item_id: item.id,
+      quantity,
+      ...(homeLocation?.trim() ? { home_location: homeLocation.trim() } : {}),
+      ...(purchaseMetadata === undefined ? {} : { purchase_metadata: purchaseMetadata }),
+    };
+    let attempt: { requestId: string; retry: boolean } | undefined;
     try {
-      const receipt = await receiveWishlistEntry(
-        {
-          item_id: item.id,
-          quantity,
-          ...(homeLocation?.trim() ? { home_location: homeLocation.trim() } : {}),
-          ...(purchaseMetadata === undefined
-            ? {}
-            : { purchase_metadata: purchaseMetadata }),
-        },
-        hostWriteTarget,
-      );
-      if (!isCurrent()) return false;
-      // The receipt is already committed. A failed read must not leave a
-      // retryable receipt draft that could create the same rolls again.
-      try {
-        const refreshed = await Promise.allSettled([reloadSpools(), reloadWishlist()]);
-        const failed = refreshed.find((result) => result.status === "rejected");
-        if (failed?.status === "rejected") {
-          throw failed.reason;
-        }
-      } catch (refreshError) {
-        if (isCurrent()) {
-          console.error(refreshError);
-          setError(commandErrorText(
-            refreshError,
-            t("inventory.error.loadInventory", "Failed to load inventory."),
-            t,
-          ));
-        }
+      if (!Number.isInteger(quantity) || quantity < 1) {
+        throw createAppError("wishlist.receive.quantity_invalid");
       }
+      if (quantity > MAX_WISHLIST_RECEIPT_QUANTITY) {
+        throw createAppError("wishlist.receive.quantity_too_large");
+      }
+      const pending = wishlistReceiptAttempts.begin(
+        receiptScope, JSON.stringify(input), true, clientReadOnly,
+      );
+      if ("error" in pending) throw createAppError(pending.error);
+      attempt = pending;
+      const receipt = await receiveWishlistEntry(
+        { ...input, request_id: attempt.requestId },
+        { ...hostWriteTarget, retry: attempt.retry },
+      );
+      if (!isConfirmedWishlistReceipt(receipt, quantity)) {
+        throw createAppError(clientReadOnly
+          ? "wishlist.receive.outcome_unknown_legacy_host"
+          : "wishlist.receive.outcome_unknown");
+      }
+      wishlistReceiptAttempts.confirm(receiptScope, attempt.requestId);
+      if (!isCurrent()) return false;
+      // Receipt success is independent of the subsequent reads. Clear the
+      // recovery record before either refresh and publish only to this target.
+      await Promise.allSettled([
+        Promise.resolve().then(reloadSpools),
+        Promise.resolve().then(reloadWishlist),
+      ]);
       if (!isCurrent()) return false;
       const createdSpoolId = receipt.spool_ids[0] ?? null;
       setSelectedSpoolId(createdSpoolId);
@@ -657,11 +710,16 @@ export function useInventoryCreateActions({
       );
       return true;
     } catch (stockError) {
+      if (attempt) wishlistReceiptAttempts.reject(receiptScope, attempt, appErrorCode(stockError));
       if (!isCurrent()) return false;
       console.error(stockError);
+      const pending = wishlistReceiptAttempts.get(receiptScope);
+      const displayError = pending?.awaitingNative && !appErrorCode(stockError)
+        ? createAppError("wishlist.receive.outcome_unknown_legacy_host")
+        : stockError;
       setError(
         commandErrorText(
-          stockError,
+          displayError,
           t(
             "inventory.error.stockFromWishlist",
             "Failed to stock roll from wishlist item.",
@@ -679,6 +737,8 @@ export function useInventoryCreateActions({
   }
 
   return {
+    getPendingWishlistReceipt,
+    reconcileWishlistReceipt,
     batchRegistration,
     batchBusy: rawBatchRegistration?.status === "SAVING",
     handleRetryBambuBatch,

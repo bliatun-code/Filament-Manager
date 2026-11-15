@@ -1149,6 +1149,8 @@ async fn real_tcp_client_completes_the_five_fixed_workflows_on_the_host() {
                     expected_library_id: Some(HOST_LIBRARY_ID.to_string()),
                     item_id: HOST_WISHLIST_ID.to_string(),
                     quantity: 2,
+                    request_id: Some("resilience-wishlist-receipt".to_string()),
+                    retry: false,
                     home_location: Some("Receipt shelf".to_string()),
                     purchase_metadata: None,
                 },
@@ -1161,6 +1163,27 @@ async fn real_tcp_client_completes_the_five_fixed_workflows_on_the_host() {
     assert_eq!(receipt.status, "RECEIVED");
     assert_eq!(receipt.spool_ids.len(), 2);
     assert_ne!(receipt.spool_ids[0], receipt.spool_ids[1]);
+    let repeated = {
+        let state = client.clone();
+        let base_url = base_url.clone();
+        run_blocking(move || {
+            receive_library_sync_host_wishlist_item_blocking(
+                &state,
+                LibrarySyncReceiveWishlistItemInput {
+                    base_url,
+                    expected_library_id: Some(HOST_LIBRARY_ID.to_string()),
+                    item_id: HOST_WISHLIST_ID.to_string(),
+                    quantity: 2,
+                    request_id: Some("resilience-wishlist-receipt".to_string()),
+                    retry: true,
+                    home_location: Some("Receipt shelf".to_string()),
+                    purchase_metadata: None,
+                },
+            )
+        })
+        .await
+    };
+    assert_eq!(repeated, receipt);
     let host_engine = InventoryEngine::new(
         FilamentDatabase::open(&host_db_path).expect("reopen Host workflow database"),
     );

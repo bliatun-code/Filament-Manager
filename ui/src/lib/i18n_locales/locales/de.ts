@@ -157,6 +157,10 @@ export const deDictionary: DictionaryNode = {
     purchaseMetadataHostUnsupported:
       "Aktualisiere den Host, bevor du Kaufdetails speicherst.",
     wishlistReceiptLocationHostUnsupported: "Aktualisiere den Host, bevor du Rollen mit einem Heimatlagerort annimmst.",
+    wishlistReceiptLimit: "Nimm höchstens 100 Rollen auf einmal an.",
+    wishlistReceiptPending: "Der Wareneingang ist unbestätigt. Versuche es erneut mit derselben Menge und denselben Kaufdaten.",
+    wishlistReceiptCheckHost: "Prüfe die Bestellung auf dem Host, bevor du weitere Rollen annimmst.",
+    wishlistReceiptReviewed: "Ich habe die Bestellung auf dem Host geprüft",
     purchasePriceInvalid:
       "Gib einen gültigen Kaufpreis von null oder mehr ein.",
     purchaseCurrencyInvalid:

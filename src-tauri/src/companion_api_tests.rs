@@ -41,6 +41,9 @@ mod companion_access_recovery_tests;
 #[path = "companion_catalog_batch_tests.rs"]
 mod companion_catalog_batch_tests;
 
+#[path = "companion_wishlist_receipt_retry_tests.rs"]
+mod companion_wishlist_receipt_retry_tests;
+
 fn temp_db_path(test_name: &str) -> PathBuf {
     let nanos = SystemTime::now()
         .duration_since(UNIX_EPOCH)
@@ -371,7 +374,7 @@ async fn pair_test_session(
     db_path: &Path,
 ) -> Result<AuthenticatedTestSession, String> {
     let db = FilamentDatabase::open(db_path).map_err(|error| error.to_string())?;
-    let pairing_token = format!("pairing-{}", hash_secret(&db_path.to_string_lossy()));
+    let pairing_token = format!("pairing-{}", crate::companion_session::random_hex_token(16));
     db.create_trusted_lan_pairing(Some("Test Browser"), &hash_secret(&pairing_token), 600)
         .map_err(|error| error.to_string())?;
 

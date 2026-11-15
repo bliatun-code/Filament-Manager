@@ -158,6 +158,10 @@ export const esDictionary: DictionaryNode = {
     purchaseMetadataHostUnsupported:
       "Actualiza el host antes de guardar los detalles de compra.",
     wishlistReceiptLocationHostUnsupported: "Actualiza el host antes de recibir bobinas con una ubicación de almacenamiento.",
+    wishlistReceiptLimit: "Recibe como máximo 100 bobinas a la vez.",
+    wishlistReceiptPending: "La recepción está sin confirmar. Reintenta con la misma cantidad y los mismos datos de compra.",
+    wishlistReceiptCheckHost: "Revisa el pedido en el host antes de recibir las bobinas restantes.",
+    wishlistReceiptReviewed: "He revisado el pedido en el host",
     purchasePriceInvalid: "Introduce un precio de compra válido de cero o más.",
     purchaseCurrencyInvalid:
       "Introduce una moneda de compra válida de tres letras.",

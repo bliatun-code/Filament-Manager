@@ -20,7 +20,9 @@ function createMutationHarness(overrides = {}) {
 
   const mutations = createCompanionMutations({
     state,
-    fetchJson: overrides.fetchJson ?? (async () => ({})),
+    fetchJson: (path, init) => path === "/api/v1/health"
+      ? Promise.resolve(overrides.readHealth?.() ?? { library_id: "test-library", capabilities: [] })
+      : (overrides.fetchJson ?? (async () => ({})))(path, init),
     refreshOverview:
       overrides.refreshOverview ??
       (async () => {
@@ -775,6 +777,7 @@ test("submitWishlistStock normalizes one receipt and sends it with the atomic mu
       fetchCalls.push([path, JSON.parse(String(init?.body || "{}"))]);
       return {
         spool_ids: ["spool-1", "spool-2"],
+        received_quantity: 2,
         remaining_quantity: 1,
       };
     },
@@ -813,7 +816,7 @@ test("submitWishlistStock keeps zero-price receipts and blocks invalid purchase 
     },
     fetchJson: async (path, init) => {
       fetchCalls.push([path, JSON.parse(String(init?.body || "{}"))]);
-      return { spool_ids: ["spool-zero"], remaining_quantity: 0 };
+      return { spool_ids: ["spool-zero"], received_quantity: 1, remaining_quantity: 0 };
     },
   });
 
@@ -1229,6 +1232,67 @@ test("submitWishlistStock rejects quantities above the remaining wishlist count"
   assert.equal(fetchCount, 0);
   assert.equal(harness.state.statusTone, "error");
   assert.deepEqual(harness.renderCalls, ["render"]);
+});
+
+test("a Companion retry sends the original receipt ID after a dropped reply", async () => {
+  const requests = [];
+  const harness = createMutationHarness({
+    state: { wishlistItems: [{ id: "wish-retry", status: "ON_ORDER", quantity: 3 }] },
+    readHealth: () => ({ library_id: "test-library", capabilities: ["wishlist-receipt-idempotency-v1"] }),
+    fetchJson: async (path, init) => {
+      assert.equal(path, "/api/v1/wishlist/wish-retry/receive-idempotent");
+      requests.push(JSON.parse(init.body));
+      if (requests.length === 1) throw new Error("Response lost after commit");
+      return {
+        spool_ids: ["spool-received", "receipt-second"],
+        received_quantity: 2,
+        remaining_quantity: 1,
+        status: "ON_ORDER",
+      };
+    },
+    refreshOverview: async () => { throw new Error("Refresh is unavailable"); },
+  });
+
+  await harness.mutations.submitWishlistStock("wish-retry", "2");
+  assert.match(harness.state.statusMessage, /unconfirmed/);
+  assert.match(requests[0].request_id, /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/);
+  harness.state.wishlistItems[0].quantity = 1;
+  await harness.mutations.submitWishlistStock("wish-retry", "1");
+  assert.equal(requests.length, 1);
+  await harness.mutations.submitWishlistStock("wish-retry", "2");
+  assert.deepEqual(requests[1], requests[0]);
+  assert.equal(harness.state.statusTone, "success");
+  assert.equal(harness.state.selectedSpoolId, "spool-received");
+});
+
+test("an uncertain legacy Companion receipt remains blocked after the Host upgrades", async () => {
+  let capabilities = [];
+  const requests = [];
+  const harness = createMutationHarness({
+    state: { wishlistItems: [{ id: "wish-legacy", status: "ON_ORDER", quantity: 3 }] },
+    readHealth: () => ({ library_id: "test-library", capabilities }),
+    fetchJson: async (path, init) => {
+      requests.push([path, JSON.parse(init.body)]);
+      if (requests.length === 1) throw new Error("Response lost after commit");
+      return { spool_ids: ["confirmed-second"], received_quantity: 1, remaining_quantity: 1 };
+    },
+  });
+  await harness.mutations.submitWishlistStock("wish-legacy", "1");
+  capabilities = ["wishlist-receipt-idempotency-v1"];
+  await harness.mutations.submitWishlistStock("wish-legacy", "1");
+  const original = ["/api/v1/wishlist/wish-legacy/receive", { quantity: 1 }];
+  assert.deepEqual(requests, [original]);
+  assert.match(harness.state.statusMessage, /Check the order on the Host/);
+  await harness.mutations.reconcileWishlistStock("wrong-order");
+  assert.equal(harness.refreshCount, 0);
+  await harness.mutations.reconcileWishlistStock("wish-legacy");
+  assert.deepEqual(requests, [original], "reconciliation never sends a receipt");
+  assert.equal(harness.refreshCount, 1);
+  await harness.mutations.submitWishlistStock("wish-legacy", "1");
+  assert.equal(requests.length, 2);
+  assert.equal(requests[1][0], "/api/v1/wishlist/wish-legacy/receive-idempotent");
+  assert.match(requests[1][1].request_id, /^[0-9a-f-]{36}$/);
+  assert.equal(harness.state.statusTone, "success");
 });
 
 test("submitWishlistDelete removes an item through the host wishlist route", async () => {

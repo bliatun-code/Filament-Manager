@@ -166,6 +166,13 @@ pub(crate) struct ReceiveWishlistItemRequest {
 }
 
 #[derive(Deserialize)]
+pub(crate) struct ReceiveIdempotentWishlistItemRequest {
+    pub(crate) request_id: Option<String>,
+    #[serde(flatten)]
+    pub(crate) receipt: ReceiveWishlistItemRequest,
+}
+
+#[derive(Deserialize)]
 pub(crate) struct SetActivePrinterRequest {
     pub(crate) printer_id: Option<String>,
 }
@@ -263,6 +270,7 @@ pub(crate) const INVENTORY_LOCATIONS_CAPABILITY: &str = "inventory-locations-v1"
 pub(crate) const SPOOL_COMMON_DETAILS_V2_CAPABILITY: &str = "spool-common-details-v2";
 pub(crate) const PURCHASE_RECEIPT_METADATA_CAPABILITY: &str = "purchase-receipt-metadata";
 pub(crate) const WISHLIST_RECEIPT_LOCATION_CAPABILITY: &str = "wishlist-receipt-location-v1";
+pub(crate) const WISHLIST_RECEIPT_IDEMPOTENCY_CAPABILITY: &str = "wishlist-receipt-idempotency-v1";
 pub(crate) const CATALOG_SPOOL_BATCH_CAPABILITY: &str = "catalog-spool-batch-v1";
 pub(crate) const PRINTER_SLOT_OPERATIONS_CAPABILITY: &str = "printer-slot-operations-v1";
 pub(crate) const STATISTICS_VALUE_COST_REPORT_CAPABILITY: &str = "statistics-value-cost-report";

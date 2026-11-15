@@ -54,7 +54,7 @@
       }
     ]
   },
-  "currentSchemaVersion": 7,
+  "currentSchemaVersion": 8,
   "publishedThroughSequence": 8,
   "publishedReference": {
     "ref": "v0.30.0",
@@ -120,6 +120,14 @@
       "role": "schema-migration",
       "fromSchemaVersion": 6,
       "toSchemaVersion": 7
+    },
+    {
+      "sequence": 9,
+      "file": "009_wishlist_receipt_requests.sql",
+      "sha256": "2d83e7c7eaee203569f17a2e6ca75fdcb95b90afdfeca2f892b0aa88a95fb75e",
+      "role": "schema-migration",
+      "fromSchemaVersion": 7,
+      "toSchemaVersion": 8
     }
   ]
 }

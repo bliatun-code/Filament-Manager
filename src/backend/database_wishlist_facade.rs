@@ -29,6 +29,7 @@ impl FilamentDatabase {
         quantity: i64,
         purchase_metadata: PurchaseReceiptMetadata,
         home_location: Option<&str>,
+        request_id: Option<&str>,
     ) -> InventoryResult<WishlistReceiptResult> {
         receive_wishlist_item_rows(
             self.connection(),
@@ -36,6 +37,7 @@ impl FilamentDatabase {
             quantity,
             purchase_metadata,
             home_location,
+            request_id,
         )
     }
 

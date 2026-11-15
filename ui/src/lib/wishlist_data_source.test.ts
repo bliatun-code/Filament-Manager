@@ -148,6 +148,7 @@ test("canStockWishlistItem rejects already received wishlist rows", () => {
 test("normalizeWishlistReceiptQuantity keeps receipt counts inside the remaining quantity", () => {
   assert.equal(normalizeWishlistReceiptQuantity("2", 5), 2);
   assert.equal(normalizeWishlistReceiptQuantity("99", 3), 3);
+  assert.equal(normalizeWishlistReceiptQuantity("200", 300), 100);
   assert.equal(normalizeWishlistReceiptQuantity("0", 3), 1);
   assert.equal(normalizeWishlistReceiptQuantity("invalid", 3), 1);
 });

@@ -96,10 +96,9 @@ is unchanged.
 
 The new gate records schema-7 journal preservation across startup, shutdown and
 restart in `database-compatibility-v0.30.0/upgrade-summary.txt`, under the existing
-always-uploaded smoke logs. Schema 7 is currently a same-schema compatibility
-check; the shared runner requires migration if the candidate schema advances.
-Both catalog jobs and batch receipts are included in the protected value
-snapshots. The fixture is a disposable input: the candidate may modify it,
+always-uploaded smoke logs. Current candidates must migrate the fixture from
+schema 7 to schema 8. The shared runner checks that the existing catalog jobs and
+batch receipts still match their protected value snapshots. The fixture is a disposable input: the candidate may modify it,
 so its original manifest is verified before the first launch, not afterward.
 Download or generate a fresh pair before repeating the gate.
 

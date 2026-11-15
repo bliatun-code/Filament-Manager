@@ -28,6 +28,7 @@ fn receipt_engine(quantity: i64) -> InventoryEngine {
 
 fn request(quantity: i64, location: Option<&str>) -> ReceiveWishlistItemInput {
     ReceiveWishlistItemInput {
+        request_id: None,
         item_id: "receipt-location-order".into(),
         quantity,
         home_location: location.map(str::to_string),

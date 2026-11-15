@@ -4,9 +4,17 @@ import {
   purchaseReceiptMetadataHasValues,
   purchaseReceiptMetadataValidationMessage,
 } from "./companion_domain.js";
+import { localizedAppError, parseAppError } from "./app_error.js";
+import {
+  createWishlistReceiptAttempts,
+  isConfirmedWishlistReceipt,
+  MAX_WISHLIST_RECEIPT_QUANTITY,
+  WISHLIST_RECEIPT_IDEMPOTENCY_CAPABILITY,
+} from "./wishlist_receipt_attempt.js";
 
 export function createCompanionWishlistMutations({
   state,
+  fetchJson,
   refreshOverview,
   setBusy,
   setStatus,
@@ -16,7 +24,14 @@ export function createCompanionWishlistMutations({
   tr,
   normalizeAddSpoolValues,
   postJson,
+  receiptAttempts = createWishlistReceiptAttempts(),
 }) {
+  let stockInFlight = false;
+
+  function stockError(code) {
+    return localizedAppError({ code }, tr, tr("status.wishlistStockFailed", "Failed to stock spool from wishlist."));
+  }
+
   async function submitWishlistCreate(values) {
     const draft = normalizeAddSpoolValues(values);
     const quantity = Number.parseInt(String(values.quantity || "").trim(), 10);
@@ -88,6 +103,7 @@ export function createCompanionWishlistMutations({
     quantityValue = "1",
     receiptDraft = emptyPurchaseReceiptMetadataDraft(),
   ) {
+    if (stockInFlight) return;
     const itemId = String(itemIdValue || "").trim();
     const item = Array.isArray(state.wishlistItems)
       ? state.wishlistItems.find((row) => String(row?.id || "").trim() === itemId)
@@ -97,10 +113,15 @@ export function createCompanionWishlistMutations({
       render();
       return;
     }
-    const quantity = Number.parseInt(String(quantityValue || "").trim(), 10);
+    const quantity = Number(String(quantityValue || "").trim());
     const remainingQuantity = Math.max(0, Number.parseInt(String(item.quantity || "0"), 10) || 0);
-    if (!Number.isFinite(quantity) || quantity <= 0 || quantity > remainingQuantity) {
+    if (!Number.isInteger(quantity) || quantity <= 0) {
       setStatus(tr("status.wishlistStockFailed", "Failed to stock spool from wishlist."), "error");
+      render();
+      return;
+    }
+    if (quantity > MAX_WISHLIST_RECEIPT_QUANTITY) {
+      setStatus(stockError("wishlist.receive.quantity_too_large"), "error");
       render();
       return;
     }
@@ -114,24 +135,66 @@ export function createCompanionWishlistMutations({
       return;
     }
 
+    const requestBody = { quantity };
+    if (purchaseReceiptMetadataHasValues(parsedReceipt.value)) {
+      requestBody.purchase_metadata = parsedReceipt.value;
+    }
+    stockInFlight = true;
     setBusy(true);
     setStatus(tr("status.wishlistStocking", "Adding wishlist spool to inventory..."), "default");
     try {
-      const requestBody = { quantity };
-      if (purchaseReceiptMetadataHasValues(parsedReceipt.value)) {
-        requestBody.purchase_metadata = parsedReceipt.value;
+      const health = await fetchJson("/api/v1/health", { cache: "no-store" });
+      const supportsRetries = Array.isArray(health?.capabilities) &&
+        health.capabilities.includes(WISHLIST_RECEIPT_IDEMPOTENCY_CAPABILITY);
+      const scope = JSON.stringify([health?.library_id ?? null, itemId]);
+      if (quantity > remainingQuantity && !receiptAttempts.get(scope)) {
+        setStatus(tr("status.wishlistStockFailed", "Failed to stock spool from wishlist."), "error");
+        return;
       }
-      const payload = await postJson(
-        `/api/v1/wishlist/${encodeURIComponent(item.id)}/receive`,
-        requestBody,
-      );
+      const attempt = receiptAttempts.begin(scope, JSON.stringify(requestBody), supportsRetries);
+      if ("error" in attempt) {
+        const pending = receiptAttempts.get(scope);
+        if (pending?.requiresReview) {
+          state.wishlistReceiptReviews.set(itemId, { scope, requestId: pending.requestId });
+        }
+        setStatus(stockError(attempt.error), "error");
+        return;
+      }
+      let payload;
+      try {
+        const path = supportsRetries
+          ? `/api/v1/wishlist/${encodeURIComponent(item.id)}/receive-idempotent`
+          : `/api/v1/wishlist/${encodeURIComponent(item.id)}/receive`;
+        payload = await postJson(
+          path,
+          supportsRetries ? { ...requestBody, request_id: attempt.requestId } : requestBody,
+        );
+        if (!isConfirmedWishlistReceipt(payload, quantity)) {
+          throw { code: "wishlist.receive.outcome_unknown" };
+        }
+      } catch (error) {
+        const code = parseAppError(error)?.code;
+        receiptAttempts.reject(scope, attempt, code, supportsRetries);
+        const pending = receiptAttempts.get(scope);
+        let displayedCode = code;
+        if (pending?.requiresReview) {
+          state.wishlistReceiptReviews.set(itemId, { scope, requestId: pending.requestId });
+          displayedCode = "wishlist.receive.outcome_unknown_legacy_host";
+        }
+        else if (pending && code !== "wishlist.receive.request_conflict") {
+          displayedCode = "wishlist.receive.outcome_unknown";
+        }
+        setStatus(stockError(displayedCode), "error");
+        return;
+      }
+      receiptAttempts.confirm(scope, attempt.requestId);
       const spoolId = Array.isArray(payload?.spool_ids)
         ? String(payload.spool_ids[0] || "").trim()
         : "";
       if (Number(payload?.remaining_quantity) === 0) {
         state.activeTaskSheet = null;
       }
-      await refreshOverview();
+      await Promise.resolve().then(refreshOverview).catch(() => {});
       if (spoolId) {
         state.selectedSpoolId = spoolId;
         setDetailReturnContext("storage");
@@ -143,7 +206,26 @@ export function createCompanionWishlistMutations({
       setStatus(error.message || tr("status.wishlistStockFailed", "Failed to stock spool from wishlist."), "error");
       render();
     } finally {
+      stockInFlight = false;
       setBusy(false);
+      render();
+    }
+  }
+
+  async function reconcileWishlistStock(itemId) {
+    if (stockInFlight) return;
+    const review = state.wishlistReceiptReviews.get(itemId);
+    if (!review || !receiptAttempts.reconcile(review.scope, review.requestId)) return;
+    state.wishlistReceiptReviews.delete(itemId);
+    stockInFlight = true;
+    setBusy(true);
+    setStatus("");
+    try {
+      await Promise.resolve().then(refreshOverview).catch(() => {});
+    } finally {
+      stockInFlight = false;
+      setBusy(false);
+      render();
     }
   }
 
@@ -173,6 +255,7 @@ export function createCompanionWishlistMutations({
     submitWishlistCreate,
     submitWishlistStatus,
     submitWishlistStock,
+    reconcileWishlistStock,
     submitWishlistDelete,
   };
 }
