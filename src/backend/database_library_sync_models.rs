@@ -30,6 +30,8 @@ pub struct LibrarySyncSettingsRow {
     pub cached_spools: Option<LibrarySyncCachedSpoolListRow>,
     pub cached_printers: Option<LibrarySyncCachedPrinterOverviewRow>,
     pub cached_loans: Option<LibrarySyncCachedLoanListRow>,
+    #[serde(default)]
+    pub cached_active_loans: Option<LibrarySyncCachedLoanListRow>,
     pub cached_consumption: Option<LibrarySyncCachedFilamentConsumptionListRow>,
     pub cached_wishlist: Option<LibrarySyncCachedWishlistListRow>,
 }

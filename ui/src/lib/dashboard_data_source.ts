@@ -1,5 +1,5 @@
 import {
-  fetchLibrarySyncLoans,
+  fetchLibrarySyncActiveLoans,
   fetchLibrarySyncPrinterOverview,
   fetchLibrarySyncPrinterSettings,
   fetchLibrarySyncSnapshot,
@@ -93,7 +93,7 @@ type DashboardDataDependencies = {
   fetchHostSnapshot?: typeof fetchLibrarySyncSnapshot;
   fetchHostPrinterOverview?: typeof fetchLibrarySyncPrinterOverview;
   fetchHostPrinterSettings?: typeof fetchLibrarySyncPrinterSettings;
-  fetchHostLoans?: typeof fetchLibrarySyncLoans;
+  fetchHostActiveLoans?: typeof fetchLibrarySyncActiveLoans;
   fetchHostWishlist?: typeof fetchLibrarySyncWishlistItems;
   loadSpoolRows?: typeof loadAllSpoolRows;
   loadInventoryOverview?: typeof inventoryOverview;
@@ -205,7 +205,7 @@ export async function loadDashboardData(
   const fetchHostPrinterOverview =
     dependencies.fetchHostPrinterOverview ?? fetchLibrarySyncPrinterOverview;
   const fetchHostPrinterSettings = dependencies.fetchHostPrinterSettings ?? fetchLibrarySyncPrinterSettings;
-  const fetchHostLoans = dependencies.fetchHostLoans ?? fetchLibrarySyncLoans;
+  const fetchHostActiveLoans = dependencies.fetchHostActiveLoans ?? fetchLibrarySyncActiveLoans;
   const fetchHostWishlist =
     dependencies.fetchHostWishlist ?? fetchLibrarySyncWishlistItems;
   const loadSpoolRows = dependencies.loadSpoolRows ?? loadAllSpoolRows;
@@ -257,7 +257,8 @@ export async function loadDashboardData(
   let activeClientSnapshot = cachedSnapshot;
   let clientSpoolRows = syncSettings?.cached_spools?.rows ?? null;
   let clientPrinterRows = syncSettings?.cached_printers?.rows ?? null;
-  let clientLoanRows = syncSettings?.cached_loans?.rows ?? null;
+  const cachedActiveLoans = syncSettings?.cached_active_loans ?? syncSettings?.cached_loans;
+  let clientLoanRows = cachedActiveLoans?.rows ?? null;
   let clientWishlistRows: WishlistItemRow[] =
     syncSettings?.cached_wishlist?.rows ?? [];
   let clientLiveIntegrations: BambuLiveIntegrationEntry[] = [];
@@ -294,10 +295,9 @@ export async function loadDashboardData(
         clientHostTarget.baseUrl,
         clientHostTarget.libraryId,
       ),
-      fetchHostLoans(
+      fetchHostActiveLoans(
         clientHostTarget.baseUrl,
         clientHostTarget.libraryId,
-        2000,
       ),
       fetchHostWishlist(
         clientHostTarget.baseUrl,
@@ -436,7 +436,7 @@ export async function loadDashboardData(
       clientRowsOverviewCapturedAt,
       clientSpoolsLive ? null : syncSettings?.cached_spools?.captured_at,
       clientPrintersLive ? null : syncSettings?.cached_printers?.captured_at,
-      clientLoansLive ? null : syncSettings?.cached_loans?.captured_at,
+      clientLoansLive ? null : cachedActiveLoans?.captured_at,
       clientWishlistLive ? null : syncSettings?.cached_wishlist?.captured_at,
       clientSnapshotLive ? null : activeClientSnapshot?.captured_at,
     );
@@ -444,7 +444,7 @@ export async function loadDashboardData(
       activeClientSnapshot?.captured_at,
       syncSettings?.cached_spools?.captured_at,
       syncSettings?.cached_printers?.captured_at,
-      syncSettings?.cached_loans?.captured_at,
+      cachedActiveLoans?.captured_at,
       syncSettings?.cached_wishlist?.captured_at,
     );
     const normalizedClientLoans = (clientLoanRows ?? []).map(

@@ -10,6 +10,7 @@ use super::database_library_sync_auth::{
 };
 use super::database_library_sync_cache::{
     get_library_sync_cached_locations as get_library_sync_cached_location_rows,
+    save_library_sync_cached_active_loans as save_library_sync_cached_active_loan_rows,
     save_library_sync_cached_consumption as save_library_sync_cached_consumption_rows,
     save_library_sync_cached_loans as save_library_sync_cached_loan_rows,
     save_library_sync_cached_locations as save_library_sync_cached_location_rows,
@@ -188,6 +189,13 @@ impl FilamentDatabase {
         rows: &[SpoolLoanDetailsRow],
     ) -> InventoryResult<()> {
         save_library_sync_cached_loan_rows(self.connection(), rows)
+    }
+
+    pub fn save_library_sync_cached_active_loans(
+        &self,
+        rows: &[SpoolLoanDetailsRow],
+    ) -> InventoryResult<()> {
+        save_library_sync_cached_active_loan_rows(self.connection(), rows)
     }
 
     pub fn save_library_sync_cached_consumption(

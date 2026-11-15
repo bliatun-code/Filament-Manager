@@ -75,6 +75,8 @@ fn seed_all_library_sync_host_caches(
         .map_err(|error| error.to_string())?;
     db.save_library_sync_cached_loans(&[])
         .map_err(|error| error.to_string())?;
+    db.save_library_sync_cached_active_loans(&[])
+        .map_err(|error| error.to_string())?;
     db.save_library_sync_cached_consumption(&[])
         .map_err(|error| error.to_string())?;
     db.save_library_sync_cached_wishlist(&[])
@@ -97,6 +99,7 @@ fn assert_all_library_sync_host_caches_present(db: &FilamentDatabase) -> Result<
     assert!(settings.cached_spools.is_some());
     assert!(settings.cached_printers.is_some());
     assert!(settings.cached_loans.is_some());
+    assert!(settings.cached_active_loans.is_some());
     assert!(settings.cached_consumption.is_some());
     assert!(settings.cached_wishlist.is_some());
     assert!(db
@@ -114,6 +117,7 @@ fn assert_all_library_sync_host_caches_cleared(db: &FilamentDatabase) -> Result<
     assert!(settings.cached_spools.is_none());
     assert!(settings.cached_printers.is_none());
     assert!(settings.cached_loans.is_none());
+    assert!(settings.cached_active_loans.is_none());
     assert!(settings.cached_consumption.is_none());
     assert!(settings.cached_wishlist.is_none());
     assert!(db
@@ -4096,6 +4100,7 @@ fn library_sync_settings_default_and_persist_cleanly() {
                 cached_spools: None,
                 cached_printers: None,
                 cached_loans: None,
+                cached_active_loans: None,
                 cached_consumption: None,
                 cached_wishlist: None,
             })
@@ -4185,6 +4190,7 @@ fn library_sync_settings_default_and_persist_cleanly() {
                 cached_spools: None,
                 cached_printers: None,
                 cached_loans: None,
+                cached_active_loans: None,
                 cached_consumption: None,
                 cached_wishlist: None,
             })
@@ -4302,6 +4308,7 @@ fn library_sync_client_auth_and_all_host_caches_clear_when_client_target_changes
                 cached_spools: None,
                 cached_printers: None,
                 cached_loans: None,
+                cached_active_loans: None,
                 cached_consumption: None,
                 cached_wishlist: None,
             })
@@ -4345,6 +4352,7 @@ fn library_sync_client_auth_and_all_host_caches_clear_when_client_target_changes
                 cached_spools: None,
                 cached_printers: None,
                 cached_loans: None,
+                cached_active_loans: None,
                 cached_consumption: None,
                 cached_wishlist: None,
             })

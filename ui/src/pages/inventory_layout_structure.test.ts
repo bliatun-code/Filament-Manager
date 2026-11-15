@@ -333,7 +333,8 @@ test("loan client fallback completes cleanly and uses only settled Host feedback
     loansPageSource.indexOf("useEffect(() =>", loansPageSource.indexOf("const reload = useCallback")),
   );
   assert.doesNotMatch(reloadSource, /result\.source === "OFFLINE"[\s\S]*failRefresh/);
-  assert.match(reloadSource, /setLoans\(result\.rows\);[\s\S]*completeRefresh\(\)/);
+  assert.match(reloadSource, /loadLoanRowsPage\(options\),[\s\S]*loadLoanRowsPage\(\{ \.\.\.options, activeOnly: true/);
+  assert.match(reloadSource, /setLoanHistory\(history\);[\s\S]*setActiveLoanSnapshot\(active\);[\s\S]*completeRefresh\(\)/);
   assert.match(
     loansPageSource,
     /shouldShowClientSnapshotWarning\(\{[\s\S]*initialLoadSettled: librarySyncReady && !loading/,

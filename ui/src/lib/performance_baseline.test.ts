@@ -288,7 +288,7 @@ for (const scenario of [
           started.push("printers");
           return requests.printers.promise;
         },
-        fetchHostLoans: () => {
+        fetchHostActiveLoans: () => {
           started.push("loans");
           return requests.loans.promise;
         },

@@ -1,5 +1,7 @@
 import {
+  fetchCachedLibrarySyncActiveLoans,
   fetchCachedLibrarySyncLoans,
+  fetchLibrarySyncActiveLoans,
   fetchLibrarySyncLoans,
   lendLibrarySyncHostSpool,
   lendSpool,
@@ -16,7 +18,7 @@ import {
   deriveLibrarySyncPageState,
   type LibrarySyncPageState,
 } from "./library_sync_state";
-import { isActiveOutboundLoan } from "./loan_state";
+import { isActiveOutboundLoan, isLoanCurrentlyActive } from "./loan_state";
 import {
   normalizeActiveLoanRow,
   normalizeLoanDetailsRow,
@@ -53,8 +55,8 @@ export type ActiveLoanRowsLoadResult = {
 };
 
 type ActiveLoanRowsDependencies = {
-  fetchHostLoans?: typeof fetchLibrarySyncLoans;
-  fetchCachedLoans?: typeof fetchCachedLibrarySyncLoans;
+  fetchHostActiveLoans?: typeof fetchLibrarySyncActiveLoans;
+  fetchCachedActiveLoans?: typeof fetchCachedLibrarySyncActiveLoans;
   listLocalActiveLoans?: typeof listActiveSpoolLoans;
 };
 
@@ -117,8 +119,8 @@ async function loadActiveLoanRowsInternal(
   dependencies: ActiveLoanRowsDependencies = {},
 ): Promise<ActiveLoanRowsInternalLoadResult> {
   if (options.clientReadOnly) {
-    const fetchHostLoans = dependencies.fetchHostLoans ?? fetchLibrarySyncLoans;
-    const fetchCachedLoans = dependencies.fetchCachedLoans ?? fetchCachedLibrarySyncLoans;
+    const fetchHostLoans = dependencies.fetchHostActiveLoans ?? fetchLibrarySyncActiveLoans;
+    const fetchCachedLoans = dependencies.fetchCachedActiveLoans ?? fetchCachedLibrarySyncActiveLoans;
     const hostTarget = resolveClientHostTarget(options);
     const cacheTarget = resolveClientHostCacheTarget(options);
     if (hostTarget) {
@@ -126,7 +128,6 @@ async function loadActiveLoanRowsInternal(
         const rows = await fetchHostLoans(
           hostTarget.baseUrl,
           hostTarget.libraryId,
-          options.limit ?? 2000,
         );
         return {
           result: {
@@ -206,14 +207,48 @@ export async function loadActiveLoanRows(
   return result.rows;
 }
 
+export function activeLoanRowsForDisplay(
+  activeSnapshot: LoanDataLoadResult | null,
+  historySnapshot: LoanDataLoadResult | null,
+): NormalizedLoanDetailsRow[] {
+  if (activeSnapshot?.source === "OFFLINE") {
+    return historySnapshot?.rows.filter(isLoanCurrentlyActive) ?? [];
+  }
+  const activeRows = activeSnapshot?.rows ?? [];
+  if (activeSnapshot?.source !== "CACHED" || historySnapshot?.source !== "LIVE") {
+    return activeRows;
+  }
+  const closedIds = new Set(historySnapshot.rows
+    .filter((row) => !isLoanCurrentlyActive(row))
+    .map((row) => row.loan.id));
+  return activeRows.filter((row) => !closedIds.has(row.loan.id));
+}
+
+export function mergeLoanHistoryAndActiveRows(
+  historyRows: NormalizedLoanDetailsRow[],
+  activeRows: NormalizedLoanDetailsRow[],
+): NormalizedLoanDetailsRow[] {
+  const activeIds = new Set(activeRows.map((row) => row.loan.id));
+  return [
+    ...activeRows,
+    ...historyRows.filter((row) => !activeIds.has(row.loan.id) && !isLoanCurrentlyActive(row)),
+  ].sort((left, right) => right.loan.lent_at.localeCompare(left.loan.lent_at));
+}
+
 export async function loadLoanRowsPage(
-  options: LoanDataSourceOptions,
+  options: LoanDataSourceOptions & { activeOnly?: boolean },
   dependencies: LoanRowsPageDependencies = {},
 ): Promise<LoanDataLoadResult> {
-  const fetchHostLoans = dependencies.fetchHostLoans ?? fetchLibrarySyncLoans;
-  const fetchCachedLoans = dependencies.fetchCachedLoans ?? fetchCachedLibrarySyncLoans;
+  const { activeOnly = false, clientReadOnly, limit = 2000 } = options;
+  const fetchHostLoans = dependencies.fetchHostLoans ??
+    (activeOnly ? fetchLibrarySyncActiveLoans : fetchLibrarySyncLoans);
+  const fetchCachedLoans = dependencies.fetchCachedLoans ??
+    (activeOnly ? fetchCachedLibrarySyncActiveLoans : fetchCachedLibrarySyncLoans);
   const listLocalLoans = dependencies.listLocalLoans ?? listSpoolLoans;
-  const { clientReadOnly, limit = 2000 } = options;
+  const normalizeRows = (rows: SpoolLoanDetailsRow[]) => {
+    const normalized = rows.map(normalizeLoanDetailsRow);
+    return activeOnly ? normalized.filter(isLoanCurrentlyActive) : normalized;
+  };
   const hostTarget = clientReadOnly ? resolveClientHostTarget(options) : null;
   const cacheTarget = clientReadOnly ? resolveClientHostCacheTarget(options) : null;
 
@@ -228,7 +263,7 @@ export async function loadLoanRowsPage(
         : null;
       if (cached) {
         return {
-          rows: cached.rows.map(normalizeLoanDetailsRow),
+          rows: normalizeRows(cached.rows),
           source: "CACHED",
           updatedAt: cached.captured_at ?? null,
           usedFallback: true,
@@ -252,7 +287,7 @@ export async function loadLoanRowsPage(
           ).catch(() => null)
         : null;
       return {
-        rows: rows.map(normalizeLoanDetailsRow),
+        rows: normalizeRows(rows),
         source: "LIVE",
         updatedAt: cached?.captured_at ?? null,
         usedFallback: false,
@@ -268,7 +303,7 @@ export async function loadLoanRowsPage(
           : null;
         if (cached) {
           return {
-            rows: cached.rows.map(normalizeLoanDetailsRow),
+            rows: normalizeRows(cached.rows),
             source: "CACHED",
             updatedAt: cached.captured_at ?? null,
             usedFallback: true,
@@ -288,7 +323,7 @@ export async function loadLoanRowsPage(
   }
 
   return {
-    rows: (await listLocalLoans(limit, true, "ALL")).map(normalizeLoanDetailsRow),
+    rows: normalizeRows(await listLocalLoans(limit, !activeOnly, "ALL")),
     source: "LIVE",
     updatedAt: null,
     usedFallback: false,

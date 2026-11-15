@@ -9,8 +9,9 @@ use crate::companion_api::{
 };
 use crate::credential_store::CredentialStore;
 use crate::library_sync_cache_commands::{
-    fetch_cached_library_sync_loans_blocking, fetch_cached_library_sync_printer_overview_blocking,
-    fetch_cached_library_sync_spools_blocking, fetch_cached_library_sync_wishlist_blocking,
+    fetch_cached_library_sync_active_loans_blocking, fetch_cached_library_sync_loans_blocking,
+    fetch_cached_library_sync_printer_overview_blocking, fetch_cached_library_sync_spools_blocking,
+    fetch_cached_library_sync_wishlist_blocking,
 };
 use crate::library_sync_cache_refresh::refresh_library_sync_spool_cache;
 use crate::library_sync_host_client::{
@@ -20,10 +21,13 @@ use crate::library_sync_loan_write_commands::lend_library_sync_host_spool_blocki
 use crate::library_sync_models::{
     LibrarySyncAssignPrinterSlotInput, LibrarySyncCacheTargetInput, LibrarySyncCachedSpoolList,
     LibrarySyncCreateSpoolInput, LibrarySyncLendSpoolInput, LibrarySyncReceiveWishlistItemInput,
-    LibrarySyncSpoolListInput,
+    LibrarySyncSpoolListInput, ValidateLibrarySyncHostInput,
 };
 use crate::library_sync_printer_write_commands::assign_library_sync_host_printer_slot_blocking;
-use crate::library_sync_read_commands::fetch_library_sync_spools_blocking;
+use crate::library_sync_read_commands::{
+    fetch_library_sync_active_loans_blocking, fetch_library_sync_loans_blocking,
+    fetch_library_sync_spools_blocking,
+};
 use crate::library_sync_runtime_auth::LibrarySyncRuntimeAuth;
 use crate::library_sync_spool_write_commands::create_library_sync_host_spool_blocking;
 use crate::library_sync_target_guard::capture_library_sync_target;
@@ -789,6 +793,131 @@ async fn real_tcp_host_client_survives_outage_restart_and_session_renewal_withou
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn client_active_loan_snapshot_survives_long_history_and_host_outage() {
+    let _process_test_guard = RESILIENCE_PROCESS_TEST_LOCK.lock().await;
+    let host_db_path = temp_db_path("active-loan-host");
+    let client_db_path = temp_db_path("active-loan-client");
+    let _databases = TestDatabases::new(vec![host_db_path.clone(), client_db_path.clone()]);
+    seed_host(&host_db_path);
+
+    {
+        let db = FilamentDatabase::open(&host_db_path).expect("open loan fixture database");
+        db.connection().execute_batch(
+            "INSERT INTO filament_spools (id, master_id, status, ownership_type, spool_tare_weight_g)
+             SELECT 'inbound-spool', master_id, 'IN_STOCK', 'BORROWED_IN', 240
+             FROM filament_spools WHERE id = 'resilience-spool';
+             INSERT INTO spool_loans (
+                 id, spool_id, borrower_name, loan_direction, loan_status, grams_out, lent_at
+             ) VALUES
+                 ('old-outbound', 'resilience-spool', 'Borrower', 'OUTBOUND', 'ACTIVE', 700, '2023-02-01 00:00:00'),
+                 ('old-inbound', 'inbound-spool', 'Lender', 'INBOUND', 'ACTIVE', 600, '2023-01-01 00:00:00');
+             WITH RECURSIVE numbers(n) AS (
+                 SELECT 1 UNION ALL SELECT n + 1 FROM numbers WHERE n < 2000
+             )
+             INSERT INTO spool_loans (
+                 id, spool_id, borrower_name, loan_direction, loan_status, grams_out, lent_at, returned_at
+             )
+             SELECT 'closed-' || n, 'resilience-spool', 'Previous borrower', 'OUTBOUND',
+                 'RETURNED', 500, '2026-01-01 00:00:00', '2026-01-02 00:00:00'
+             FROM numbers;",
+        )
+        .expect("seed two older active loans and a full page of newer closed history");
+    }
+
+    let host = HostProcess::start(&host_db_path, 0, 1).await;
+    let base_url = format!("http://127.0.0.1:{}", host.port());
+    configure_client(&client_db_path, &base_url);
+    let client = app_state(
+        &client_db_path,
+        TrustedLanCompanionRuntime::new(host.port()).with_qa_mode(true),
+    );
+    let target_generation = pair_client_with_host(&client, &client_db_path, &base_url).await;
+    let cache_target = LibrarySyncCacheTargetInput {
+        base_url: base_url.clone(),
+        expected_library_id: HOST_LIBRARY_ID.to_string(),
+        target_generation,
+    };
+
+    let history = {
+        let state = client.clone();
+        let base_url = base_url.clone();
+        run_blocking(move || {
+            fetch_library_sync_loans_blocking(
+                &state,
+                LibrarySyncSpoolListInput {
+                    base_url,
+                    expected_library_id: Some(HOST_LIBRARY_ID.to_string()),
+                    limit: Some(2000),
+                    offset: None,
+                },
+            )
+        })
+        .await
+    };
+    assert_eq!(history.len(), 2000);
+    assert!(history.iter().all(|row| row.loan.loan_status == "RETURNED"));
+    let legacy_cache = fetch_cached_library_sync_active_loans_blocking(&client, &cache_target)
+        .expect("read cache before the first dedicated refresh")
+        .expect("an older installation keeps its legacy cache");
+    assert_eq!(legacy_cache.rows.len(), history.len());
+
+    let active = {
+        let state = client.clone();
+        run_blocking(move || {
+            fetch_library_sync_active_loans_blocking(
+                &state,
+                ValidateLibrarySyncHostInput {
+                    base_url,
+                    expected_library_id: Some(HOST_LIBRARY_ID.to_string()),
+                },
+            )
+        })
+        .await
+    };
+    let loan_ids = |rows: &[crate::backend::filament_database::SpoolLoanDetailsRow]| {
+        rows.iter()
+            .map(|row| row.loan.id.clone())
+            .collect::<Vec<_>>()
+    };
+    assert_eq!(loan_ids(&active), ["old-outbound", "old-inbound"]);
+    assert_eq!(active[1].loan.loan_direction, "INBOUND");
+    assert_eq!(active[1].spool_tare_weight_g, Some(240));
+
+    host.stop().await;
+    let cached_active = fetch_cached_library_sync_active_loans_blocking(&client, &cache_target)
+        .expect("read active cache with Host down")
+        .expect("dedicated active cache exists");
+    assert_eq!(loan_ids(&cached_active.rows), loan_ids(&active));
+    let cached_history = fetch_cached_library_sync_loans_blocking(&client, &cache_target)
+        .expect("read history cache with Host down")
+        .expect("separate history cache exists");
+    assert_eq!(loan_ids(&cached_history.rows), loan_ids(&history));
+
+    let db = FilamentDatabase::open(&client_db_path).expect("open Client settings database");
+    db.save_library_sync_cached_loans(&active)
+        .expect("simulate a stale historical snapshot");
+    db.save_library_sync_cached_active_loans(&[])
+        .expect("save a confirmed empty active snapshot");
+    assert!(
+        fetch_cached_library_sync_active_loans_blocking(&client, &cache_target)
+            .expect("load confirmed empty snapshot")
+            .expect("an empty snapshot still exists")
+            .rows
+            .is_empty()
+    );
+
+    let mut settings = db
+        .get_library_sync_settings()
+        .expect("read Client settings");
+    settings.host_base_url = Some("http://replacement.local:4278".to_string());
+    let replacement = db
+        .save_library_sync_settings(&settings)
+        .expect("switch Host");
+    assert!(fetch_cached_library_sync_active_loans_blocking(&client, &cache_target).is_err());
+    assert!(replacement.cached_active_loans.is_none());
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn real_tcp_client_completes_the_five_fixed_workflows_on_the_host() {
     let _process_test_guard = RESILIENCE_PROCESS_TEST_LOCK.lock().await;
     let host_db_path = temp_db_path("workflow-host");
@@ -1078,6 +1207,18 @@ async fn real_tcp_client_completes_the_five_fixed_workflows_on_the_host() {
         Some("borrower@example.test")
     );
     assert_eq!(cached_active_loan.loan.grams_out, 830);
+    let active_snapshot = fetch_cached_library_sync_active_loans_blocking(
+        &client,
+        &LibrarySyncCacheTargetInput {
+            base_url: base_url.clone(),
+            expected_library_id: HOST_LIBRARY_ID.to_string(),
+            target_generation,
+        },
+    )
+    .expect("read target-scoped active loan cache")
+    .expect("lending refreshes the dedicated active cache");
+    assert_eq!(active_snapshot.rows.len(), 1);
+    assert_eq!(active_snapshot.rows[0].loan.id, active_loan.loan.id);
     assert_eq!(
         cached_active_loan.loan.lent_note.as_deref(),
         Some("Five-flow gate")
