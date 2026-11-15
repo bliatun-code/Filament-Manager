@@ -91,6 +91,31 @@ test("Windows app database verifier accepts the repository's actual migrated sch
   });
 });
 
+test("Windows app database verifier reads the active WAL without changing the library", async () => {
+  await withTemporaryDirectory(async (directory) => {
+    const databasePath = join(directory, "filament-manager.db");
+    createDatabase(databasePath, REQUIRED_WINDOWS_SMOKE_TABLES, REQUIRED_WINDOWS_SMOKE_SCHEMA_VERSION - 1);
+    const writer = new Database(databasePath);
+    try {
+      writer.pragma("journal_mode = WAL");
+      writer.pragma("wal_autocheckpoint = 0");
+      writer.pragma(`user_version = ${REQUIRED_WINDOWS_SMOKE_SCHEMA_VERSION}`);
+      const walPath = `${databasePath}-wal`;
+      const originalDatabase = readFileSync(databasePath);
+      const originalWal = readFileSync(walPath);
+      assert.ok(originalWal.length > 0);
+
+      const result = await verifyWindowsAppDatabase(databasePath);
+
+      assert.equal(result.schemaVersion, REQUIRED_WINDOWS_SMOKE_SCHEMA_VERSION);
+      assert.deepEqual(readFileSync(databasePath), originalDatabase);
+      assert.deepEqual(readFileSync(walPath), originalWal);
+    } finally {
+      writer.close();
+    }
+  });
+});
+
 test("Windows app database verifier reports the schema version in CLI output", async () => {
   await withTemporaryDirectory(async (directory) => {
     const databasePath = join(directory, "filament-manager.db");

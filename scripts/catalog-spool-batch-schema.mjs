@@ -1,4 +1,7 @@
-import Database from "better-sqlite3";
+import { DatabaseSync } from "node:sqlite";
+
+// SQLite's extended result code for a failed CHECK constraint.
+const SQLITE_CONSTRAINT_CHECK = 275;
 
 const JOURNAL_COLUMNS = Object.freeze([
   "batch_id",
@@ -16,7 +19,7 @@ export function assertCatalogSpoolBatchSchema(database) {
   if (definition?.type !== "table") {
     throw new Error("Schema 7 requires the catalog_spool_batches table.");
   }
-  const columns = database.pragma("table_info(catalog_spool_batches)");
+  const columns = database.prepare("PRAGMA table_info(catalog_spool_batches)").all();
   if (
     columns.length !== JOURNAL_COLUMNS.length ||
     columns.some((column, index) =>
@@ -44,10 +47,10 @@ export function assertCatalogSpoolBatchSchema(database) {
       throw new Error(`catalog_spool_batches.${column} must enforce JSON validity.`);
     }
   }
-  if (database.pragma("foreign_key_list(catalog_spool_batches)").length !== 0) {
+  if (database.prepare("PRAGMA foreign_key_list(catalog_spool_batches)").all().length !== 0) {
     throw new Error("catalog_spool_batches must not have foreign keys that can invalidate replay receipts.");
   }
-  const probe = new Database(":memory:");
+  const probe = new DatabaseSync(":memory:");
   try {
     probe.exec(definition.sql);
     const insert = probe.prepare(
@@ -61,7 +64,7 @@ export function assertCatalogSpoolBatchSchema(database) {
       try {
         insert.run(batchId, request, receipt);
       } catch (error) {
-        if (error.code !== "SQLITE_CONSTRAINT_CHECK") throw error;
+        if (error.code !== "ERR_SQLITE_ERROR" || error.errcode !== SQLITE_CONSTRAINT_CHECK) throw error;
         rejected = true;
       }
       if (!rejected) {
