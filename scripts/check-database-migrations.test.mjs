@@ -101,10 +101,10 @@ test("checked-in database migration manifest is complete and current", () => {
   assert.equal(manifest.policy, "append-only");
   assert.equal(manifest.baselineSchemaVersion, 1);
   assert.equal(manifest.currentSchemaVersion, 8);
-  assert.equal(manifest.publishedThroughSequence, 8);
+  assert.equal(manifest.publishedThroughSequence, 9);
   assert.deepEqual(manifest.publishedReference, {
-    ref: "v0.30.0",
-    commit: "7d2eb3a45fc78a60ad31cb88e178ba266d044c5b",
+    ref: "v0.36.3",
+    commit: "3ca6ac19326f10e0269048f0da978e50d81f2fcd",
   });
   assert.deepEqual(
     manifest.migrations.map(({ file }) => file),
@@ -236,7 +236,7 @@ test("a contiguous unpublished migration can be appended", () => {
 
     const validated = checkFixture({ ...fixture, currentSchemaVersion: 9 });
     assert.equal(validated.migrations.at(-1).file, filename);
-    assert.equal(validated.publishedThroughSequence, 8);
+    assert.equal(validated.publishedThroughSequence, 9);
   } finally {
     rmSync(fixture.root, { force: true, recursive: true });
   }
