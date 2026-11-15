@@ -7,8 +7,8 @@ use crate::library_sync_command_support::{
     prepare_library_sync_host_read,
 };
 use crate::library_sync_host_client::{
-    ensure_library_sync_host_matches, get_library_sync_host_json_authenticated,
-    perform_library_sync_host_write_and_parse_for_target,
+    get_library_sync_host_json_authenticated_for_target,
+    perform_library_sync_host_write_and_parse_for_target, verify_library_sync_target,
 };
 use crate::library_sync_target_guard::{
     capture_library_sync_target, ensure_library_sync_target_current,
@@ -65,12 +65,11 @@ fn start_host_job(
     if target.generation() != input.expected_target_generation {
         return Err(coded_command_error("common.invalid_request"));
     }
-    let health = ensure_library_sync_host_matches(&base_url, Some(target.library_id()))?;
+    let (health, target) = verify_library_sync_target(target)?;
     require_capability(&health.capabilities)?;
     ensure_library_sync_target_current(state, &target)?;
     let job = perform_library_sync_host_write_and_parse_for_target(
         state,
-        &base_url,
         "/api/v1/catalog/refresh-jobs",
         &CatalogRefreshJobInput {
             job_id: input.job_id,
@@ -98,7 +97,7 @@ fn get_host_job(
     input: GetHostCatalogJobInput,
 ) -> Result<Option<CatalogRefreshJobSnapshot>, String> {
     let host = library_sync_host_input(&input.base_url, input.expected_library_id.as_deref());
-    let (base_url, health, target) = prepare_library_sync_host_read(state, &host)?;
+    let (_, health, target) = prepare_library_sync_host_read(state, &host)?;
     require_capability(&health.capabilities)?;
     let path = match input.job_id {
         Some(job_id) => format!(
@@ -107,7 +106,7 @@ fn get_host_job(
         ),
         None => "/api/v1/catalog/refresh-jobs/active".to_string(),
     };
-    let job = get_library_sync_host_json_authenticated(state, &base_url, &path)?;
+    let job = get_library_sync_host_json_authenticated_for_target(state, &path, &target)?;
     ensure_library_sync_target_current(state, &target)?;
     Ok(job)
 }

@@ -14,7 +14,7 @@ use crate::library_sync_cache_commands::{
 };
 use crate::library_sync_cache_refresh::refresh_library_sync_spool_cache;
 use crate::library_sync_host_client::{
-    pair_library_sync_host_session, store_library_sync_device_token,
+    pair_library_sync_host_session, store_library_sync_device_token, verify_library_sync_target,
 };
 use crate::library_sync_loan_write_commands::lend_library_sync_host_spool_blocking;
 use crate::library_sync_models::{
@@ -447,7 +447,8 @@ async fn refresh_host_spool_cache(client: &AppState, base_url: &str) {
     let target = capture_library_sync_target(&state, &base_url, Some(HOST_LIBRARY_ID))
         .expect("capture Client Host target for cache refresh");
     run_blocking(move || {
-        refresh_library_sync_spool_cache(&state, &base_url, &target);
+        let (_, target) = verify_library_sync_target(target)?;
+        refresh_library_sync_spool_cache(&state, &target);
         Ok(())
     })
     .await;
@@ -455,8 +456,13 @@ async fn refresh_host_spool_cache(client: &AppState, base_url: &str) {
 
 async fn pair_client_with_host(client: &AppState, client_db_path: &Path, base_url: &str) -> u64 {
     let paired = {
-        let base_url = base_url.to_string();
-        run_blocking(move || pair_library_sync_host_session(&base_url, PAIRING_TOKEN)).await
+        let target = capture_library_sync_target(client, base_url, Some(HOST_LIBRARY_ID))
+            .expect("capture Client Host target for pairing");
+        run_blocking(move || {
+            let (_, target) = verify_library_sync_target(target)?;
+            pair_library_sync_host_session(target.verified_peer()?, PAIRING_TOKEN)
+        })
+        .await
     };
     store_library_sync_device_token(client, base_url, &paired.device_token)
         .expect("store Client device token");

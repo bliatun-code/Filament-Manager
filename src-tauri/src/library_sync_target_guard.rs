@@ -2,18 +2,35 @@ use filament_manager_core::backend::database_result::InventoryResult;
 use filament_manager_core::backend::inventory_engine::InventoryEngine;
 
 use crate::backend::filament_database::LibrarySyncSettingsRow;
+use crate::library_sync_host_client::VerifiedLibrarySyncPeer;
 use crate::secure_credential_mutation::lock_secure_credential_mutation;
 use crate::state::AppState;
 use crate::with_inventory;
 
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug)]
 pub(crate) struct LibrarySyncTargetGuard {
     base_url: String,
     library_id: String,
     generation: u64,
+    verified_peer: Option<VerifiedLibrarySyncPeer>,
 }
 
 impl LibrarySyncTargetGuard {
+    pub(crate) fn base_url(&self) -> &str {
+        &self.base_url
+    }
+
+    pub(crate) fn with_verified_peer(mut self, peer: VerifiedLibrarySyncPeer) -> Self {
+        self.verified_peer = Some(peer);
+        self
+    }
+
+    pub(crate) fn verified_peer(&self) -> Result<&VerifiedLibrarySyncPeer, String> {
+        self.verified_peer.as_ref().ok_or_else(|| {
+            "The configured Host has not been verified for this request.".to_string()
+        })
+    }
+
     pub(crate) fn library_id(&self) -> &str {
         &self.library_id
     }
@@ -42,6 +59,7 @@ pub(crate) fn capture_current_library_sync_target_if_matching(
         base_url: normalized_host(base_url).ok_or_else(target_changed_error)?,
         library_id: settings.library_id.trim().to_string(),
         generation: settings.target_generation,
+        verified_peer: None,
     };
 
     if !target_matches(&settings, &guard)

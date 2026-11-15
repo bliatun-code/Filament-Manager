@@ -13,7 +13,7 @@ use crate::library_sync_command_support::{
     save_library_sync_success,
 };
 use crate::library_sync_host_client::{
-    get_library_sync_host_json_authenticated, library_sync_host_error_code,
+    get_library_sync_host_json_authenticated_for_target, library_sync_host_error_code,
 };
 use crate::library_sync_models::{
     LibrarySyncCatalogListInput, LibrarySyncFilamentConsumptionInput,
@@ -47,7 +47,7 @@ fn fetch_library_sync_spool_detail_blocking(
     input: LibrarySyncSpoolDetailInput,
 ) -> Result<CompanionSpoolDetail, String> {
     let host_input = library_sync_host_input(&input.base_url, input.expected_library_id.as_deref());
-    let (normalized_base_url, _, target) = prepare_library_sync_host_checked(state, &host_input)?;
+    let (_, _, target) = prepare_library_sync_host_checked(state, &host_input)?;
 
     let spool_id = input.spool_id.trim();
     if spool_id.is_empty() {
@@ -58,12 +58,12 @@ fn fetch_library_sync_spool_detail_blocking(
     let usage_limit = input.usage_limit.unwrap_or(500).clamp(1, 1_000);
     let spool_id = encode_library_sync_path_segment(spool_id);
 
-    let detail: CompanionSpoolDetail = get_library_sync_host_json_authenticated(
+    let detail: CompanionSpoolDetail = get_library_sync_host_json_authenticated_for_target(
         state,
-        &normalized_base_url,
         &format!(
             "/api/v1/spools/{spool_id}?history_limit={history_limit}&usage_limit={usage_limit}"
         ),
+        &target,
     )?;
 
     save_library_sync_success(state, &target, "Host spool detail refreshed.", None)?;
@@ -85,13 +85,13 @@ pub(crate) fn fetch_library_sync_spools_blocking(
     input: LibrarySyncSpoolListInput,
 ) -> Result<Vec<SpoolWithMasterRow>, String> {
     let host_input = library_sync_host_input(&input.base_url, input.expected_library_id.as_deref());
-    let (normalized_base_url, health, target) = prepare_library_sync_host_read(state, &host_input)?;
+    let (_, health, target) = prepare_library_sync_host_read(state, &host_input)?;
     let limit = input.limit.unwrap_or(1000).clamp(1, 2_500);
     let offset = input.offset.unwrap_or(0).max(0);
-    let rows: Vec<SpoolWithMasterRow> = get_library_sync_host_json_authenticated(
+    let rows: Vec<SpoolWithMasterRow> = get_library_sync_host_json_authenticated_for_target(
         state,
-        &normalized_base_url,
         format!("/api/v1/library/spools?limit={limit}&offset={offset}").as_str(),
+        &target,
     )?;
 
     save_library_sync_success(
@@ -118,11 +118,11 @@ fn fetch_library_sync_printer_overview_blocking(
     state: &AppState,
     input: ValidateLibrarySyncHostInput,
 ) -> Result<Vec<PrinterOverviewRow>, String> {
-    let (normalized_base_url, health, target) = prepare_library_sync_host_read(state, &input)?;
-    let rows: Vec<PrinterOverviewRow> = get_library_sync_host_json_authenticated(
+    let (_, health, target) = prepare_library_sync_host_read(state, &input)?;
+    let rows: Vec<PrinterOverviewRow> = get_library_sync_host_json_authenticated_for_target(
         state,
-        &normalized_base_url,
         "/api/v1/library/printers",
+        &target,
     )?;
 
     with_current_library_sync_target(state, &target, |engine| {
@@ -152,11 +152,11 @@ fn fetch_library_sync_printer_settings_blocking(
     state: &AppState,
     input: ValidateLibrarySyncHostInput,
 ) -> Result<PrinterSettingsSnapshot, String> {
-    let (normalized_base_url, health, target) = prepare_library_sync_host_read(state, &input)?;
-    let snapshot: PrinterSettingsSnapshot = get_library_sync_host_json_authenticated(
+    let (_, health, target) = prepare_library_sync_host_read(state, &input)?;
+    let snapshot: PrinterSettingsSnapshot = get_library_sync_host_json_authenticated_for_target(
         state,
-        &normalized_base_url,
         "/api/v1/library/printer-settings",
+        &target,
     )?;
 
     save_library_sync_success(
@@ -183,12 +183,12 @@ fn fetch_library_sync_filament_standards_blocking(
     state: &AppState,
     input: ValidateLibrarySyncHostInput,
 ) -> Result<FilamentStandardsSnapshot, String> {
-    let (normalized_base_url, health, target) = prepare_library_sync_host_read(state, &input)?;
+    let (_, health, target) = prepare_library_sync_host_read(state, &input)?;
     require_host_filament_price_standards_capability(&health.capabilities, true)?;
-    let snapshot: FilamentStandardsSnapshot = get_library_sync_host_json_authenticated(
+    let snapshot: FilamentStandardsSnapshot = get_library_sync_host_json_authenticated_for_target(
         state,
-        &normalized_base_url,
         "/api/v1/library/filament-standards",
+        &target,
     )?;
 
     save_library_sync_success(
@@ -215,12 +215,12 @@ fn fetch_library_sync_loans_blocking(
     input: LibrarySyncSpoolListInput,
 ) -> Result<Vec<SpoolLoanDetailsRow>, String> {
     let host_input = library_sync_host_input(&input.base_url, input.expected_library_id.as_deref());
-    let (normalized_base_url, health, target) = prepare_library_sync_host_read(state, &host_input)?;
+    let (_, health, target) = prepare_library_sync_host_read(state, &host_input)?;
     let limit = input.limit.unwrap_or(2000).clamp(1, 2_500);
-    let rows: Vec<SpoolLoanDetailsRow> = get_library_sync_host_json_authenticated(
+    let rows: Vec<SpoolLoanDetailsRow> = get_library_sync_host_json_authenticated_for_target(
         state,
-        &normalized_base_url,
         format!("/api/v1/library/loans?include_returned=true&direction=ALL&limit={limit}").as_str(),
+        &target,
     )?;
 
     with_current_library_sync_target(state, &target, |engine| {
@@ -253,7 +253,7 @@ fn fetch_library_sync_filament_consumption_blocking(
     input: LibrarySyncFilamentConsumptionInput,
 ) -> Result<Vec<FilamentConsumptionRow>, String> {
     let host_input = library_sync_host_input(&input.base_url, input.expected_library_id.as_deref());
-    let (normalized_base_url, health, target) = prepare_library_sync_host_read(state, &host_input)?;
+    let (_, health, target) = prepare_library_sync_host_read(state, &host_input)?;
     let limit = input.limit.unwrap_or(500).clamp(1, 2_000);
     let printer_id = input
         .printer_id
@@ -262,7 +262,7 @@ fn fetch_library_sync_filament_consumption_blocking(
         .filter(|value| !value.is_empty());
     let path = library_sync_filament_consumption_path(limit, printer_id);
     let rows: Vec<FilamentConsumptionRow> =
-        get_library_sync_host_json_authenticated(state, &normalized_base_url, &path)?;
+        get_library_sync_host_json_authenticated_for_target(state, &path, &target)?;
 
     with_current_library_sync_target(state, &target, |engine| {
         engine.save_library_sync_cached_consumption(&rows)
@@ -294,13 +294,12 @@ fn fetch_library_sync_statistics_period_report_blocking(
     input: LibrarySyncStatisticsPeriodInput,
 ) -> Result<Option<StatisticsPeriodReport>, String> {
     let host_input = library_sync_host_input(&input.base_url, input.expected_library_id.as_deref());
-    let (normalized_base_url, health, target) = prepare_library_sync_host_read(state, &host_input)?;
+    let (_, health, target) = prepare_library_sync_host_read(state, &host_input)?;
     let path = library_sync_statistics_period_path(&input.period);
     // The period report predates value/cost reporting, so this read must not be
     // capability-gated. Serde maps a legacy Host's missing `value_cost` field to
     // `None`, preserving the rest of the report without a fabricated fallback.
-    let report = match get_library_sync_host_json_authenticated(state, &normalized_base_url, &path)
-    {
+    let report = match get_library_sync_host_json_authenticated_for_target(state, &path, &target) {
         Ok(report) => Some(report),
         Err(error) if is_library_sync_read_not_found(&error) => None,
         Err(error) => return Err(error),
@@ -352,7 +351,7 @@ fn fetch_library_sync_catalog_masters_blocking(
     input: LibrarySyncCatalogListInput,
 ) -> Result<Vec<FilamentMasterCatalogRow>, String> {
     let host_input = library_sync_host_input(&input.base_url, input.expected_library_id.as_deref());
-    let (normalized_base_url, _, target) = prepare_library_sync_host_checked(state, &host_input)?;
+    let (_, _, target) = prepare_library_sync_host_checked(state, &host_input)?;
 
     let limit = input.limit.unwrap_or(1_000).clamp(1, 5_000);
     let primary_path = library_sync_catalog_masters_path(
@@ -365,17 +364,14 @@ fn fetch_library_sync_catalog_masters_blocking(
         limit,
         input.search.as_deref(),
     );
-    let rows = match get_library_sync_host_json_authenticated(
-        state,
-        &normalized_base_url,
-        &primary_path,
-    ) {
-        Ok(rows) => Ok(rows),
-        Err(error) if is_library_sync_read_not_found(&error) => {
-            get_library_sync_host_json_authenticated(state, &normalized_base_url, &fallback_path)
-        }
-        Err(error) => Err(error),
-    }?;
+    let rows =
+        match get_library_sync_host_json_authenticated_for_target(state, &primary_path, &target) {
+            Ok(rows) => Ok(rows),
+            Err(error) if is_library_sync_read_not_found(&error) => {
+                get_library_sync_host_json_authenticated_for_target(state, &fallback_path, &target)
+            }
+            Err(error) => Err(error),
+        }?;
     ensure_library_sync_target_current(state, &target)?;
     Ok(rows)
 }
@@ -404,14 +400,14 @@ fn fetch_library_sync_wishlist_items_blocking(
     input: LibrarySyncWishlistListInput,
 ) -> Result<Vec<WishlistItemRow>, String> {
     let host_input = library_sync_host_input(&input.base_url, input.expected_library_id.as_deref());
-    let (normalized_base_url, _, target) = prepare_library_sync_host_checked(state, &host_input)?;
+    let (_, _, target) = prepare_library_sync_host_checked(state, &host_input)?;
 
     let limit = input.limit.unwrap_or(500).clamp(1, 2_500);
     let primary_rows: Result<Vec<WishlistItemRow>, String> =
-        get_library_sync_host_json_authenticated(
+        get_library_sync_host_json_authenticated_for_target(
             state,
-            &normalized_base_url,
             &format!("/api/v1/library/wishlist?limit={limit}"),
+            &target,
         );
     match primary_rows {
         Ok(rows) => {
@@ -421,10 +417,10 @@ fn fetch_library_sync_wishlist_items_blocking(
             Ok(rows)
         }
         Err(error) if is_library_sync_read_not_found(&error) => {
-            let rows: Vec<WishlistItemRow> = get_library_sync_host_json_authenticated(
+            let rows: Vec<WishlistItemRow> = get_library_sync_host_json_authenticated_for_target(
                 state,
-                &normalized_base_url,
                 &format!("/api/v1/wishlist?limit={limit}"),
+                &target,
             )?;
             with_current_library_sync_target(state, &target, |engine| {
                 engine.save_library_sync_cached_wishlist(&rows)
@@ -449,12 +445,9 @@ fn fetch_library_sync_full_backup_json_blocking(
     state: &AppState,
     input: ValidateLibrarySyncHostInput,
 ) -> Result<LibrarySyncFullBackupResponse, String> {
-    let (normalized_base_url, _, target) = prepare_library_sync_host_checked(state, &input)?;
-    let payload: LibrarySyncFullBackupResponse = get_library_sync_host_json_authenticated(
-        state,
-        &normalized_base_url,
-        "/api/v1/backup/full",
-    )?;
+    let (_, _, target) = prepare_library_sync_host_checked(state, &input)?;
+    let payload: LibrarySyncFullBackupResponse =
+        get_library_sync_host_json_authenticated_for_target(state, "/api/v1/backup/full", &target)?;
     save_library_sync_success(state, &target, "Host full backup exported.", None)?;
     Ok(payload)
 }

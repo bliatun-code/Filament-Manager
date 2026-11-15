@@ -3,7 +3,7 @@ use crate::library_sync_blocking_executor::run_library_sync_blocking;
 use crate::library_sync_command_support::{
     prepare_library_sync_host_checked, save_library_sync_success,
 };
-use crate::library_sync_host_client::get_library_sync_host_json_authenticated;
+use crate::library_sync_host_client::get_library_sync_host_json_authenticated_for_target;
 use crate::library_sync_models::{
     LibrarySyncRemoteSnapshot, LibrarySyncSnapshotResponse, ValidateLibrarySyncHostInput,
 };
@@ -23,11 +23,11 @@ fn fetch_library_sync_snapshot_blocking(
     state: &AppState,
     input: ValidateLibrarySyncHostInput,
 ) -> Result<LibrarySyncRemoteSnapshot, String> {
-    let (normalized_base_url, _, target) = prepare_library_sync_host_checked(state, &input)?;
-    let parsed: LibrarySyncSnapshotResponse = get_library_sync_host_json_authenticated(
+    let (_, _, target) = prepare_library_sync_host_checked(state, &input)?;
+    let parsed: LibrarySyncSnapshotResponse = get_library_sync_host_json_authenticated_for_target(
         state,
-        &normalized_base_url,
         "/api/v1/library/snapshot",
+        &target,
     )?;
 
     if !parsed.ok {

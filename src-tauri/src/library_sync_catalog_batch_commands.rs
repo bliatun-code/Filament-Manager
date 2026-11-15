@@ -9,7 +9,7 @@ use crate::library_sync_command_support::{
     normalize_library_sync_base_url, save_library_sync_success,
 };
 use crate::library_sync_host_client::{
-    ensure_library_sync_host_matches, perform_library_sync_host_write_and_parse_for_target,
+    perform_library_sync_host_write_and_parse_for_target, verify_library_sync_target,
 };
 use crate::library_sync_location_commands::refresh_location_cache_best_effort;
 use crate::library_sync_target_guard::{
@@ -50,7 +50,7 @@ pub(crate) fn create_library_sync_host_catalog_spool_batch_blocking(
     if target.generation() != input.expected_target_generation {
         return Err(coded_command_error("common.invalid_request"));
     }
-    let health = ensure_library_sync_host_matches(&base_url, Some(target.library_id()))?;
+    let (health, target) = verify_library_sync_target(target)?;
     if !health
         .capabilities
         .iter()
@@ -63,7 +63,6 @@ pub(crate) fn create_library_sync_host_catalog_spool_batch_blocking(
     ensure_library_sync_target_current(state, &target)?;
     let receipt: CatalogSpoolBatchReceipt = perform_library_sync_host_write_and_parse_for_target(
         state,
-        &base_url,
         "/api/v1/spools/catalog-batch",
         &input.batch,
         &target,
@@ -86,17 +85,17 @@ pub(crate) fn create_library_sync_host_catalog_spool_batch_blocking(
 
     // The receipt proves the transaction committed. Cache/status refreshes are
     // scoped and best effort; failure must not turn it into a failed write.
-    refresh_library_sync_spool_cache(state, &base_url, &target);
+    refresh_library_sync_spool_cache(state, &target);
     if input
         .batch
         .ownership_type
         .trim()
         .eq_ignore_ascii_case("BORROWED_IN")
     {
-        refresh_library_sync_loan_cache(state, &base_url, &target);
+        refresh_library_sync_loan_cache(state, &target);
     }
     if input.batch.location.is_some() {
-        refresh_location_cache_best_effort(state, &base_url, &target);
+        refresh_location_cache_best_effort(state, &target);
     }
     let _ = save_library_sync_success(state, &target, "Host catalog spool batch saved.", None);
     Ok(receipt)

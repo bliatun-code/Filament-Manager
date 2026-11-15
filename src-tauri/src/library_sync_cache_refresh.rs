@@ -1,17 +1,11 @@
 use crate::backend::filament_database::{
     PrinterOverviewRow, SpoolLoanDetailsRow, SpoolWithMasterRow, WishlistItemRow,
 };
-use crate::library_sync_host_client::{
-    get_library_sync_host_json_authenticated, get_library_sync_host_json_authenticated_for_target,
-};
+use crate::library_sync_host_client::get_library_sync_host_json_authenticated_for_target;
 use crate::library_sync_target_guard::{with_current_library_sync_target, LibrarySyncTargetGuard};
 use crate::state::AppState;
 
-pub(crate) fn refresh_library_sync_spool_cache(
-    state: &AppState,
-    base_url: &str,
-    target: &LibrarySyncTargetGuard,
-) {
+pub(crate) fn refresh_library_sync_spool_cache(state: &AppState, target: &LibrarySyncTargetGuard) {
     const PAGE_SIZE: usize = 2_500;
     const MAX_PAGES: usize = 200;
 
@@ -22,7 +16,6 @@ pub(crate) fn refresh_library_sync_spool_cache(
         let page: Result<Vec<SpoolWithMasterRow>, String> =
             get_library_sync_host_json_authenticated_for_target(
                 state,
-                base_url,
                 &format!("/api/v1/library/spools?limit={PAGE_SIZE}&offset={offset}"),
                 target,
             );
@@ -46,13 +39,11 @@ pub(crate) fn refresh_library_sync_spool_cache(
 
 pub(crate) fn refresh_library_sync_printer_cache(
     state: &AppState,
-    base_url: &str,
     target: &LibrarySyncTargetGuard,
 ) {
     let rows: Result<Vec<PrinterOverviewRow>, String> =
         get_library_sync_host_json_authenticated_for_target(
             state,
-            base_url,
             "/api/v1/library/printers",
             target,
         );
@@ -63,16 +54,13 @@ pub(crate) fn refresh_library_sync_printer_cache(
     }
 }
 
-pub(crate) fn refresh_library_sync_loan_cache(
-    state: &AppState,
-    base_url: &str,
-    target: &LibrarySyncTargetGuard,
-) {
-    let rows: Result<Vec<SpoolLoanDetailsRow>, String> = get_library_sync_host_json_authenticated(
-        state,
-        base_url,
-        "/api/v1/library/loans?include_returned=true&direction=ALL&limit=2000",
-    );
+pub(crate) fn refresh_library_sync_loan_cache(state: &AppState, target: &LibrarySyncTargetGuard) {
+    let rows: Result<Vec<SpoolLoanDetailsRow>, String> =
+        get_library_sync_host_json_authenticated_for_target(
+            state,
+            "/api/v1/library/loans?include_returned=true&direction=ALL&limit=2000",
+            target,
+        );
     if let Ok(rows) = rows {
         let _ = with_current_library_sync_target(state, target, |engine| {
             engine.save_library_sync_cached_loans(&rows)
@@ -82,14 +70,14 @@ pub(crate) fn refresh_library_sync_loan_cache(
 
 pub(crate) fn refresh_library_sync_wishlist_cache(
     state: &AppState,
-    base_url: &str,
     target: &LibrarySyncTargetGuard,
 ) {
-    let rows: Result<Vec<WishlistItemRow>, String> = get_library_sync_host_json_authenticated(
-        state,
-        base_url,
-        "/api/v1/library/wishlist?limit=500",
-    );
+    let rows: Result<Vec<WishlistItemRow>, String> =
+        get_library_sync_host_json_authenticated_for_target(
+            state,
+            "/api/v1/library/wishlist?limit=500",
+            target,
+        );
     if let Ok(rows) = rows {
         let _ = with_current_library_sync_target(state, target, |engine| {
             engine.save_library_sync_cached_wishlist(&rows)

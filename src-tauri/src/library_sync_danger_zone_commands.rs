@@ -60,7 +60,7 @@ fn remove_library_sync_host_spool(
         return Err(coded_command_error("common.invalid_request"));
     }
     let host_input = library_sync_host_input(&input.base_url, input.expected_library_id.as_deref());
-    let (base_url, _, target) = prepare_library_sync_host_write(state, &host_input)?;
+    let (_, _, target) = prepare_library_sync_host_write(state, &host_input)?;
     ensure_library_sync_target_current(state, &target)?;
     if input.expected_target_generation != target.generation() {
         return Err(coded_command_error("common.invalid_request"));
@@ -70,7 +70,6 @@ fn remove_library_sync_host_spool(
     // Existing Hosts already return this acknowledgment; no new capability is needed.
     let receipt: RemovalAcknowledgment = perform_library_sync_host_write_and_parse_for_target(
         state,
-        &base_url,
         &format!("/api/v1/spools/{spool_id}/{operation}"),
         &serde_json::json!({ "reason": trimmed_non_empty(input.reason.as_deref()) }),
         &target,
@@ -79,9 +78,9 @@ fn remove_library_sync_host_spool(
     if !receipt.ok {
         return Err(coded_command_error("common.internal"));
     }
-    refresh_library_sync_spool_cache(state, &base_url, &target);
-    refresh_library_sync_printer_cache(state, &base_url, &target);
-    refresh_library_sync_loan_cache(state, &base_url, &target);
+    refresh_library_sync_spool_cache(state, &target);
+    refresh_library_sync_printer_cache(state, &target);
+    refresh_library_sync_loan_cache(state, &target);
     // A cache/status failure must not turn an accepted deletion into a retry.
     let _ = save_library_sync_success(state, &target, "Host spool removal saved.", None);
     Ok(())

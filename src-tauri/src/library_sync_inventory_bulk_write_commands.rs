@@ -37,7 +37,7 @@ pub(crate) fn execute_library_sync_host_inventory_bulk_mutation_blocking(
     input: LibrarySyncInventoryBulkMutationInput,
 ) -> Result<InventoryBulkMutationResult, String> {
     let host_input = library_sync_host_input(&input.base_url, input.expected_library_id.as_deref());
-    let (base_url, health, target) = prepare_library_sync_host_write_for_generation(
+    let (_, health, target) = prepare_library_sync_host_write_for_generation(
         state,
         &host_input,
         input.expected_target_generation,
@@ -70,7 +70,6 @@ pub(crate) fn execute_library_sync_host_inventory_bulk_mutation_blocking(
     require_inventory_bulk_mutation_capability(&health.capabilities)?;
     let result: InventoryBulkMutationResult = perform_library_sync_host_write_and_parse_for_target(
         state,
-        &base_url,
         "/api/v1/inventory/bulk-mutations",
         &input.mutation,
         &target,
@@ -87,9 +86,9 @@ pub(crate) fn execute_library_sync_host_inventory_bulk_mutation_blocking(
         return Err(coded_command_error("common.internal"));
     }
     if single_roll_capability.is_some() {
-        refresh_library_sync_printer_cache(state, &base_url, &target);
+        refresh_library_sync_printer_cache(state, &target);
     }
-    refresh_library_sync_spool_cache(state, &base_url, &target);
+    refresh_library_sync_spool_cache(state, &target);
     let _ = save_library_sync_success(state, &target, "Host inventory bulk change saved.", None);
     Ok(result)
 }

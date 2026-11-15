@@ -26,7 +26,7 @@ fn return_library_sync_host_loan_blocking(
     input: LibrarySyncReturnLoanInput,
 ) -> Result<(), String> {
     let host_input = library_sync_host_input(&input.base_url, input.expected_library_id.as_deref());
-    let (normalized_base_url, _, target) = prepare_library_sync_host_write(state, &host_input)?;
+    let (_, _, target) = prepare_library_sync_host_write(state, &host_input)?;
 
     let loan_id = input.loan_id.trim();
     if loan_id.is_empty() {
@@ -41,16 +41,16 @@ fn return_library_sync_host_loan_blocking(
 
     perform_library_sync_host_write(
         state,
-        &normalized_base_url,
         &path,
         &serde_json::json!({
             "returned_grams": input.returned_grams.max(0),
             "note": trimmed_non_empty(input.note.as_deref()),
         }),
+        &target,
     )?;
 
-    refresh_library_sync_loan_cache(state, &normalized_base_url, &target);
-    refresh_library_sync_spool_cache(state, &normalized_base_url, &target);
+    refresh_library_sync_loan_cache(state, &target);
+    refresh_library_sync_spool_cache(state, &target);
     save_library_sync_success(state, &target, "Host loan updated.", None)?;
     Ok(())
 }
@@ -69,7 +69,7 @@ pub(crate) fn lend_library_sync_host_spool_blocking(
     input: LibrarySyncLendSpoolInput,
 ) -> Result<(), String> {
     let host_input = library_sync_host_input(&input.base_url, input.expected_library_id.as_deref());
-    let (normalized_base_url, health, target) = prepare_library_sync_host_read(state, &host_input)?;
+    let (_, health, target) = prepare_library_sync_host_read(state, &host_input)?;
 
     let spool_id = input.spool_id.trim();
     if spool_id.is_empty() {
@@ -89,7 +89,6 @@ pub(crate) fn lend_library_sync_host_spool_blocking(
     let spool_id = encode_library_sync_path_segment(spool_id);
     perform_library_sync_host_write(
         state,
-        &normalized_base_url,
         &format!("/api/v1/spools/{spool_id}/lend"),
         &serde_json::json!({
             "borrower_name": borrower_name,
@@ -98,11 +97,12 @@ pub(crate) fn lend_library_sync_host_spool_blocking(
             "note": trimmed_non_empty(input.note.as_deref()),
             "expected_return_at": expected_return_at,
         }),
+        &target,
     )?;
 
-    refresh_library_sync_loan_cache(state, &normalized_base_url, &target);
-    refresh_library_sync_printer_cache(state, &normalized_base_url, &target);
-    refresh_library_sync_spool_cache(state, &normalized_base_url, &target);
+    refresh_library_sync_loan_cache(state, &target);
+    refresh_library_sync_printer_cache(state, &target);
+    refresh_library_sync_spool_cache(state, &target);
     save_library_sync_success(state, &target, "Host loan-out write completed.", None)?;
 
     Ok(())

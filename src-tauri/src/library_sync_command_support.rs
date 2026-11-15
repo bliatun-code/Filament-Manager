@@ -2,7 +2,7 @@ use crate::backend::purchase_receipt_metadata::PurchaseReceiptMetadata;
 use crate::companion_models::{
     FILAMENT_PRICE_STANDARDS_CAPABILITY, PURCHASE_RECEIPT_METADATA_CAPABILITY,
 };
-use crate::library_sync_host_client::ensure_library_sync_host_matches;
+use crate::library_sync_host_client::verify_library_sync_target;
 use crate::library_sync_models::ValidateLibrarySyncHostInput;
 use crate::library_sync_target_guard::{
     capture_library_sync_target, with_current_library_sync_target, LibrarySyncTargetGuard,
@@ -94,7 +94,7 @@ pub(crate) fn prepare_library_sync_host_write_for_generation(
             "common.invalid_request",
         ));
     }
-    let health = ensure_library_sync_host_matches(&normalized_base_url, Some(target.library_id()))?;
+    let (health, target) = verify_library_sync_target(target)?;
     Ok((normalized_base_url, health, target))
 }
 
@@ -104,7 +104,7 @@ pub(crate) fn prepare_library_sync_host_checked<'a>(
 ) -> Result<(String, Option<&'a str>, LibrarySyncTargetGuard), String> {
     let (normalized_base_url, expected_library_id) = normalize_library_sync_host_input(input)?;
     let target = capture_library_sync_target(state, &normalized_base_url, expected_library_id)?;
-    ensure_library_sync_host_matches(&normalized_base_url, Some(target.library_id()))?;
+    let (_, target) = verify_library_sync_target(target)?;
     Ok((normalized_base_url, expected_library_id, target))
 }
 
@@ -114,7 +114,7 @@ pub(crate) fn prepare_library_sync_host_read(
 ) -> Result<(String, CompanionHealthCheckResponse, LibrarySyncTargetGuard), String> {
     let (normalized_base_url, expected_library_id) = normalize_library_sync_host_input(input)?;
     let target = capture_library_sync_target(state, &normalized_base_url, expected_library_id)?;
-    let health = ensure_library_sync_host_matches(&normalized_base_url, Some(target.library_id()))?;
+    let (health, target) = verify_library_sync_target(target)?;
     Ok((normalized_base_url, health, target))
 }
 

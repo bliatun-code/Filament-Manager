@@ -2,7 +2,7 @@ use crate::credential_store::{CredentialKey, SecretValue};
 use crate::library_sync_command_support::normalize_library_sync_base_url;
 use crate::library_sync_runtime_auth::LibrarySyncRenewalFailureKind;
 use crate::library_sync_target_guard::{
-    capture_library_sync_target, ensure_library_sync_target_current, LibrarySyncTargetGuard,
+    ensure_library_sync_target_current, LibrarySyncTargetGuard,
 };
 use crate::secure_credential_mutation::lock_secure_credential_mutation;
 use crate::state::AppState;
@@ -43,6 +43,12 @@ struct ResolvedMdnsRoute {
     generation: u64,
     client: reqwest::blocking::Client,
     fresh_until: Instant,
+    verified_client: Arc<Mutex<Option<VerifiedMdnsClient>>>,
+}
+
+struct VerifiedMdnsClient {
+    address: SocketAddr,
+    client: reqwest::blocking::Client,
 }
 
 struct MdnsRouteLease {
@@ -55,9 +61,32 @@ struct MdnsFallbackCandidate {
     route: ResolvedMdnsRoute,
 }
 
-struct LibrarySyncRequestOutcome {
-    response: reqwest::blocking::Response,
+pub(crate) struct LibrarySyncRequestOutcome {
+    pub(crate) response: reqwest::blocking::Response,
+    route: Option<MdnsRouteLease>,
     fallback_candidate: Option<MdnsFallbackCandidate>,
+}
+
+pub(crate) struct LibrarySyncPeerCandidate {
+    base_url: String,
+    remote_addr: Option<SocketAddr>,
+    route: Option<MdnsRouteLease>,
+    fallback_candidate: Option<MdnsFallbackCandidate>,
+}
+
+#[derive(Clone)]
+pub(crate) struct VerifiedLibrarySyncPeer {
+    base_url: String,
+    client: reqwest::blocking::Client,
+    local_route: Option<(Arc<MdnsHostSlot>, u64)>,
+}
+
+impl std::fmt::Debug for VerifiedLibrarySyncPeer {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        formatter
+            .debug_struct("VerifiedLibrarySyncPeer")
+            .finish_non_exhaustive()
+    }
 }
 
 #[derive(Default)]
@@ -247,29 +276,13 @@ fn ensure_library_sync_credential_transport_with_policy(
 /// system resolver: a shared mDNS daemon resolves them to private IPv4 addresses and each route
 /// pins those addresses while the URL, `Host`, TLS name, and `Origin` stay on the stable hostname.
 /// The last working route is periodically revalidated and invalidated after transport failures.
-pub(crate) fn send_library_sync_request(
-    base_url: &str,
-    timeout: Duration,
-    operation: &str,
-    make_request: impl Fn(&reqwest::blocking::Client) -> reqwest::blocking::RequestBuilder,
-) -> Result<reqwest::blocking::Response, String> {
-    send_library_sync_request_with_fallback_candidate(
-        base_url,
-        timeout,
-        operation,
-        false,
-        make_request,
-    )
-    .map(|outcome| outcome.response)
-}
-
 fn send_library_sync_auth_request(
-    base_url: &str,
+    peer: &VerifiedLibrarySyncPeer,
     operation: &str,
     make_request: impl Fn(&reqwest::blocking::Client) -> reqwest::blocking::RequestBuilder,
 ) -> Result<reqwest::blocking::Response, String> {
     send_library_sync_auth_request_with_timeout(
-        base_url,
+        peer,
         LIBRARY_SYNC_AUTH_REQUEST_TIMEOUT,
         operation,
         make_request,
@@ -277,52 +290,32 @@ fn send_library_sync_auth_request(
 }
 
 fn send_library_sync_auth_request_with_timeout(
-    base_url: &str,
+    peer: &VerifiedLibrarySyncPeer,
     timeout: Duration,
     operation: &str,
     make_request: impl Fn(&reqwest::blocking::Client) -> reqwest::blocking::RequestBuilder,
 ) -> Result<reqwest::blocking::Response, String> {
-    send_library_sync_request(base_url, timeout, operation, make_request)
+    send_verified_library_sync_request(peer, Some(timeout), operation, make_request)
 }
 
-/// Sends one mutating request exactly once and waits for its definitive response.
-///
-/// A response deadline is unsafe for the current Companion write API because it has no
-/// idempotency key: the server-side blocking transaction can commit after the client reports a
-/// timeout, and a retry can then apply the mutation twice. Connection establishment and mDNS
-/// discovery remain bounded, but once a write has been sent we let the operating system and
-/// server produce the authoritative result.
-fn send_library_sync_mutation_request(
-    base_url: &str,
+// A library operation can fail after the Host has already committed a write.
+// Send once on the checked peer and leave new resolution to the next health check.
+fn send_verified_library_sync_request(
+    peer: &VerifiedLibrarySyncPeer,
+    timeout: Option<Duration>,
     operation: &str,
     make_request: impl Fn(&reqwest::blocking::Client) -> reqwest::blocking::RequestBuilder,
 ) -> Result<reqwest::blocking::Response, String> {
-    if let Some((hostname, port)) = stable_local_host_and_port(base_url) {
-        let route = mdns_transport().current_route_with(
-            &hostname,
-            port,
-            MDNS_RETRY_TIMEOUT,
-            operation,
-            &resolve_stable_local_hostname_with_mdns,
-        )?;
-        let request = make_request(&route.route.client)
-            .build()
-            .map_err(|error| format!("Failed to prepare {operation}: {error}"))?;
-        return match route.route.client.execute(request) {
-            Ok(response) => Ok(response),
-            Err(error) => {
-                route
-                    .slot
-                    .invalidate_without_resolution(route.route.generation);
-                Err(format!("{operation} failed: {error}"))
-            }
-        };
+    let mut builder = make_request(&peer.client);
+    if let Some(timeout) = timeout {
+        builder = builder.timeout(timeout);
     }
-
-    let client = shared_library_sync_http_client(operation)?;
-    make_request(client)
-        .send()
-        .map_err(|error| format!("{operation} failed: {error}"))
+    builder.send().map_err(|error| {
+        if let Some((slot, generation)) = &peer.local_route {
+            slot.invalidate_without_resolution(*generation);
+        }
+        format!("{operation} failed: {error}")
+    })
 }
 
 fn send_library_sync_request_with_fallback_candidate(
@@ -354,6 +347,7 @@ fn send_library_sync_request_with_fallback_candidate(
         .map_err(|error| format!("{operation} failed: {error}"))?;
     Ok(LibrarySyncRequestOutcome {
         response,
+        route: None,
         fallback_candidate: None,
     })
 }
@@ -447,6 +441,7 @@ where
         Ok(response) => {
             return Ok(LibrarySyncRequestOutcome {
                 response,
+                route: Some(initial),
                 fallback_candidate: None,
             });
         }
@@ -507,6 +502,7 @@ where
                             slot: Arc::clone(&initial.slot),
                             route: initial.route.clone(),
                         }),
+                        route: Some(initial),
                     });
                 }
                 Err(fallback_error) => {
@@ -536,6 +532,7 @@ where
     {
         Ok(response) => Ok(LibrarySyncRequestOutcome {
             response,
+            route: Some(refreshed),
             fallback_candidate: None,
         }),
         Err(error) => {
@@ -831,6 +828,7 @@ impl MdnsHostSlot {
                     generation: state.next_generation,
                     client,
                     fresh_until: Instant::now() + MDNS_ROUTE_FRESH_TTL,
+                    verified_client: Arc::new(Mutex::new(None)),
                 };
                 state.route = Some(route.clone());
                 state.last_failure = None;
@@ -953,39 +951,16 @@ fn start_resolution_attempt(state: &mut MdnsHostState) -> u64 {
     state.active_attempt
 }
 
-pub(crate) fn fetch_library_sync_host_json<T: DeserializeOwned>(
-    base_url: &str,
-    path: &str,
-) -> Result<T, String> {
-    let request_url = format!("{base_url}{path}");
-    let response = send_library_sync_request(
-        base_url,
-        LIBRARY_SYNC_REQUEST_TIMEOUT,
-        "Host request",
-        |client| client.get(&request_url),
-    )?;
-
-    if !response.status().is_success() {
-        return Err(format!("Host request returned {}.", response.status()));
-    }
-
-    let response_text = response
-        .text()
-        .map_err(|error| format!("Host response body could not be read: {error}"))?;
-
-    serde_json::from_str(&response_text)
-        .map_err(|error| format!("Host returned invalid JSON: {error}"))
-}
-
 pub(crate) fn pair_library_sync_host_session(
-    base_url: &str,
+    peer: &VerifiedLibrarySyncPeer,
     pairing_token: &str,
 ) -> Result<LibrarySyncAuthenticatedSessionState, String> {
+    let base_url = peer.base_url.as_str();
     ensure_library_sync_credential_transport(base_url)?;
     let host_header = library_sync_host_header_value(base_url)?;
     let request_url = format!("{base_url}/api/v1/auth/pair");
     let request_body = serde_json::json!({ "pairing_token": pairing_token }).to_string();
-    let response = send_library_sync_auth_request(base_url, "Host pairing request", |client| {
+    let response = send_library_sync_auth_request(peer, "Host pairing request", |client| {
         client
             .post(&request_url)
             .header(HOST, host_header.as_str())
@@ -1039,17 +1014,18 @@ pub(crate) fn pair_library_sync_host_session(
     })
 }
 
-pub(crate) fn renew_library_sync_host_session(
-    base_url: &str,
+fn renew_library_sync_host_session(
+    peer: &VerifiedLibrarySyncPeer,
     device_token: &str,
 ) -> Result<LibrarySyncAuthenticatedSessionState, String> {
+    let base_url = peer.base_url.as_str();
     ensure_library_sync_credential_transport(base_url)?;
     let host_header = library_sync_host_header_value(base_url)?;
     let cookie_header = build_library_sync_cookie_header(None, Some(device_token))
         .ok_or_else(|| "Host session renewal requires a paired device token.".to_string())?;
     let request_url = format!("{base_url}/api/v1/auth/renew");
     let response =
-        send_library_sync_auth_request(base_url, "Host session renewal request", |client| {
+        send_library_sync_auth_request(peer, "Host session renewal request", |client| {
             client
                 .post(&request_url)
                 .header(HOST, host_header.as_str())
@@ -1200,9 +1176,11 @@ pub(crate) fn library_sync_device_token_key(base_url: &str) -> Result<Credential
 
 fn current_or_renewed_library_sync_auth(
     state: &AppState,
-    base_url: &str,
+    target: &LibrarySyncTargetGuard,
 ) -> Result<LibrarySyncAuthenticatedSessionState, String> {
-    current_or_renewed_library_sync_auth_with(state, base_url, renew_library_sync_host_session)
+    current_or_renewed_library_sync_auth_with(state, target.base_url(), |_, token| {
+        renew_library_sync_target_session(state, target, token)
+    })
 }
 
 fn current_or_renewed_library_sync_auth_with(
@@ -1235,15 +1213,21 @@ fn current_or_renewed_library_sync_auth_under_gate_with(
 
 pub(crate) fn renew_and_cache_library_sync_auth(
     state: &AppState,
-    base_url: &str,
+    target: &LibrarySyncTargetGuard,
     device_token: &str,
 ) -> Result<LibrarySyncAuthenticatedSessionState, String> {
-    renew_and_cache_library_sync_auth_with(
-        state,
-        base_url,
-        device_token,
-        renew_library_sync_host_session,
-    )
+    renew_and_cache_library_sync_auth_with(state, target.base_url(), device_token, |_, token| {
+        renew_library_sync_target_session(state, target, token)
+    })
+}
+
+fn renew_library_sync_target_session(
+    state: &AppState,
+    target: &LibrarySyncTargetGuard,
+    device_token: &str,
+) -> Result<LibrarySyncAuthenticatedSessionState, String> {
+    ensure_library_sync_target_current(state, target)?;
+    renew_library_sync_host_session(target.verified_peer()?, device_token)
 }
 
 fn renew_and_cache_library_sync_auth_with(
@@ -1260,16 +1244,16 @@ fn renew_and_cache_library_sync_auth_with(
 
 fn renew_or_reuse_library_sync_auth(
     state: &AppState,
-    base_url: &str,
+    target: &LibrarySyncTargetGuard,
     failed_session_id: &str,
     expected_device_token: &str,
 ) -> Result<LibrarySyncAuthenticatedSessionState, String> {
     renew_or_reuse_library_sync_auth_with(
         state,
-        base_url,
+        target.base_url(),
         failed_session_id,
         expected_device_token,
-        renew_library_sync_host_session,
+        |_, token| renew_library_sync_target_session(state, target, token),
     )
 }
 
@@ -1403,24 +1387,16 @@ fn validated_library_sync_device_token(
     Ok(current_device_token)
 }
 
-pub(crate) fn get_library_sync_host_json_authenticated<T: DeserializeOwned>(
-    state: &AppState,
-    base_url: &str,
-    path: &str,
-) -> Result<T, String> {
-    let target = capture_library_sync_target(state, base_url, None)?;
-    get_library_sync_host_json_authenticated_for_target(state, base_url, path, &target)
-}
-
 pub(crate) fn get_library_sync_host_json_authenticated_for_target<T: DeserializeOwned>(
     state: &AppState,
-    base_url: &str,
     path: &str,
     target: &LibrarySyncTargetGuard,
 ) -> Result<T, String> {
+    let peer = target.verified_peer()?;
+    let base_url = peer.base_url.as_str();
     ensure_library_sync_credential_transport(base_url)?;
     ensure_library_sync_target_current(state, target)?;
-    let initial_auth_state = current_or_renewed_library_sync_auth(state, base_url)?;
+    let initial_auth_state = current_or_renewed_library_sync_auth(state, target)?;
     ensure_library_sync_target_current(state, target)?;
 
     let execute = |session_id: &str,
@@ -1430,9 +1406,9 @@ pub(crate) fn get_library_sync_host_json_authenticated_for_target<T: Deserialize
         let cookie_header = build_library_sync_cookie_header(Some(session_id), Some(device_token))
             .ok_or_else(|| "Desktop sync read is missing session cookies.".to_string())?;
         let request_url = format!("{base_url}{path}");
-        send_library_sync_request(
-            base_url,
-            LIBRARY_SYNC_REQUEST_TIMEOUT,
+        send_verified_library_sync_request(
+            peer,
+            Some(LIBRARY_SYNC_REQUEST_TIMEOUT),
             "Desktop sync read request",
             |client| {
                 client
@@ -1453,7 +1429,7 @@ pub(crate) fn get_library_sync_host_json_authenticated_for_target<T: Deserialize
         ensure_library_sync_target_current(state, target)?;
         let renewed = renew_or_reuse_library_sync_auth(
             state,
-            base_url,
+            target,
             &initial_auth_state.session_id,
             &initial_auth_state.device_token,
         )?;
@@ -1478,7 +1454,7 @@ pub(crate) fn get_library_sync_host_json_authenticated_for_target<T: Deserialize
 }
 
 fn post_library_sync_host_write_json<T: serde::Serialize>(
-    base_url: &str,
+    peer: &VerifiedLibrarySyncPeer,
     path: &str,
     session_id: &str,
     device_token: &str,
@@ -1486,6 +1462,7 @@ fn post_library_sync_host_write_json<T: serde::Serialize>(
     payload: &T,
     timeout: Option<Duration>,
 ) -> Result<reqwest::blocking::Response, String> {
+    let base_url = peer.base_url.as_str();
     ensure_library_sync_credential_transport(base_url)?;
     let host_header = library_sync_host_header_value(base_url)?;
     let cookie_header = build_library_sync_cookie_header(Some(session_id), Some(device_token))
@@ -1493,32 +1470,26 @@ fn post_library_sync_host_write_json<T: serde::Serialize>(
     let request_url = format!("{base_url}{path}");
     let request_body = serde_json::to_string(payload)
         .map_err(|error| format!("Failed to encode desktop sync write payload: {error}"))?;
-    send_library_sync_mutation_request(base_url, "Desktop sync write request", |client| {
-        let request = client
+    send_verified_library_sync_request(peer, timeout, "Desktop sync write request", |client| {
+        client
             .post(&request_url)
             .header(HOST, host_header.as_str())
             .header(ORIGIN, base_url)
             .header(reqwest::header::COOKIE, cookie_header.as_str())
             .header("x-csrf-token", csrf_token)
             .header(CONTENT_TYPE, "application/json")
-            .body(request_body.clone());
-        match timeout {
-            Some(timeout) => request.timeout(timeout),
-            None => request,
-        }
+            .body(request_body.clone())
     })
 }
 
 pub(crate) fn perform_library_sync_host_write<T: serde::Serialize>(
     state: &AppState,
-    base_url: &str,
     path: &str,
     payload: &T,
+    target: &LibrarySyncTargetGuard,
 ) -> Result<(), String> {
-    perform_library_sync_host_write_and_parse::<T, serde_json::Value>(
-        state, base_url, path, payload,
-    )
-    .map(|_| ())
+    perform_library_sync_host_write_and_parse::<T, serde_json::Value>(state, path, payload, target)
+        .map(|_| ())
 }
 
 pub(crate) fn perform_library_sync_host_write_and_parse<
@@ -1526,14 +1497,11 @@ pub(crate) fn perform_library_sync_host_write_and_parse<
     R: DeserializeOwned,
 >(
     state: &AppState,
-    base_url: &str,
     path: &str,
     payload: &T,
+    target: &LibrarySyncTargetGuard,
 ) -> Result<R, String> {
-    let target = capture_library_sync_target(state, base_url, None)?;
-    perform_library_sync_host_write_and_parse_for_target(
-        state, base_url, path, payload, &target, None,
-    )
+    perform_library_sync_host_write_and_parse_for_target(state, path, payload, target, None)
 }
 
 pub(crate) fn perform_library_sync_host_write_and_parse_for_target<
@@ -1541,17 +1509,17 @@ pub(crate) fn perform_library_sync_host_write_and_parse_for_target<
     R: DeserializeOwned,
 >(
     state: &AppState,
-    base_url: &str,
     path: &str,
     payload: &T,
     target: &LibrarySyncTargetGuard,
     timeout: Option<Duration>,
 ) -> Result<R, String> {
+    let peer = target.verified_peer()?;
     ensure_library_sync_target_current(state, target)?;
-    let initial_auth_state = current_or_renewed_library_sync_auth(state, base_url)?;
+    let initial_auth_state = current_or_renewed_library_sync_auth(state, target)?;
     ensure_library_sync_target_current(state, target)?;
     let mut response = post_library_sync_host_write_json(
-        base_url,
+        peer,
         path,
         &initial_auth_state.session_id,
         &initial_auth_state.device_token,
@@ -1564,13 +1532,13 @@ pub(crate) fn perform_library_sync_host_write_and_parse_for_target<
         ensure_library_sync_target_current(state, target)?;
         let renewed = renew_or_reuse_library_sync_auth(
             state,
-            base_url,
+            target,
             &initial_auth_state.session_id,
             &initial_auth_state.device_token,
         )?;
         ensure_library_sync_target_current(state, target)?;
         response = post_library_sync_host_write_json(
-            base_url,
+            peer,
             path,
             &renewed.session_id,
             &renewed.device_token,
@@ -1668,38 +1636,144 @@ fn validated_optional_host_error_field(
     Some(Some(value.to_string()))
 }
 
-pub(crate) fn ensure_library_sync_host_matches(
+pub(crate) fn request_library_sync_health(
     base_url: &str,
-    expected_library_id: Option<&str>,
-) -> Result<CompanionHealthCheckResponse, String> {
-    let (parsed, fallback_candidate) = if expected_library_id.is_some() {
-        let request_url = format!("{base_url}/api/v1/health");
-        let outcome = send_library_sync_request_with_fallback_candidate(
-            base_url,
-            LIBRARY_SYNC_REQUEST_TIMEOUT,
-            "Host request",
-            true,
-            |client| client.get(&request_url),
-        )?;
-        let LibrarySyncRequestOutcome {
-            response,
-            fallback_candidate,
-        } = outcome;
-        let status = response.status();
+    timeout: Duration,
+    operation: &str,
+    allow_identity_fallback: bool,
+) -> Result<LibrarySyncRequestOutcome, String> {
+    let request_url = format!("{base_url}/api/v1/health");
+    send_library_sync_request_with_fallback_candidate(
+        base_url,
+        timeout,
+        operation,
+        allow_identity_fallback,
+        |client| client.get(&request_url),
+    )
+}
+
+impl LibrarySyncRequestOutcome {
+    pub(crate) fn read_health(
+        self,
+    ) -> Result<(CompanionHealthCheckResponse, LibrarySyncPeerCandidate), String> {
+        let status = self.response.status();
+        let remote_addr = self.response.remote_addr();
+        let base_url = self.response.url().origin().ascii_serialization();
         let response_text = if status.is_success() {
-            response
+            self.response
                 .text()
-                .map_err(|error| format!("Host response body could not be read: {error}"))?
+                .map_err(|error| format!("Host health check body could not be read: {error}"))?
         } else {
             String::new()
         };
-        parse_library_sync_health_response(status, &response_text, fallback_candidate)?
-    } else {
-        let parsed = fetch_library_sync_host_json(base_url, "/api/v1/health")?;
-        (parsed, None)
-    };
+        let (health, fallback_candidate) =
+            parse_library_sync_health_response(status, &response_text, self.fallback_candidate)?;
+        Ok((
+            health,
+            LibrarySyncPeerCandidate {
+                base_url,
+                remote_addr,
+                route: self.route,
+                fallback_candidate,
+            },
+        ))
+    }
+}
 
-    verify_and_confirm_library_sync_host_identity(parsed, expected_library_id, fallback_candidate)
+impl LibrarySyncPeerCandidate {
+    pub(crate) fn verify(
+        self,
+        health: &CompanionHealthCheckResponse,
+        target: LibrarySyncTargetGuard,
+    ) -> Result<LibrarySyncTargetGuard, String> {
+        let base_url = target.base_url();
+        let configured_origin = reqwest::Url::parse(base_url)
+            .map_err(|error| format!("Invalid configured Host URL: {error}"))?
+            .origin()
+            .ascii_serialization();
+        if configured_origin != self.base_url {
+            return Err(
+                "The Host health response did not come from the configured origin.".to_string(),
+            );
+        }
+
+        if let Err(error) = verify_and_confirm_library_sync_host_identity(
+            health,
+            Some(target.library_id()),
+            self.fallback_candidate,
+        ) {
+            if let Some(route) = &self.route {
+                route
+                    .slot
+                    .invalidate_without_resolution(route.route.generation);
+            }
+            return Err(error);
+        }
+
+        let (client, local_route) = if let Some(lease) = self.route {
+            let (hostname, _) = stable_local_host_and_port(base_url)
+                .ok_or_else(|| "The checked local Host URL is invalid.".to_string())?;
+            let addr = self.remote_addr.ok_or_else(|| {
+                "The local Host health response did not identify a peer.".to_string()
+            })?;
+            let client = lease.route.client_for_verified_address(&hostname, addr)?;
+            (client, Some((lease.slot, lease.route.generation)))
+        } else {
+            (
+                shared_library_sync_http_client("verified Host")?.clone(),
+                None,
+            )
+        };
+        let peer = VerifiedLibrarySyncPeer {
+            base_url: base_url.to_string(),
+            client,
+            local_route,
+        };
+        Ok(target.with_verified_peer(peer))
+    }
+}
+
+impl ResolvedMdnsRoute {
+    fn client_for_verified_address(
+        &self,
+        hostname: &str,
+        addr: SocketAddr,
+    ) -> Result<reqwest::blocking::Client, String> {
+        let mut verified_client = self
+            .verified_client
+            .lock()
+            .map_err(|_| "The checked local client cache is unavailable.".to_string())?;
+        if let Some(cached) = verified_client.as_ref()
+            && cached.address == addr
+        {
+            return Ok(cached.client.clone());
+        }
+        // Resolve to the TCP peer that actually answered health. The discovered
+        // address list may include peers that have never passed the library check.
+        let client = library_sync_http_client_builder()
+            .resolve(hostname, addr)
+            .build()
+            .map_err(|error| format!("Failed to prepare checked local client: {error}"))?;
+        *verified_client = Some(VerifiedMdnsClient {
+            address: addr,
+            client: client.clone(),
+        });
+        Ok(client)
+    }
+}
+
+pub(crate) fn verify_library_sync_target(
+    target: LibrarySyncTargetGuard,
+) -> Result<(CompanionHealthCheckResponse, LibrarySyncTargetGuard), String> {
+    let (health, candidate) = request_library_sync_health(
+        target.base_url(),
+        LIBRARY_SYNC_REQUEST_TIMEOUT,
+        "Host request",
+        true,
+    )?
+    .read_health()?;
+    let target = candidate.verify(&health, target)?;
+    Ok((health, target))
 }
 
 fn parse_library_sync_health_response(
@@ -1716,10 +1790,10 @@ fn parse_library_sync_health_response(
 }
 
 fn verify_and_confirm_library_sync_host_identity(
-    parsed: CompanionHealthCheckResponse,
+    parsed: &CompanionHealthCheckResponse,
     expected_library_id: Option<&str>,
     fallback_candidate: Option<MdnsFallbackCandidate>,
-) -> Result<CompanionHealthCheckResponse, String> {
+) -> Result<(), String> {
     if !parsed.ok {
         return Err("Host reported not ready.".to_string());
     }
@@ -1761,7 +1835,7 @@ fn verify_and_confirm_library_sync_host_identity(
         None => {}
     }
 
-    Ok(parsed)
+    Ok(())
 }
 
 pub(crate) fn build_library_sync_cookie_header(
@@ -1788,20 +1862,19 @@ pub(crate) fn build_library_sync_cookie_header(
 #[cfg(test)]
 mod tests {
     use super::{
-        build_library_sync_cookie_header, current_or_renewed_library_sync_auth,
-        current_or_renewed_library_sync_auth_with,
+        build_library_sync_cookie_header, current_or_renewed_library_sync_auth_with,
         ensure_library_sync_credential_transport_with_policy, extract_cookie_value_from_set_cookie,
         extract_library_sync_pairing_token, library_sync_host_header_value,
         library_sync_http_client_builder, library_sync_http_client_builder_with_total_timeout,
         load_library_sync_device_token, load_library_sync_device_token_optional,
         parse_library_sync_health_response, remaining_library_sync_request_timeout,
         renew_and_cache_library_sync_auth_with, renew_or_reuse_library_sync_auth_with,
-        send_library_sync_auth_request_with_timeout, send_library_sync_mutation_request,
-        send_mdns_local_request_with, send_mdns_local_request_with_fallback_candidate,
+        send_library_sync_auth_request_with_timeout, send_mdns_local_request_with,
+        send_mdns_local_request_with_fallback_candidate, send_verified_library_sync_request,
         stable_local_host_and_port, store_library_sync_device_token,
         validated_library_sync_host_error, verify_and_confirm_library_sync_host_identity,
-        LibrarySyncAuthenticatedSessionState, MdnsTransport, LIBRARY_SYNC_AUTH_REQUEST_TIMEOUT,
-        LIBRARY_SYNC_HTTP_TOTAL_TIMEOUT, MDNS_HOST_CACHE_LIMIT,
+        LibrarySyncAuthenticatedSessionState, MdnsTransport, VerifiedLibrarySyncPeer,
+        LIBRARY_SYNC_AUTH_REQUEST_TIMEOUT, LIBRARY_SYNC_HTTP_TOTAL_TIMEOUT, MDNS_HOST_CACHE_LIMIT,
         MDNS_RETAINED_ROUTE_REVALIDATION_BACKOFF, MDNS_ROUTE_FRESH_TTL,
         SHARED_RENEWAL_FAILED_ERROR, SHARED_RENEWAL_UNAUTHORIZED_ERROR,
     };
@@ -1825,6 +1898,16 @@ mod tests {
         },
         thread,
     };
+
+    fn direct_test_peer(base_url: &str) -> VerifiedLibrarySyncPeer {
+        VerifiedLibrarySyncPeer {
+            base_url: base_url.to_string(),
+            client: library_sync_http_client_builder()
+                .build()
+                .expect("test HTTP client"),
+            local_route: None,
+        }
+    }
 
     fn test_state() -> AppState {
         AppState {
@@ -2130,7 +2213,7 @@ mod tests {
                 |base_url, _| {
                     let request_url = format!("{base_url}/api/v1/auth/renew");
                     match send_library_sync_auth_request_with_timeout(
-                        base_url,
+                        &direct_test_peer(base_url),
                         Duration::from_millis(200),
                         "Stalled auth request",
                         |client| client.post(&request_url),
@@ -2230,11 +2313,13 @@ mod tests {
         let request_url = format!("{base_url}/write");
 
         let started = Instant::now();
-        let response =
-            send_library_sync_mutation_request(&base_url, "slow mutation test", |client| {
-                client.post(&request_url).body("{}")
-            })
-            .expect("wait for definitive mutation result");
+        let response = send_verified_library_sync_request(
+            &direct_test_peer(&base_url),
+            None,
+            "slow mutation test",
+            |client| client.post(&request_url).body("{}"),
+        )
+        .expect("wait for definitive mutation result");
 
         assert!(response.status().is_success());
         assert!(started.elapsed() >= Duration::from_millis(2_500));
@@ -3065,13 +3150,12 @@ mod tests {
             route: initial.route.clone(),
         };
 
-        let parsed = verify_and_confirm_library_sync_host_identity(
-            test_health(Some("library-a"), true),
+        verify_and_confirm_library_sync_host_identity(
+            &test_health(Some("library-a"), true),
             Some("library-a"),
             Some(candidate),
         )
         .expect("matching expected identity confirms fallback route");
-        assert_eq!(parsed.library_id.as_deref(), Some("library-a"));
         let retained = initial.slot.state.lock().expect("read retained route");
         assert_eq!(
             retained.route.as_ref().map(|route| route.generation),
@@ -3113,7 +3197,7 @@ mod tests {
             };
 
             let error = verify_and_confirm_library_sync_host_identity(
-                health,
+                &health,
                 Some("library-a"),
                 Some(candidate),
             )
@@ -3135,7 +3219,7 @@ mod tests {
         let mut health = test_health(Some("library-a"), true);
         health.sync_mode = Some("CLIENT".to_string());
 
-        let error = verify_and_confirm_library_sync_host_identity(health, Some("library-a"), None)
+        let error = verify_and_confirm_library_sync_host_identity(&health, Some("library-a"), None)
             .err()
             .expect("a Client desktop must not be paired or used as a Host");
 
@@ -3163,7 +3247,7 @@ mod tests {
         };
 
         let error = verify_and_confirm_library_sync_host_identity(
-            test_health(Some("library-a"), true),
+            &test_health(Some("library-a"), true),
             None,
             Some(candidate),
         )
@@ -3396,6 +3480,164 @@ mod tests {
     }
 
     #[test]
+    fn authenticated_operations_use_the_checked_peer_across_an_address_change() {
+        const HEALTH_A: &str = r#"{"ok":true,"api_version":"v1","auth_mode":"pairing-session","library_id":"library-a","sync_mode":"HOST"}"#;
+        const HEALTH_WRONG: &str = r#"{"ok":true,"api_version":"v1","auth_mode":"pairing-session","library_id":"wrong-library","sync_mode":"HOST"}"#;
+        const HEALTH_REQUEST: &str = "GET /api/v1/health HTTP/1.1";
+        const READ_REQUEST: &str = "GET /api/v1/library/snapshot HTTP/1.1";
+        const WRITE_REQUEST: &str = "POST /api/v1/library/spools HTTP/1.1";
+
+        // Use the two loopback families so this runs without adapter changes
+        // on both desktop platforms. The resolver is injected at the mDNS boundary.
+        let first = TcpListener::bind("127.0.0.1:0").expect("bind first Host address");
+        let first_address = first.local_addr().expect("first Host address");
+        let port = first_address.port();
+        let second = TcpListener::bind(("::1", port)).expect("bind second Host address");
+        let second_address = second.local_addr().expect("second Host address");
+
+        let serve = |listener: TcpListener, requests: Vec<(&'static str, bool, &'static str)>| {
+            thread::spawn(move || {
+                listener
+                    .set_nonblocking(true)
+                    .expect("set nonblocking listener");
+                for (request_line, authenticated, body) in requests {
+                    let deadline = Instant::now() + Duration::from_secs(20);
+                    let mut stream = loop {
+                        match listener.accept() {
+                            Ok((stream, _)) => break stream,
+                            Err(error)
+                                if error.kind() == std::io::ErrorKind::WouldBlock
+                                    && Instant::now() < deadline =>
+                            {
+                                thread::sleep(Duration::from_millis(5))
+                            }
+                            Err(error) => panic!("did not receive {request_line}: {error}"),
+                        }
+                    };
+                    stream
+                        .set_nonblocking(false)
+                        .expect("set blocking connection");
+                    stream
+                        .set_read_timeout(Some(Duration::from_secs(5)))
+                        .expect("set read deadline");
+                    let mut request = Vec::new();
+                    while !request.ends_with(b"\r\n\r\n") {
+                        let mut byte = [0];
+                        stream.read_exact(&mut byte).expect("read request headers");
+                        request.push(byte[0]);
+                    }
+                    let request = String::from_utf8(request).expect("HTTP request");
+                    assert!(request.starts_with(request_line), "{request}");
+                    assert_eq!(
+                        request.to_ascii_lowercase().contains("\r\ncookie:"),
+                        authenticated,
+                        "{request}"
+                    );
+                    if request_line == WRITE_REQUEST {
+                        let mut payload = [0; 2];
+                        stream.read_exact(&mut payload).expect("read write payload");
+                        assert_eq!(&payload, b"{}");
+                    }
+                    let response = format!(
+                        "HTTP/1.1 200 OK\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{body}",
+                        body.len(),
+                    );
+                    stream
+                        .write_all(response.as_bytes())
+                        .expect("write Host response");
+                }
+            })
+        };
+        let transport = MdnsTransport::default();
+        let hostname = "moving-host.local";
+        let base_url = format!("http://{hostname}:{port}");
+        let settings = credential_test_state(&base_url);
+        let db = FilamentDatabase::open(&settings.db_path).expect("test Client database");
+        let mut saved = db.get_library_sync_settings().expect("Client settings");
+        saved.library_id = "library-a".to_string();
+        db.save_library_sync_settings(&saved)
+            .expect("set paired library");
+        drop(db);
+        settings
+            .library_sync_auth
+            .replace_authenticated(&base_url, "session", "csrf", "device")
+            .expect("seed Client runtime authorization");
+
+        let first_host = serve(
+            first,
+            vec![
+                (HEALTH_REQUEST, false, HEALTH_A),
+                (READ_REQUEST, true, r#"{"endpoint":"first"}"#),
+                (WRITE_REQUEST, true, r#"{"ok":true}"#),
+            ],
+        );
+        let second_host = serve(
+            second,
+            vec![
+                (HEALTH_REQUEST, false, HEALTH_WRONG),
+                (HEALTH_REQUEST, false, HEALTH_A),
+                (READ_REQUEST, true, r#"{"endpoint":"second"}"#),
+            ],
+        );
+
+        let verify = |address| {
+            let outcome = send_mdns_local_request_with_fallback_candidate(
+                &transport,
+                (hostname, port),
+                Duration::from_secs(2),
+                "test Host health",
+                true,
+                |_, _, _| Ok(vec![address]),
+                |client| client.get(format!("{base_url}/api/v1/health")),
+            )
+            .expect("public health request");
+            let (health, candidate) = outcome.read_health().expect("parse public health");
+            let target = crate::library_sync_target_guard::capture_library_sync_target(
+                &settings,
+                &base_url,
+                Some("library-a"),
+            )
+            .expect("current Client target");
+            candidate.verify(&health, target)
+        };
+
+        let checked_first = verify(first_address).expect("verify original Host");
+        expire_cached_route(&transport, hostname);
+        let error = verify(second_address).expect_err("reject wrong library at new address");
+        assert!(error.contains("different library"), "{error}");
+
+        // An already in-flight operation remains bound to the peer it checked.
+        let first_snapshot: serde_json::Value =
+            super::get_library_sync_host_json_authenticated_for_target(
+                &settings,
+                "/api/v1/library/snapshot",
+                &checked_first,
+            )
+            .expect("read on the original checked address");
+        assert_eq!(first_snapshot["endpoint"], "first");
+        super::perform_library_sync_host_write(
+            &settings,
+            "/api/v1/library/spools",
+            &serde_json::json!({}),
+            &checked_first,
+        )
+        .expect("write on the original checked address");
+
+        let checked_second = verify(second_address).expect("verify the moved Host");
+        let second_snapshot: serde_json::Value =
+            super::get_library_sync_host_json_authenticated_for_target(
+                &settings,
+                "/api/v1/library/snapshot",
+                &checked_second,
+            )
+            .expect("read on the newly checked address without re-pairing");
+        assert_eq!(second_snapshot["endpoint"], "second");
+        first_host.join().expect("first Host finished");
+        second_host.join().expect("second Host finished");
+        let _ = std::fs::remove_file(&settings.db_path);
+    }
+
+    #[test]
     fn pairing_token_accepts_raw_tokens_and_pairing_urls() {
         assert_eq!(
             extract_library_sync_pairing_token("http://192.168.1.10:4278/companion?pairing=abc123")
@@ -3500,8 +3742,10 @@ mod tests {
         // No device token exists in the credential store. A successful read therefore proves
         // the warm path stayed entirely in the zeroized runtime session instead of reopening
         // Keychain or Credential Manager.
-        let auth = current_or_renewed_library_sync_auth(&state, host)
-            .expect("read warm runtime authentication");
+        let auth = current_or_renewed_library_sync_auth_with(&state, host, |_, _| {
+            panic!("warm session must not renew")
+        })
+        .expect("read warm runtime authentication");
         assert_eq!(auth.session_id, "session-id");
         assert_eq!(auth.csrf_token, "csrf-token");
         assert_eq!(auth.device_token, "runtime-device-token");
