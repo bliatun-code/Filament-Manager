@@ -174,6 +174,7 @@ export function renderAddFilamentTaskSheetBody(state, busy, escapeHtml, getPendi
       );
       const itemSwatch = linkedMaster?.hex_color || suggestSwatchHex(item.color_name, item.filament_name, item.vendor, item.material);
       const pendingReceipt = getPendingWishlistReceipt(item.id);
+      const pendingReceiptDescriptionId = `wishlist-receipt-description-${encodeURIComponent(item.id)}`;
       return renderSwatchSurface({
         className: "add-spool-wishlist-row",
         escapeHtml,
@@ -223,7 +224,7 @@ export function renderAddFilamentTaskSheetBody(state, busy, escapeHtml, getPendi
             ${
               pendingReceipt
                 ? `<div class="wishlist-receipt-form">
-                    <p class="section-copy">${escapeHtml(pendingReceipt.requiresReview
+                    <p class="section-copy" id="${escapeHtml(pendingReceiptDescriptionId)}">${escapeHtml(pendingReceipt.requiresReview
                       ? t(locale, "errors.wishlistReceiptCheckHost", "Check the order on the Host before receiving any remaining rolls.")
                       : t(locale, "errors.wishlistReceiptPending", "The receipt is unconfirmed. Retry with the same quantity and purchase details."))}</p>
                     ${renderCompanionActionButton({
@@ -231,11 +232,12 @@ export function renderAddFilamentTaskSheetBody(state, busy, escapeHtml, getPendi
                       attributes: {
                         "data-action": pendingReceipt.requiresReview ? "wishlist-receipt-reviewed" : "wishlist-receipt-retry",
                         "data-wishlist-id": item.id,
+                        "aria-describedby": pendingReceiptDescriptionId,
                       },
                       escapeHtml,
                       label: pendingReceipt.requiresReview
                         ? t(locale, "errors.wishlistReceiptReviewed", "I checked the order on the Host")
-                        : t(locale, "storage.retryWishlistReceipt", "Retry receipt"),
+                        : t(locale, "storage.stockNow", "Stock now"),
                     })}
                   </div>`
                 : item.status !== "RECEIVED"

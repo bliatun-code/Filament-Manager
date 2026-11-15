@@ -81,12 +81,12 @@ test("Companion restores wishlist receipt controls after the Host reply is lost"
           await originalForm.locator('details[data-collapsible^="wishlist-receipt:"] > summary').click();
           await originalForm.locator('input[name="batch_code"]').fill("QA batch");
           await originalForm.locator('button[type="submit"]').click();
-          await originalOrder.getByRole("button", { name: "Retry receipt" }).waitFor();
+          await originalOrder.locator('[data-action="wishlist-receipt-retry"]').waitFor();
 
           await page.reload();
           const recoveredOrder = await openOrder(page);
           assert.match(await recoveredOrder.innerText(), new RegExp(`Qty ${remaining}`));
-          const retry = recoveredOrder.getByRole("button", { name: "Retry receipt" });
+          const retry = recoveredOrder.locator('[data-action="wishlist-receipt-retry"]');
           const replay = page.waitForResponse(response => new URL(response.url()).pathname === receiptEndpoint);
           await retry.click();
           assert.equal((await replay).status(), 200);
