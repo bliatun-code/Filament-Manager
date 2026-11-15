@@ -57,7 +57,7 @@ fn update_library_sync_host_spool_weight_blocking(
     input: LibrarySyncWeightWriteInput,
 ) -> Result<(), String> {
     let host_input = library_sync_host_input(&input.base_url, input.expected_library_id.as_deref());
-    let (normalized_base_url, _, target) = prepare_library_sync_host_write(state, &host_input)?;
+    let (_, _, target) = prepare_library_sync_host_write(state, &host_input)?;
 
     let spool_id = input.spool_id.trim();
     if spool_id.is_empty() {
@@ -67,12 +67,12 @@ fn update_library_sync_host_spool_weight_blocking(
     let spool_id = encode_library_sync_path_segment(spool_id);
     perform_library_sync_host_write(
         state,
-        &normalized_base_url,
         &format!("/api/v1/spools/{spool_id}/weight"),
         &serde_json::json!({ "grams": input.grams.max(0) }),
+        &target,
     )?;
 
-    refresh_library_sync_spool_cache(state, &normalized_base_url, &target);
+    refresh_library_sync_spool_cache(state, &target);
     save_library_sync_success(state, &target, "Host spool weight updated.", None)?;
     Ok(())
 }
@@ -94,7 +94,7 @@ fn update_library_sync_host_spool_tare_weight_blocking(
     input: LibrarySyncWeightWriteInput,
 ) -> Result<(), String> {
     let host_input = library_sync_host_input(&input.base_url, input.expected_library_id.as_deref());
-    let (normalized_base_url, _, target) = prepare_library_sync_host_write(state, &host_input)?;
+    let (_, _, target) = prepare_library_sync_host_write(state, &host_input)?;
 
     let spool_id = input.spool_id.trim();
     if spool_id.is_empty() {
@@ -104,12 +104,12 @@ fn update_library_sync_host_spool_tare_weight_blocking(
     let spool_id = encode_library_sync_path_segment(spool_id);
     perform_library_sync_host_write(
         state,
-        &normalized_base_url,
         &format!("/api/v1/spools/{spool_id}/tare-weight"),
         &serde_json::json!({ "grams": input.grams.max(0) }),
+        &target,
     )?;
 
-    refresh_library_sync_spool_cache(state, &normalized_base_url, &target);
+    refresh_library_sync_spool_cache(state, &target);
     save_library_sync_success(state, &target, "Host spool tare weight updated.", None)?;
     Ok(())
 }
@@ -206,7 +206,7 @@ fn update_library_sync_host_spool_details_for_target(
     input: HostSpoolDetailsUpdate,
 ) -> Result<(), String> {
     let host_input = library_sync_host_input(base_url, expected_library_id);
-    let (normalized_base_url, health, target) =
+    let (_, health, target) =
         prepare_library_sync_host_write_for_generation(state, &host_input, expected_generation)?;
     let spool_id = input.spool_id.trim();
     if spool_id.is_empty() {
@@ -220,14 +220,13 @@ fn update_library_sync_host_spool_details_for_target(
 
     let _: serde_json::Value = perform_library_sync_host_write_and_parse_for_target(
         state,
-        &normalized_base_url,
         &format!("/api/v1/spools/{spool_id}/details"),
         &serde_json::Value::Object(payload),
         &target,
         None,
     )?;
 
-    refresh_library_sync_spool_cache(state, &normalized_base_url, &target);
+    refresh_library_sync_spool_cache(state, &target);
     let _ = save_library_sync_success(state, &target, "Host spool details updated.", None);
     Ok(())
 }
@@ -347,7 +346,7 @@ fn update_library_sync_host_spool_ownership_blocking(
     input: LibrarySyncUpdateSpoolOwnershipInput,
 ) -> Result<(), String> {
     let host_input = library_sync_host_input(&input.base_url, input.expected_library_id.as_deref());
-    let (normalized_base_url, _, target) = prepare_library_sync_host_write(state, &host_input)?;
+    let (_, _, target) = prepare_library_sync_host_write(state, &host_input)?;
 
     let spool_id = input.spool_id.trim();
     if spool_id.is_empty() {
@@ -357,7 +356,6 @@ fn update_library_sync_host_spool_ownership_blocking(
     let spool_id = encode_library_sync_path_segment(spool_id);
     perform_library_sync_host_write(
         state,
-        &normalized_base_url,
         &format!("/api/v1/spools/{spool_id}/ownership"),
         &serde_json::json!({
             "ownership_type": input.ownership_type.trim(),
@@ -365,9 +363,10 @@ fn update_library_sync_host_spool_ownership_blocking(
             "owner_contact": trimmed_non_empty(input.owner_contact.as_deref()),
             "ownership_note": trimmed_non_empty(input.ownership_note.as_deref()),
         }),
+        &target,
     )?;
 
-    refresh_library_sync_spool_cache(state, &normalized_base_url, &target);
+    refresh_library_sync_spool_cache(state, &target);
     save_library_sync_success(state, &target, "Host spool ownership updated.", None)?;
     Ok(())
 }
@@ -389,7 +388,7 @@ fn update_library_sync_host_spool_rfid_tag_blocking(
     input: LibrarySyncUpdateSpoolRfidTagInput,
 ) -> Result<(), String> {
     let host_input = library_sync_host_input(&input.base_url, input.expected_library_id.as_deref());
-    let (normalized_base_url, _, target) = prepare_library_sync_host_write_for_generation(
+    let (_, _, target) = prepare_library_sync_host_write_for_generation(
         state,
         &host_input,
         input.expected_target_generation,
@@ -403,7 +402,6 @@ fn update_library_sync_host_spool_rfid_tag_blocking(
     let spool_id = encode_library_sync_path_segment(spool_id);
     let _: serde_json::Value = perform_library_sync_host_write_and_parse_for_target(
         state,
-        &normalized_base_url,
         &format!("/api/v1/spools/{spool_id}/rfid"),
         &serde_json::json!({
             "rfid_tag": trimmed_non_empty(input.rfid_tag.as_deref()),
@@ -413,7 +411,7 @@ fn update_library_sync_host_spool_rfid_tag_blocking(
         None,
     )?;
 
-    refresh_library_sync_spool_cache(state, &normalized_base_url, &target);
+    refresh_library_sync_spool_cache(state, &target);
     let _ = save_library_sync_success(state, &target, "Host spool RFID updated.", None);
     Ok(())
 }
@@ -432,7 +430,7 @@ pub(crate) fn create_library_sync_host_spool_blocking(
     input: LibrarySyncCreateSpoolInput,
 ) -> Result<String, String> {
     let host_input = library_sync_host_input(&input.base_url, input.expected_library_id.as_deref());
-    let (normalized_base_url, _, target) = prepare_library_sync_host_write(state, &host_input)?;
+    let (_, _, target) = prepare_library_sync_host_write(state, &host_input)?;
 
     let path = library_sync_create_spool_path(
         input.ownership_type.as_deref(),
@@ -442,7 +440,6 @@ pub(crate) fn create_library_sync_host_spool_blocking(
 
     let response: LibrarySyncCreateSpoolResponse = perform_library_sync_host_write_and_parse(
         state,
-        &normalized_base_url,
         path,
         &serde_json::json!({
             "master_id": trimmed_non_empty(input.master_id.as_deref()),
@@ -457,12 +454,13 @@ pub(crate) fn create_library_sync_host_spool_blocking(
             "owner_contact": trimmed_non_empty(input.owner_contact.as_deref()),
             "ownership_note": trimmed_non_empty(input.ownership_note.as_deref()),
         }),
+        &target,
     )?;
     if !response.ok {
         return Err(response.message);
     }
 
-    refresh_library_sync_spool_cache(state, &normalized_base_url, &target);
+    refresh_library_sync_spool_cache(state, &target);
     save_library_sync_success(state, &target, &response.message, None)?;
 
     Ok(response.spool_id)

@@ -34,9 +34,9 @@ fn fetch_library_sync_locations_blocking(
     input: LibrarySyncLocationTargetInput,
 ) -> Result<InventoryLocationListResponse, String> {
     let host_input = library_sync_host_input(&input.base_url, input.expected_library_id.as_deref());
-    let (base_url, health, target) = prepare_library_sync_host_read(state, &host_input)?;
+    let (_, health, target) = prepare_library_sync_host_read(state, &host_input)?;
     let advertised = host_supports_locations(&health.capabilities);
-    match fetch_and_cache_locations(state, &base_url, &target) {
+    match fetch_and_cache_locations(state, &target) {
         Ok(cached) => {
             save_library_sync_success(
                 state,
@@ -107,7 +107,7 @@ fn create_library_sync_host_location_blocking(
     state: &AppState,
     input: LibrarySyncCreateInventoryLocationInput,
 ) -> Result<InventoryLocationRow, String> {
-    let (base_url, target) = prepare_location_write_target(
+    let target = prepare_location_write_target(
         state,
         &input.base_url,
         input.expected_library_id.as_deref(),
@@ -115,12 +115,11 @@ fn create_library_sync_host_location_blocking(
     )?;
     let row = location_write(
         state,
-        &base_url,
         &target,
         "/api/v1/locations",
         &serde_json::json!({ "name": input.name, "parent_id": input.parent_id }),
     )?;
-    refresh_location_cache_best_effort(state, &base_url, &target);
+    refresh_location_cache_best_effort(state, &target);
     let _ = save_library_sync_success(state, &target, "Host location created.", None);
     Ok(row)
 }
@@ -139,7 +138,7 @@ fn rename_library_sync_host_location_blocking(
     state: &AppState,
     input: LibrarySyncRenameInventoryLocationInput,
 ) -> Result<InventoryLocationRow, String> {
-    let (base_url, target) = prepare_location_write_target(
+    let target = prepare_location_write_target(
         state,
         &input.base_url,
         input.expected_library_id.as_deref(),
@@ -151,12 +150,11 @@ fn rename_library_sync_host_location_blocking(
     );
     let row = location_write(
         state,
-        &base_url,
         &target,
         &path,
         &serde_json::json!({ "location_id": input.location_id, "name": input.name }),
     )?;
-    refresh_location_cache_best_effort(state, &base_url, &target);
+    refresh_location_cache_best_effort(state, &target);
     let _ = save_library_sync_success(state, &target, "Host location renamed.", None);
     Ok(row)
 }
@@ -218,7 +216,7 @@ fn location_id_write_blocking(
     action: &'static str,
     success_message: &'static str,
 ) -> Result<InventoryLocationRow, String> {
-    let (base_url, target) = prepare_location_write_target(
+    let target = prepare_location_write_target(
         state,
         &input.base_url,
         input.expected_library_id.as_deref(),
@@ -231,12 +229,11 @@ fn location_id_write_blocking(
     );
     let row = location_write(
         state,
-        &base_url,
         &target,
         &path,
         &serde_json::json!({ "location_id": input.location_id }),
     )?;
-    refresh_location_cache_best_effort(state, &base_url, &target);
+    refresh_location_cache_best_effort(state, &target);
     let _ = save_library_sync_success(state, &target, success_message, None);
     Ok(row)
 }
@@ -255,7 +252,7 @@ fn merge_library_sync_host_locations_blocking(
     state: &AppState,
     input: LibrarySyncMergeInventoryLocationsInput,
 ) -> Result<InventoryLocationMergeResult, String> {
-    let (base_url, target) = prepare_location_write_target(
+    let target = prepare_location_write_target(
         state,
         &input.base_url,
         input.expected_library_id.as_deref(),
@@ -263,7 +260,6 @@ fn merge_library_sync_host_locations_blocking(
     )?;
     let result = location_write(
         state,
-        &base_url,
         &target,
         "/api/v1/locations/merge",
         &serde_json::json!({
@@ -271,7 +267,7 @@ fn merge_library_sync_host_locations_blocking(
             "target_id": input.target_id,
         }),
     )?;
-    refresh_location_cache_best_effort(state, &base_url, &target);
+    refresh_location_cache_best_effort(state, &target);
     let _ = save_library_sync_success(state, &target, "Host locations merged.", None);
     Ok(result)
 }
@@ -281,16 +277,16 @@ fn prepare_location_write_target(
     base_url: &str,
     expected_library_id: Option<&str>,
     expected_generation: Option<u64>,
-) -> Result<(String, LibrarySyncTargetGuard), String> {
+) -> Result<LibrarySyncTargetGuard, String> {
     let host_input = library_sync_host_input(base_url, expected_library_id);
-    let (base_url, health, target) =
+    let (_, health, target) =
         prepare_library_sync_host_write_for_generation(state, &host_input, expected_generation)?;
     if !host_supports_locations(&health.capabilities) {
         // Hosts released before the capability marker can still have the
         // collection endpoint. Probe that unambiguous route once before
         // deciding that the feature is genuinely absent; a per-resource 404
         // must remain a normal `common.not_found` domain error.
-        match fetch_and_cache_locations(state, &base_url, &target) {
+        match fetch_and_cache_locations(state, &target) {
             Ok(_) => {}
             Err(error) if is_missing_location_endpoint(&error) => {
                 return Err(legacy_location_host_error());
@@ -298,29 +294,24 @@ fn prepare_location_write_target(
             Err(error) => return Err(error),
         }
     }
-    Ok((base_url, target))
+    Ok(target)
 }
 
 fn location_write<T: serde::Serialize, R: serde::de::DeserializeOwned>(
     state: &AppState,
-    base_url: &str,
     target: &LibrarySyncTargetGuard,
     path: &str,
     payload: &T,
 ) -> Result<R, String> {
-    perform_library_sync_host_write_and_parse_for_target(
-        state, base_url, path, payload, target, None,
-    )
+    perform_library_sync_host_write_and_parse_for_target(state, path, payload, target, None)
 }
 
 fn fetch_and_cache_locations(
     state: &AppState,
-    base_url: &str,
     target: &LibrarySyncTargetGuard,
 ) -> Result<crate::backend::filament_database::LibrarySyncCachedLocationListRow, String> {
     let rows: Vec<InventoryLocationRow> = get_library_sync_host_json_authenticated_for_target(
         state,
-        base_url,
         "/api/v1/library/locations?include_archived=true",
         target,
     )?;
@@ -331,10 +322,9 @@ fn fetch_and_cache_locations(
 
 pub(crate) fn refresh_location_cache_best_effort(
     state: &AppState,
-    base_url: &str,
     target: &LibrarySyncTargetGuard,
 ) {
-    let _ = fetch_and_cache_locations(state, base_url, target);
+    let _ = fetch_and_cache_locations(state, target);
 }
 
 fn is_missing_location_endpoint(error: &str) -> bool {

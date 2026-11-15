@@ -37,7 +37,7 @@ pub(crate) fn assign_library_sync_host_printer_slot_blocking(
     input: LibrarySyncAssignPrinterSlotInput,
 ) -> Result<(), String> {
     let host_input = library_sync_host_input(&input.base_url, input.expected_library_id.as_deref());
-    let (normalized_base_url, _, target) = prepare_library_sync_host_write(state, &host_input)?;
+    let (_, _, target) = prepare_library_sync_host_write(state, &host_input)?;
 
     let printer_id = input.printer_id.trim();
     let slot_id = input.slot_id.trim();
@@ -49,7 +49,6 @@ pub(crate) fn assign_library_sync_host_printer_slot_blocking(
 
     perform_library_sync_host_write(
         state,
-        &normalized_base_url,
         &format!("/api/v1/printers/{printer_id}/slots/{slot_id}/assignment"),
         &serde_json::json!({
             "spool_id": trimmed_non_empty(input.spool_id.as_deref()),
@@ -57,10 +56,11 @@ pub(crate) fn assign_library_sync_host_printer_slot_blocking(
             "rfid_override_color_hex": trimmed_non_empty(input.rfid_override_color_hex.as_deref()),
             "clear_live_cache_before_next_refresh": input.clear_live_cache_before_next_refresh.unwrap_or(false),
         }),
+        &target,
     )?;
 
-    refresh_library_sync_printer_cache(state, &normalized_base_url, &target);
-    refresh_library_sync_spool_cache(state, &normalized_base_url, &target);
+    refresh_library_sync_printer_cache(state, &target);
+    refresh_library_sync_spool_cache(state, &target);
     save_library_sync_success(state, &target, "Host printer slot updated.", None)?;
     Ok(())
 }
@@ -80,7 +80,7 @@ fn record_library_sync_host_print_usage_blocking(
     input: LibrarySyncRecordPrintUsageInput,
 ) -> Result<(), String> {
     let host_input = library_sync_host_input(&input.base_url, input.expected_library_id.as_deref());
-    let (normalized_base_url, _, target) = prepare_library_sync_host_write(state, &host_input)?;
+    let (_, _, target) = prepare_library_sync_host_write(state, &host_input)?;
 
     let printer_id = input.printer_id.trim();
     let spool_id = input.spool_id.trim();
@@ -95,17 +95,17 @@ fn record_library_sync_host_print_usage_blocking(
 
     perform_library_sync_host_write(
         state,
-        &normalized_base_url,
         &format!("/api/v1/printers/{printer_id}/spools/{spool_id}/usage"),
         &serde_json::json!({
             "grams": input.grams,
             "job_name": trimmed_non_empty(input.job_name.as_deref()),
             "success": input.success.unwrap_or(true),
         }),
+        &target,
     )?;
 
-    refresh_library_sync_printer_cache(state, &normalized_base_url, &target);
-    refresh_library_sync_spool_cache(state, &normalized_base_url, &target);
+    refresh_library_sync_printer_cache(state, &target);
+    refresh_library_sync_spool_cache(state, &target);
     save_library_sync_success(state, &target, "Host print usage recorded.", None)?;
     Ok(())
 }
@@ -127,7 +127,7 @@ fn accept_library_sync_host_bambu_live_weight_estimate_blocking(
     input: LibrarySyncAcceptBambuLiveWeightEstimateInput,
 ) -> Result<(), String> {
     let host_input = library_sync_host_input(&input.base_url, input.expected_library_id.as_deref());
-    let (normalized_base_url, _, target) = prepare_library_sync_host_write(state, &host_input)?;
+    let (_, _, target) = prepare_library_sync_host_write(state, &host_input)?;
     let printer_id = input.printer_id.trim();
     let slot_id = input.slot_id.trim();
     let spool_id = input.spool_id.trim();
@@ -147,17 +147,17 @@ fn accept_library_sync_host_bambu_live_weight_estimate_blocking(
 
     perform_library_sync_host_write(
         state,
-        &normalized_base_url,
         &bambu_live_weight_estimate_accept_path(printer_id, slot_id, spool_id),
         &bambu_live_weight_estimate_accept_payload(
             expected_weight_seen_at,
             input.expected_remaining_grams,
             input.expected_current_grams,
         ),
+        &target,
     )?;
 
-    refresh_library_sync_printer_cache(state, &normalized_base_url, &target);
-    refresh_library_sync_spool_cache(state, &normalized_base_url, &target);
+    refresh_library_sync_printer_cache(state, &target);
+    refresh_library_sync_spool_cache(state, &target);
     save_library_sync_success_without_message(state, &target, None)?;
     Ok(())
 }
@@ -202,7 +202,7 @@ fn create_library_sync_host_printer_blocking(
     input: LibrarySyncCreatePrinterInput,
 ) -> Result<(), String> {
     let host_input = library_sync_host_input(&input.base_url, input.expected_library_id.as_deref());
-    let (normalized_base_url, _, target) = prepare_library_sync_host_write(state, &host_input)?;
+    let (_, _, target) = prepare_library_sync_host_write(state, &host_input)?;
 
     let id = input.id.trim();
     let model = input.model.trim();
@@ -213,7 +213,6 @@ fn create_library_sync_host_printer_blocking(
 
     perform_library_sync_host_write(
         state,
-        &normalized_base_url,
         "/api/v1/printers",
         &serde_json::json!({
             "id": id,
@@ -222,9 +221,10 @@ fn create_library_sync_host_printer_blocking(
             "ams_units": input.ams_units,
             "slots_per_ams": input.slots_per_ams,
         }),
+        &target,
     )?;
 
-    refresh_library_sync_printer_cache(state, &normalized_base_url, &target);
+    refresh_library_sync_printer_cache(state, &target);
     save_library_sync_success(state, &target, "Host printer saved.", None)?;
     Ok(())
 }
@@ -246,7 +246,7 @@ pub(crate) fn update_library_sync_host_master_catalog_entry_blocking(
     input: LibrarySyncUpdateMasterCatalogEntryInput,
 ) -> Result<(), String> {
     let host_input = library_sync_host_input(&input.base_url, input.expected_library_id.as_deref());
-    let (normalized_base_url, _, target) = prepare_library_sync_host_write_for_generation(
+    let (_, _, target) = prepare_library_sync_host_write_for_generation(
         state,
         &host_input,
         input.expected_target_generation,
@@ -267,7 +267,6 @@ pub(crate) fn update_library_sync_host_master_catalog_entry_blocking(
 
     let _: serde_json::Value = perform_library_sync_host_write_and_parse_for_target(
         state,
-        &normalized_base_url,
         &format!("/api/v1/catalog/masters/{master_id}/details"),
         &serde_json::json!({
             "material": material,
@@ -303,7 +302,7 @@ fn refresh_library_sync_host_vendor_catalog_blocking(
     input: LibrarySyncRefreshCatalogInput,
 ) -> Result<CatalogRefreshResult, String> {
     let host_input = library_sync_host_input(&input.base_url, input.expected_library_id.as_deref());
-    let (normalized_base_url, _, target) = prepare_library_sync_host_write(state, &host_input)?;
+    let (_, _, target) = prepare_library_sync_host_write(state, &host_input)?;
 
     let vendor = input.vendor.trim();
     if !vendor.eq_ignore_ascii_case("Bambu") && !vendor.eq_ignore_ascii_case("eSUN") {
@@ -325,12 +324,12 @@ fn refresh_library_sync_host_vendor_catalog_blocking(
 
     let summary = perform_library_sync_host_write_and_parse(
         state,
-        &normalized_base_url,
         "/api/v1/catalog/refresh",
         &serde_json::json!({
             "vendor": vendor,
             "material_types": material_types,
         }),
+        &target,
     )?;
 
     save_library_sync_success(state, &target, "Host catalog refreshed.", None)?;
@@ -354,8 +353,7 @@ fn audit_library_sync_host_vendor_catalog_blocking(
     input: LibrarySyncAuditCatalogInput,
 ) -> Result<CatalogSourceAuditResult, String> {
     let host_input = library_sync_host_input(&input.base_url, input.expected_library_id.as_deref());
-    let (normalized_base_url, health, target) =
-        prepare_library_sync_host_write(state, &host_input)?;
+    let (_, health, target) = prepare_library_sync_host_write(state, &host_input)?;
     require_vendor_catalog_discovery_capability(&health.capabilities)?;
 
     let vendor = input.vendor.trim();
@@ -365,9 +363,9 @@ fn audit_library_sync_host_vendor_catalog_blocking(
 
     let summary = perform_library_sync_host_write_and_parse(
         state,
-        &normalized_base_url,
         "/api/v1/catalog/audit",
         &serde_json::json!({ "vendor": vendor }),
+        &target,
     )?;
     save_library_sync_success(state, &target, "Host catalog source checked.", None)?;
     Ok(summary)
@@ -417,7 +415,7 @@ fn delete_library_sync_host_printer_blocking(
     input: LibrarySyncDeletePrinterInput,
 ) -> Result<(), String> {
     let host_input = library_sync_host_input(&input.base_url, input.expected_library_id.as_deref());
-    let (normalized_base_url, _, target) = prepare_library_sync_host_write(state, &host_input)?;
+    let (_, _, target) = prepare_library_sync_host_write(state, &host_input)?;
 
     let printer_id = input.printer_id.trim();
     if printer_id.is_empty() {
@@ -427,13 +425,13 @@ fn delete_library_sync_host_printer_blocking(
 
     perform_library_sync_host_write(
         state,
-        &normalized_base_url,
         &format!("/api/v1/printers/{printer_id}/delete"),
         &serde_json::json!({}),
+        &target,
     )?;
 
-    refresh_library_sync_printer_cache(state, &normalized_base_url, &target);
-    refresh_library_sync_spool_cache(state, &normalized_base_url, &target);
+    refresh_library_sync_printer_cache(state, &target);
+    refresh_library_sync_spool_cache(state, &target);
     save_library_sync_success(state, &target, "Host printer deleted.", None)?;
     Ok(())
 }

@@ -5,10 +5,10 @@ use crate::library_sync_command_support::{
     normalize_library_sync_host_input,
 };
 use crate::library_sync_host_client::{
-    delete_library_sync_device_token, ensure_library_sync_host_matches,
-    extract_library_sync_pairing_token, load_library_sync_device_token_bytes_optional,
-    pair_library_sync_host_session, store_library_sync_device_token,
-    store_library_sync_device_token_bytes, LibrarySyncAuthenticatedSessionState,
+    delete_library_sync_device_token, extract_library_sync_pairing_token,
+    load_library_sync_device_token_bytes_optional, pair_library_sync_host_session,
+    store_library_sync_device_token, store_library_sync_device_token_bytes,
+    verify_library_sync_target, LibrarySyncAuthenticatedSessionState,
 };
 use crate::library_sync_models::PairLibrarySyncHostInput;
 use crate::library_sync_target_guard::{
@@ -48,8 +48,9 @@ fn pair_library_sync_host_at_current_target(
     let _credential_mutation = lock_secure_credential_mutation()?;
     let target = capture_library_sync_target(state, normalized_base_url, None)?;
 
-    let auth_state = pair_library_sync_host_session(normalized_base_url, pairing_token)?;
-    let health = ensure_library_sync_host_matches(normalized_base_url, Some(target.library_id()))?;
+    let (health, target) = verify_library_sync_target(target)?;
+    ensure_library_sync_target_current(state, &target)?;
+    let auth_state = pair_library_sync_host_session(target.verified_peer()?, pairing_token)?;
     ensure_library_sync_target_current(state, &target)?;
 
     persist_library_sync_pairing_under_gate(
@@ -206,11 +207,11 @@ mod tests {
     use crate::state::{
         AppState, CompanionRuntimeState, TrustedLanCompanionRuntime, TRUSTED_LAN_DEFAULT_PORT,
     };
-    use std::io::{Read, Write};
-    use std::net::TcpListener;
+    use std::io::{BufRead, BufReader, Read, Write};
+    use std::net::{TcpListener, TcpStream};
     use std::sync::atomic::{AtomicU64, Ordering};
     use std::thread;
-    use std::time::{SystemTime, UNIX_EPOCH};
+    use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
     static NEXT_TEST_DATABASE: AtomicU64 = AtomicU64::new(1);
 
@@ -342,57 +343,100 @@ mod tests {
         let _ = std::fs::remove_file(&state.db_path);
     }
 
-    #[test]
-    fn pairing_rejects_a_different_remote_library_without_persisting_auth() {
-        let listener = TcpListener::bind("127.0.0.1:0").expect("bind mismatched pairing Host");
-        let address = listener
-            .local_addr()
-            .expect("read mismatched pairing Host address");
+    fn read_test_request(stream: &TcpStream) -> (String, String) {
+        stream
+            .set_read_timeout(Some(Duration::from_secs(5)))
+            .unwrap();
+        let mut reader = BufReader::new(stream);
+        let mut request_line = String::new();
+        reader.read_line(&mut request_line).unwrap();
+        let mut content_length = 0;
+        loop {
+            let mut line = String::new();
+            if reader.read_line(&mut line).unwrap() == 0 || line == "\r\n" {
+                break;
+            }
+            if let Some((name, value)) = line.split_once(':')
+                && name.eq_ignore_ascii_case("Content-Length")
+            {
+                content_length = value.trim().parse().unwrap();
+            }
+        }
+        assert!(content_length < 4096);
+        let mut body = vec![0; content_length];
+        reader.read_exact(&mut body).unwrap();
+        (request_line, String::from_utf8(body).unwrap())
+    }
+
+    fn write_test_response(stream: &mut TcpStream, headers: &str, body: &str) {
+        write!(
+            stream,
+            "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\n{headers}Content-Length: {}\r\nConnection: close\r\n\r\n{body}",
+            body.len()
+        )
+        .unwrap();
+    }
+
+    fn test_pairing_host(library_id: &'static str) -> (String, thread::JoinHandle<()>) {
+        let listener = TcpListener::bind("127.0.0.1:0").expect("bind pairing Host");
+        let address = listener.local_addr().expect("read pairing Host address");
         let server = thread::spawn(move || {
-            for (expected_request, status, headers, body) in [
-                (
-                    "POST /api/v1/auth/pair HTTP/1.1",
-                    "200 OK",
+            let (mut stream, _) = listener.accept().expect("accept Host check");
+            let (request, body) = read_test_request(&stream);
+            assert_eq!(request.trim_end(), "GET /api/v1/health HTTP/1.1");
+            assert!(body.is_empty());
+            let health = serde_json::json!({
+                "ok": true,
+                "api_version": "v1",
+                "capabilities": [],
+                "auth_mode": "pairing-session",
+                "access_mode": "trusted-lan",
+                "library_id": library_id,
+                "device_name": "Pairing Host",
+                "sync_mode": "HOST",
+            });
+            write_test_response(&mut stream, "", &health.to_string());
+            drop(stream);
+
+            if library_id == "library-a" {
+                let (mut stream, _) = listener.accept().expect("accept pairing");
+                let (request, body) = read_test_request(&stream);
+                assert_eq!(request.trim_end(), "POST /api/v1/auth/pair HTTP/1.1");
+                assert_eq!(
+                    serde_json::from_str::<serde_json::Value>(&body).unwrap(),
+                    serde_json::json!({"pairing_token": "pairing-token"}),
+                );
+                write_test_response(
+                    &mut stream,
                     "Set-Cookie: bfm_companion_session=session-secret; Path=/; HttpOnly\r\nSet-Cookie: bfm_trusted_lan_device=device-secret; Path=/; HttpOnly\r\n",
                     r#"{"ok":true,"csrf_token":"csrf-secret"}"#,
-                ),
-                (
-                    "GET /api/v1/health HTTP/1.1",
-                    "200 OK",
-                    "",
-                    r#"{"ok":true,"api_version":"v1","capabilities":[],"auth_mode":"pairing-session","access_mode":"trusted-lan","library_id":"library-b","device_name":"Wrong Host","sync_mode":"HOST"}"#,
-                ),
-            ] {
-                let (mut stream, _) = listener.accept().expect("accept pairing Host request");
-                let mut request = [0_u8; 16 * 1024];
-                let read = stream.read(&mut request).expect("read pairing Host request");
-                let request = String::from_utf8_lossy(&request[..read]);
-                assert!(request.starts_with(expected_request), "{request}");
-                let response = format!(
-                    "HTTP/1.1 {status}\r\nContent-Type: application/json\r\n{headers}Content-Length: {}\r\nConnection: close\r\n\r\n{body}",
-                    body.len(),
                 );
-                stream
-                    .write_all(response.as_bytes())
-                    .expect("write pairing Host response");
             }
         });
-        let base_url = format!("http://{address}");
-        let state = test_state();
-        with_test_database(&state, |db| {
+        (format!("http://{address}"), server)
+    }
+
+    fn configure_pairing_target(state: &AppState, base_url: &str) {
+        with_test_database(state, |db| {
             let mut settings = db.get_library_sync_settings()?;
             settings.mode = "CLIENT".to_string();
-            settings.host_base_url = Some(base_url.clone());
+            settings.host_base_url = Some(base_url.to_string());
             settings.library_id = "library-a".to_string();
             db.save_library_sync_settings(&settings)?;
             Ok(())
         });
+    }
+
+    #[test]
+    fn pairing_rejects_a_different_remote_library_before_sending_the_token() {
+        let (base_url, server) = test_pairing_host("library-b");
+        let state = test_state();
+        configure_pairing_target(&state, &base_url);
 
         let error = pair_library_sync_host_at_current_target(&state, &base_url, "pairing-token")
             .expect_err("pairing must reject a different remote library");
         assert!(error.contains("different library"), "{error}");
         server.join().expect("join mismatched pairing Host");
-
         assert!(load_library_sync_device_token_optional(&state, &base_url)
             .expect("read device token after rejected pairing")
             .is_none());
@@ -403,6 +447,24 @@ mod tests {
             .is_none());
         let settings = with_test_database(&state, |db| db.get_library_sync_settings());
         assert!(!settings.client_auth_paired);
+
+        let _ = std::fs::remove_file(&state.db_path);
+    }
+
+    #[test]
+    fn pairing_sends_the_token_to_a_verified_library() {
+        let (base_url, server) = test_pairing_host("library-a");
+        let state = test_state();
+        configure_pairing_target(&state, &base_url);
+
+        let settings = pair_library_sync_host_at_current_target(&state, &base_url, "pairing-token")
+            .expect("pair with the verified Host");
+        server.join().expect("join pairing Host");
+        assert!(settings.client_auth_paired);
+        assert_eq!(
+            load_library_sync_device_token(&state, &base_url).expect("read paired device token"),
+            "device-secret"
+        );
 
         let _ = std::fs::remove_file(&state.db_path);
     }

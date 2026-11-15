@@ -38,11 +38,10 @@ fn create_library_sync_host_wishlist_item_blocking(
     input: LibrarySyncCreateWishlistItemInput,
 ) -> Result<(), String> {
     let host_input = library_sync_host_input(&input.base_url, input.expected_library_id.as_deref());
-    let (normalized_base_url, _, target) = prepare_library_sync_host_write(state, &host_input)?;
+    let (_, _, target) = prepare_library_sync_host_write(state, &host_input)?;
 
     perform_library_sync_host_write(
         state,
-        &normalized_base_url,
         "/api/v1/wishlist",
         &serde_json::json!({
             "master_id": trimmed_non_empty(input.master_id.as_deref()),
@@ -53,9 +52,10 @@ fn create_library_sync_host_wishlist_item_blocking(
             "quantity": input.quantity,
             "note": trimmed_non_empty(input.note.as_deref()),
         }),
+        &target,
     )?;
 
-    refresh_library_sync_wishlist_cache(state, &normalized_base_url, &target);
+    refresh_library_sync_wishlist_cache(state, &target);
     save_library_sync_success(state, &target, "Host wishlist item created.", None)?;
     Ok(())
 }
@@ -77,7 +77,7 @@ fn update_library_sync_host_wishlist_item_status_blocking(
     input: LibrarySyncUpdateWishlistStatusInput,
 ) -> Result<(), String> {
     let host_input = library_sync_host_input(&input.base_url, input.expected_library_id.as_deref());
-    let (normalized_base_url, _, target) = prepare_library_sync_host_write(state, &host_input)?;
+    let (_, _, target) = prepare_library_sync_host_write(state, &host_input)?;
 
     let item_id = input.item_id.trim();
     if item_id.is_empty() {
@@ -87,12 +87,12 @@ fn update_library_sync_host_wishlist_item_status_blocking(
     let item_id = encode_library_sync_path_segment(item_id);
     perform_library_sync_host_write(
         state,
-        &normalized_base_url,
         &format!("/api/v1/wishlist/{item_id}/status"),
         &serde_json::json!({ "status": input.status.trim() }),
+        &target,
     )?;
 
-    refresh_library_sync_wishlist_cache(state, &normalized_base_url, &target);
+    refresh_library_sync_wishlist_cache(state, &target);
     save_library_sync_success(state, &target, "Host wishlist item updated.", None)?;
     Ok(())
 }
@@ -114,8 +114,7 @@ pub(crate) fn receive_library_sync_host_wishlist_item_blocking(
     input: LibrarySyncReceiveWishlistItemInput,
 ) -> Result<WishlistReceiptResult, String> {
     let host_input = library_sync_host_input(&input.base_url, input.expected_library_id.as_deref());
-    let (normalized_base_url, health, target) =
-        prepare_library_sync_host_write(state, &host_input)?;
+    let (_, health, target) = prepare_library_sync_host_write(state, &host_input)?;
     let item_id = input.item_id.trim();
     if item_id.is_empty() {
         return Err("Wishlist item id is required.".to_string());
@@ -131,15 +130,15 @@ pub(crate) fn receive_library_sync_host_wishlist_item_blocking(
     ensure_library_sync_target_current(state, &target)?;
     let result = perform_library_sync_host_write_and_parse(
         state,
-        &normalized_base_url,
         &format!("/api/v1/wishlist/{item_id}/receive"),
         &payload,
+        &target,
     )?;
     ensure_library_sync_target_current(state, &target)?;
-    refresh_library_sync_spool_cache(state, &normalized_base_url, &target);
-    refresh_library_sync_wishlist_cache(state, &normalized_base_url, &target);
+    refresh_library_sync_spool_cache(state, &target);
+    refresh_library_sync_wishlist_cache(state, &target);
     if payload.get("home_location").is_some() {
-        refresh_location_cache_best_effort(state, &normalized_base_url, &target);
+        refresh_location_cache_best_effort(state, &target);
     }
     save_library_sync_success(state, &target, "Host wishlist receipt saved.", None)?;
     Ok(result)
@@ -212,7 +211,7 @@ fn delete_library_sync_host_wishlist_item_blocking(
     input: LibrarySyncDeleteWishlistItemInput,
 ) -> Result<(), String> {
     let host_input = library_sync_host_input(&input.base_url, input.expected_library_id.as_deref());
-    let (normalized_base_url, _, target) = prepare_library_sync_host_write(state, &host_input)?;
+    let (_, _, target) = prepare_library_sync_host_write(state, &host_input)?;
 
     let item_id = input.item_id.trim();
     if item_id.is_empty() {
@@ -222,12 +221,12 @@ fn delete_library_sync_host_wishlist_item_blocking(
     let item_id = encode_library_sync_path_segment(item_id);
     perform_library_sync_host_write(
         state,
-        &normalized_base_url,
         &format!("/api/v1/wishlist/{item_id}/delete"),
         &serde_json::json!({}),
+        &target,
     )?;
 
-    refresh_library_sync_wishlist_cache(state, &normalized_base_url, &target);
+    refresh_library_sync_wishlist_cache(state, &target);
     save_library_sync_success(state, &target, "Host wishlist item deleted.", None)?;
     Ok(())
 }

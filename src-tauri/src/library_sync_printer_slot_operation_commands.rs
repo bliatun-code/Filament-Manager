@@ -8,7 +8,7 @@ use crate::library_sync_command_support::{
     encode_library_sync_path_segment, normalize_library_sync_base_url, save_library_sync_success,
 };
 use crate::library_sync_host_client::{
-    ensure_library_sync_host_matches, perform_library_sync_host_write_and_parse_for_target,
+    perform_library_sync_host_write_and_parse_for_target, verify_library_sync_target,
 };
 use crate::library_sync_target_guard::{
     capture_library_sync_target, ensure_library_sync_target_current,
@@ -57,7 +57,7 @@ pub(crate) fn operate_library_sync_host_printer_slot_blocking(
     if target.generation() != input.expected_target_generation {
         return Err(coded_command_error("common.invalid_request"));
     }
-    let health = ensure_library_sync_host_matches(&base_url, Some(target.library_id()))?;
+    let (health, target) = verify_library_sync_target(target)?;
     ensure_library_sync_target_current(state, &target)?;
     if !health
         .capabilities
@@ -73,7 +73,6 @@ pub(crate) fn operate_library_sync_host_printer_slot_blocking(
     let acknowledgment: PrinterSlotOperationAcknowledgment =
         perform_library_sync_host_write_and_parse_for_target(
             state,
-            &base_url,
             &format!("/api/v1/printers/{printer_id}/slots/{slot_id}/operation"),
             &serde_json::json!({
                 "expected_current_spool_id": operation.expected_current_spool_id,
@@ -89,8 +88,8 @@ pub(crate) fn operate_library_sync_host_printer_slot_blocking(
     }
     // A valid acknowledgment confirms the atomic Host commit. Refresh failures
     // must not invite the UI to retry a successfully saved operation.
-    refresh_library_sync_printer_cache(state, &base_url, &target);
-    refresh_library_sync_spool_cache(state, &base_url, &target);
+    refresh_library_sync_printer_cache(state, &target);
+    refresh_library_sync_spool_cache(state, &target);
     let _ = save_library_sync_success(state, &target, "Host printer slot operation saved.", None);
     Ok(())
 }

@@ -203,7 +203,7 @@ test("Host reads and auth stay bounded while non-idempotent mutations wait for a
   );
   assert.match(
     validation,
-    /send_library_sync_request\([\s\S]*Duration::from_millis\(900\)/,
+    /request_library_sync_health\([\s\S]*Duration::from_millis\(900\)/,
     "host validation must remain bounded to 0.9 seconds",
   );
   assert.match(
@@ -231,19 +231,15 @@ test("Host reads and auth stay bounded while non-idempotent mutations wait for a
     "the production auth wrapper must forward the finite credential-gate deadline",
   );
 
-  for (const [name, nextName] of [
-    ["fetch_library_sync_host_json", "pair_library_sync_host_session"],
-    [
-      "get_library_sync_host_json_authenticated",
+  assert.match(
+    rustFunctionSource(
+      hostClientSource,
+      "get_library_sync_host_json_authenticated_for_target",
       "post_library_sync_host_write_json",
-    ],
-  ] as const) {
-    assert.match(
-      rustFunctionSource(hostClientSource, name, nextName),
-      /send_library_sync_request\([\s\S]*LIBRARY_SYNC_REQUEST_TIMEOUT/,
-      `${name} must remain bounded to 2.5 seconds`,
-    );
-  }
+    ),
+    /send_verified_library_sync_request\([\s\S]*Some\(LIBRARY_SYNC_REQUEST_TIMEOUT\)/,
+    "authenticated reads must remain bounded to 2.5 seconds",
+  );
 
   for (const [name, nextName] of [
     ["pair_library_sync_host_session", "renew_library_sync_host_session"],
@@ -257,7 +253,7 @@ test("Host reads and auth stay bounded while non-idempotent mutations wait for a
     );
     assert.doesNotMatch(
       source,
-      /send_library_sync_mutation_request/,
+      /send_verified_library_sync_request\([\s\S]*?None/,
       `${name} must not retain the credential gate without a response deadline`,
     );
   }
@@ -269,8 +265,8 @@ test("Host reads and auth stay bounded while non-idempotent mutations wait for a
   );
   assert.match(
     writeSource,
-    /send_library_sync_mutation_request/,
-    "business writes must wait for one definitive non-replayed mutation result",
+    /send_verified_library_sync_request\(\s*peer,\s*timeout,/,
+    "business writes must send to the verified peer with only the caller's optional deadline",
   );
   assert.doesNotMatch(
     writeSource,
@@ -278,17 +274,12 @@ test("Host reads and auth stay bounded while non-idempotent mutations wait for a
     "the shared write transport must not impose a read or auth deadline on business writes",
   );
   assert.match(
-    writeSource,
-    /match timeout \{\s*Some\(timeout\) => request\.timeout\(timeout\),\s*None => request,/,
-    "only callers with an explicit timeout may bound a mutation request",
-  );
-  assert.match(
     rustFunctionSource(
       hostClientSource,
       "perform_library_sync_host_write_and_parse",
       "perform_library_sync_host_write_and_parse_for_target",
     ),
-    /perform_library_sync_host_write_and_parse_for_target\(\s*state, base_url, path, payload, &target, None,/,
+    /perform_library_sync_host_write_and_parse_for_target\(\s*state, path, payload, target, None[,)]/,
     "legacy non-idempotent writes must preserve their definitive-result contract without a timeout",
   );
   assert.match(
