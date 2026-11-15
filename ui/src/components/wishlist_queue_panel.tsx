@@ -7,9 +7,10 @@ import { useI18n } from "../lib/i18n";
 import { formatInventoryDisplayTitle } from "../lib/inventory_list_model";
 import { inventorySwatchInsetStyle } from "../lib/inventory_swatch_style";
 import type { ResolvedTheme } from "../lib/theme_mode";
-import type { MasterCatalogRow, WishlistItemRow } from "../lib/tauri_client";
+import type { MasterCatalogRow, ReceiveWishlistItemInput, WishlistItemRow } from "../lib/tauri_client";
 import { formInputChromeClassName } from "./form_control_class";
 import {
+  buildPurchaseReceiptMetadataDraft,
   parsePurchaseReceiptMetadataDraft,
   purchaseReceiptMetadataHasValues,
   type PurchaseReceiptMetadata,
@@ -22,6 +23,7 @@ import { WishlistReceiptModal } from "./wishlist_receipt_modal";
 import {
   canStockWishlistItem,
   normalizeWishlistReceiptQuantity,
+  maxWishlistReceiptQuantity,
   normalizeWishlistStatus,
   type WishlistQueueSummary,
   type WishlistStatus,
@@ -35,6 +37,11 @@ export type WishlistQueuePanelProps = {
   catalogMasterById: Map<string, MasterCatalogRow>;
   confirmWishlistRemoveId: string | null;
   defaultPurchaseCurrency?: string;
+  getPendingWishlistReceipt?: (itemId: string) => {
+    input: ReceiveWishlistItemInput;
+    requestId: string;
+    needsHostCheck: boolean;
+  } | null;
   items: WishlistItemRow[];
   loading: boolean;
   onCancelDeleteItem: () => void;
@@ -43,6 +50,7 @@ export type WishlistQueuePanelProps = {
   onDeleteItem: (itemId: string) => void;
   onFilterChange: (filter: WishlistStatusFilter) => void;
   onQueryChange: (query: string) => void;
+  onReconcileReceipt?: (itemId: string, requestId: string) => Promise<boolean>;
   onRequestDeleteItem: (itemId: string) => void;
   onStatusChange: (itemId: string, status: WishlistStatus) => void;
   onStockItem: (
@@ -88,6 +96,7 @@ export function WishlistQueuePanel({
   catalogMasterById,
   confirmWishlistRemoveId,
   defaultPurchaseCurrency = "",
+  getPendingWishlistReceipt,
   items,
   loading,
   onCancelDeleteItem,
@@ -96,6 +105,7 @@ export function WishlistQueuePanel({
   onDeleteItem,
   onFilterChange,
   onQueryChange,
+  onReconcileReceipt,
   onRequestDeleteItem,
   onStatusChange,
   onStockItem,
@@ -116,11 +126,12 @@ export function WishlistQueuePanel({
   const [receiptSubmitting, setReceiptSubmitting] = useState(false);
   const receiptOperation = useRef({ inFlight: false, completed: false });
   const receiptItem = items.find((item) => item.id === receiptDraft.itemId) ?? null;
+  const pendingReceipt = receiptItem ? getPendingWishlistReceipt?.(receiptItem.id) : null;
   const receiptQuantityRaw = receiptItem
-    ? receiptQuantities[receiptItem.id] ?? "1"
+    ? pendingReceipt?.input.quantity.toString() ?? receiptQuantities[receiptItem.id] ?? "1"
     : "1";
   const receiptQuantity = receiptItem
-    ? normalizeWishlistReceiptQuantity(receiptQuantityRaw, receiptItem.quantity)
+    ? pendingReceipt?.input.quantity ?? normalizeWishlistReceiptQuantity(receiptQuantityRaw, receiptItem.quantity)
     : 1;
   const resultCount = t(
     "wishlist.resultCount",
@@ -132,6 +143,11 @@ export function WishlistQueuePanel({
     if (busy || receiptOperation.current.inFlight) return;
     receiptOperation.current.completed = false;
     updateReceiptDraft({ type: "open", itemId: item.id });
+    const pending = getPendingWishlistReceipt?.(item.id)?.input;
+    if (pending) {
+      updateReceiptDraft({ type: "homeLocation", value: pending.home_location ?? "" });
+      updateReceiptDraft({ type: "metadata", value: buildPurchaseReceiptMetadataDraft(pending.purchase_metadata) });
+    }
   };
 
   const closeReceipt = () => {
@@ -157,8 +173,10 @@ export function WishlistQueuePanel({
       const succeeded = await onStockItem(
         receiptItem,
         receiptQuantity,
-        purchaseReceiptMetadataHasValues(parsed.value) ? parsed.value : undefined,
-        receiptDraft.homeLocation.trim() || undefined,
+        pendingReceipt ? pendingReceipt.input.purchase_metadata
+          : purchaseReceiptMetadataHasValues(parsed.value) ? parsed.value : undefined,
+        pendingReceipt ? pendingReceipt.input.home_location ?? undefined
+          : receiptDraft.homeLocation.trim() || undefined,
       );
       if (succeeded) {
         receiptOperation.current.completed = true;
@@ -166,6 +184,23 @@ export function WishlistQueuePanel({
           ...current,
           [receiptItem.id]: "1",
         }));
+        updateReceiptDraft({ type: "close" });
+      }
+    } finally {
+      receiptOperation.current.inFlight = false;
+      setReceiptSubmitting(false);
+    }
+  };
+
+  const reconcileReceipt = async () => {
+    if (!receiptItem || !pendingReceipt?.needsHostCheck || !onReconcileReceipt ||
+        busy || receiptOperation.current.inFlight) return;
+    receiptOperation.current.inFlight = true;
+    setReceiptSubmitting(true);
+    try {
+      if (await onReconcileReceipt(receiptItem.id, pendingReceipt.requestId)) {
+        receiptOperation.current.completed = true;
+        setReceiptQuantities((current) => ({ ...current, [receiptItem.id]: "1" }));
         updateReceiptDraft({ type: "close" });
       }
     } finally {
@@ -262,7 +297,7 @@ export function WishlistQueuePanel({
         {visibleItems.map((item) => {
           const itemHex = wishlistItemHex(item, catalogMasterById);
           const itemStatus = normalizeWishlistStatus(item.status);
-          const canStockItem = canStockWishlistItem(item.status);
+          const canStockItem = canStockWishlistItem(item.status) || Boolean(getPendingWishlistReceipt?.(item.id));
           const itemTitle = formatInventoryDisplayTitle(
             item.material,
             item.filament_name,
@@ -381,7 +416,7 @@ export function WishlistQueuePanel({
                           <input
                             type="number"
                             min={1}
-                            max={Math.max(1, item.quantity)}
+                            max={maxWishlistReceiptQuantity(item.quantity)}
                             value={receiptQuantityRaw}
                             onChange={(event) =>
                               setReceiptQuantities((current) => ({
@@ -431,7 +466,12 @@ export function WishlistQueuePanel({
             receiptItem.filament_name,
             receiptItem.color_name,
           )}
-          maxQuantity={receiptItem.quantity}
+          maxQuantity={pendingReceipt?.input.quantity ?? maxWishlistReceiptQuantity(receiptItem.quantity)}
+          locked={Boolean(pendingReceipt)}
+          retryDisabled={pendingReceipt?.needsHostCheck}
+          pendingMessage={pendingReceipt && !busy && !receiptSubmitting ? (pendingReceipt.needsHostCheck
+            ? t("errors.wishlistReceiptCheckHost", "Check the order on the Host before receiving any remaining rolls.")
+            : t("errors.wishlistReceiptPending", "The receipt is unconfirmed. Retry with the same quantity and purchase details.")) : undefined}
           metadataDraft={receiptDraft.metadata}
           onCancel={closeReceipt}
           onConfirm={confirmReceipt}
@@ -443,6 +483,7 @@ export function WishlistQueuePanel({
               [receiptItem.id]: value,
             }))
           }
+          onReconcile={pendingReceipt?.needsHostCheck ? reconcileReceipt : undefined}
           quantity={receiptQuantity}
           quantityValue={receiptQuantityRaw}
         />

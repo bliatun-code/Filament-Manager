@@ -153,6 +153,10 @@ export const enDictionary: DictionaryNode = {
       purchaseMetadataHostUnsupported:
         "Update the Host before saving purchase details.",
       wishlistReceiptLocationHostUnsupported: "Update the Host before receiving rolls with a home location.",
+      wishlistReceiptLimit: "Receive at most 100 rolls at a time.",
+      wishlistReceiptPending: "The receipt is unconfirmed. Retry with the same quantity and purchase details.",
+      wishlistReceiptCheckHost: "Check the order on the Host before receiving any remaining rolls.",
+      wishlistReceiptReviewed: "I checked the order on the Host",
       purchasePriceInvalid: "Enter a valid purchase price of zero or more.",
       purchaseCurrencyInvalid:
         "Enter a valid three-letter purchase currency.",

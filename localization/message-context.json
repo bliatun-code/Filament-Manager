@@ -594,6 +594,54 @@
     },
     {
       "surface": "desktop",
+      "key": "errors.wishlistReceiptLimit",
+      "meaning": "Limit per receipt for physical rolls arriving now. A larger order can be received in multiple groups of up to 100. The limit does not change the ordered quantity.",
+      "screenshot": "docs/images/v0.35.0/inventory.png"
+    },
+    {
+      "surface": "companion",
+      "key": "errors.wishlistReceiptLimit",
+      "meaning": "Limit per receipt for physical rolls arriving now. A larger order can be received in multiple groups of up to 100. The limit does not change the ordered quantity.",
+      "screenshot": "docs/images/v0.35.0/companion-mobile.png"
+    },
+    {
+      "surface": "desktop",
+      "key": "errors.wishlistReceiptPending",
+      "meaning": "The original receipt may have been saved even though its reply was lost. Retrying with exactly the same quantity and purchase details checks the same receipt, including its storage location if one was provided.",
+      "screenshot": "docs/images/v0.35.0/inventory.png"
+    },
+    {
+      "surface": "companion",
+      "key": "errors.wishlistReceiptPending",
+      "meaning": "The original receipt may have been saved even though its reply was lost. Retrying with exactly the same quantity and purchase details checks the same receipt, including its storage location if one was provided.",
+      "screenshot": "docs/images/v0.35.0/companion-mobile.png"
+    },
+    {
+      "surface": "desktop",
+      "key": "errors.wishlistReceiptCheckHost",
+      "meaning": "Safe retry is unavailable or the Host rejected the receipt identifier. Ask the user to check the authoritative order and inventory directly on the Host computer before receiving more rolls.",
+      "screenshot": "docs/images/v0.35.0/inventory.png"
+    },
+    {
+      "surface": "companion",
+      "key": "errors.wishlistReceiptCheckHost",
+      "meaning": "Safe retry is unavailable or the Host rejected the receipt identifier. Ask the user to check the authoritative order and inventory directly on the Host computer before receiving more rolls.",
+      "screenshot": "docs/images/v0.35.0/companion-mobile.png"
+    },
+    {
+      "surface": "desktop",
+      "key": "errors.wishlistReceiptReviewed",
+      "meaning": "Button acknowledging that the user already checked the authoritative order on the Host computer. The button clears the unresolved receipt and refreshes the order. It does not receive rolls or confirm delivery.",
+      "screenshot": "docs/images/v0.35.0/inventory.png"
+    },
+    {
+      "surface": "companion",
+      "key": "errors.wishlistReceiptReviewed",
+      "meaning": "Button acknowledging that the user already checked the authoritative order on the Host computer. The button clears the unresolved receipt and refreshes the order. It does not receive rolls or confirm delivery.",
+      "screenshot": "docs/images/v0.35.0/companion-mobile.png"
+    },
+    {
+      "surface": "desktop",
       "key": "inventory.openCreatedRoll",
       "meaning": "Primary action after one roll was successfully registered. Opens the details of that exact saved roll; does not register or physically open another roll.",
       "screenshot": "docs/images/v0.35.0/inventory.png"

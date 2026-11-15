@@ -65,6 +65,9 @@ use crate::backend::database_spool_updates::{
     update_spool_tare_weight as update_spool_tare_weight_row,
     update_spool_weight as update_spool_weight_row,
 };
+pub use crate::backend::database_wishlist::{
+    validate_wishlist_receipt_quantity, validate_wishlist_receipt_request_id,
+};
 use crate::backend::filament_database::{
     ActiveSpoolLoanRow, CatalogResetStats, FilamentDatabase, InventoryLocationRow,
     LibrarySyncCachedLocationListRow, LibrarySyncCachedSnapshotRow, LibrarySyncSettingsRow,
@@ -250,6 +253,8 @@ pub struct UpdateWishlistStatusInput {
 pub struct ReceiveWishlistItemInput {
     pub item_id: String,
     pub quantity: i64,
+    #[serde(default)]
+    pub request_id: Option<String>,
     #[serde(default)]
     pub home_location: Option<String>,
     #[serde(default)]
@@ -1497,6 +1502,7 @@ impl InventoryEngine {
             input.quantity,
             input.purchase_metadata.unwrap_or_default(),
             input.home_location.as_deref(),
+            input.request_id.as_deref(),
         )
     }
 
@@ -2411,3 +2417,7 @@ mod tests;
 #[cfg(test)]
 #[path = "inventory_wishlist_receipt_location_tests.rs"]
 mod wishlist_receipt_location_tests;
+
+#[cfg(test)]
+#[path = "inventory_wishlist_receipt_retry_tests.rs"]
+mod wishlist_receipt_retry_tests;

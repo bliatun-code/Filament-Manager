@@ -158,6 +158,10 @@ export const frDictionary: DictionaryNode = {
     purchaseMetadataHostUnsupported:
       "Mettez à jour l’hôte avant d’enregistrer les détails d’achat.",
     wishlistReceiptLocationHostUnsupported: "Mettez à jour l’hôte avant de réceptionner des bobines avec un emplacement de rangement.",
+    wishlistReceiptLimit: "Réceptionnez au maximum 100 bobines à la fois.",
+    wishlistReceiptPending: "La réception est en attente de confirmation. Réessayez avec la même quantité et les mêmes détails d’achat.",
+    wishlistReceiptCheckHost: "Vérifiez la commande sur l’hôte avant de réceptionner les bobines restantes.",
+    wishlistReceiptReviewed: "J’ai vérifié la commande sur l’hôte",
     purchasePriceInvalid:
       "Saisissez un prix d’achat valide, supérieur ou égal à zéro.",
     purchaseCurrencyInvalid:

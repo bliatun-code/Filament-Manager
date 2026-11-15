@@ -21,6 +21,7 @@ import path from "node:path";
 import test from "node:test";
 
 import Database from "better-sqlite3";
+import { currentSchemaVersion } from "./smoke-release-database-upgrade.mjs";
 import {
   EXPECTED_PACKAGED_CATALOG_JOBS,
   validatePackagedCatalogJobSummary,
@@ -417,7 +418,7 @@ function clientCompletion(phase, generation = 7, runId = "packaged-host-client-0
 
 function createAuthorityDatabases(hostPath, clientPath, port = 45_123) {
   const schema = `
-    PRAGMA user_version = 7;
+    PRAGMA user_version = ${currentSchemaVersion()};
     CREATE TABLE filament_spools (
       id TEXT PRIMARY KEY,
       current_weight_g INTEGER,
@@ -1068,7 +1069,7 @@ test("catalog summary requires exact counts and rejects unexpected data", () => 
 test("batch evidence rejects schema drift, extra rows and mutations hidden behind an unchanged receipt", () => {
   const id = batchReceipt().spool_ids[0];
   const corruptions = [
-    ["host", "PRAGMA user_version = 6", /current application schema/],
+    ["host", `PRAGMA user_version = ${currentSchemaVersion() - 1}`, /current application schema/],
     ["client", "DROP TABLE catalog_spool_batches", /requires the catalog_spool_batches table/],
     ["host", "INSERT INTO filament_spools (id) VALUES ('extra-roll')", /exact authoritative/],
     ["host", `INSERT INTO spool_history_events (id, spool_id, event_type) VALUES (99, '${id}', 'CREATED')`, /physical rolls, loans or history/],

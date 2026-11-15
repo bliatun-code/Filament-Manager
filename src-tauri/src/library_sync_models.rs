@@ -293,6 +293,10 @@ pub(crate) struct LibrarySyncReceiveWishlistItemInput {
     pub(crate) item_id: String,
     pub(crate) quantity: i64,
     #[serde(default)]
+    pub(crate) request_id: Option<String>,
+    #[serde(default)]
+    pub(crate) retry: bool,
+    #[serde(default)]
     pub(crate) home_location: Option<String>,
     #[serde(default)]
     pub(crate) purchase_metadata: Option<PurchaseReceiptMetadata>,

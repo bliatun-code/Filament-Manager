@@ -332,6 +332,10 @@ export const itITDictionary: DictionaryNode = {
     purchaseMetadataHostUnsupported:
       "Aggiorna l'host della libreria prima di modificare i dettagli di acquisto da questo client.",
     wishlistReceiptLocationHostUnsupported: "Aggiorna l’host prima di ricevere bobine con una posizione di deposito.",
+    wishlistReceiptLimit: "Ricevi al massimo 100 bobine alla volta.",
+    wishlistReceiptPending: "La ricezione è in attesa di conferma. Riprova con la stessa quantità e gli stessi dati di acquisto.",
+    wishlistReceiptCheckHost: "Controlla l’ordine sull’host prima di ricevere le bobine rimanenti.",
+    wishlistReceiptReviewed: "Ho controllato l’ordine sull’host",
     purchasePriceInvalid: "Inserisci un prezzo di acquisto valido.",
     purchaseCurrencyInvalid: "Usa un codice valuta di tre lettere, per esempio EUR.",
     purchaseCurrencyRequired: "La valuta è obbligatoria quando è presente un prezzo.",

@@ -22,6 +22,7 @@ import {
   resolveClientHostCacheTarget,
   resolveClientHostTarget,
 } from "./host_write_target";
+import { MAX_WISHLIST_RECEIPT_QUANTITY } from "../../../src-tauri/companion_browser/wishlist_receipt_attempt.js";
 
 export type WishlistDataSourceOptions = {
   clientReadOnly?: boolean;
@@ -151,7 +152,11 @@ export function normalizeWishlistReceiptQuantity(
   if (!Number.isFinite(parsed) || parsed <= 0) {
     return 1;
   }
-  return Math.min(parsed, Math.max(1, Math.trunc(remainingQuantity)));
+  return Math.min(parsed, maxWishlistReceiptQuantity(remainingQuantity));
+}
+
+export function maxWishlistReceiptQuantity(remainingQuantity: number): number {
+  return Math.min(MAX_WISHLIST_RECEIPT_QUANTITY, Math.max(1, Math.trunc(remainingQuantity)));
 }
 
 export function listWishlistCatalogMastersByVendor(
@@ -379,7 +384,7 @@ export async function updateWishlistEntryStatus(
 
 export async function receiveWishlistEntry(
   input: ReceiveWishlistItemInput,
-  options: WishlistDataSourceOptions = {},
+  options: WishlistDataSourceOptions & { retry?: boolean } = {},
   dependencies: WishlistDataSourceDependencies = {},
 ): Promise<WishlistReceiptResult> {
   const receiveHostWishlistItem =
@@ -392,7 +397,11 @@ export async function receiveWishlistEntry(
       options,
       missingWishlistHostTargetMessage,
     );
-    return receiveHostWishlistItem(hostTarget.baseUrl, hostTarget.libraryId, input);
+    return receiveHostWishlistItem(
+      hostTarget.baseUrl,
+      hostTarget.libraryId,
+      options.retry ? { ...input, retry: true } : input,
+    );
   }
 
   return receiveLocalWishlistItem(input);

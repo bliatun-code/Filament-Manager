@@ -49,6 +49,7 @@ export const RELEASE_UPGRADE_EMPTY_TABLES = Object.freeze([
   "sync_queue",
   "trusted_lan_paired_browsers",
   "trusted_lan_pairings",
+  "wishlist_receipt_requests",
 ]);
 
 const SEED_MANAGED_CATALOG_SOURCES = Object.freeze([

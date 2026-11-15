@@ -731,12 +731,16 @@ fn reset_app_state_table_list_tracks_all_backup_tables() {
         "app-state reset tables must not include catalog/template tables"
     );
 
-    let local_operation_tables: HashSet<&str> = ["catalog_refresh_jobs", "catalog_spool_batches"]
-        .into_iter()
-        .collect();
+    let local_operation_tables: HashSet<&str> = [
+        "catalog_refresh_jobs",
+        "catalog_spool_batches",
+        "wishlist_receipt_requests",
+    ]
+    .into_iter()
+    .collect();
     assert!(
         local_operation_tables.is_subset(&reset_tables),
-        "app-state reset must clear both catalog-job and spool-batch receipts"
+        "app-state reset must clear installation-local operation receipts"
     );
     assert!(
         local_operation_tables.is_disjoint(&full_backup_tables),

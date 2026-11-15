@@ -5,6 +5,7 @@ use super::database_catalog_inputs::ManualMasterInput;
 use super::database_catalog_manual::upsert_manual_master;
 use super::database_events::insert_spool_history_event;
 use super::database_ids::new_id;
+use super::database_library_sync_settings::get_library_sync_library_id;
 use super::database_locations::resolve_active_generic_location_reference;
 use super::database_result::{require_rows, InventoryError, InventoryResult};
 use super::database_spool_insert::insert_spool;
@@ -84,22 +85,78 @@ pub(crate) fn update_wishlist_item_status(
     require_rows(affected)
 }
 
+const MAX_WISHLIST_RECEIPT_QUANTITY: i64 = 100;
+
+pub fn validate_wishlist_receipt_quantity(quantity: i64) -> InventoryResult<()> {
+    if quantity <= 0 {
+        return Err(InventoryError::InvalidOperation {
+            code: "wishlist.receive.quantity_invalid",
+            message: "Received quantity must be greater than zero".to_string(),
+        });
+    }
+    if quantity > MAX_WISHLIST_RECEIPT_QUANTITY {
+        return Err(InventoryError::InvalidOperation {
+            code: "wishlist.receive.quantity_too_large",
+            message: format!("Receive at most {MAX_WISHLIST_RECEIPT_QUANTITY} rolls at a time"),
+        });
+    }
+    Ok(())
+}
+
+pub fn validate_wishlist_receipt_request_id(request_id: &str) -> InventoryResult<()> {
+    if request_id.is_empty()
+        || request_id.len() > 128
+        || !request_id
+            .bytes()
+            .all(|byte| byte.is_ascii_alphanumeric() || matches!(byte, b'_' | b'-'))
+    {
+        return Err(InventoryError::InvalidOperation {
+            code: "wishlist.receive.request_id_invalid",
+            message:
+                "Receipt request ID must contain 1–128 letters, digits, hyphens or underscores"
+                    .to_string(),
+        });
+    }
+    Ok(())
+}
+
 pub(crate) fn receive_wishlist_item(
     conn: &Connection,
     item_id: &str,
     received_quantity: i64,
     purchase_metadata: PurchaseReceiptMetadata,
     home_location: Option<&str>,
+    request_id: Option<&str>,
 ) -> InventoryResult<WishlistReceiptResult> {
-    if received_quantity <= 0 {
-        return Err(InventoryError::InvalidOperation {
-            code: "wishlist.receive.quantity_invalid",
-            message: "Received quantity must be greater than zero".to_string(),
-        });
+    validate_wishlist_receipt_quantity(received_quantity)?;
+    if let Some(request_id) = request_id {
+        validate_wishlist_receipt_request_id(request_id)?;
     }
     let purchase_metadata = purchase_metadata.normalize_for_new()?;
+    let home_location = home_location
+        .map(str::trim)
+        .filter(|value| !value.is_empty());
 
     let transaction = Transaction::new_unchecked(conn, TransactionBehavior::Immediate)?;
+    let request = if let Some(request_id) = request_id {
+        let library_id = get_library_sync_library_id(&transaction)?;
+        let request_json = json!({
+            "item_id": item_id,
+            "quantity": received_quantity,
+            "purchase_metadata": purchase_metadata,
+            "home_location": home_location,
+        })
+        .to_string();
+        if let Some(receipt) =
+            read_wishlist_receipt_request(&transaction, request_id, &library_id, &request_json)?
+        {
+            return Ok(receipt);
+        }
+        Some((request_id, library_id, request_json))
+    } else {
+        None
+    };
+
     let item = wishlist_item_by_id(&transaction, item_id)?.ok_or(InventoryError::NotFound)?;
     if item.status == "RECEIVED" || item.quantity <= 0 {
         return Err(InventoryError::InvalidOperation {
@@ -118,8 +175,6 @@ pub(crate) fn receive_wishlist_item(
     }
 
     let home_location_id = home_location
-        .map(str::trim)
-        .filter(|value| !value.is_empty())
         .map(|value| resolve_active_generic_location_reference(&transaction, value))
         .transpose()?;
     let (master_id, default_weight, vendor) = resolve_receipt_master(&transaction, &item)?;
@@ -200,14 +255,52 @@ pub(crate) fn receive_wishlist_item(
         params![remaining_quantity, status, item.id, item.quantity],
     )?;
     require_rows(affected)?;
-    transaction.commit()?;
-
-    Ok(WishlistReceiptResult {
+    let receipt = WishlistReceiptResult {
         spool_ids,
         received_quantity,
         remaining_quantity,
         status: status.to_string(),
-    })
+    };
+    if let Some((request_id, library_id, request_json)) = request {
+        let receipt_json = serde_json::to_string(&receipt)
+            .map_err(|error| InventoryError::Db(error.to_string()))?;
+        transaction.execute(
+            "INSERT INTO wishlist_receipt_requests (request_id, library_id, request_json, receipt_json)
+             VALUES (?1, ?2, ?3, ?4)",
+            params![request_id, library_id, request_json, receipt_json],
+        )?;
+    }
+    transaction.commit()?;
+    Ok(receipt)
+}
+
+fn read_wishlist_receipt_request(
+    conn: &Connection,
+    request_id: &str,
+    library_id: &str,
+    request_json: &str,
+) -> InventoryResult<Option<WishlistReceiptResult>> {
+    let saved: Option<(String, String, String)> = conn
+        .query_row(
+            "SELECT library_id, request_json, receipt_json
+             FROM wishlist_receipt_requests WHERE request_id = ?1",
+            [request_id],
+            |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?)),
+        )
+        .optional()?;
+    let Some((saved_library_id, saved_request, receipt_json)) = saved else {
+        return Ok(None);
+    };
+    if saved_library_id != library_id || saved_request != request_json {
+        return Err(InventoryError::InvalidOperation {
+            code: "wishlist.receive.request_conflict",
+            message: "This receipt request ID belongs to a different receipt or library"
+                .to_string(),
+        });
+    }
+    serde_json::from_str(&receipt_json)
+        .map(Some)
+        .map_err(|error| InventoryError::Db(error.to_string()))
 }
 
 fn wishlist_item_by_id(

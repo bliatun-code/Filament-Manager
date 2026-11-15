@@ -1,11 +1,12 @@
+use crate::backend::database_result::InventoryError;
 use crate::backend::filament_database::WishlistReceiptResult;
 use crate::backend::inventory_engine::{
     CreateWishlistItemInput, ReceiveWishlistItemInput, UpdateWishlistStatusInput,
 };
 use crate::companion_error::CompanionApiError;
 use crate::companion_models::{
-    CreateWishlistItemRequest, ReceiveWishlistItemRequest, UpdateWishlistItemStatusRequest,
-    WriteResponse,
+    CreateWishlistItemRequest, ReceiveIdempotentWishlistItemRequest, ReceiveWishlistItemRequest,
+    UpdateWishlistItemStatusRequest, WriteResponse,
 };
 use crate::companion_payload::normalize_optional_text;
 use crate::companion_session::{random_hex_token, unix_epoch_millis};
@@ -124,6 +125,28 @@ pub(super) async fn handle_receive_wishlist_item(
     Path(item_id): Path<String>,
     Json(payload): Json<ReceiveWishlistItemRequest>,
 ) -> Result<Json<WishlistReceiptResult>, CompanionApiError> {
+    receive_wishlist_item(state, item_id, payload, None).await
+}
+
+pub(super) async fn handle_receive_idempotent_wishlist_item(
+    State(state): State<CompanionApiState>,
+    Path(item_id): Path<String>,
+    Json(payload): Json<ReceiveIdempotentWishlistItemRequest>,
+) -> Result<Json<WishlistReceiptResult>, CompanionApiError> {
+    let request_id = payload
+        .request_id
+        .ok_or(CompanionApiError::CodedBadRequest(
+            "wishlist.receive.request_id_invalid",
+        ))?;
+    receive_wishlist_item(state, item_id, payload.receipt, Some(request_id)).await
+}
+
+async fn receive_wishlist_item(
+    state: CompanionApiState,
+    item_id: String,
+    payload: ReceiveWishlistItemRequest,
+    request_id: Option<String>,
+) -> Result<Json<WishlistReceiptResult>, CompanionApiError> {
     state
         .run_blocking("wishlist receipt", move |state| {
             let item_id = item_id.trim();
@@ -138,10 +161,17 @@ pub(super) async fn handle_receive_wishlist_item(
                 .receive_wishlist_item(ReceiveWishlistItemInput {
                     item_id: item_id.to_string(),
                     quantity: payload.quantity,
+                    request_id,
                     home_location: payload.home_location,
                     purchase_metadata: payload.purchase_metadata,
                 })
-                .map_err(CompanionApiError::from)?;
+                .map_err(|error| match error {
+                    InventoryError::InvalidOperation {
+                        code: "wishlist.receive.request_conflict",
+                        ..
+                    } => CompanionApiError::CodedConflict("wishlist.receive.request_conflict"),
+                    other => CompanionApiError::from(other),
+                })?;
             Ok(Json(result))
         })
         .await

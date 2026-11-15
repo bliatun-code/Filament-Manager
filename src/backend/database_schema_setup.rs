@@ -70,6 +70,12 @@ const STRUCTURAL_MIGRATIONS: &[StructuralMigration] = &[
         sql: include_str!("../database/migrations/008_catalog_spool_batches.sql"),
         to_version: 7,
     },
+    StructuralMigration {
+        from_version: 7,
+        name: "009_wishlist_receipt_requests.sql",
+        sql: include_str!("../database/migrations/009_wishlist_receipt_requests.sql"),
+        to_version: 8,
+    },
 ];
 
 pub(crate) fn apply_schema_migrations(conn: &Connection, schema_sql: &str) -> InventoryResult<()> {
@@ -198,7 +204,7 @@ mod tests {
         let last = STRUCTURAL_MIGRATIONS.last().expect("last migration");
         assert_eq!(first.name, "003_library_domain_revisions.sql");
         assert_eq!(first.from_version, BASELINE_SCHEMA_VERSION);
-        assert_eq!(last.name, "008_catalog_spool_batches.sql");
+        assert_eq!(last.name, "009_wishlist_receipt_requests.sql");
         assert_eq!(last.to_version, CURRENT_SCHEMA_VERSION);
     }
 
@@ -680,6 +686,7 @@ mod tests {
             apply_schema_migrations(&conn, CURRENT_SCHEMA_SQL).expect("upgrade job storage");
             assert!(table_has_column(&conn, "catalog_refresh_jobs", "result_json").unwrap());
             assert!(table_has_column(&conn, "catalog_spool_batches", "receipt_json").unwrap());
+            assert!(table_has_column(&conn, "wishlist_receipt_requests", "receipt_json").unwrap());
             assert_eq!(
                 database_schema_version(&conn).unwrap(),
                 CURRENT_SCHEMA_VERSION

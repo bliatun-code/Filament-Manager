@@ -368,6 +368,10 @@ export const ptBRDictionary: DictionaryNode = {
     purchaseMetadataHostUnsupported:
       "Atualize o host antes de salvar os dados da compra.",
     wishlistReceiptLocationHostUnsupported: "Atualize o host antes de receber bobinas com um local de armazenamento.",
+    wishlistReceiptLimit: "Receba no máximo 100 bobinas de cada vez.",
+    wishlistReceiptPending: "O recebimento está sem confirmação. Tente novamente com a mesma quantidade e os mesmos dados da compra.",
+    wishlistReceiptCheckHost: "Confira o pedido no host antes de receber as bobinas restantes.",
+    wishlistReceiptReviewed: "Conferi o pedido no host",
     purchasePriceInvalid:
       "Insira um preço de compra válido igual ou superior a zero.",
     purchaseCurrencyInvalid:

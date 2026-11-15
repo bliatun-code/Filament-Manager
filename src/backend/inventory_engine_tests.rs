@@ -5257,6 +5257,7 @@ fn receive_wishlist_item_creates_exact_spools_and_tracks_remaining_quantity() {
 
         let partial = engine
             .receive_wishlist_item(ReceiveWishlistItemInput {
+                request_id: None,
                 item_id: "wish_partial_1".to_string(),
                 quantity: 2,
                 home_location: None,
@@ -5314,6 +5315,7 @@ fn receive_wishlist_item_creates_exact_spools_and_tracks_remaining_quantity() {
 
         let complete = engine
             .receive_wishlist_item(ReceiveWishlistItemInput {
+                request_id: None,
                 item_id: "wish_partial_1".to_string(),
                 quantity: 1,
                 home_location: None,
@@ -5352,6 +5354,7 @@ fn receive_wishlist_item_creates_exact_spools_and_tracks_remaining_quantity() {
         assert_eq!(completed_wishlist[0].status, "RECEIVED");
         assert!(engine
             .receive_wishlist_item(ReceiveWishlistItemInput {
+                request_id: None,
                 item_id: "wish_partial_1".to_string(),
                 quantity: 1,
                 home_location: None,
@@ -5411,6 +5414,7 @@ fn receive_wishlist_item_rolls_back_spools_and_quantity_together() {
 
         assert!(engine
             .receive_wishlist_item(ReceiveWishlistItemInput {
+                request_id: None,
                 item_id: "wish_rollback_1".to_string(),
                 quantity: 2,
                 home_location: None,
@@ -5473,6 +5477,7 @@ fn receive_wishlist_item_rejects_invalid_metadata_without_side_effects() {
 
         let error = engine
             .receive_wishlist_item(ReceiveWishlistItemInput {
+                request_id: None,
                 item_id: "wish_invalid_metadata".to_string(),
                 quantity: 1,
                 home_location: None,

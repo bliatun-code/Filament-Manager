@@ -153,6 +153,10 @@ export const nbDictionary: DictionaryNode = {
       purchaseMetadataHostUnsupported:
         "Oppdater verten før du lagrer kjøpsdetaljer.",
       wishlistReceiptLocationHostUnsupported: "Oppdater verten før du mottar ruller med en hjemmelokasjon.",
+      wishlistReceiptLimit: "Motta maks 100 ruller om gangen.",
+      wishlistReceiptPending: "Mottaket er ubekreftet. Prøv igjen med samme antall og kjøpsopplysninger.",
+      wishlistReceiptCheckHost: "Kontroller bestillingen på verten før du mottar eventuelle resterende ruller.",
+      wishlistReceiptReviewed: "Jeg har kontrollert bestillingen på verten",
       purchasePriceInvalid: "Skriv inn en gyldig kjøpspris som er null eller høyere.",
       purchaseCurrencyInvalid:
         "Skriv inn en gyldig kjøpsvaluta med tre bokstaver.",

@@ -1,3 +1,4 @@
+import { MAX_WISHLIST_RECEIPT_QUANTITY } from "./wishlist_receipt_attempt.js";
 import {
   formatInventoryDisplayTitle,
   formatRollReference,
@@ -172,6 +173,7 @@ export function renderAddFilamentTaskSheetBody(state, busy, escapeHtml) {
         (master) => master.id === item.master_id,
       );
       const itemSwatch = linkedMaster?.hex_color || suggestSwatchHex(item.color_name, item.filament_name, item.vendor, item.material);
+      const pendingReview = state.wishlistReceiptReviews?.has(item.id);
       return renderSwatchSurface({
         className: "add-spool-wishlist-row",
         escapeHtml,
@@ -219,7 +221,17 @@ export function renderAddFilamentTaskSheetBody(state, busy, escapeHtml) {
               label: t(locale, "storage.onOrder", "On order"),
             })}
             ${
-              item.status !== "RECEIVED"
+              pendingReview
+                ? `<div class="wishlist-receipt-form">
+                    <p class="section-copy">${escapeHtml(t(locale, "errors.wishlistReceiptCheckHost", "Check the order on the Host before receiving any remaining rolls."))}</p>
+                    ${renderCompanionActionButton({
+                      disabled: busy,
+                      attributes: { "data-action": "wishlist-receipt-reviewed", "data-wishlist-id": item.id },
+                      escapeHtml,
+                      label: t(locale, "errors.wishlistReceiptReviewed", "I checked the order on the Host"),
+                    })}
+                  </div>`
+                : item.status !== "RECEIVED"
                 ? `<form class="wishlist-receipt-form" data-action="wishlist-stock-form" data-form-key="wishlist-stock:${escapeHtml(item.id)}">
                     <input name="wishlist-id" type="hidden" value="${escapeHtml(item.id)}" />
                     <div class="wishlist-receipt-primary">
@@ -230,7 +242,7 @@ export function renderAddFilamentTaskSheetBody(state, busy, escapeHtml) {
                           name="received-quantity"
                           type="number"
                           min="1"
-                          max="${escapeHtml(String(Math.max(1, Number(item.quantity) || 1)))}"
+                          max="${Math.min(MAX_WISHLIST_RECEIPT_QUANTITY, Math.max(1, Number(item.quantity) || 1))}"
                           step="1"
                           value="1"
                           aria-label="${escapeHtml(t(locale, "storage.quantity", "Qty"))}"

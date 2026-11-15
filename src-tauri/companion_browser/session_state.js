@@ -47,6 +47,7 @@ export function createInitialCompanionState() {
     spools: [],
     catalogMasters: [],
     wishlistItems: [],
+    wishlistReceiptReviews: new Map(),
     printers: [],
     activeLoans: [],
     loanHistory: [],

@@ -814,7 +814,7 @@ async function receiveWishlistFixture(page, timeoutMs, dbPath, record) {
   await quantityInput.fill(
     String(COMPANION_E2E_WISHLIST_RECEIPT.receivedQuantity),
   );
-  const receiptPath = `/api/v1/wishlist/${encodeURIComponent(COMPANION_E2E_WISHLIST_RECEIPT.itemId)}/receive`;
+  const receiptPath = `/api/v1/wishlist/${encodeURIComponent(COMPANION_E2E_WISHLIST_RECEIPT.itemId)}/receive-idempotent`;
   const receiptRequestPromise = page.waitForRequest(
     (request) =>
       request.method() === "POST" &&
@@ -823,12 +823,13 @@ async function receiveWishlistFixture(page, timeoutMs, dbPath, record) {
   );
   await receiptForm.locator('button[type="submit"]').click();
   const receiptRequest = await receiptRequestPromise;
+  const receiptBody = receiptRequest.postDataJSON();
   if (
-    receiptRequest.postDataJSON()?.quantity !==
-    COMPANION_E2E_WISHLIST_RECEIPT.receivedQuantity
+    receiptBody?.quantity !== COMPANION_E2E_WISHLIST_RECEIPT.receivedQuantity ||
+    !/^[0-9a-f-]{36}$/.test(receiptBody?.request_id ?? "")
   ) {
     throw new Error(
-      `Companion wishlist receipt sent ${JSON.stringify(receiptRequest.postDataJSON())} instead of one roll.`,
+      "Companion wishlist receipt did not include the selected quantity and a request ID.",
     );
   }
 

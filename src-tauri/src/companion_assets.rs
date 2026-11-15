@@ -76,6 +76,8 @@ const COMPANION_BROWSER_SUBMIT_ROUTER_JS: &str =
 const COMPANION_BROWSER_THEME_JS: &str = include_str!("../companion_browser/companion_theme.js");
 const COMPANION_BROWSER_WISHLIST_MUTATIONS_JS: &str =
     include_str!("../companion_browser/companion_wishlist_mutations.js");
+const COMPANION_BROWSER_WISHLIST_RECEIPT_ATTEMPT_JS: &str =
+    include_str!("../companion_browser/wishlist_receipt_attempt.js");
 const COMPANION_BROWSER_DETAIL_CONTENT_JS: &str =
     include_str!("../companion_browser/detail_content.js");
 const COMPANION_BROWSER_COMPANION_LOGIC_JS: &str =
@@ -460,6 +462,13 @@ const COMPANION_BROWSER_BASE_ASSETS: &[(&str, CompanionBrowserAsset)] = &[
         CompanionBrowserAsset {
             content_type: "application/javascript; charset=utf-8",
             content: COMPANION_BROWSER_WISHLIST_MUTATIONS_JS,
+        },
+    ),
+    (
+        "wishlist_receipt_attempt.js",
+        CompanionBrowserAsset {
+            content_type: "application/javascript; charset=utf-8",
+            content: COMPANION_BROWSER_WISHLIST_RECEIPT_ATTEMPT_JS,
         },
     ),
     (

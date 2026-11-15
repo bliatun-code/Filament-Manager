@@ -56,9 +56,10 @@ export function createCompanionMutations(options) {
       findSpoolRow,
       normalizeMeasuredFilamentWeight,
     });
-  const { submitWishlistCreate, submitWishlistStatus, submitWishlistStock, submitWishlistDelete } =
+  const { submitWishlistCreate, submitWishlistStatus, submitWishlistStock, reconcileWishlistStock, submitWishlistDelete } =
     createCompanionWishlistMutations({
       state,
+      fetchJson,
       refreshOverview,
       setBusy,
       setStatus,
@@ -120,6 +121,7 @@ export function createCompanionMutations(options) {
     submitWishlistCreate,
     submitWishlistStatus,
     submitWishlistStock,
+    reconcileWishlistStock,
     submitWishlistDelete,
     submitQrLookup,
     submitBorrowedInUpdate,

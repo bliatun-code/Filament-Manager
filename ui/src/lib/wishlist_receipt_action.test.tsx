@@ -74,7 +74,12 @@ async function buildWishlistHarness() {
       if (action === "add") return source.handleAddCurrentToWishlist();
       if (action === "status") return source.handleWishlistStatus(item.id, "ON_ORDER");
       if (action === "delete") return source.handleDeleteWishlistItem(item.id);
-      return source.handleStockFromWishlist(item, 2, options.metadata, options.location);
+      if (action === "review") {
+        const pending = source.getPendingWishlistReceipt(item.id);
+        return source.reconcileWishlistReceipt(item.id, pending?.requestId ?? "");
+      }
+      const order = options.itemId ? { ...item, id: options.itemId } : item;
+      return source.handleStockFromWishlist(order, options.quantity ?? 2, options.metadata, options.location);
     }
     window.wishlistLifecycle = {
       render: options => flushSync(() => root.render(React.createElement(Harness, options))),
@@ -90,7 +95,8 @@ async function buildWishlistHarness() {
         }
       }),
       finish: (index, result, reject = false) => {
-        if (reject) commands[index].reject(new Error("Write rejected"));
+        if (reject) commands[index].reject(new Error(typeof reject === "string"
+          ? JSON.stringify({code: reject}) : "Write rejected"));
         else commands[index].resolve(result);
       },
       releaseRefreshes: () => { while (refreshes.length) refreshes.shift()(); },
@@ -114,8 +120,8 @@ async function buildWishlistHarness() {
   return `<html><head><meta charset="utf-8"></head><body><div id="root"></div><script>${script.replaceAll("</script", "<\\/script")}</script></body></html>`;
 }
 
-async function finish(page: Page, command: number, operation: number, result: unknown = receipt, reject = false) {
-  await page.evaluate(`wishlistLifecycle.finish(${command}, ${JSON.stringify(result)}, ${reject})`);
+async function finish(page: Page, command: number, operation: number, result: unknown = receipt, reject: boolean | string = false) {
+  await page.evaluate(`wishlistLifecycle.finish(${command}, ${JSON.stringify(result)}, ${JSON.stringify(reject)})`);
   await page.waitForFunction(`wishlistLifecycle.settled(${operation})`);
 }
 
@@ -164,7 +170,10 @@ test("wishlist writes preserve receipt contracts and own their React lifecycle",
         await page.evaluate(`wishlistLifecycle.render({host:${JSON.stringify(host)}}); wishlistLifecycle.start(['receive'], {location:'  QA Dry box  ',metadata:${JSON.stringify(metadata)}})`);
         await waitForCommands(page, 1);
         await finish(page, 0, 0);
-        assert.deepEqual(await page.evaluate("wishlistLifecycle.commands()"), [{
+        const commands = await page.evaluate("wishlistLifecycle.commands()");
+        assert.match(commands[0].payload.input.request_id, /^[0-9a-f-]{36}$/);
+        delete commands[0].payload.input.request_id;
+        assert.deepEqual(commands, [{
           command: host ? "receive_library_sync_host_wishlist_item" : "receive_wishlist_item",
           payload: { input: {
             ...(host ? { base_url: "http://paired-host", expected_library_id: "library-paired-host" } : {}),
@@ -192,36 +201,87 @@ test("wishlist writes preserve receipt contracts and own their React lifecycle",
           assert.equal(state.busy, false);
           assert.equal(state.selected, "received-1");
           assert.match(state.info, /^Received 2 × .*Jade White\. Remaining: 1\.$/);
-          assert.equal(state.error, "Failed to load inventory.");
+          assert.equal(state.error, null);
         });
       }
     }
 
     for (const location of [undefined, "", "  "]) {
-      await scenario(`blank optional location ${JSON.stringify(location)} keeps the legacy request`, async page => {
+      await scenario(`blank optional location ${JSON.stringify(location)} stays omitted`, async page => {
         await page.evaluate(`wishlistLifecycle.render({host:null}); wishlistLifecycle.start(['receive'],${JSON.stringify({location})})`);
         await waitForCommands(page, 1);
         await finish(page, 0, 0);
-        assert.deepEqual(await page.evaluate("wishlistLifecycle.commands()"), [{command:"receive_wishlist_item",payload:{input:{item_id:"wish-white",quantity:2}}}]);
+        const commands = await page.evaluate("wishlistLifecycle.commands()");
+        assert.match(commands[0].payload.input.request_id, /^[0-9a-f-]{36}$/);
+        delete commands[0].payload.input.request_id;
+        assert.deepEqual(commands, [{command:"receive_wishlist_item",payload:{input:{item_id:"wish-white",quantity:2}}}]);
       });
     }
 
-    await scenario("rejection keeps the receipt retryable without announcing success", async page => {
+    await scenario("uncertain Host result keeps the same receipt ID across reload and blocks changed values", async page => {
       await page.evaluate("wishlistLifecycle.render({}); wishlistLifecycle.start()");
       await waitForCommands(page, 1);
-      await finish(page, 0, 0, null, true);
+      await finish(page, 0, 0, null, "wishlist.receive.outcome_unknown");
       const state = await page.evaluate("wishlistLifecycle.snapshot()");
       assert.equal(state.operations[0].result, false);
       assert.equal(state.busy, false);
-      assert.equal(state.error, "Failed to stock roll from wishlist item.");
+      assert.match(state.error, /unconfirmed/);
       assert.equal(state.info, null);
       assert.equal(state.selected, null);
       assert.deepEqual(state.reloads, []);
+      const original = (await page.evaluate("wishlistLifecycle.commands()"))[0].payload.input;
+      await page.reload();
+      await page.evaluate("wishlistLifecycle.render({}); wishlistLifecycle.start(['receive'], {quantity:1})");
+      await page.waitForFunction("wishlistLifecycle.settled(0)");
+      assert.equal(await page.evaluate("wishlistLifecycle.commandCount()"), 0);
+      await page.evaluate("wishlistLifecycle.start()");
+      await waitForCommands(page, 1);
+      assert.deepEqual((await page.evaluate("wishlistLifecycle.commands()"))[0].payload.input, { ...original, retry: true });
+      await finish(page, 0, 1);
+      assert.equal((await page.evaluate("wishlistLifecycle.snapshot()")).operations[1].result, true);
       await page.evaluate("wishlistLifecycle.start()");
       await waitForCommands(page, 2);
-      await finish(page, 1, 1);
-      assert.equal((await page.evaluate("wishlistLifecycle.snapshot()")).operations[1].result, true);
+      const subsequent = (await page.evaluate("wishlistLifecycle.commands()"))[1].payload.input;
+      assert.notEqual(subsequent.request_id, original.request_id);
+      assert.equal(subsequent.retry, undefined);
+      await finish(page, 1, 2);
     });
+
+    await scenario("a definitive rejection allows an edited new receipt", async page => {
+      await page.evaluate("wishlistLifecycle.render({}); wishlistLifecycle.start()");
+      await waitForCommands(page, 1);
+      await finish(page, 0, 0, null, "wishlist.receive.quantity_exceeds_remaining");
+      await page.evaluate("wishlistLifecycle.start(['receive'], {quantity:1})");
+      await waitForCommands(page, 2);
+      const [original, updated] = (await page.evaluate("wishlistLifecycle.commands()")).map(entry => entry.payload.input);
+      assert.notEqual(original.request_id, updated.request_id);
+      assert.equal(updated.quantity, 1);
+      assert.equal(updated.retry, undefined);
+      await finish(page, 1, 1, { ...receipt, spool_ids: ["received-1"], received_quantity: 1 });
+    });
+
+    for (const rejected of ["wishlist.receive.outcome_unknown_legacy_host", false]) {
+      await scenario(`legacy or unclassified interrupted write does not submit a duplicate (${rejected})`, async page => {
+        await page.evaluate("wishlistLifecycle.render({}); wishlistLifecycle.start()");
+        await waitForCommands(page, 1);
+        if (rejected) await finish(page, 0, 0, null, rejected);
+        await page.reload();
+        await page.evaluate("wishlistLifecycle.render({}); wishlistLifecycle.start()");
+        await page.waitForFunction("wishlistLifecycle.settled(0)");
+        assert.equal(await page.evaluate("wishlistLifecycle.commandCount()"), 0);
+        assert.match((await page.evaluate("wishlistLifecycle.snapshot()")).error, /Check the order on the Host/);
+        await page.evaluate("wishlistLifecycle.start(['review'])");
+        await page.waitForFunction("wishlistLifecycle.settled(1)");
+        assert.equal(await page.evaluate("wishlistLifecycle.commandCount()"), 0, "Acknowledgement never posts a receipt");
+        assert.deepEqual((await page.evaluate("wishlistLifecycle.snapshot()")).reloads.map(({kind}) => kind), ["spools", "wishlist"]);
+        await page.evaluate("wishlistLifecycle.start()");
+        await waitForCommands(page, 1);
+        const fresh = (await page.evaluate("wishlistLifecycle.commands()"))[0].payload.input;
+        assert.match(fresh.request_id, /^[0-9a-f-]{36}$/);
+        assert.equal(fresh.retry, undefined);
+        await finish(page, 0, 2);
+      });
+    }
 
     for (const kinds of [["receive", "receive"], ["receive", "register"], ["register", "receive"]]) {
       await scenario(`${kinds.join(" then ")} callbacks share an immediate write lock`, async page => {
@@ -251,7 +311,7 @@ test("wishlist writes preserve receipt contracts and own their React lifecycle",
         await scenario(`A→B→A discards stale ${kind} ${rejected ? "rejection" : "success"} without unlocking the new write`, async page => {
           await page.evaluate(`wishlistLifecycle.render({}); wishlistLifecycle.start([${JSON.stringify(kind)}])`);
           await waitForCommands(page, 1);
-          await page.evaluate("wishlistLifecycle.render({host:'other-host',generation:2}); wishlistLifecycle.render({generation:3}); wishlistLifecycle.start()");
+          await page.evaluate("wishlistLifecycle.render({host:'other-host',generation:2}); wishlistLifecycle.render({generation:3}); wishlistLifecycle.start(['receive'], {itemId:'wish-other'})");
           await waitForCommands(page, 2);
           await finish(page, 0, 0, receipt, rejected);
           const stale = await page.evaluate("wishlistLifecycle.snapshot()");

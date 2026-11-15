@@ -172,6 +172,32 @@ export const ERROR_MESSAGE_DESCRIPTORS = Object.freeze({
     "errors.wishlistReceiveQuantityInvalid",
     "Choose a quantity of at least one roll.",
   ],
+  "wishlist.receive.quantity_too_large": [
+    "errors.wishlistReceiptLimit",
+    "Receive at most 100 rolls at a time.",
+  ],
+  "wishlist.receive.request_id_invalid": ["errors.invalidRequest", "The request could not be completed."],
+  "wishlist.receive.request_conflict": [
+    "errors.wishlistReceiptCheckHost",
+    "Check the order on the Host before receiving any remaining rolls.",
+  ],
+  "wishlist.receive.outcome_unknown_legacy_host": [
+    "errors.wishlistReceiptCheckHost",
+    "Check the order on the Host before receiving any remaining rolls.",
+  ],
+  "wishlist.receive.retry_host_unsupported": [
+    "errors.wishlistReceiptCheckHost",
+    "Check the order on the Host before receiving any remaining rolls.",
+  ],
+  "wishlist.receive.outcome_unknown": [
+    "errors.wishlistReceiptPending",
+    "The receipt is unconfirmed. Retry with the same quantity and purchase details.",
+  ],
+  "wishlist.receive.not_sent": ["errors.unavailable", "The service is temporarily unavailable."],
+  "wishlist.receive.pending_changed": [
+    "errors.wishlistReceiptPending",
+    "The receipt is unconfirmed. Retry with the same quantity and purchase details.",
+  ],
   "wishlist.receive.already_received": [
     "errors.wishlistReceiveAlreadyReceived",
     "This wishlist item has already been received. Refresh the wishlist.",
