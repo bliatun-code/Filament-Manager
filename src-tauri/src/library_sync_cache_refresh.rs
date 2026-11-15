@@ -54,7 +54,23 @@ pub(crate) fn refresh_library_sync_printer_cache(
     }
 }
 
+pub(crate) fn fetch_and_cache_library_sync_active_loans(
+    state: &AppState,
+    target: &LibrarySyncTargetGuard,
+) -> Result<Vec<SpoolLoanDetailsRow>, String> {
+    let rows: Vec<SpoolLoanDetailsRow> = get_library_sync_host_json_authenticated_for_target(
+        state,
+        "/api/v1/library/loans?include_returned=false&direction=ALL&limit=2500",
+        target,
+    )?;
+    with_current_library_sync_target(state, target, |engine| {
+        engine.save_library_sync_cached_active_loans(&rows)
+    })?;
+    Ok(rows)
+}
+
 pub(crate) fn refresh_library_sync_loan_cache(state: &AppState, target: &LibrarySyncTargetGuard) {
+    let _ = fetch_and_cache_library_sync_active_loans(state, target);
     let rows: Result<Vec<SpoolLoanDetailsRow>, String> =
         get_library_sync_host_json_authenticated_for_target(
             state,

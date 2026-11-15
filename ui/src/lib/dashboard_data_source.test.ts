@@ -247,7 +247,7 @@ test("loadDashboardData fails closed when the library role cannot be resolved", 
     loadDashboardData(
       { previousClientHostNeedsRepair: false, t },
       {
-        fetchHostLoans: unexpectedRead,
+        fetchHostActiveLoans: unexpectedRead,
         fetchHostPrinterSettings: async () => printerSettingsSnapshot(),
         fetchHostPrinterOverview: unexpectedRead,
         fetchHostSnapshot: unexpectedRead,
@@ -452,8 +452,9 @@ test("loadDashboardData prefers live host data for paired clients", async () => 
       fetchHostPrinterOverview: async () => [
         printerOverviewRow("printer-host"),
       ],
-      fetchHostLoans: async (_baseUrl, _libraryId, limit) => {
-        assert.equal(limit, 2000);
+      fetchHostActiveLoans: async (baseUrl, libraryId) => {
+        assert.equal(baseUrl, "http://host");
+        assert.equal(libraryId, "library-1");
         return [];
       },
       fetchHostWishlist: async (_baseUrl, _libraryId, limit) => {
@@ -518,7 +519,7 @@ test("loadDashboardData marks partial client host reads as cached", async () => 
       fetchHostPrinterOverview: async () => {
         throw new Error("printers unavailable");
       },
-      fetchHostLoans: async () => [],
+      fetchHostActiveLoans: async () => [],
       fetchHostWishlist: async () => [],
       onLoadError: (error) => {
         errors.push(error);
@@ -572,7 +573,7 @@ test("loadDashboardData relies on core reads instead of a separate pairing valid
       loadSpoolRows: async () => [],
       fetchHostPrinterSettings: async () => printerSettingsSnapshot(),
       fetchHostPrinterOverview: async () => [],
-      fetchHostLoans: async () => [],
+      fetchHostActiveLoans: async () => [],
       fetchHostWishlist: async () => [],
     },
   );
@@ -608,7 +609,7 @@ test("a successful authenticated core read clears a stale persisted repair state
       loadSpoolRows: async () => [],
       fetchHostPrinterSettings: async () => printerSettingsSnapshot(),
       fetchHostPrinterOverview: async () => [],
-      fetchHostLoans: async () => [],
+      fetchHostActiveLoans: async () => [],
       fetchHostWishlist: async () => [],
     },
   );
@@ -661,6 +662,33 @@ test("loadDashboardData skips host calls for incomplete client targets and uses 
   assert.equal(result.revisionSource, null);
   assert.equal(result.revisionPollComplete, false);
   assert.equal(localPrinterSettingsReads, 0);
+});
+
+test("cached active loans are independent of historical rows on the Dashboard", async () => {
+  const historicalLoan = activeLoan("historical-cache-only", "2026-08-18");
+  const active = { ...activeLoan("older-active", "2026-08-18"), spool_tare_weight_g: 200 };
+  for (const loanRows of [[active], []]) {
+    const result = await loadDashboardData(
+      { clientCacheOnly: true, previousClientHostNeedsRepair: false, t, today: "2026-08-21" },
+      {
+        loadSyncSettings: async () => syncSettings({
+          mode: "CLIENT",
+          host_base_url: "http://host",
+          library_id: "library-1",
+          cached_snapshot: snapshot("Cached Host"),
+          cached_loans: {
+            captured_at: "2026-08-20 09:00:00",
+            rows: [{ ...historicalLoan, spool_tare_weight_g: 200 }],
+          },
+          cached_active_loans: { captured_at: "2026-08-20 10:00:00", rows: loanRows },
+        }),
+        loadTrustedLanStatus: async () => null,
+      },
+    );
+    assert.equal(result.syncSource, "client-cached");
+    assert.deepEqual(result.actionItems.map((item) => item.id),
+      loanRows.length === 0 ? [] : ["overdue-loan:older-active"]);
+  }
 });
 
 test("loadDashboardData uses cached client rows without a cached snapshot", async () => {
@@ -857,7 +885,7 @@ test("loadDashboardData renders paired-client cache without waiting for host rea
       loadSpoolRows: hostRead,
       fetchHostPrinterSettings: async () => printerSettingsSnapshot(),
       fetchHostPrinterOverview: hostRead,
-      fetchHostLoans: hostRead,
+      fetchHostActiveLoans: hostRead,
       fetchHostWishlist: hostRead,
       loadInventoryOverview: hostRead,
       listLocalPrinters: hostRead,
@@ -959,7 +987,7 @@ test("loadDashboardData marks annual usage unavailable for an older host snapsho
       loadSpoolRows: async () => [],
       fetchHostPrinterSettings: async () => printerSettingsSnapshot(),
       fetchHostPrinterOverview: async () => [],
-      fetchHostLoans: async () => [],
+      fetchHostActiveLoans: async () => [],
       fetchHostWishlist: async () => [],
     },
   );
@@ -1003,7 +1031,7 @@ test("loadDashboardData falls back to cached client snapshot when host snapshot 
       fetchHostPrinterOverview: async () => {
         throw new Error("printers unavailable");
       },
-      fetchHostLoans: async () => [],
+      fetchHostActiveLoans: async () => [],
       fetchHostWishlist: async () => {
         throw new Error("wishlist unavailable");
       },
@@ -1049,7 +1077,7 @@ test("loadDashboardData warns only after consecutive core host failures and rese
     fetchHostSnapshot: failedRead,
     loadSpoolRows: failedRead,
     fetchHostPrinterOverview: failedRead,
-    fetchHostLoans: failedRead,
+    fetchHostActiveLoans: failedRead,
     fetchHostWishlist: failedRead,
     onLoadError: () => {},
   };
@@ -1100,7 +1128,7 @@ test("loadDashboardData warns only after consecutive core host failures and rese
       loadSpoolRows: async () => [],
       fetchHostPrinterSettings: async () => printerSettingsSnapshot(),
       fetchHostPrinterOverview: async () => [],
-      fetchHostLoans: async () => [],
+      fetchHostActiveLoans: async () => [],
       fetchHostWishlist: async () => [],
     },
   );
@@ -1138,7 +1166,7 @@ test("loadDashboardData treats a 401 as an immediate pairing repair", async () =
       loadSpoolRows: async () => [],
       fetchHostPrinterSettings: async () => printerSettingsSnapshot(),
       fetchHostPrinterOverview: async () => [],
-      fetchHostLoans: async () => [],
+      fetchHostActiveLoans: async () => [],
       fetchHostWishlist: async () => [],
       onLoadError: () => {},
     },
@@ -1179,7 +1207,7 @@ test("loadDashboardData does not treat 401 digits in a transport URL as pairing 
       loadSpoolRows: failedRead,
       fetchHostPrinterSettings: async () => printerSettingsSnapshot(),
       fetchHostPrinterOverview: failedRead,
-      fetchHostLoans: failedRead,
+      fetchHostActiveLoans: failedRead,
       fetchHostWishlist: failedRead,
       onLoadError: () => {},
     },
@@ -1206,7 +1234,7 @@ test("client overview availability distinguishes unknown rows from confirmed emp
         fetchHostPrinterSettings: async () => printerSettingsSnapshot(),
         fetchHostPrinterOverview: loadRows,
         loadSpoolRows: loadRows,
-        fetchHostLoans: async () => [],
+        fetchHostActiveLoans: async () => [],
         fetchHostWishlist: async () => [],
         loadPrinterSettings: async () => {
           localSettingsReads += 1;
@@ -1255,7 +1283,7 @@ test("client dashboard reads sanitized live settings from its Host and clears th
       if (failPrinters) throw new Error("printer list unavailable");
       return [printerOverviewRow("host-printer")];
     },
-    fetchHostLoans: async () => [],
+    fetchHostActiveLoans: async () => [],
     fetchHostWishlist: async () => [],
     fetchHostPrinterSettings: async (baseUrl: string, libraryId?: string | null) => {
       settingsCalls++;

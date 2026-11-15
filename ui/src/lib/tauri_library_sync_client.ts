@@ -68,6 +68,7 @@ export type LibrarySyncSettings = {
   cached_spools?: LibrarySyncCachedSpoolList | null;
   cached_printers?: LibrarySyncCachedPrinterOverview | null;
   cached_loans?: LibrarySyncCachedLoanList | null;
+  cached_active_loans?: LibrarySyncCachedLoanList | null;
   cached_consumption?: LibrarySyncCachedFilamentConsumptionList | null;
   cached_wishlist?: LibrarySyncCachedWishlistList | null;
 };
@@ -352,6 +353,35 @@ export async function fetchCachedLibrarySyncLoans(
 ) {
   return invoke<LibrarySyncCachedLoanList | null>(
     "fetch_cached_library_sync_loans",
+    {
+      input: librarySyncCacheTargetInput(
+        baseUrl,
+        expectedLibraryId,
+        targetGeneration,
+      ),
+    },
+  );
+}
+
+export async function fetchLibrarySyncActiveLoans(
+  baseUrl: string,
+  expectedLibraryId?: string | null,
+) {
+  return invoke<SpoolLoanDetailsRow[]>("fetch_library_sync_active_loans", {
+    input: {
+      base_url: baseUrl,
+      expected_library_id: expectedLibraryId ?? null,
+    },
+  });
+}
+
+export async function fetchCachedLibrarySyncActiveLoans(
+  baseUrl: string,
+  expectedLibraryId: string,
+  targetGeneration: number,
+) {
+  return invoke<LibrarySyncCachedLoanList | null>(
+    "fetch_cached_library_sync_active_loans",
     {
       input: librarySyncCacheTargetInput(
         baseUrl,

@@ -16,6 +16,8 @@ use super::database_time::sqlite_now;
 use super::database_wishlist_models::WishlistItemRow;
 use super::statistics::FilamentConsumptionRow;
 
+pub(crate) const CACHED_ACTIVE_LOANS_KEY: &str = "library_sync_cached_active_loans_json";
+
 pub(crate) fn save_library_sync_cached_snapshot(
     conn: &Connection,
     snapshot: &LibrarySyncCachedSnapshotRow,
@@ -79,13 +81,28 @@ pub(crate) fn save_library_sync_cached_loans(
     conn: &Connection,
     rows: &[SpoolLoanDetailsRow],
 ) -> InventoryResult<()> {
+    save_library_sync_loan_list(conn, "library_sync_cached_loans_json", rows)
+}
+
+pub(crate) fn save_library_sync_cached_active_loans(
+    conn: &Connection,
+    rows: &[SpoolLoanDetailsRow],
+) -> InventoryResult<()> {
+    save_library_sync_loan_list(conn, CACHED_ACTIVE_LOANS_KEY, rows)
+}
+
+fn save_library_sync_loan_list(
+    conn: &Connection,
+    key: &str,
+    rows: &[SpoolLoanDetailsRow],
+) -> InventoryResult<()> {
     let payload = LibrarySyncCachedLoanListRow {
         captured_at: sqlite_now(conn)?,
         rows: rows.to_vec(),
     };
     let serialized =
         serde_json::to_string(&payload).map_err(|error| InventoryError::Db(error.to_string()))?;
-    set_setting(conn, "library_sync_cached_loans_json", &serialized)
+    set_setting(conn, key, &serialized)
 }
 
 pub(crate) fn save_library_sync_cached_consumption(
