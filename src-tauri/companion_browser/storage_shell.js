@@ -38,7 +38,7 @@ function catalogMatchesSource(master, source) {
   return vendor.includes("bambu");
 }
 
-function resolveAddSheetState(state) {
+function resolveAddSheetState(state, getPendingWishlistReceipt) {
   const draft = state.borrowedInDraft || {};
   const source = String(draft.source || "bambu").trim().toLowerCase();
   const rawCatalogSearch = String(draft.catalogSearch || "").trim();
@@ -109,7 +109,7 @@ function resolveAddSheetState(state) {
   const wishlistItems = Array.isArray(state.wishlistItems) ? state.wishlistItems : [];
   const wishlistFilter = String(draft.wishlistFilter || "ALL").trim().toUpperCase();
   const visibleWishlistItems = wishlistItems.filter((item) =>
-    wishlistFilter === "ALL" ? true : item.status === wishlistFilter,
+    wishlistFilter === "ALL" || item.status === wishlistFilter || getPendingWishlistReceipt(item.id),
   );
 
   return {
@@ -148,9 +148,9 @@ function renderSelectionHiddenInputs(selection, escapeHtml) {
   `;
 }
 
-export function renderAddFilamentTaskSheetBody(state, busy, escapeHtml) {
+export function renderAddFilamentTaskSheetBody(state, busy, escapeHtml, getPendingWishlistReceipt = () => null) {
   const locale = state.locale || "en";
-  const selection = resolveAddSheetState(state);
+  const selection = resolveAddSheetState(state, getPendingWishlistReceipt);
   const draft = selection.draft;
   const previewTitle = formatInventoryDisplayTitle(
     selection.material || t(locale, "storage.material", "Material"),
@@ -173,7 +173,7 @@ export function renderAddFilamentTaskSheetBody(state, busy, escapeHtml) {
         (master) => master.id === item.master_id,
       );
       const itemSwatch = linkedMaster?.hex_color || suggestSwatchHex(item.color_name, item.filament_name, item.vendor, item.material);
-      const pendingReview = state.wishlistReceiptReviews?.has(item.id);
+      const pendingReceipt = getPendingWishlistReceipt(item.id);
       return renderSwatchSurface({
         className: "add-spool-wishlist-row",
         escapeHtml,
@@ -221,14 +221,21 @@ export function renderAddFilamentTaskSheetBody(state, busy, escapeHtml) {
               label: t(locale, "storage.onOrder", "On order"),
             })}
             ${
-              pendingReview
+              pendingReceipt
                 ? `<div class="wishlist-receipt-form">
-                    <p class="section-copy">${escapeHtml(t(locale, "errors.wishlistReceiptCheckHost", "Check the order on the Host before receiving any remaining rolls."))}</p>
+                    <p class="section-copy">${escapeHtml(pendingReceipt.requiresReview
+                      ? t(locale, "errors.wishlistReceiptCheckHost", "Check the order on the Host before receiving any remaining rolls.")
+                      : t(locale, "errors.wishlistReceiptPending", "The receipt is unconfirmed. Retry with the same quantity and purchase details."))}</p>
                     ${renderCompanionActionButton({
                       disabled: busy,
-                      attributes: { "data-action": "wishlist-receipt-reviewed", "data-wishlist-id": item.id },
+                      attributes: {
+                        "data-action": pendingReceipt.requiresReview ? "wishlist-receipt-reviewed" : "wishlist-receipt-retry",
+                        "data-wishlist-id": item.id,
+                      },
                       escapeHtml,
-                      label: t(locale, "errors.wishlistReceiptReviewed", "I checked the order on the Host"),
+                      label: pendingReceipt.requiresReview
+                        ? t(locale, "errors.wishlistReceiptReviewed", "I checked the order on the Host")
+                        : t(locale, "storage.retryWishlistReceipt", "Retry receipt"),
                     })}
                   </div>`
                 : item.status !== "RECEIVED"

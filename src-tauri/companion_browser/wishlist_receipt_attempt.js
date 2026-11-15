@@ -126,8 +126,9 @@ export function createWishlistReceiptAttempts(storage = () => globalThis.session
       const current = get(scope);
       if (!current || current.requestId !== attempt.requestId) return;
       if (definitiveRejections.has(code ?? "") || code?.startsWith("inventory.location.") ||
-          (!attempt.retry && ["common.invalid_request", "common.unauthorized",
-            "common.not_found", "common.forbidden", "wishlist.receive.not_sent"].includes(code ?? ""))) {
+          (!attempt.retry && ["common.invalid_request", "common.unauthorized", "common.not_found",
+            "common.forbidden", "purchase_metadata.host_unsupported",
+            "wishlist.receive.not_sent"].includes(code ?? ""))) {
         save(scope, null);
       } else if (!keyed || code === "wishlist.receive.outcome_unknown_legacy_host" ||
           code === "wishlist.receive.retry_host_unsupported" || code === "wishlist.receive.request_conflict" ||
