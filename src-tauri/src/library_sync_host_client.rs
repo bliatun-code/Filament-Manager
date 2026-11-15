@@ -3201,8 +3201,7 @@ mod tests {
                 Some("library-a"),
                 Some(candidate),
             )
-            .err()
-            .expect("unverified identity must reject fallback route");
+            .expect_err("unverified identity must reject fallback route");
             assert!(error.contains(expected_error), "{error}");
             assert!(initial
                 .slot
@@ -3220,8 +3219,7 @@ mod tests {
         health.sync_mode = Some("CLIENT".to_string());
 
         let error = verify_and_confirm_library_sync_host_identity(&health, Some("library-a"), None)
-            .err()
-            .expect("a Client desktop must not be paired or used as a Host");
+            .expect_err("a Client desktop must not be paired or used as a Host");
 
         assert!(error.contains("library Client"), "{error}");
     }
@@ -3251,8 +3249,7 @@ mod tests {
             None,
             Some(candidate),
         )
-        .err()
-        .expect("pairing without expected identity must reject fallback route");
+        .expect_err("pairing without expected identity must reject fallback route");
         assert!(error.contains("requires an expected library ID"), "{error}");
         assert!(initial
             .slot
