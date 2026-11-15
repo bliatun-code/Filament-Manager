@@ -60,11 +60,6 @@ type ActiveLoanRowsDependencies = {
   listLocalActiveLoans?: typeof listActiveSpoolLoans;
 };
 
-type ActiveLoanRowsInternalLoadResult = {
-  result: ActiveLoanRowsLoadResult;
-  loadError: unknown | null;
-};
-
 type LoanRowsPageDependencies = {
   fetchHostLoans?: typeof fetchLibrarySyncLoans;
   fetchCachedLoans?: typeof fetchCachedLibrarySyncLoans;
@@ -114,10 +109,10 @@ function mapLoanDetailsToActiveRows(rows: SpoolLoanDetailsRow[]): NormalizedActi
     .map(mapLoanDetailsToActiveRow);
 }
 
-async function loadActiveLoanRowsInternal(
+export async function loadActiveLoanRowsSnapshot(
   options: LoanDataSourceOptions,
   dependencies: ActiveLoanRowsDependencies = {},
-): Promise<ActiveLoanRowsInternalLoadResult> {
+): Promise<ActiveLoanRowsLoadResult> {
   if (options.clientReadOnly) {
     const fetchHostLoans = dependencies.fetchHostActiveLoans ?? fetchLibrarySyncActiveLoans;
     const fetchCachedLoans = dependencies.fetchCachedActiveLoans ?? fetchCachedLibrarySyncActiveLoans;
@@ -125,44 +120,16 @@ async function loadActiveLoanRowsInternal(
     const cacheTarget = resolveClientHostCacheTarget(options);
     if (hostTarget) {
       try {
-        const rows = await fetchHostLoans(
-          hostTarget.baseUrl,
-          hostTarget.libraryId,
-        );
+        const rows = await fetchHostLoans(hostTarget.baseUrl, hostTarget.libraryId);
         return {
-          result: {
-            rows: mapLoanDetailsToActiveRows(rows),
-            source: "LIVE",
-          },
-          loadError: null,
+          rows: mapLoanDetailsToActiveRows(rows),
+          source: "LIVE",
         };
-      } catch (loadError) {
-        console.error(loadError);
-        const cached = cacheTarget
-          ? await fetchCachedLoans(
-              cacheTarget.baseUrl,
-              cacheTarget.libraryId,
-              cacheTarget.targetGeneration,
-            ).catch(() => null)
-          : null;
-        if (!cached) {
-          return {
-            result: {
-              rows: [],
-              source: "OFFLINE",
-            },
-            loadError,
-          };
-        }
-        return {
-          result: {
-            rows: mapLoanDetailsToActiveRows(cached.rows),
-            source: "CACHED",
-          },
-          loadError: null,
-        };
+      } catch (error) {
+        console.error(error);
       }
     }
+
     const cached = cacheTarget
       ? await fetchCachedLoans(
           cacheTarget.baseUrl,
@@ -171,40 +138,16 @@ async function loadActiveLoanRowsInternal(
         ).catch(() => null)
       : null;
     return {
-      result: {
-        rows: mapLoanDetailsToActiveRows(cached?.rows ?? []),
-        source: cached ? "CACHED" : "OFFLINE",
-      },
-      loadError: null,
+      rows: mapLoanDetailsToActiveRows(cached?.rows ?? []),
+      source: cached ? "CACHED" : "OFFLINE",
     };
   }
 
   const listLocalActiveLoans = dependencies.listLocalActiveLoans ?? listActiveSpoolLoans;
   return {
-    result: {
-      rows: (await listLocalActiveLoans()).map(normalizeActiveLoanRow),
-      source: "LIVE",
-    },
-    loadError: null,
+    rows: (await listLocalActiveLoans()).map(normalizeActiveLoanRow),
+    source: "LIVE",
   };
-}
-
-export async function loadActiveLoanRowsSnapshot(
-  options: LoanDataSourceOptions,
-  dependencies: ActiveLoanRowsDependencies = {},
-): Promise<ActiveLoanRowsLoadResult> {
-  return (await loadActiveLoanRowsInternal(options, dependencies)).result;
-}
-
-export async function loadActiveLoanRows(
-  options: LoanDataSourceOptions,
-  dependencies: ActiveLoanRowsDependencies = {},
-): Promise<NormalizedActiveLoanRow[]> {
-  const { result, loadError } = await loadActiveLoanRowsInternal(options, dependencies);
-  if (loadError) {
-    throw loadError;
-  }
-  return result.rows;
 }
 
 export function activeLoanRowsForDisplay(
