@@ -61,16 +61,11 @@ lockfiles:
 - `cargo deny` checks normal, build, target-specific, and development
   dependencies against the Cargo license allowlist.
 
-The cross-platform Cargo lockfile includes Linux/BSD dependencies that are not
-shipped in the macOS or Windows builds. RustSec currently reports informational
-`glib` soundness and `proc-macro-error` maintenance warnings in the GTK branch,
-and maintenance warnings for `zbus_names`, `zvariant` and `zvariant_derive` in
-the single-instance plugin's zbus 5 branch. The latter standalone crates moved
-into zbus 6; removing that branch requires an upstream plugin migration. Keep
-these findings visible and re-evaluate their target exposure during upgrades.
-Do not force transitive versions or add advisory ignores to make an audit pass.
-All remaining warnings stay visible in the scheduled report;
-only vulnerability advisories fail `cargo audit`. License violations always fail.
+The cross-platform lockfile includes dependencies for targets beyond macOS and
+Windows. Use the scheduled audit or a fresh local run to see current warnings,
+and check which target enables each affected dependency. Keep informational
+warnings visible. Resolve vulnerabilities and license violations through the
+dependency graph or the documented policy.
 
 ## Policy Files
 
@@ -84,8 +79,7 @@ The npm policy evaluates SPDX `AND`, `OR`, parentheses, and `WITH` exceptions.
 An `OR` expression passes when at least one selectable license is approved; an
 `AND` expression requires every license. Package exceptions are fail-closed:
 they must pin the exact package name, version, and reported license, include a
-review reason, and remain in active use. There are currently no package
-exceptions.
+review reason, and remain in active use.
 
 ## Local Checks
 

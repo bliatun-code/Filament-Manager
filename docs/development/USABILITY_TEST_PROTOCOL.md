@@ -1,6 +1,6 @@
 # Usability acceptance protocol
 
-This protocol turns the roadmap's usability targets into one repeatable release gate. It is used for the baseline build and again for the candidate build with the same seeded library and the same five tasks.
+Compare a baseline and a candidate using the same five tasks and starting library.
 
 ## Acceptance thresholds
 
@@ -28,46 +28,24 @@ The timing threshold is reported per task as well, but the blocking 30% threshol
 | `lend` | Lend the selected spool to a named borrower | The target spool detail is open; borrower and outgoing weight are provided. | One active outbound loan exists for that spool with the supplied borrower and weight. |
 | `receive` | Receive an on-order item into stock | The main Inventory view is open with purchase dialogs closed; the target item and quantity are provided. | The requested number of spools exists and the queue quantity/status is correct. |
 
-The `receive` starting state is deliberately shared by older builds with a
-purchase dialog and newer builds with a dedicated purchases view. Establish
-this same state in both builds before timing; finding the purchase workflow is
-part of the task.
-
 ## Prepare the study
 
 Create a new private directory outside the repository; its parent must already
 exist. Resolve the baseline and candidate before collecting any measurements:
 
 ```sh
-npm run qa:usability:prepare -- --baseline=v0.27.0 --candidate=HEAD --output=/absolute/path/to/new-study
+npm run qa:usability:prepare -- --baseline="$baseline_ref" --candidate="$candidate_ref" --output=/absolute/path/to/new-study
 ```
 
-`v0.27.0` is an example baseline from before the improvement plan. Select the
-comparison that answers the study question, and use the same pinned candidate
-for every participant. The command resolves both refs to immutable commits and
-checks that their source supports the schema-2 fixture. It does not build or
-launch either artifact.
+Set `baseline_ref` and `candidate_ref` to the Git refs you want to compare.
+The command resolves both to commits and checks that their source supports
+the schema-2 fixture. Build and launch the study artifacts separately.
 
-The generated directory contains:
-
-- `study.json`: build commits, source schema versions, fixture SHA-256, planned
-  build order, and unfilled artifact, rehearsal and machine details.
-- `results.json`: one baseline and candidate record per task and participant,
-  with all measurements and outcomes set to `null`.
-- `task-cards.md`: five fixed English participant cards and a separate
-  moderator answer key using only the reviewed synthetic identities.
-- `fixture.db`: the read-only schema-2 starting fixture, with local networking
-  disabled, the lending spool available and a two-roll item on order. Task
-  setup version 2 normalizes the synthetic dry box from `CONTAINER` to the
-  user-managed `GENERIC` location type supported by both study builds.
-- `sessions/`: a separate byte-identical writable fixture copy for every task,
-  build and participant. The default six slots produce 60 databases and 60
-  unmeasured records.
-
-Existing output directories are rejected rather than overwritten. The
-preparation command never reads a user's inventory database or fills in
-participant outcomes. Six slots mean planned participants, not completed
-participation. The unfilled result template intentionally fails the analyzer.
+The command creates a private `study.json` manifest, an unfilled `results.json`
+template, moderator and participant `task-cards.md`, the read-only `fixture.db`,
+and an independent writable database in `sessions/` for each build, participant
+and task. The fixture uses synthetic identities and has LAN disabled. An
+existing output directory is rejected.
 
 Before timing, fill in the artifact paths and checksums, verify their source
 commits, and rehearse both artifacts using disposable fixture copies. Confirm
@@ -134,13 +112,10 @@ FILAMENT_MANAGER_VISUAL_QA=1 \
   '/absolute/path/to/Filament Manager.app/Contents/MacOS/bambu-filament-manager'
 ```
 
-For the v0.27.0 baseline and the catalog-recovery candidate, the QA flag keeps
-desktop lifecycle preferences and autostart changes out of the rehearsal.
-It does not select the UI language or theme on its own. Select English and
-Dark and turn off automatic update checks after every launch, because
-incognito storage resets those preferences.
-Do not launch by clicking the bundle: that omits the database and lifecycle
-overrides. Quit the process completely before the next task.
+Verify that both study builds honor the QA flag before testing. Select English
+and Dark and turn off automatic update checks after each launch because
+incognito storage resets these preferences. Launch from the shell to pass both
+overrides. Quit the process completely before changing tasks.
 
 Rehearse with new disposable copies outside `sessions/`. Verify the five task
 outcomes against before/after database state, account separately for startup
@@ -151,40 +126,15 @@ durations, completion rates or assistance scores.
 
 ### Check the library after startup
 
-The byte-identical input fixture does not guarantee identical catalogs after
-launch. Both v0.27.0 and the catalog-recovery candidate seed their bundled
-catalog during database initialization, even when the schema is current.
-There is no supported setting or QA flag to skip that maintenance in these
-refs. `catalog_seed_version` records metadata; it is not a skip marker.
+App initialization can migrate the database and seed the bundled catalog.
+Record each build's post-startup catalog and take the task's before snapshot
+after startup has settled. Check that the original fixture records and slot
+assignments remain intact and that the target is unambiguous. Different bundled
+catalogs affect workflow comparisons. Rehearse with identical catalog contents
+if the study is intended to isolate an interface change.
 
-Record each build's bundled catalog revision/checksum and the actual catalog
-count after startup. Check that the original fixture identities, spools,
-loans, purchases and slot assignments remain intact, and that the task's
-catalog target is still unambiguous. Take the task's before snapshot after
-startup has settled so seed rows and schema migrations are not scored as
-participant mutations.
-
-Document catalog differences before collecting measurements. A comparison
-that retains each version's bundled catalog measures the complete build's
-workflow, including that content; it cannot isolate an interface-only effect
-or claim identical runtime catalogs. If the study question requires identical
-catalog contents, resolve and rehearse that setup before timing. Do not modify
-participant databases or add undocumented database triggers to conceal drift.
-
-## Automated data-integrity companion gates
-
-The release checks exercise these same five success conditions through both a
-Client connected to a separate Host process and the rendered Companion web UI:
-
-```sh
-cargo test -p bambu-filament-manager library_sync_resilience_tests -- --nocapture
-npm run qa:visual:companion:data-e2e -- --startup-timeout-ms 120000
-```
-
-Those gates verify authoritative routing, exact record counts, relationships,
-cache updates, reload persistence and isolation from real user libraries. They
-do not replace participants, assistance tracking or timing measurements, and
-their successful result must not be reported as usability-study evidence.
+The [automated quality gates](QUALITY_GATES.md) check persisted outcomes for
+these workflows. Human timing and assistance data come from the study.
 
 ## Moderator rules
 
@@ -220,23 +170,9 @@ npm run --silent qa:usability:analyze -- /absolute/path/to/results.json
 
 The command exits non-zero when the dataset is incomplete or either blocking threshold is missed. It reports the actual number of comparable timing pairs overall and for each task without printing participant IDs. Keep the raw participant file private; attach only the aggregate command output to the release evidence.
 
-Validation errors also omit participant IDs, raw JSON contents, and private
-input paths. Duplicate records are identified by their one-based record
-numbers and build/task; missing attempts are counted by build/task. Use those
-diagnostics to inspect the private source file locally. An unreadable file or
-invalid JSON produces a generic input error and never an acceptance result.
-Use `--silent` when collecting output for sharing: npm otherwise echoes the
-command and its input path before the analyzer runs. Review the captured output
-before sharing it.
-
-The timing calculation includes only pairs where both attempts succeeded
-without assistance or a critical error. The existing acceptance rule has no
-separate minimum number of timing pairs, so even a passing result can rest on
-very little timing evidence. Review and report the pair counts and missing
-task coverage before interpreting a PASS; do not describe sparse timing data
-as proof of improvement across all five tasks. The manifest, artifact identity,
-actual build order and human participation remain moderator checks; the
-results-only analyzer cannot verify them.
+Use `--silent` when collecting output to share so npm omits the private input
+path. Review the number of successful unassisted pairs and report gaps by task.
+Moderators verify artifact identity, build order and human participation.
 
 ## Release evidence
 

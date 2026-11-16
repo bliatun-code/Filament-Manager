@@ -1,17 +1,12 @@
 # Release Integrity And Supply Chain
 
-Official Filament Manager releases are assembled by the tagged GitHub Actions
-workflow from verified job outputs. A release is not published when a required
-installer, checksum, source dependency SBOM, or eligible provenance step fails.
-Each build job uploads its statically verified candidate and downloads that
-exact workflow artifact again before installation testing. The Universal 2 DMG
-is additionally downloaded, verified, installed, and launched on a separate
-native Intel runner; the build job performs the same checks on Apple Silicon.
-The publish and public-provenance jobs cannot proceed unless both macOS
-architecture smokes, the Windows NSIS candidate job, and migration from the
-last public MSI succeed. The Windows NSIS installer remains unsigned. Its
-smoke test checks that both the installer and the installed executable report
-the exact Authenticode status `NotSigned`.
+The [tagged release workflow](../../.github/workflows/release-build.yml)
+publishes after verifying the installer artifacts, checksums, source SBOM, and
+required provenance. The candidate packages are downloaded and installed from
+the verified workflow artifacts. The Universal 2 DMG is tested on native Apple
+Silicon and Intel runners. The Windows gate tests clean NSIS installation and
+upgrades from the pinned published MSI and NSIS installers. The Windows
+installer and installed executable must both report Authenticode `NotSigned`.
 
 Release publication uses the separate `github-release` environment and an
 exact `refs/tags/v<package-version>` source check. The GitHub environment must
@@ -107,12 +102,7 @@ gh attestation verify Filament-Manager_<version>_<platform>.<ext> \
   --source-ref refs/tags/v<version>
 ```
 
-The release's `.sigstore.json` bundle can also be retained for later or offline
-verification. Builds made while the repository was private intentionally
-skipped attestation because GitHub does not provide this capability for private
-repositories on every account plan; they still required the verified SBOM and
-installer checksums. The first build made from a public version tag is expected
-to be the first release with public provenance.
+Retain the release's `.sigstore.json` bundle for offline verification.
 
 Checksums prove byte identity with the published manifests, and attestations
 bind public installer artifacts to the release workflow and source tag. Neither
@@ -127,11 +117,14 @@ only.
 
 ## Retaining releases
 
-Keep the three newest release entries available for downloads. Before removing
-an older entry, archive every installer, checksum, SBOM, provenance file and the
-release metadata/notes locally, and verify all asset digests. Published releases
-are immutable: individual assets cannot be removed; retention removes the whole
-release entry. Keep the original Git tags and source commits, including the
-historical versions used by migration and compatibility gates. Historical
-document links target those tags or commits and remain valid independently of
-the current documentation tree.
+Keep the three newest release entries available for download. Also keep the
+public installers referenced by the
+[MSI migration manifest](../../scripts/windows-nsis-msi-sources.json) and the
+[NSIS upgrade manifest](../../scripts/windows-nsis-upgrade-source.json).
+Installer tests download those assets by tag.
+
+Before removing an eligible older release entry, archive its installers,
+checksums, SBOM, provenance and release metadata locally. Verify all asset
+digests. Immutability protects individual assets of published releases.
+Retention operates on whole release entries. Keep the original Git tags and
+source commits for historical links and database fixtures.

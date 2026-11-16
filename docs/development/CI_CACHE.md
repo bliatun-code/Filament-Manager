@@ -80,27 +80,7 @@ GitHub distinguishes the failed step's `outcome` from the tolerated `conclusion`
 see [step contexts](https://docs.github.com/en/actions/reference/workflows-and-actions/contexts#steps-context)
 and [step timeouts/error handling](https://docs.github.com/en/actions/reference/workflows-and-actions/workflow-syntax#jobsjob_idstepscontinue-on-error).
 
-All MSRV, test, build, database and installed-application gates remain blocking
-and unconditional. Both jobs retain a finite wall-clock budget. Cache paths,
-exact environment keys and the successful-main-only write policy are unchanged.
-Compiled debug, release and MSRV dependencies remain useful: full verification
-includes release Clippy as well as debug tests.
-
-The first PR run is expected to be cold. After merge, a successful ordinary main
-run populates the cache; a later ordinary PR run can demonstrate reuse. Do not
-start extra smoke runs solely to warm or benchmark it. Record the restore/save
-result and compare Rust check/build steps and total job duration, including cache
-transfer time, on the same runner image and toolchains before reporting a time
-saving. A miss, eviction, or image update must leave all
-existing checks operational. Release and audit workflows keep their current
-build behavior.
-
-## Cold native builds
-
-The macOS smoke has a 75-minute budget to finish packaging and installation
-checks on slower runners. The Windows smoke has a 60-minute budget. Every
-verification, Companion, database-upgrade and packaged-app gate remains blocking. The cache
-planner uses the actual job deadline and preserves the maintenance reserve and
-step limits above. Cache packing is optional maintenance, never a substitute for
-completed application checks. Publication requires a complete successful main
-run on the exact commit being released.
+Cache misses, evictions and runner image updates use the ordinary cold build.
+When measuring cache performance, compare the Rust steps and total elapsed time,
+including transfers, on the same runner image and toolchains. The release
+workflow checks for successful CI on the exact commit being published.
