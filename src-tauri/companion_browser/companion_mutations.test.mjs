@@ -3,6 +3,9 @@ import assert from "node:assert/strict";
 
 import { createBorrowedInDraft, createInitialCompanionState } from "./session_state.js";
 import { createCompanionMutations } from "./companion_mutations.js";
+import { handleCompanionClickEvent } from "./companion_dom_events.js";
+import { renderAddFilamentTaskSheetBody } from "./storage_shell.js";
+import { createWishlistReceiptAttempts } from "./wishlist_receipt_attempt.js";
 
 function createMutationHarness(overrides = {}) {
   const state = {
@@ -20,6 +23,7 @@ function createMutationHarness(overrides = {}) {
 
   const mutations = createCompanionMutations({
     state,
+    wishlistReceiptAttempts: overrides.wishlistReceiptAttempts,
     fetchJson: (path, init) => path === "/api/v1/health"
       ? Promise.resolve(overrides.readHealth?.() ?? { library_id: "test-library", capabilities: [] })
       : (overrides.fetchJson ?? (async () => ({})))(path, init),
@@ -1265,6 +1269,90 @@ test("a Companion retry sends the original receipt ID after a dropped reply", as
   assert.equal(harness.state.selectedSpoolId, "spool-received");
 });
 
+function clickRenderedWishlistAction(harness, action) {
+  const html = renderAddFilamentTaskSheetBody(
+    harness.state,
+    false,
+    value => String(value ?? ""),
+    harness.mutations.getPendingWishlistReceipt,
+  );
+  const button = html.match(new RegExp(`<button[^>]+data-action="${action}"[^>]*>`));
+  assert.ok(button, `The rendered wishlist must expose ${action}`);
+  const target = {
+    getAttribute(name) {
+      return button[0].match(new RegExp(`${name}="([^"]*)"`))?.[1] ?? null;
+    },
+  };
+  let operation;
+  const handled = handleCompanionClickEvent(
+    { target: { closest: () => target } },
+    {
+      state: harness.state,
+      retryWishlistStock: itemId => { operation = harness.mutations.retryWishlistStock(itemId); },
+      reconcileWishlistStock: itemId => { operation = harness.mutations.reconcileWishlistStock(itemId); },
+    },
+  );
+  assert.equal(handled, true);
+  assert.ok(operation, "The normal delegated click must start the receipt operation");
+  return operation;
+}
+
+for (const remaining of [1, 0]) {
+  test(`Companion restores receipt after reload with ${remaining} rolls remaining`, async () => {
+    const tabStorage = new Map();
+    const storage = () => ({
+      getItem: key => tabStorage.get(key),
+      setItem: (key, value) => tabStorage.set(key, value),
+      removeItem: key => tabStorage.delete(key),
+    });
+    const requests = [];
+    const item = {
+      id: "wish-reload", material: "PLA", filament_name: "Basic", color_name: "Blue",
+      vendor: "Bambu", status: "ON_ORDER", quantity: 2 + remaining,
+    };
+    const status = remaining ? "ON_ORDER" : "RECEIVED";
+    const receipt = {
+      spool_ids: ["spool-1", "spool-2"], received_quantity: 2,
+      remaining_quantity: remaining, status,
+    };
+    let liveLibraryId = "test-library";
+    const makePage = (item, displayedLibraryId = liveLibraryId) => createMutationHarness({
+      state: {
+        wishlistItems: [item],
+        wishlistReceiptLibraryId: displayedLibraryId,
+        borrowedInDraft: { ...createBorrowedInDraft(), wishlistFilter: "ON_ORDER" },
+      },
+      wishlistReceiptAttempts: createWishlistReceiptAttempts(storage),
+      readHealth: () => ({ ok: true, library_id: liveLibraryId, capabilities: ["wishlist-receipt-idempotency-v1"] }),
+      fetchJson: async (path, init) => {
+        assert.equal(path, "/api/v1/wishlist/wish-reload/receive-idempotent");
+        requests.push(JSON.parse(init.body));
+        if (requests.length === 1) throw new Error("Response lost after commit");
+        return receipt;
+      },
+    });
+    const original = makePage(item);
+    await original.mutations.submitWishlistStock(
+      item.id, "2", { pricePerRoll: "12.50", currency: "NOK", batchCode: "Receipt QA" },
+    );
+    assert.equal(requests.length, 1);
+    assert.equal(requests[0].purchase_metadata.batch_code, "Receipt QA");
+    const refreshedItem = { ...item, quantity: remaining, status };
+    const reloaded = makePage(refreshedItem);
+
+    liveLibraryId = "different-library";
+    await clickRenderedWishlistAction(reloaded, "wishlist-receipt-retry");
+    assert.equal(requests.length, 1, "The stale recovery action cannot send anything to another library");
+    assert.equal(reloaded.refreshCount, 1);
+
+    liveLibraryId = "test-library";
+    await clickRenderedWishlistAction(reloaded, "wishlist-receipt-retry");
+    assert.deepEqual(requests, [requests[0], requests[0]]);
+    assert.equal(reloaded.state.statusTone, "success");
+    assert.equal(reloaded.mutations.getPendingWishlistReceipt(item.id), null);
+  });
+}
+
 test("an uncertain legacy Companion receipt remains blocked after the Host upgrades", async () => {
   let capabilities = [];
   const requests = [];
@@ -1285,7 +1373,7 @@ test("an uncertain legacy Companion receipt remains blocked after the Host upgra
   assert.match(harness.state.statusMessage, /Check the order on the Host/);
   await harness.mutations.reconcileWishlistStock("wrong-order");
   assert.equal(harness.refreshCount, 0);
-  await harness.mutations.reconcileWishlistStock("wish-legacy");
+  await clickRenderedWishlistAction(harness, "wishlist-receipt-reviewed");
   assert.deepEqual(requests, [original], "reconciliation never sends a receipt");
   assert.equal(harness.refreshCount, 1);
   await harness.mutations.submitWishlistStock("wish-legacy", "1");

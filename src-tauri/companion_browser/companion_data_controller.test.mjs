@@ -139,6 +139,9 @@ test("refreshOverview selects the first spool and loads its detail when nothing 
       if (path.startsWith("/api/v1/wishlist")) {
         return [{ id: "wish-1", status: "WISHLIST" }];
       }
+      if (path === "/api/v1/health") {
+        return { ok: true, library_id: "library-1" };
+      }
       if (path === "/api/v1/printers/overview") {
         return [{ printer: { id: "printer-1" } }];
       }
@@ -163,6 +166,7 @@ test("refreshOverview selects the first spool and loads its detail when nothing 
   assert.equal(harness.state.activeLoans[0].loan.id, "loan-1");
   assert.equal(harness.state.catalogMasters.length, 1);
   assert.equal(harness.state.wishlistItems.length, 1);
+  assert.equal(harness.state.wishlistReceiptLibraryId, "library-1");
   assert.equal(harness.ensureActivePrinterSelectionCount, 1);
   assert.equal(harness.state.statusTone, "success");
 });
