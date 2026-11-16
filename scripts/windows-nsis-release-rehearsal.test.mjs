@@ -19,9 +19,9 @@ test("NSIS rehearsal uses a greater candidate version without mutating the relea
   assert.equal(selectNsisRehearsalVersion("0.35.10", sourceTags), "0.35.10");
   assert.equal(selectNsisRehearsalVersion("0.36.0", sourceTags), "0.36.0");
   assert.equal(selectNsisRehearsalVersion("0.36.1", sourceTags), "0.36.1");
-  assert.equal(selectNsisRehearsalVersion("0.36.2", [...sourceTags, published.tag]), "0.36.3-rc.1");
-  assert.equal(selectNsisRehearsalVersion("0.36.3", [...sourceTags, published.tag]), "0.36.3");
-  assert.throws(() => selectNsisRehearsalVersion("0.36.1", [...sourceTags, published.tag]), /older than/);
+  assert.equal(selectNsisRehearsalVersion("0.36.3", [...sourceTags, published.tag]), "0.36.4-rc.1");
+  assert.equal(selectNsisRehearsalVersion("0.36.4", [...sourceTags, published.tag]), "0.36.4");
+  assert.throws(() => selectNsisRehearsalVersion("0.36.2", [...sourceTags, published.tag]), /older than/);
   assert.throws(() => selectNsisRehearsalVersion("0.35.0", sourceTags), /older than/);
   assert.throws(() => selectNsisRehearsalVersion("0.35.1-rc.1", sourceTags), /stable Windows version/);
   assert.throws(() => selectNsisRehearsalVersion("0.35.1", []), /pinned Windows/);
@@ -101,7 +101,7 @@ test("NSIS release rehearsals reuse the installed Windows historical, mutating a
 });
 
 test("published NSIS upgrade uses a pinned, proven build and the real per-user install paths", () => {
-  assert.equal(published.tag, "v0.36.2");
+  assert.equal(published.tag, "v0.36.3");
   assert.match(published.commit, /^[0-9a-f]{40}$/);
   assert.match(published.sha256, /^[0-9a-f]{64}$/);
   assert.match(workflow, /if: matrix\.gate == 'published-upgrade'[\s\S]*?-PublishedNsis[\s\S]*?-ExpectedInstallerSha256 "\$env:NSIS_INSTALLER_SHA256"[\s\S]*?-FixtureSha256 "\$env:NSIS_MIGRATION_FIXTURE_SHA256"/);
