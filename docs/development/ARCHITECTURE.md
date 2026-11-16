@@ -258,19 +258,12 @@ newly resolved address. Session renewal is scoped to the same Host target and
 collapses concurrent renewal attempts; target changes and authorization
 failures invalidate the complete runtime session.
 
-The deterministic Host/Client resilience gate exercises these boundaries over
-real TCP with separate Host and Client databases. A Rust Client-test process
-starts the Host as a separate operating-system subprocess, pairs against it,
-performs Host-authoritative work, warms the Host-scoped cache, stops and
-restarts the Host, verifies the offline no-fallback behavior, and completes
-automatic session renewal. A same-ID Client-local shadow row proves that the
-production gateway dispatch and target-scoped cache command do not fall back to
-the Client database. This proves loopback-TCP process separation, authenticated
-session recovery, authority dispatch, and cache target guards. Because the gate
-uses a QA-enabled direct loopback address, it does not prove stable `.local`/mDNS
-discovery, route pinning, HTTPS/TLS identity, installed candidate applications,
-native window lifecycle, or the packaging environment. A later packaged
-multiprocess gate must exercise those remaining boundaries.
+[Host/Client resilience tests](QUALITY_GATES.md#hostclient-resilience-authority)
+exercise authenticated requests, cache isolation and recovery over loopback TCP
+using separate processes and databases. The installed-candidate gate repeats
+the critical checks in packaged applications. Both share the loopback
+boundary, so stable `.local`/mDNS discovery, route pinning, and HTTPS/TLS
+identity require separate coverage.
 
 ## Data Consistency And Request Responsiveness
 

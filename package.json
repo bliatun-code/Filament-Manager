@@ -60,7 +60,6 @@
     "check:cargo-licenses": "cargo deny --all-features check licenses",
     "audit:dependencies": "npm run check:npm-licenses && npm run audit:npm && npm run audit:cargo && npm run check:cargo-licenses",
     "audit:public-mirror": "node ./scripts/audit-public-mirror.mjs",
-    "test:settings-ui": "npm run test:ui",
     "qa:performance:browser": "node ./scripts/ui-browser-performance-probe.mjs",
     "qa:performance": "node ./node_modules/tsx/dist/cli.mjs ./scripts/ui-performance-probe.ts",
     "qa:usability:analyze": "node ./scripts/analyze-usability-results.mjs",

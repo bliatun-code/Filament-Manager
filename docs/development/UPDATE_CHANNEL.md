@@ -1,24 +1,18 @@
 # Update Metadata Channel
 
 Release builds made with an explicitly configured, anonymously readable
-metadata endpoint support both the retained manual **Check for updates** action
+metadata endpoint support the manual **Check for updates** action
 and optional automatic update notifications. When automatic checking is
 enabled, the app waits briefly after startup and checks at most once per 24
 hours. The automatic path shows a banner only when a newer version exists;
 up-to-date, disabled-channel, unavailable-metadata, and other failure results
 stay silent. Download and installation always remain manual.
 
-The public repository now uses:
+The canonical release workflow uses this public endpoint.
 
 ```text
 FILAMENT_MANAGER_UPDATE_METADATA_URL=https://api.github.com/repos/bliatun-code/Filament-Manager/releases/latest
 ```
-
-The repository variable was configured after the `v0.22.0` installers were
-built. Those existing binaries retain the disabled fail-safe and therefore need
-one manual bridge upgrade to a newer release. Automatic notifications can work
-only after that newer release build, which receives the public channel, is
-installed.
 
 ## Public metadata contract
 
@@ -37,7 +31,7 @@ The endpoint must:
 
   ```json
   {
-    "tag_name": "v0.22.0"
+    "tag_name": "v1.2.3"
   }
   ```
 
@@ -63,11 +57,8 @@ the manual action. Automatic checks suppress them and notify only for
 
 ## Publication model
 
-The canonical source repository and releases are anonymously readable, so the
-GitHub `releases/latest` API is the selected metadata source. If that
-publication model changes later, use a stable public endpoint that implements
-the same minimal JSON contract. A usable unauthenticated download still
-requires a public release page or public artifact location.
+Keep the metadata and download locations anonymously readable for official
+releases.
 
 The URL is compiled into the application. Changing it therefore requires a new
 build. Release CI reads `vars.FILAMENT_MANAGER_UPDATE_METADATA_URL` for both

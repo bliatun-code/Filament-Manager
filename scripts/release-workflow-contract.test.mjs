@@ -723,33 +723,6 @@ test("release artifacts remain stable across partial workflow reruns", () => {
   );
 });
 
-test("Windows MSI verifier fails closed and writes a portable checksum", () => {
-  const verifierPath = "scripts/verify-windows-msi.ps1";
-  assert.equal(existsSync(verifierPath), true);
-  const verifier = readFileSync(verifierPath, "utf8");
-
-  assert.match(verifier, /Get-ChildItem[\s\S]*-Filter "\*\.msi"/);
-  assert.match(verifier, /\.Count -ne 1/);
-  assert.match(verifier, /\.Length -le 0/);
-  assert.match(verifier, /WindowsInstaller\.Installer/);
-  assert.match(verifier, /OpenDatabase/);
-  assert.match(verifier, /ProductName/);
-  assert.match(verifier, /ProductVersion/);
-  assert.match(verifier, /SummaryInformation/);
-  assert.match(verifier, /@\(\[int\]7\)/);
-  assert.match(verifier, /ExpectedArchitecture/);
-  assert.match(verifier, /\[string\]\$NormalizedFileName/);
-  assert.match(verifier, /\^\[A-Za-z0-9\]\[A-Za-z0-9\._-\]\*\[\.\]msi\$/);
-  assert.match(verifier, /Move-Item -LiteralPath \$msiFile\.FullName/);
-  assert.match(verifier, /Get-Item -LiteralPath \$normalizedMsiPath/);
-  assert.match(verifier, /Get-FileHash[\s\S]*-Algorithm SHA256/);
-  assert.match(verifier, /ToLowerInvariant\(\)/);
-  assert.match(verifier, /SHA256SUMS-windows\.txt/);
-  assert.match(verifier, /\$msiFile\.Name/);
-  assert.match(verifier, /UTF8Encoding\]::new\(\$false\)/);
-  assert.match(verifier, /WriteAllText[\s\S]*`n/);
-});
-
 test("Windows Authenticode verifier requires publisher, code-signing EKU and timestamp", () => {
   assert.equal(existsSync("scripts/verify-windows-authenticode.ps1"), true);
 

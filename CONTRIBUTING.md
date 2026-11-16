@@ -10,10 +10,9 @@ license as the project: GNU Affero General Public License v3.0 or later
 
 ## Development Setup
 
-The workspace supports Rust 1.90 and newer. A checked-in toolchain file selects
-the reviewed Rust release, including Clippy and rustfmt, for normal local
-commands. Install it with `rustup` if your environment does not resolve it
-automatically.
+Development uses the Node.js major in `.nvmrc`, npm 10 or newer, and the
+Rust release in `rust-toolchain.toml`. The workspace also checks compatibility
+with Rust 1.90. On macOS, install Xcode and its command-line tools.
 
 Install dependencies:
 
@@ -94,11 +93,6 @@ Check the public repository surface before sharing a branch or pull request:
 npm run check:public-readiness
 ```
 
-The first public repository is created from a reviewed, one-commit source
-mirror rather than the private development history. Maintainers must also run
-`npm run audit:public-mirror` in that new repository and follow
-[the publication checklist](docs/development/PUBLIC_REPOSITORY.md) before its first push.
-
 Useful focused checks:
 
 ```bash
@@ -118,49 +112,20 @@ executable test in the same change whenever a gate or threshold changes.
 
 ## Local Build And QA Cleanup
 
-Cargo profiles and local visual-QA output can grow substantially over time.
-Inspect the repository-owned cleanup plan before removing anything:
+Preview and apply the repository's local cleanup policy with these commands.
+Stop local builds and test app instances before applying it.
 
 ```bash
 npm run cleanup:local
-```
-
-The command is a dry run by default. Its standard policy removes Cargo
-`debug`/`release` profiles only after 14 inactive days, measured from the newest
-modification anywhere in each profile without following symlinks. QA run
-directories are removed after 14 days while retaining the newest five. For the
-aggregate `release-artifacts/visual-qa/` directory, retention applies to each
-immediate run directory instead of the aggregate directory itself; loose files
-are left untouched. Versioned release directories are removed after 90 days
-while retaining the newest three.
-
-The cleanup only considers directories under this repository's `target/` and
-`release-artifacts/` roots. It refuses cleanup when either root is a symlink,
-does not follow symlinks within candidates, and verifies canonical ancestry,
-retention markers, and recursive build activity again immediately before
-removal.
-
-Apply the displayed policy explicitly:
-
-```bash
 npm run cleanup:local -- --apply
 ```
 
-Stop running builds and local app instances before every apply operation. To
-make recent Cargo profiles eligible, preview the zero-day build policy and only
-then apply it:
-
-```bash
-npm run cleanup:local -- --scope build --build-days 0
-npm run cleanup:local -- --scope build --build-days 0 --apply
-```
-
-Place an empty `.cleanup-keep` file inside any build profile or artifact
-directory that must never be selected. Run
-`npm run cleanup:local -- --help` for the age, count, scope, and verbose
-options. Do not use an external recursive-delete command as a substitute; the
-repository command deliberately validates its root, candidates, markers, and
-modification times.
+The default policy selects inactive Cargo profiles after 14 days, QA runs after
+14 days while keeping the newest five, and local versioned release artifacts
+after 90 days while keeping the newest three. It checks `target/` and
+`release-artifacts/` in this checkout and leaves loose files in QA output alone.
+Place an empty `.cleanup-keep` file in a directory to retain it. Use
+`npm run cleanup:local -- --help` for other retention and scope options.
 
 ## Pull Requests
 
@@ -204,13 +169,9 @@ copy or adding a language. Run `npm run report:i18n` after English source-string
 changes; maintained locales must be translated and natively reviewed against
 the new source fingerprint before release.
 
-The app currently publishes complete catalogs for 21 languages. Most of the
-new catalogs are community-review candidates rather than translations with a
-named native reviewer. Use the [translation correction form](https://github.com/bliatun-code/Filament-Manager/issues/new?template=translation.yml)
-for focused corrections: identify the locale,
-message or screen, expected wording, and—when layout is involved—include a
-screenshot. Run the locale checks and the relevant data-backed screenshot
-scenario before submitting the change.
+Use the [translation correction form](https://github.com/bliatun-code/Filament-Manager/issues/new?template=translation.yml)
+for focused corrections. Include the locale, screen, expected wording and a
+screenshot if the issue affects layout.
 
 ## Dependency Changes
 
@@ -220,24 +181,12 @@ camera/image scan check before release.
 
 ## Project Documentation
 
-Filament Manager uses a Tauri desktop shell, a React interface and a Rust core.
-The core owns library rules and SQLite data; the desktop shell also serves the
-paired Companion browsers. Start with these references for technical work:
-
 - [Architecture and workspace layout](docs/development/ARCHITECTURE.md)
 - [English user guide](docs/USER_GUIDE.md) and [Norwegian user guide](docs/BRUKERVEILEDNING.md)
-- [Quality gates](docs/development/QUALITY_GATES.md)
-- [Localization](docs/development/LOCALIZATION.md)
-- [macOS distribution and verification](docs/development/MACOS_DISTRIBUTION.md)
+- [Quality gates](docs/development/QUALITY_GATES.md) and [localization](docs/development/LOCALIZATION.md)
+- [macOS distribution](docs/development/MACOS_DISTRIBUTION.md) and [Windows distribution](docs/development/WINDOWS_DISTRIBUTION.md)
 - [Release integrity and SBOM](docs/development/SUPPLY_CHAIN.md)
 - [Security policy](SECURITY.md) and [community standards](CODE_OF_CONDUCT.md)
-
-The workspace contains `src/backend/` for the shared core, `src-tauri/` for the
-native shell and Companion service, `ui/` for the desktop interface, and
-`scripts/` for builds and validation. Node.js 26, npm 10 or newer and the checked-in
-Rust toolchain are required for development. macOS builds also need Xcode and
-its command-line tools. End users can run the published Windows setup EXE or
-macOS DMG without these development tools.
 
 ## Documentation and working evidence
 
@@ -248,11 +197,6 @@ Keep task plans, dated QA reports, review rounds and superseded screenshots in
 ignored local working storage; summarize validation in the pull request and
 GitHub Actions instead of adding another report under `docs`. The ignored
 `docs/internal/` directory is available for local notes and archives.
-
-Current follow-up work includes testing the main workflows with human users,
-physical label/camera validation and Windows installer signing. Automated
-checks do not stand in for those remaining checks; their repeatable procedures
-belong in the maintained quality and distribution documentation.
 
 ## Recent Release Notes
 
