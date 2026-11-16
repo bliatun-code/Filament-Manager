@@ -261,7 +261,7 @@ function renderDetailModal(options) {
 }
 
 function renderTaskSheet(options) {
-  const { formatGrams, loanRows, state } = options;
+  const { formatGrams, getPendingWishlistReceipt, loanRows, state } = options;
   const activeTaskSheet = state.activeTaskSheet || null;
 
   if (!activeTaskSheet || state.detailOpen) {
@@ -274,7 +274,7 @@ function renderTaskSheet(options) {
       layoutMode: state.layoutMode,
       kicker: t(state.locale || "en", "storage.stockEntry", "Stock entry"),
       title: t(state.locale || "en", "storage.addFilament", "Add filament"),
-      body: renderAddFilamentTaskSheetBody(state, state.busy, escapeHtml),
+      body: renderAddFilamentTaskSheetBody(state, state.busy, escapeHtml, getPendingWishlistReceipt),
       shellClass: "task-sheet-shell-wide",
       panelClass: "add-filament-sheet",
       locale: state.locale,
@@ -427,7 +427,7 @@ function renderTaskSheet(options) {
 }
 
 export function createCompanionAppShellRenderer(options) {
-  const { companionLogic, state, syncLegacySectionState } = options;
+  const { companionLogic, getPendingWishlistReceipt, state, syncLegacySectionState } = options;
   const localizedFormatGrams = (value) => formatGrams(value, state.locale);
   const {
     canLoadSpoolIntoPrinter,
@@ -566,6 +566,7 @@ export function createCompanionAppShellRenderer(options) {
           state.activeTaskSheet
             ? renderTaskSheet({
                 state,
+                getPendingWishlistReceipt,
                 loanRows,
                 spools,
                 loanSpoolOptions,

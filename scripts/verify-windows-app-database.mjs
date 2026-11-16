@@ -2,8 +2,9 @@
 
 import { statSync } from "node:fs";
 import { resolve } from "node:path";
+import { DatabaseSync } from "node:sqlite";
 import { pathToFileURL } from "node:url";
-import { currentSchemaVersion } from "./smoke-release-database-upgrade.mjs";
+import { rustCurrentSchemaVersion } from "./check-database-migrations.mjs";
 import { assertCatalogSpoolBatchSchema } from "./catalog-spool-batch-schema.mjs";
 
 export const REQUIRED_WINDOWS_SMOKE_TABLES = [
@@ -13,7 +14,7 @@ export const REQUIRED_WINDOWS_SMOKE_TABLES = [
   "catalog_spool_batches",
   "settings",
 ];
-export const REQUIRED_WINDOWS_SMOKE_SCHEMA_VERSION = currentSchemaVersion();
+export const REQUIRED_WINDOWS_SMOKE_SCHEMA_VERSION = rustCurrentSchemaVersion();
 export const REQUIRED_WINDOWS_SMOKE_COLUMNS = {
   filament_spools: [
     "purchase_currency",
@@ -36,39 +37,34 @@ function parseArguments(argv) {
   return resolve(argv[1]);
 }
 
-export async function verifyWindowsAppDatabase(
-  databasePath,
-  { loadDatabaseModule = () => import("better-sqlite3") } = {},
-) {
+export async function verifyWindowsAppDatabase(databasePath) {
   const resolvedDatabasePath = resolve(databasePath);
   const databaseStat = statSync(resolvedDatabasePath);
   if (!databaseStat.isFile() || databaseStat.size <= 0) {
     throw new Error(`Database is missing or empty: ${resolvedDatabasePath}`);
   }
 
-  const databaseModule = await loadDatabaseModule();
-  const Database = databaseModule.default ?? databaseModule;
-  const database = new Database(resolvedDatabasePath, {
-    fileMustExist: true,
-    readonly: true,
+  const database = new DatabaseSync(resolvedDatabasePath, {
+    readOnly: true,
+    timeout: 5_000,
   });
 
   try {
-    const quickCheck = database.pragma("quick_check", { simple: true });
+    const quickCheck = database.prepare("PRAGMA quick_check").get()?.quick_check;
     if (quickCheck !== "ok") {
       throw new Error(
         `SQLite quick_check failed for ${resolvedDatabasePath}: ${String(quickCheck)}`,
       );
     }
 
-    const schemaVersion = database.pragma("user_version", { simple: true });
+    const schemaVersion = database.prepare("PRAGMA user_version").get()?.user_version;
     if (schemaVersion !== REQUIRED_WINDOWS_SMOKE_SCHEMA_VERSION) {
       throw new Error(
         `Database schema version mismatch for ${resolvedDatabasePath}: expected ${REQUIRED_WINDOWS_SMOKE_SCHEMA_VERSION}, got ${String(schemaVersion)}`,
       );
     }
 
-    const foreignKeyViolations = database.pragma("foreign_key_check");
+    const foreignKeyViolations = database.prepare("PRAGMA foreign_key_check").all();
     if (foreignKeyViolations.length > 0) {
       throw new Error(
         `SQLite foreign_key_check failed for ${resolvedDatabasePath}: ${foreignKeyViolations.length} violation(s)`,
@@ -96,7 +92,7 @@ export async function verifyWindowsAppDatabase(
     for (const [tableName, requiredColumns] of Object.entries(
       REQUIRED_WINDOWS_SMOKE_COLUMNS,
     )) {
-      const columnRows = database.pragma(`table_info(${tableName})`);
+      const columnRows = database.prepare("SELECT name FROM pragma_table_info(?)").all(tableName);
       const presentColumns = new Set(columnRows.map(({ name }) => name));
       const missingColumns = requiredColumns.filter(
         (columnName) => !presentColumns.has(columnName),

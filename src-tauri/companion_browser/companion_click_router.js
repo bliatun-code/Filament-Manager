@@ -102,8 +102,8 @@ export function routeCompanionClickAction(action, target, handlers) {
     return true;
   }
 
-  if (action === "wishlist-stock-now") {
-    handlers.submitWishlistStock(readAttr(target, "data-wishlist-id"));
+  if (action === "wishlist-receipt-retry") {
+    handlers.retryWishlistStock(readAttr(target, "data-wishlist-id"));
     return true;
   }
 

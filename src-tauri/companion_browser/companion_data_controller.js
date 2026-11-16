@@ -193,13 +193,14 @@ export function createCompanionDataController(options) {
   async function refreshOverview() {
     setBusy(true);
     try {
-      const [spoolsResult, catalogResult, wishlistResult, printersResult, loansResult] =
+      const [spoolsResult, catalogResult, wishlistResult, printersResult, loansResult, healthResult] =
         await Promise.allSettled([
           fetchAllSpoolRows(fetchJson),
           fetchJson("/api/v1/catalog/masters?limit=2000"),
           fetchJson("/api/v1/wishlist?limit=500"),
           fetchJson("/api/v1/printers/overview"),
           fetchJson("/api/v1/loans?limit=300&include_returned=true"),
+          fetchJson("/api/v1/health", { cache: "no-store" }),
         ]);
 
       if (spoolsResult.status === "rejected") {
@@ -218,6 +219,11 @@ export function createCompanionDataController(options) {
 
       commitOptionalArray(catalogResult, "catalogMasters");
       commitOptionalArray(wishlistResult, "wishlistItems");
+      state.wishlistReceiptLibraryId =
+        wishlistResult.status === "fulfilled" && Array.isArray(wishlistResult.value) &&
+        healthResult.status === "fulfilled" && healthResult.value?.ok
+          ? healthResult.value.library_id ?? null
+          : undefined;
       commitOptionalArray(printersResult, "printers");
       commitOptionalArray(loansResult, "loanHistory");
       state.activeLoans = state.loanHistory.filter(isLoanCurrentlyActive);
