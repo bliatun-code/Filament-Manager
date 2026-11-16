@@ -163,7 +163,8 @@ export function handleCompanionClickEvent(event, options) {
     submitPrinterSlotAssignment: (...args) => void options.submitPrinterSlotAssignment(...args),
     submitLiveSlotCandidateRfidUpdate: (...args) => void options.submitLiveSlotCandidateRfidUpdate(...args),
     submitWishlistStatus: (...args) => void options.submitWishlistStatus(...args),
-    submitWishlistStock: (...args) => void options.submitWishlistStock(...args),
+    retryWishlistStock: (...args) => void options.retryWishlistStock(...args),
+    reconcileWishlistStock: (...args) => void options.reconcileWishlistStock(...args),
     submitWishlistDelete: (...args) => void options.submitWishlistDelete(...args),
   });
 }

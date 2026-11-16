@@ -268,8 +268,10 @@ test("a pending legacy receipt offers Host review in place of a second stock act
     id: "wish-1", material: "PLA", filament_name: "Basic", color_name: "Blue",
     vendor: "Bambu", status: "ON_ORDER", quantity: 2, created_at: "", updated_at: "",
   }];
-  state.wishlistReceiptReviews.set("wish-1", { scope: "test", requestId: "request" });
-  const html = renderAddFilamentTaskSheetBody(state, false, (value) => String(value ?? ""));
+  const pendingReceipt = { requiresReview: true, requestId: "request" };
+  const html = renderAddFilamentTaskSheetBody(
+    state, false, (value) => String(value ?? ""), itemId => itemId === "wish-1" ? pendingReceipt : null,
+  );
   assert.match(html, /Check the order on the Host before receiving any remaining rolls/);
   assert.match(html, /data-action="wishlist-receipt-reviewed"/);
   assert.match(html, /I checked the order on the Host/);

@@ -19,6 +19,7 @@ export function createCompanionMutations(options) {
     createBorrowedInDraft,
     setDetailReturnContext,
     openSpoolDetail,
+    wishlistReceiptAttempts,
   } = options;
   const locale = () => state.locale || "en";
   const tr = (key, fallback, params = undefined) => t(locale(), key, fallback, params);
@@ -56,7 +57,10 @@ export function createCompanionMutations(options) {
       findSpoolRow,
       normalizeMeasuredFilamentWeight,
     });
-  const { submitWishlistCreate, submitWishlistStatus, submitWishlistStock, reconcileWishlistStock, submitWishlistDelete } =
+  const {
+    submitWishlistCreate, submitWishlistStatus, submitWishlistStock, getPendingWishlistReceipt,
+    retryWishlistStock, reconcileWishlistStock, submitWishlistDelete,
+  } =
     createCompanionWishlistMutations({
       state,
       fetchJson,
@@ -69,6 +73,7 @@ export function createCompanionMutations(options) {
       tr,
       normalizeAddSpoolValues,
       postJson,
+      receiptAttempts: wishlistReceiptAttempts,
     });
   const {
     submitBorrowedInUpdate,
@@ -121,6 +126,8 @@ export function createCompanionMutations(options) {
     submitWishlistCreate,
     submitWishlistStatus,
     submitWishlistStock,
+    getPendingWishlistReceipt,
+    retryWishlistStock,
     reconcileWishlistStock,
     submitWishlistDelete,
     submitQrLookup,
