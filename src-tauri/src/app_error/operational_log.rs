@@ -6,9 +6,7 @@ use std::sync::{Mutex, OnceLock, RwLock};
 use std::time::{SystemTime, UNIX_EPOCH};
 
 const LOG_FILE_NAME: &str = "operational-log.jsonl";
-#[allow(dead_code)] // Activated from main when the startup integration seam is wired.
 const DEFAULT_MAX_BYTES: u64 = 256 * 1024;
-#[allow(dead_code)] // Activated from main when the startup integration seam is wired.
 const DEFAULT_MAX_ARCHIVES: usize = 3;
 const MAX_DIAGNOSTIC_ID_LENGTH: usize = 64;
 
@@ -200,7 +198,6 @@ fn logger_slot() -> &'static RwLock<Option<OperationalLog>> {
     LOGGER.get_or_init(|| RwLock::new(None))
 }
 
-#[allow(dead_code)] // Command registration and startup initialization are intentionally deferred.
 pub(crate) fn initialize_operational_log(directory: &Path) -> io::Result<()> {
     let logger = OperationalLog::initialize(directory, DEFAULT_MAX_BYTES, DEFAULT_MAX_ARCHIVES)?;
     logger.record(
@@ -247,13 +244,6 @@ pub(crate) fn operational_log_is_initialized() -> bool {
         .read()
         .map(|slot| slot.is_some())
         .unwrap_or(false)
-}
-
-#[tauri::command]
-#[allow(dead_code)] // Ready for the next main.rs command-registration pass.
-pub(crate) fn read_operational_log_entries_command() -> Result<Vec<OperationalLogEntry>, String> {
-    read_operational_log_entries()
-        .map_err(|_| super::coded_command_error("diagnostics.operational_log_read_failed"))
 }
 
 fn sanitize_diagnostic_id(value: &str) -> Option<String> {
