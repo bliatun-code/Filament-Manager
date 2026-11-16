@@ -121,6 +121,6 @@ and test a per-user x64 release candidate. The workflow downloads the checked
 candidate by digest and uses it for the installed-app, MSI migration and
 published NSIS upgrade gates. While the repository version still matches the
 published NSIS baseline, the rehearsal candidate uses the next patch version
-with `-rc.1` in a temporary build config. The current rehearsal upgrades the
-pinned v0.36.3 installer to v0.36.4-rc.1 and uploads workflow artifacts for
-testing.
+with `-rc.1` in a temporary build config. Once the repository version is newer,
+the rehearsal uses that version. The workflow upgrades the pinned v0.36.3
+installer and uploads the candidate and test artifacts.
