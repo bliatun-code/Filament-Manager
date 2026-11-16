@@ -1064,22 +1064,22 @@ test("Windows MSI smoke exercises install, desktop lifecycle, data retention and
 
   assert.match(
     windowsDatabaseVerifier,
-    /pragma\("quick_check", \{ simple: true \}\)/,
+    /prepare\("PRAGMA quick_check"\)/,
   );
   assert.match(
     windowsDatabaseVerifier,
-    /pragma\("user_version", \{ simple: true \}\)/,
+    /prepare\("PRAGMA user_version"\)/,
   );
   assert.match(
     windowsDatabaseVerifier,
     /REQUIRED_WINDOWS_SMOKE_SCHEMA_VERSION/,
   );
-  assert.match(windowsDatabaseVerifier, /pragma\("foreign_key_check"\)/);
+  assert.match(windowsDatabaseVerifier, /prepare\("PRAGMA foreign_key_check"\)/);
   assert.match(windowsDatabaseVerifier, /filament_master_list/);
   assert.match(windowsDatabaseVerifier, /filament_spools/);
   assert.match(windowsDatabaseVerifier, /settings/);
-  assert.match(windowsDatabaseVerifier, /readonly: true/);
-  assert.match(windowsDatabaseVerifier, /fileMustExist: true/);
+  assert.match(windowsDatabaseVerifier, /readOnly: true/);
+  assert.match(windowsDatabaseVerifier, /!databaseStat.isFile\(\) \|\| databaseStat.size <= 0/);
 });
 
 test("macOS DMG smoke installs and launches the verified application", () => {
