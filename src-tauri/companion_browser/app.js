@@ -165,12 +165,6 @@ const accessRecovery = createAccessRecoveryController({
 });
 accessRecovery.install(root);
 
-const companionAppShellRenderer = createCompanionAppShellRenderer({
-  state,
-  companionLogic,
-  syncLegacySectionState,
-});
-
 function detectLayoutMode() {
   const width = window.innerWidth || document.documentElement.clientWidth || 0;
   return detectCompanionLayoutMode(width);
@@ -450,12 +444,21 @@ const {
   submitWishlistCreate,
   submitWishlistStatus,
   submitWishlistStock,
+  getPendingWishlistReceipt,
+  retryWishlistStock,
   reconcileWishlistStock,
   submitWishlistDelete,
   submitQrLookup,
   submitBorrowedInUpdate,
   submitBorrowedInHandBack,
 } = companionMutations;
+
+const companionAppShellRenderer = createCompanionAppShellRenderer({
+  state,
+  companionLogic,
+  syncLegacySectionState,
+  getPendingWishlistReceipt,
+});
 
 const overlayViewport = createCompanionOverlayViewport({ windowRef: window, documentRef: document });
 
@@ -569,6 +572,7 @@ installCompanionDomEvents({
   submitPrinterSlotAssignment,
   submitWishlistStatus,
   submitWishlistStock,
+  retryWishlistStock,
   reconcileWishlistStock,
   submitWishlistDelete,
   render,

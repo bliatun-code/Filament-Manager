@@ -1562,10 +1562,10 @@ test("packaged releases preserve pinned v0.28 data on DMG and NSIS", () => {
     /PREVIOUS_RELEASE_COMMIT =\s*\n\s*"76cba513eadd5137d6703f9abd1c0452531ef788"/,
   );
   // The published SQL boundary advances independently of the historical fixture.
-  assert.equal(databaseMigrationManifest.publishedThroughSequence, 8);
+  assert.equal(databaseMigrationManifest.publishedThroughSequence, 9);
   assert.deepEqual(databaseMigrationManifest.publishedReference, {
-    ref: "v0.30.0",
-    commit: "7d2eb3a45fc78a60ad31cb88e178ba266d044c5b",
+    ref: "v0.36.3",
+    commit: "3ca6ac19326f10e0269048f0da978e50d81f2fcd",
   });
   assert.match(
     previousReleaseFixturePreparer,
