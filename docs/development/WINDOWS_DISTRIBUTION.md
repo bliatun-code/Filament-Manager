@@ -74,9 +74,9 @@ installer and payload match the verified build. On a clean hosted Windows
 profile, it checks the per-user install, application launch, fresh database,
 historical database upgrade, Host/Client, persistence, portable backup and
 uninstall. A separate migration gate exercises the upgrade from the
-published v0.35.1 MSI. The published-NSIS gate verifies the v0.36.2 checksum
-and build provenance before installing that exact release on its own runner.
-It opens a synthetic library in v0.36.2, upgrades interactively in place, and
+published v0.35.1 MSI. The published-NSIS gate verifies the pinned installer
+checksum and build provenance before installing that exact release on its own
+runner. It opens a synthetic library, upgrades interactively in place, and
 checks that the new app opens the same data, the launch-at-login choice survives,
 the older installer cannot replace the candidate, and uninstall retains the
 library.
@@ -90,12 +90,12 @@ uploaded diagnostic logs.
 
 On startup, an existing database is inspected read-only before schema writes.
 The app runs SQLite `quick_check` and verifies that the recorded schema is not
-newer than schema v7 supported by this build. A failed integrity or compatibility
+newer than schema v8 supported by this build. A failed integrity or compatibility
 check stops startup instead of silently modifying the database.
 
-An existing supported database older than schema v7
+An existing supported database older than schema v8
 receives an automatically created and verified local recovery snapshot before
-its schema v7 upgrade. Verified snapshots are also used before a full restore
+its schema v8 upgrade. Verified snapshots are also used before a full restore
 and storage migrations that replace or merge an existing database. If snapshot
 creation or verification fails, the destructive operation does not continue.
 
@@ -121,5 +121,6 @@ and test a per-user x64 release candidate. The workflow downloads the checked
 candidate by digest and uses it for the installed-app, MSI migration and
 published NSIS upgrade gates. While the repository version still matches the
 published NSIS baseline, the rehearsal candidate uses the next patch version
-with `-rc.1` in a temporary build config. The rehearsal upgrades the pinned
-v0.36.2 installer and uploads workflow artifacts for testing.
+with `-rc.1` in a temporary build config. The current rehearsal upgrades the
+pinned v0.36.3 installer to v0.36.4-rc.1 and uploads workflow artifacts for
+testing.

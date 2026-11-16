@@ -260,6 +260,21 @@ test("wishlist writes preserve receipt contracts and own their React lifecycle",
       await finish(page, 1, 1, { ...receipt, spool_ids: ["received-1"], received_quantity: 1 });
     });
 
+    await scenario("an older Host rejecting purchase details allows a new receipt without those details", async page => {
+      await page.evaluate("wishlistLifecycle.render({}); wishlistLifecycle.start(['receive'], {metadata:{purchase_price:50,purchase_currency:'NOK'}})");
+      await waitForCommands(page, 1);
+      await finish(page, 0, 0, null, "purchase_metadata.host_unsupported");
+      assert.match((await page.evaluate("wishlistLifecycle.snapshot()")).error, /Update the Host before saving purchase details/);
+      await page.evaluate("wishlistLifecycle.start()");
+      await waitForCommands(page, 2);
+      const [original, edited] = (await page.evaluate("wishlistLifecycle.commands()")).map(entry => entry.payload.input);
+      assert.equal(original.purchase_metadata.purchase_price, 50);
+      assert.equal(edited.purchase_metadata, undefined);
+      assert.notEqual(edited.request_id, original.request_id);
+      assert.equal(edited.retry, undefined);
+      await finish(page, 1, 1);
+    });
+
     for (const rejected of ["wishlist.receive.outcome_unknown_legacy_host", false]) {
       await scenario(`legacy or unclassified interrupted write does not submit a duplicate (${rejected})`, async page => {
         await page.evaluate("wishlistLifecycle.render({}); wishlistLifecycle.start()");

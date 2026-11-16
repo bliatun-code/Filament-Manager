@@ -174,13 +174,13 @@ test("click router dispatches add-spool source, catalog, and wishlist actions", 
   );
   assert.equal(
     routeCompanionClickAction(
-      "wishlist-stock-now",
+      "wishlist-receipt-retry",
       createTarget({
         "data-wishlist-id": "wish-2",
       }),
       {
-        submitWishlistStock(itemId) {
-          calls.push(["wishlist-stock", itemId]);
+        retryWishlistStock(itemId) {
+          calls.push(["wishlist-retry", itemId]);
         },
       },
     ),
@@ -207,7 +207,7 @@ test("click router dispatches add-spool source, catalog, and wishlist actions", 
     ["master", "master-1"],
     ["wishlist-filter", "ON_ORDER"],
     ["wishlist-status", "wish-1", "RECEIVED"],
-    ["wishlist-stock", "wish-2"],
+    ["wishlist-retry", "wish-2"],
     ["wishlist-delete", "wish-3"],
   ]);
 });
