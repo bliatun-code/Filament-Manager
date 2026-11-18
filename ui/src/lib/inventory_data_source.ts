@@ -4,6 +4,7 @@ import {
   listSpoolHistory,
   listSpoolUsage,
   validateLibrarySyncHost,
+  type saveLibrarySyncSpoolCache,
   type LibrarySyncCachedSpoolList,
   type SpoolHistoryEventRow,
   type SpoolUsagePointRow,
@@ -12,9 +13,8 @@ import {
 import { type InventorySpool } from "./inventory_list_model";
 import {
   DEFAULT_SPOOL_PAGE_SIZE,
-  loadAllSpoolRows,
-  loadAllSpoolRowsWithPageLoader,
-  loadSpoolRowsPage,
+  loadSpoolSnapshot,
+  type loadSpoolRowsPage,
 } from "./spool_data_source";
 import {
   resolveClientHostCacheTarget,
@@ -72,6 +72,7 @@ export type InventorySpoolDetailLoadResult = {
 
 type InventoryDataSourceDependencies = {
   loadRowsPage?: typeof loadSpoolRowsPage;
+  saveClientCache?: typeof saveLibrarySyncSpoolCache;
   fetchCachedSpools?: typeof fetchCachedLibrarySyncSpools;
 };
 
@@ -153,31 +154,20 @@ export async function loadInventorySpools(
   options: InventoryDataSourceOptions,
   dependencies: InventoryDataSourceDependencies = {},
 ): Promise<InventoryDataLoadResult> {
-  const loadRowsPage = dependencies.loadRowsPage ?? loadSpoolRowsPage;
   const fetchCachedSpools = dependencies.fetchCachedSpools ?? fetchCachedLibrarySyncSpools;
   const cacheTarget = options.clientReadOnly
     ? resolveClientHostCacheTarget(options)
     : null;
 
   try {
-    const rows = dependencies.loadRowsPage
-      ? await loadAllSpoolRowsWithPageLoader(
-          options,
-          DEFAULT_SPOOL_PAGE_SIZE,
-          loadRowsPage,
-        )
-      : await loadAllSpoolRows(options);
-    const cached = cacheTarget
-      ? await fetchCachedSpools(
-          cacheTarget.baseUrl,
-          cacheTarget.libraryId,
-          cacheTarget.targetGeneration,
-        ).catch((): LibrarySyncCachedSpoolList | null => null)
-      : null;
+    const { rows, capturedAt } = await loadSpoolSnapshot(options, DEFAULT_SPOOL_PAGE_SIZE, {
+      loadPage: dependencies.loadRowsPage,
+      saveClientCache: dependencies.saveClientCache,
+    });
     return {
       rows: mapSpoolRowsToInventorySpools(rows),
       source: "LIVE",
-      updatedAt: cached?.captured_at ?? null,
+      updatedAt: capturedAt,
       usedFallback: false,
     };
   } catch (loadError) {

@@ -410,7 +410,7 @@ impl InventoryEngine {
     pub fn save_library_sync_cached_spools(
         &self,
         rows: &[SpoolWithMasterRow],
-    ) -> InventoryResult<()> {
+    ) -> InventoryResult<String> {
         self.db.save_library_sync_cached_spools(rows)
     }
 

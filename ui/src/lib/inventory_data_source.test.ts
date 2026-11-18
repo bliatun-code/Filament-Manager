@@ -115,7 +115,7 @@ test("mapSpoolRowToInventorySpool falls back to master weight and then 1000g", (
   assert.equal(legacy.lowStockThresholdLegacyFallback, true);
 });
 
-test("loadInventorySpools reports live client rows with cached snapshot timestamp", async () => {
+test("loadInventorySpools uses the confirmed cache-write timestamp without reading the cached rows", async () => {
   const result = await loadInventorySpools(
     {
       clientReadOnly: true,
@@ -125,10 +125,8 @@ test("loadInventorySpools reports live client rows with cached snapshot timestam
     },
     {
       loadRowsPage: async () => [spoolRow("live-spool", { status: "IN_USE" })],
-      fetchCachedSpools: async () => ({
-        captured_at: "2026-04-01 10:00:00",
-        rows: [spoolRow("cached-spool")],
-      }),
+      saveClientCache: async () => "2026-04-01 10:00:00",
+      fetchCachedSpools: async () => assert.fail("live inventory must not reread cached rows"),
     },
   );
 
