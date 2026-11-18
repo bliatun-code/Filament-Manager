@@ -105,6 +105,7 @@ export async function runLocalDev({
     const child = runTauri({
       argv: ["dev", ...argv],
       cwd,
+      devIdentifier: "no.bliatun.filamentmanager.localdev",
       env: childEnv,
       platform,
     });

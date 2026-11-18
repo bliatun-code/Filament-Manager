@@ -42,6 +42,7 @@ import { normalizeSpoolWithMasterRows } from "./spool_row_normalization";
 import { loadAllSpoolRows } from "./spool_data_source";
 import { resolveClientHostTarget } from "./host_write_target";
 import { firstDefinedTimestamp } from "./source_timestamps";
+import { parseDateTimeMs } from "./date_time";
 import {
   resolveLibraryRevisionSource,
   type LibraryRevisionSource,
@@ -396,18 +397,20 @@ export async function loadDashboardData(
   );
   const clientHostCompanionTone = clientHostConnectionState.tone;
 
-  const hasClientCachedRows =
-    (clientSpoolRows?.length ?? 0) > 0 ||
-    (clientPrinterRows?.length ?? 0) > 0 ||
-    (clientLoanRows?.length ?? 0) > 0 ||
-    clientWishlistRows.length > 0;
   const normalizedClientSpoolRows =
     clientSpoolRows != null
       ? normalizeSpoolWithMasterRows(clientSpoolRows)
       : null;
+  const rowsCapturedAt = parseDateTimeMs(syncSettings?.cached_spools?.captured_at);
+  const summaryCapturedAt = parseDateTimeMs(activeClientSnapshot?.captured_at);
+  const cacheConfirmsEmptyStock = !clientSnapshotLive && (
+    activeClientSnapshot == null ||
+    (rowsCapturedAt != null && summaryCapturedAt != null && rowsCapturedAt >= summaryCapturedAt)
+  );
   const clientRowsOverview =
-    (normalizedClientSpoolRows?.length ?? 0) > 0
-      ? deriveInventoryOverviewFromRows(normalizedClientSpoolRows ?? [], [])
+    normalizedClientSpoolRows &&
+    (clientSpoolsLive || normalizedClientSpoolRows.length > 0 || cacheConfirmsEmptyStock)
+      ? deriveInventoryOverviewFromRows(normalizedClientSpoolRows, [])
       : null;
   const clientOverview = preserveSnapshotConsumption(
     clientRowsOverview,
@@ -419,7 +422,9 @@ export async function loadDashboardData(
       : null;
 
   if (clientMode) {
-    const hasClientData = !!clientOverview || hasClientCachedRows;
+    const hasClientData =
+      clientOverview != null || clientSpoolRows != null || clientPrinterRows != null ||
+      clientLoanRows != null || clientWishlistLive || syncSettings?.cached_wishlist != null;
     const allClientReadsLive =
       !!clientHostTarget &&
       clientSnapshotLive &&
@@ -485,7 +490,8 @@ export async function loadDashboardData(
       clientHostNeedsRepair,
       clientHostPaired:
         !!syncSettings?.client_auth_paired && !clientHostNeedsRepair,
-      setupDataAvailable: hasClientData,
+      setupDataAvailable:
+        activeClientSnapshot != null || (clientSpoolRows != null && clientPrinterRows != null),
       syncSource,
       capturedAt:
         syncSource === "client-live"

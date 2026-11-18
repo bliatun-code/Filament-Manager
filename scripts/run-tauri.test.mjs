@@ -27,6 +27,7 @@ import {
   withMacosDevSigningEnvironment,
   withMacosSigningBuildEnvironment,
   withMacosSigningConfig,
+  resolveTauriLaunchArgs,
 } from "./run-tauri.mjs";
 import {
   MACOS_DEV_CODE_SIGNING_IDENTIFIER,
@@ -42,6 +43,20 @@ function injectedConfig(args) {
 }
 
 const runTauriScriptPath = fileURLToPath(new URL("./run-tauri.mjs", import.meta.url));
+
+test("development copies have separate singleton identities from the installed app", () => {
+  const env = { FILAMENT_MANAGER_VISUAL_QA: "1", FILAMENT_MANAGER_DB_PATH: "fixture.db" };
+  const args = ["dev", "--no-watch"];
+  const qa = resolveTauriLaunchArgs(args, { env });
+  assert.deepEqual(injectedConfig(qa), { identifier: "no.bliatun.filamentmanager.visualqa" });
+  assert.equal(qa.at(-1), "--no-watch");
+  assert.deepEqual(injectedConfig(resolveTauriLaunchArgs(args, {
+    env, devIdentifier: "no.bliatun.filamentmanager.localdev",
+  })), { identifier: "no.bliatun.filamentmanager.localdev" });
+  assert.deepEqual(resolveTauriLaunchArgs(args, { env: { FILAMENT_MANAGER_DB_PATH: "fixture.db" } }), args);
+  assert.deepEqual(resolveTauriLaunchArgs(args, { env: { FILAMENT_MANAGER_VISUAL_QA: "1" } }), args);
+  assert.deepEqual(resolveTauriLaunchArgs(["build"], { env, platform: "win32" }), ["build"]);
+});
 
 test("run-tauri resolves its project from the script when launched elsewhere", (context) => {
   const foreignCwd = mkdtempSync(path.join(tmpdir(), "Filament Manager æøå 漢字-"));

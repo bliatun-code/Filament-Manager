@@ -9,7 +9,7 @@ import {
   resolveDoctorTauriLaunch,
   runDoctorCommand,
 } from "./doctor-command.mjs";
-import { probeBetterSqlite } from "./doctor-database.mjs";
+import { checkDataDirectoryWritable, probeBetterSqlite } from "./doctor-database.mjs";
 
 const __filename = fileURLToPath(import.meta.url);
 const rootDir = path.resolve(path.dirname(__filename), "..");
@@ -75,7 +75,7 @@ const tauriCli = runDoctorCommand(resolveDoctorTauriLaunch(), { cwd: rootDir });
 printLine(`- tauri cli: ${tauriCli.ok ? tauriCli.stdout : "not available"}`);
 if (!tauriCli.ok) {
   warnings.push(
-    "Local @tauri-apps/cli is unavailable. Run `npm install` in project root.",
+    "Local @tauri-apps/cli is unavailable. Run `npm ci` in the project root.",
   );
 }
 
@@ -110,18 +110,12 @@ if (!betterSqliteReady && !sqlite.ok) {
 }
 if (!betterSqliteReady && sqlite.ok) {
   warnings.push(
-    "Visual-QA database tooling will use the sqlite3 CLI fallback. For native mode, run `npm rebuild better-sqlite3`.",
+    "Visual-QA database inspection can use the sqlite3 CLI. dev:local, fixture generation and the full test suite require better-sqlite3. Run `npm ci --include=optional` in the project root with the Node version in .nvmrc.",
   );
 }
 
-const dataDir = path.join(rootDir, "data");
-if (!fs.existsSync(dataDir)) {
-  fs.mkdirSync(dataDir, { recursive: true });
-}
-const writeProbe = path.join(dataDir, ".doctor-write-test");
 try {
-  fs.writeFileSync(writeProbe, "ok\n", "utf8");
-  fs.unlinkSync(writeProbe);
+  checkDataDirectoryWritable(path.join(rootDir, "data"));
   printLine("- data directory: writable");
 } catch (error) {
   errors.push(`Cannot write to data directory: ${String(error)}`);

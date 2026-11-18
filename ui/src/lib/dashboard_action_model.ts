@@ -143,46 +143,40 @@ function compareOpenWishlistRows(left: WishlistItemRow, right: WishlistItemRow):
   );
 }
 
-export function findOpenPurchaseDuplicate(
-  candidate: Pick<
-    DashboardPurchaseCandidate,
-    "masterId" | "vendor" | "material" | "filamentName" | "colorName"
-  >,
-  wishlist: WishlistItemRow[],
-): DashboardOpenPurchaseDuplicate | null {
+type PurchaseIdentity = Omit<DashboardPurchaseCandidate, "productKey">;
+
+function indexOpenPurchases(wishlist: WishlistItemRow[]) {
+  const byMaster = new Map<string, DashboardOpenPurchaseDuplicate>();
+  const byIdentity = new Map<string, DashboardOpenPurchaseDuplicate>();
   const openRows = wishlist
     .filter((item) => openWishlistStatus(item.status) !== null)
     .sort(compareOpenWishlistRows);
-  const masterId = normalizedMasterId(candidate.masterId);
-  const masterMatch = masterId
-    ? openRows.find((item) => normalizedMasterId(item.master_id) === masterId)
-    : undefined;
-  if (masterMatch) {
-    return {
-      itemId: masterMatch.id,
-      match: "MASTER_ID",
-      status: openWishlistStatus(masterMatch.status)!,
-    };
+  for (const item of openRows) {
+    const status = openWishlistStatus(item.status)!;
+    const masterId = normalizedMasterId(item.master_id);
+    if (masterId && !byMaster.has(masterId)) {
+      byMaster.set(masterId, { itemId: item.id, match: "MASTER_ID", status });
+    }
+    const identity = dashboardProductIdentityKey({
+      colorName: item.color_name,
+      filamentName: item.filament_name,
+      material: item.material,
+      vendor: item.vendor,
+    });
+    if (!byIdentity.has(identity)) {
+      byIdentity.set(identity, { itemId: item.id, match: "IDENTITY", status });
+    }
   }
-
-  const identity = dashboardProductIdentityKey(candidate);
-  const identityMatch = openRows.find(
-    (item) =>
-      dashboardProductIdentityKey({
-        colorName: item.color_name,
-        filamentName: item.filament_name,
-        material: item.material,
-        vendor: item.vendor,
-      }) === identity,
-  );
-  if (!identityMatch) {
-    return null;
-  }
-  return {
-    itemId: identityMatch.id,
-    match: "IDENTITY",
-    status: openWishlistStatus(identityMatch.status)!,
+  return (candidate: PurchaseIdentity): DashboardOpenPurchaseDuplicate | null => {
+    const masterId = normalizedMasterId(candidate.masterId);
+    return (masterId ? byMaster.get(masterId) : undefined)
+      ?? byIdentity.get(dashboardProductIdentityKey(candidate))
+      ?? null;
   };
+}
+
+export function findOpenPurchaseDuplicate(candidate: PurchaseIdentity, wishlist: WishlistItemRow[]) {
+  return indexOpenPurchases(wishlist)(candidate);
 }
 
 function calendarDayNumber(value: string): number | null {
@@ -279,13 +273,14 @@ function buildLowStockActions(
     });
   }
 
+  if (groups.size === 0) return [];
+  const findDuplicate = indexOpenPurchases(wishlist);
   return [...groups.values()]
     .flatMap((group): DashboardLowStockAction[] => {
-      const spoolIds = [...group.spoolIds].sort();
-      const duplicate = findOpenPurchaseDuplicate(group.candidate, wishlist);
-      if (duplicate) {
+      if (findDuplicate(group.candidate)) {
         return [];
       }
+      const spoolIds = group.spoolIds.sort();
       return [{
         age: { basis: "DETECTED_NOW", elapsedDays: null, value: null },
         candidate: group.candidate,

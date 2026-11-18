@@ -99,6 +99,7 @@ test("local dev prepares its populated copy before launching Tauri", async () =>
       run: {
         argv: ["dev", "--no-watch"],
         cwd: repoRoot,
+        devIdentifier: "no.bliatun.filamentmanager.localdev",
         env: {
           CUSTOM_VALUE: "kept",
           [FILAMENT_MANAGER_DB_PATH_ENV]: targetPath,
