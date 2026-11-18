@@ -7,7 +7,7 @@ license = "AGPL-3.0-or-later"
 
 [dependencies]
 filament-manager-core = { path = ".." }
-tauri = { version = "2.12.3", features = ["tray-icon"] }
+tauri = { version = "2.12.7", features = ["tray-icon"] }
 tauri-plugin-single-instance = "2.5.3"
 serde = { workspace = true }
 serde_json = { workspace = true }
@@ -47,7 +47,7 @@ windows-sys = { version = "0.61.2", features = ["Win32_Foundation", "Win32_Secur
 winreg = "0.56.0"
 
 [build-dependencies]
-tauri-build = { version = "2.7.2", features = [] }
+tauri-build = { version = "2.7.6", features = [] }
 
 [dev-dependencies]
 filament-manager-core = { path = "..", features = ["test-support"] }
