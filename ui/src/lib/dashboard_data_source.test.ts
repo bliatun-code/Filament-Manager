@@ -691,6 +691,64 @@ test("cached active loans are independent of historical rows on the Dashboard", 
   }
 });
 
+test("dashboard recognizes an empty Host cache even without a summary", async () => {
+  const captured_at = "2026-04-01 08:30:00";
+  for (const key of ["cached_spools", "cached_printers", "cached_active_loans", "cached_wishlist"]) {
+    const result = await loadDashboardData(
+      { clientCacheOnly: true, previousClientHostNeedsRepair: false, t },
+      {
+        loadSyncSettings: async () => syncSettings({
+          mode: "CLIENT",
+          host_base_url: "http://host",
+          [key]: { captured_at, rows: [] },
+        }),
+        loadTrustedLanStatus: async () => null,
+      },
+    );
+    assert.equal(result.syncSource, "client-cached", key);
+    assert.equal(result.setupDataAvailable, false, key);
+    assert.equal(result.capturedAt, captured_at, key);
+    assert.equal(result.lowStockPreviewAvailable, key === "cached_spools", key);
+    assert.equal(result.printerOverviewAvailable, key === "cached_printers", key);
+  }
+});
+
+test("empty spool lists replace older stock totals while keeping snapshot consumption", async () => {
+  const older = "2026-04-01 09:00:00";
+  const newer = "2026-04-01 11:00:00";
+  for (const [cacheOnly, capturedAt, expectedStock] of [
+    [false, older, 0],
+    [true, newer, 0],
+    [true, older, 3],
+  ] as const) {
+    const result = await loadDashboardData(
+      { clientCacheOnly: cacheOnly, previousClientHostNeedsRepair: false, t },
+      {
+        loadSyncSettings: async () => syncSettings({
+          mode: "CLIENT",
+          host_base_url: "http://host",
+          cached_snapshot: snapshot("Host", {
+            captured_at: "2026-04-01 10:00:00",
+            inventory: overview({ total_spools: 3, total_owned_spools: 3, total_consumption_30d: 250 }),
+          }),
+          cached_spools: { captured_at: capturedAt, rows: [] },
+        }),
+        loadTrustedLanStatus: async () => null,
+        fetchHostSnapshot: async () => { throw new Error("snapshot unavailable"); },
+        loadSpoolRows: async () => [],
+        fetchHostPrinterOverview: async () => [],
+        fetchHostActiveLoans: async () => [],
+        fetchHostWishlist: async () => [],
+        fetchHostPrinterSettings: async () => printerSettingsSnapshot(),
+        onLoadError: () => {},
+      },
+    );
+    assert.equal(result.derived.ownershipOnHand.total, expectedStock);
+    assert.equal(result.derived.goalMetrics.totalSpools, expectedStock);
+    assert.equal(result.derived.stats.find((stat) => stat.id === "monthlyUsage")?.value, "250 g");
+  }
+});
+
 test("loadDashboardData uses cached client rows without a cached snapshot", async () => {
   const result = await loadDashboardData(
     { previousClientHostNeedsRepair: false, t },

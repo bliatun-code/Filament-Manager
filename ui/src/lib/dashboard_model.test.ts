@@ -234,6 +234,24 @@ test("dashboard uses mixed material thresholds for counts, health and subtitle",
   assert.equal(result.health.score, 33);
 });
 
+test("dashboard lowest weight uses the same measurement as the low-stock count", () => {
+  const result = buildDashboardDerivedState({
+    overview: overview(),
+    printers: [],
+    spoolRows: [
+      spoolRow("fallback", { remaining_g: null, current_weight_g: 150 }),
+      spoolRow("initial", { remaining_g: null, current_weight_g: null, initial_weight_g: 80 }),
+      spoolRow("zero", { remaining_g: 0, current_weight_g: 10 }),
+    ],
+    loans: [],
+    wishlist: [],
+    t,
+  });
+  const stat = result.stats.find((entry) => entry.id === "lowStock");
+  assert.equal(stat?.value, "2");
+  assert.equal(stat?.trend, "80 g lowest");
+});
+
 test("dashboard labels and applies the explicit older-Host 200 g fallback", () => {
   const result = buildDashboardDerivedState({
     overview: overview(),

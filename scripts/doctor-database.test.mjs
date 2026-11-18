@@ -1,10 +1,27 @@
 import assert from "node:assert/strict";
+import { mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import path from "node:path";
 import test from "node:test";
 
 import {
+  checkDataDirectoryWritable,
   parseNodeModuleVersionMismatch,
   probeBetterSqlite,
 } from "./doctor-database.mjs";
+
+test("doctor creates the data directory and preserves existing files during write checks", (t) => {
+  const root = mkdtempSync(path.join(tmpdir(), "doctor-data-"));
+  t.after(() => rmSync(root, { recursive: true, force: true }));
+  const directory = path.join(root, "data");
+  checkDataDirectoryWritable(directory);
+  const existing = path.join(directory, ".doctor-write-test");
+  writeFileSync(existing, "existing data");
+  checkDataDirectoryWritable(directory);
+  assert.equal(readFileSync(existing, "utf8"), "existing data");
+  assert.deepEqual(readdirSync(directory), [".doctor-write-test"]);
+  assert.throws(() => checkDataDirectoryWritable(existing));
+});
 
 test("doctor parses multiline native Node ABI mismatch diagnostics", () => {
   assert.deepEqual(

@@ -609,14 +609,15 @@ fn low_stock_counts_from_connection(
     policy: &LowStockPolicy,
 ) -> Result<(i64, i64, i64), rusqlite::Error> {
     let mut statement = connection.prepare(
-        "SELECT s.remaining_g, s.status, s.ownership_type, m.material
+        "SELECT COALESCE(s.remaining_g, s.current_weight_g, s.initial_weight_g, 0),
+                s.status, s.ownership_type, m.material
          FROM filament_spools s
          JOIN filament_master_list m ON m.id = s.master_id
          WHERE s.deleted_at IS NULL",
     )?;
     let rows = statement.query_map([], |row| {
         Ok((
-            row.get::<_, Option<i64>>(0)?,
+            row.get::<_, i64>(0)?,
             row.get::<_, Option<String>>(1)?,
             row.get::<_, Option<String>>(2)?,
             row.get::<_, String>(3)?,
@@ -630,7 +631,6 @@ fn low_stock_counts_from_connection(
         let (remaining_g, status, ownership, material) = row?;
         let status = SpoolStatus::from_raw(status.as_deref());
         let on_hand = matches!(status, SpoolStatus::InStock | SpoolStatus::Assigned);
-        let remaining_g = remaining_g.unwrap_or_default();
         if !on_hand || remaining_g <= 0 || remaining_g > policy.threshold_for_material(&material) {
             continue;
         }
@@ -1108,21 +1108,29 @@ mod tests {
                 .map_err(|error| error.to_string())?;
 
             assert_eq!(LOW_STOCK_THRESHOLD_G, 200);
-            for (remaining_g, expected_low_stock) in [(0, 0), (1, 1), (199, 1), (200, 1), (201, 0)]
-            {
+            for (remaining_g, current_g, initial_g, expected_low_stock) in [
+                (Some(0), Some(50), 1000, 0),
+                (Some(1), Some(500), 1000, 1),
+                (Some(199), Some(199), 1000, 1),
+                (Some(200), Some(200), 1000, 1),
+                (None, Some(150), 1000, 1),
+                (None, Some(0), 100, 0),
+                (None, None, 100, 1),
+                (Some(201), Some(201), 1000, 0),
+            ] {
                 db.connection()
                     .execute(
                         "UPDATE filament_spools
-                         SET current_weight_g = ?1, remaining_g = ?1
+                         SET remaining_g = ?1, current_weight_g = ?2, initial_weight_g = ?3
                          WHERE id = 'boundary_spool'",
-                        params![remaining_g],
+                        params![remaining_g, current_g, initial_g],
                     )
                     .map_err(|error| error.to_string())?;
 
                 let overview = db.inventory_overview().map_err(|error| error.to_string())?;
                 assert_eq!(
                     overview.low_stock, expected_low_stock,
-                    "unexpected low-stock result for {remaining_g} g"
+                    "unexpected low-stock count for weights {remaining_g:?}, {current_g:?}, {initial_g}"
                 );
             }
 

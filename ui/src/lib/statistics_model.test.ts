@@ -158,6 +158,21 @@ test("derived statistics apply effective thresholds at minus one, boundary and p
   assert.equal(overview.borrowed_in_low_stock, 2);
 });
 
+test("derived low-stock counts use recorded weights in order and preserve zero", () => {
+  const rows = [
+    spoolRow({ status: "ASSIGNED", remainingGrams: null, ownershipType: "BORROWED_IN" }),
+    spoolRow({ status: "IN_STOCK" }),
+    spoolRow({ status: "IN_STOCK", remainingGrams: 0 }),
+  ];
+  rows[0].spool.current_weight_g = 150;
+  rows[1].spool.initial_weight_g = 200;
+  rows[2].spool.current_weight_g = 100;
+  const result = deriveInventoryOverviewFromRows(rows, []);
+  assert.equal(result.low_stock, 2);
+  assert.equal(result.borrowed_in_low_stock, 1);
+  assert.equal(result.owned_low_stock, 1);
+});
+
 test("consumption filters build stable options and apply search, ownership and sort", () => {
   const rows = [
     consumptionRow({ vendor: "eSUN", material: "PETG", color_name: "Black", used_grams: 300, jobs: 2 }),
