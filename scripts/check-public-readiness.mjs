@@ -29,7 +29,7 @@ const forbiddenArtifactExtensions = [
   },
   {
     label: "database artifact",
-    pattern: /\.(?:db|db-shm|db-wal|sqlite|sqlite3)(?:-shm|-wal)?$/i,
+    pattern: /\.(?:db|sqlite3?)(?:-(?:shm|wal|journal))?$/i,
   },
   {
     label: "built release artifact",

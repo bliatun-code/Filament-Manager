@@ -1,12 +1,8 @@
 # Contributing
 
-Thanks for taking the time to improve Filament Manager.
-
-## License
-
-By contributing, you agree that your contribution is provided under the same
-license as the project: GNU Affero General Public License v3.0 or later
-(`AGPL-3.0-or-later`). See [LICENSE](LICENSE).
+By contributing, you agree to license your contribution under the project's
+[AGPL-3.0-or-later license](LICENSE). For the code layout and rules for
+changes to each subsystem, see [AGENTS.md](AGENTS.md).
 
 ## Development Setup
 
@@ -14,11 +10,14 @@ Development uses the Node.js major in `.nvmrc`, npm 10 or newer, and the
 Rust release in `rust-toolchain.toml`. The workspace also checks compatibility
 with Rust 1.90. On macOS, install Xcode and its command-line tools.
 
-Install dependencies:
+Run commands from the repository root. If you use nvm, run `nvm use` there
+first. Install the locked dependencies and the browser used by the test suite.
 
 ```bash
 npm ci
 npm --prefix ./ui ci
+node ./node_modules/playwright/cli.js install chromium
+npm run doctor
 ```
 
 Run the desktop app:
@@ -37,21 +36,30 @@ npm run dev:local
 The first run copies an available local library or standalone recovery snapshot
 to `tmp/dev-local/filament-manager.db`, gives the copy separate library and
 credential identities, and removes pairing, Trusted LAN, and printer connection
-secrets. Later runs reuse that copy; they do not refresh it automatically. This
-is still a local development database containing copied inventory and history,
-not a public synthetic fixture. Never commit, publish, or attach it to an issue
-or pull request.
+secrets. Later runs reuse that copy. Local development and visual QA each use a
+dedicated Tauri identifier so the installed app can stay open. The copied
+inventory and history are private. Never commit, publish, or attach this
+database to an issue or pull request.
+
+### After moving the checkout
+
+From the new directory, run `git rev-parse --show-toplevel`,
+`git status --short --branch` and `git worktree list` to check the root, branch
+and any linked checkouts. If a linked checkout still refers to the old
+location, run `git worktree repair` from the main checkout. Pass the new paths
+of any linked checkouts that also moved. Re-run the setup above if local
+dependencies are missing or incompatible.
+
+The installed app uses its platform data directory. An explicit
+`FILAMENT_MANAGER_DB_PATH` overrides it, so check any saved override that
+points into the former checkout. The `dev:local` command resolves its own
+database relative to this checkout.
 
 ### Stable macOS Development Signing
 
-The normal macOS development executable is ad-hoc signed, so its code identity
-changes after a Rust rebuild. If the local library contains credentials in
-macOS Keychain, that can make Keychain ask for approval again after each
-rebuild.
-
-Maintainers can opt into stable signing for `tauri dev` with a local
-`Apple Development` or self-signed Code Signing identity installed in their
-login Keychain:
+The default ad-hoc signature changes after a Rust rebuild and can trigger
+repeated Keychain prompts. To keep a stable development identity, select a
+local code-signing identity from the login Keychain.
 
 ```bash
 security find-identity -v -p codesigning
@@ -59,56 +67,31 @@ export FILAMENT_MANAGER_MACOS_DEV_SIGNING_IDENTITY='Apple Development: Your Name
 npm run tauri -- dev
 ```
 
-If `security find-identity` only lists a `Developer ID Application` identity,
-create a separate `Apple Development` certificate from Xcode's Accounts >
-Manage Certificates screen. An offline alternative is a self-signed Code
-Signing certificate in Keychain Access with the exact name
-`Filament Manager Development`. Never use the Developer ID release identity
-for local development; the wrapper rejects release, distribution, hash-only,
-and arbitrary identities.
+Create an `Apple Development` certificate in Xcode under Accounts → Manage
+Certificates, or create a self-signed Code Signing certificate named exactly
+`Filament Manager Development` in Keychain Access. The wrapper rejects
+release, distribution, hash-only, ad-hoc and arbitrary identities.
 
-The identity name is not a private key and may be kept in a local shell
-profile, but do not commit certificates, private keys, Keychain files, or local
-environment files. The first access with a new development identity can still
-require one approval. Subsequent Rust rebuilds keep the same designated
-requirement and should not ask again.
+Keep only the identity name in a local shell profile. The first credential
+access can require approval. Rebuilds reuse the designated requirement for
+`no.bliatun.filamentmanager.dev`. The wrapper signs only the
+`bambu-filament-manager` executable inside a Cargo target directory, respects
+an existing Cargo runner and is disabled in CI. Keep certificates, keys,
+Keychains and local environment files private. Preserve Keychain access
+controls and credential storage when troubleshooting prompts.
 
-This opt-in signs only the `bambu-filament-manager` executable produced inside
-a Cargo target directory and uses the separate development identifier
-`no.bliatun.filamentmanager.dev`. It rejects the ad-hoc `-` identity, does not
-override an existing Cargo runner environment variable, is disabled in CI,
-and does not change release signing or credential storage. Do not work around
-Keychain prompts by allowing all applications, weakening global Keychain
-policy, or storing credentials in plaintext.
+## Verification
 
-Run the full verification suite:
+Run `npm run verify` for the full suite. For a focused run, use
+`npm run test:ui`, `npm run test:companion` or `npm run test:rust`.
+`npm run smoke` builds the production UI and runs the browser, script and
+contract checks. When running `npm run check:contracts` separately, build the
+UI first to include the production bundle checks.
+Run `npm run check:public-readiness` before sharing a branch.
 
-```bash
-npm run verify
-```
-
-Check the public repository surface before sharing a branch or pull request:
-
-```bash
-npm run check:public-readiness
-```
-
-Useful focused checks:
-
-```bash
-npm run smoke
-npm run test:ui
-npm run test:companion
-npm run test:rust
-npm run check:contracts
-cargo test -p bambu-filament-manager library_sync_resilience_tests -- --nocapture
-```
-
-The blocking performance, Host/Client resilience, backup/upgrade,
-accessibility, and localization thresholds—and the maintainer accountable for
-each—are listed in
-[the quality-gate contract](docs/development/QUALITY_GATES.md). Update that contract and its
-executable test in the same change whenever a gate or threshold changes.
+The [quality-gate contract](docs/development/QUALITY_GATES.md) lists thresholds,
+owners and focused commands, including the Host/Client resilience tests.
+Update the contract and its executable test together when a gate changes.
 
 ## Local Build And QA Cleanup
 
@@ -147,21 +130,6 @@ Place an empty `.cleanup-keep` file in a directory to retain it. Use
 
 Participation is also covered by [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md).
 
-## Areas That Need Extra Care
-
-- Read [the architecture guide](docs/development/ARCHITECTURE.md) before moving Rust
-  modules or changing startup, database, or Bambu Live boundaries.
-- Bambu Live/AMS matching and RFID onboarding must be conservative. A weak hint
-  should not overwrite a deliberate slot assignment or RFID identity.
-- Companion and Trusted-LAN changes must preserve browser session and CSRF
-  safeguards.
-- Host/Client changes must preserve the exact Host, library, and target
-  generation as the authority. Never add a local Client write fallback or
-  transparently replay a credential-bearing write after a transport failure.
-- Scanner changes should remain usable without specialized hardware.
-- UI changes should keep desktop modal sizing, mobile Companion behavior, and
-  localization in mind.
-
 ## Localization
 
 Read [the localization workflow](docs/development/LOCALIZATION.md) before changing source
@@ -181,9 +149,7 @@ camera/image scan check before release.
 
 ## Project Documentation
 
-- [Architecture and workspace layout](docs/development/ARCHITECTURE.md)
 - [English user guide](docs/USER_GUIDE.md) and [Norwegian user guide](docs/BRUKERVEILEDNING.md)
-- [Quality gates](docs/development/QUALITY_GATES.md) and [localization](docs/development/LOCALIZATION.md)
 - [macOS distribution](docs/development/MACOS_DISTRIBUTION.md) and [Windows distribution](docs/development/WINDOWS_DISTRIBUTION.md)
 - [Release integrity and SBOM](docs/development/SUPPLY_CHAIN.md)
 - [Security policy](SECURITY.md) and [community standards](CODE_OF_CONDUCT.md)

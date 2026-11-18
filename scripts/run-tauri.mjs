@@ -217,15 +217,26 @@ export function withMacosDevSigningEnvironment({
   };
 }
 
+export function resolveTauriLaunchArgs(argv, { env = process.env, platform = process.platform, devIdentifier } = {}) {
+  if (argv[0] !== "dev") {
+    return withMacosSigningConfig(argv, { env, platform });
+  }
+  const visualQa = envFlag(env, "FILAMENT_MANAGER_VISUAL_QA") && envValue(env, "FILAMENT_MANAGER_DB_PATH");
+  const identifier = devIdentifier ?? (visualQa ? "no.bliatun.filamentmanager.visualqa" : null);
+  if (!identifier) return [...argv];
+  return ["dev", "--config", JSON.stringify({ identifier }), ...argv.slice(1)];
+}
+
 export function runTauriCli({
   argv = process.argv.slice(2),
   cwd = DEFAULT_REPO_ROOT,
   env = process.env,
+  devIdentifier,
   platform = process.platform,
 } = {}) {
   const tauriCliPath = path.join(cwd, "node_modules", "@tauri-apps", "cli", "tauri.js");
   const tauriProjectDir = path.join(cwd, "src-tauri");
-  const args = withMacosSigningConfig(argv, { env, platform });
+  const args = resolveTauriLaunchArgs(argv, { env, platform, devIdentifier });
   const signingBuildEnv = withMacosSigningBuildEnvironment({ args, env, platform });
   const childEnv = withMacosDevSigningEnvironment({
     args,
