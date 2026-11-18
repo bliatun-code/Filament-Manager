@@ -30,14 +30,15 @@ pub(crate) fn save_library_sync_cached_snapshot(
 pub(crate) fn save_library_sync_cached_spools(
     conn: &Connection,
     rows: &[SpoolWithMasterRow],
-) -> InventoryResult<()> {
+) -> InventoryResult<String> {
     let payload = LibrarySyncCachedSpoolListRow {
         captured_at: sqlite_now(conn)?,
         rows: rows.to_vec(),
     };
     let serialized =
         serde_json::to_string(&payload).map_err(|error| InventoryError::Db(error.to_string()))?;
-    set_setting(conn, "library_sync_cached_spools_json", &serialized)
+    set_setting(conn, "library_sync_cached_spools_json", &serialized)?;
+    Ok(payload.captured_at)
 }
 
 pub(crate) fn save_library_sync_cached_locations(

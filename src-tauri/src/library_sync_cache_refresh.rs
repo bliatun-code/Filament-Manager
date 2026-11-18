@@ -7,34 +7,64 @@ use crate::state::AppState;
 
 pub(crate) fn refresh_library_sync_spool_cache(state: &AppState, target: &LibrarySyncTargetGuard) {
     const PAGE_SIZE: usize = 2_500;
-    const MAX_PAGES: usize = 200;
-
-    let mut rows = Vec::new();
-    let mut complete = false;
-    for page_index in 0..MAX_PAGES {
-        let offset = page_index * PAGE_SIZE;
-        let page: Result<Vec<SpoolWithMasterRow>, String> =
-            get_library_sync_host_json_authenticated_for_target(
+    let rows = read_consistent_pages(
+        PAGE_SIZE,
+        200,
+        |offset| {
+            get_library_sync_host_json_authenticated_for_target::<Vec<SpoolWithMasterRow>>(
                 state,
                 &format!("/api/v1/library/spools?limit={PAGE_SIZE}&offset={offset}"),
                 target,
-            );
-        let Ok(page) = page else {
-            return;
-        };
-        let page_len = page.len();
-        rows.extend(page);
-        if page_len < PAGE_SIZE {
-            complete = true;
-            break;
+            )
+        },
+        || {
+            let revision = crate::library_revision_commands::read_target_revisions(state, target)?;
+            Ok((revision.inventory, revision.catalog))
+        },
+    );
+    if let Ok(rows) = rows {
+        let mut ids = std::collections::HashSet::with_capacity(rows.len());
+        if rows.iter().all(|row| ids.insert(&row.spool.id)) {
+            let _ = with_current_library_sync_target(state, target, |engine| {
+                engine.save_library_sync_cached_spools(&rows)
+            });
         }
     }
+}
 
-    if complete {
-        let _ = with_current_library_sync_target(state, target, |engine| {
-            engine.save_library_sync_cached_spools(&rows)
-        });
+fn read_consistent_pages<T>(
+    page_size: usize,
+    max_pages: usize,
+    mut read_page: impl FnMut(usize) -> Result<Vec<T>, String>,
+    mut read_revision: impl FnMut() -> Result<(i64, i64), String>,
+) -> Result<Vec<T>, String> {
+    let first = read_page(0)?;
+    if first.len() < page_size {
+        return Ok(first);
     }
+    drop(first);
+    // Include page zero in the revision bracket. A retry always starts from scratch.
+    let mut before = read_revision()?;
+    for _ in 0..2 {
+        let mut rows = Vec::new();
+        for page_index in 0..max_pages {
+            let page = read_page(rows.len())?;
+            let complete = page.len() < page_size;
+            rows.extend(page);
+            if complete {
+                let after = read_revision()?;
+                if before == after {
+                    return Ok(rows);
+                }
+                before = after;
+                break;
+            }
+            if page_index + 1 == max_pages {
+                return Err("Spool pagination did not finish.".into());
+            }
+        }
+    }
+    Err("Inventory changed during pagination.".into())
 }
 
 pub(crate) fn refresh_library_sync_printer_cache(
@@ -98,5 +128,67 @@ pub(crate) fn refresh_library_sync_wishlist_cache(
         let _ = with_current_library_sync_target(state, target, |engine| {
             engine.save_library_sync_cached_wishlist(&rows)
         });
+    }
+}
+
+#[cfg(test)]
+mod spool_page_tests {
+    use super::read_consistent_pages;
+    use std::cell::Cell;
+
+    #[test]
+    fn a_deleted_spool_between_pages_never_hides_the_next_spool() {
+        let removed = Cell::new(false);
+        let rows = read_consistent_pages(
+            2,
+            4,
+            |offset| {
+                if offset == 2 {
+                    removed.set(true);
+                }
+                let current = if removed.get() {
+                    &[2, 3, 4][..]
+                } else {
+                    &[1, 2, 3, 4][..]
+                };
+                Ok(current.iter().skip(offset).take(2).copied().collect())
+            },
+            || Ok((i64::from(removed.get()), 0)),
+        )
+        .unwrap();
+        assert_eq!(rows, [2, 3, 4]);
+    }
+
+    #[test]
+    fn unstable_catalog_fails_after_one_retry() {
+        let mut catalog = 0;
+        let rows = read_consistent_pages(
+            2,
+            4,
+            |offset| Ok(if offset == 0 { vec![1, 2] } else { vec![] }),
+            || {
+                catalog += 1;
+                Ok((0, catalog))
+            },
+        );
+        assert!(rows.is_err());
+        assert_eq!(catalog, 3);
+    }
+
+    #[test]
+    fn single_page_including_an_empty_library_does_not_need_revision_support() {
+        for rows in [vec![], vec![1]] {
+            let read = read_consistent_pages(
+                2,
+                4,
+                |offset| {
+                    assert_eq!(offset, 0);
+                    Ok(rows.clone())
+                },
+                || panic!("single-page read must not fetch revisions"),
+            )
+            .unwrap();
+            assert_eq!(read, rows);
+        }
     }
 }

@@ -304,7 +304,7 @@ export async function saveLibrarySyncSpoolCache(
   expectedLibraryId: string,
   targetGeneration: number,
 ) {
-  return invoke<void>("save_library_sync_spool_cache", {
+  return invoke<string>("save_library_sync_spool_cache", {
     input: {
       base_url: baseUrl,
       expected_library_id: expectedLibraryId,

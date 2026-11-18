@@ -1,10 +1,13 @@
 import {
+  fetchLibrarySyncDomainRevisions,
   fetchLibrarySyncSpools,
+  getLibraryDomainRevisions,
+  type LibraryDomainRevisions,
   listSpools,
   saveLibrarySyncSpoolCache,
   type SpoolWithMasterRow,
 } from "./tauri_client";
-import { resolveClientHostTarget } from "./host_write_target";
+import { resolveClientHostCacheTarget, resolveClientHostTarget } from "./host_write_target";
 import {
   normalizeSpoolWithMasterRows,
   type NormalizedSpoolWithMasterRow,
@@ -27,9 +30,13 @@ type SpoolDataSourceDependencies = {
 };
 
 const MAX_LOAD_ALL_SPOOL_PAGES = 500;
+const MAX_HOST_SPOOL_PAGE_SIZE = 2500;
 export const DEFAULT_SPOOL_PAGE_SIZE = 1000;
 
+type SpoolRevision = Pick<LibraryDomainRevisions, "inventory" | "catalog">;
+
 type LoadAllSpoolRowsDependencies = {
+  readRevision?: (options: SpoolDataSourceOptions) => Promise<SpoolRevision>;
   loadPage?: SpoolRowsPageLoader;
   saveClientCache?: typeof saveLibrarySyncSpoolCache;
   onCacheError?: (error: unknown) => void;
@@ -58,23 +65,38 @@ export async function loadAllSpoolRows(
   limit = DEFAULT_SPOOL_PAGE_SIZE,
   dependencies: LoadAllSpoolRowsDependencies = {},
 ): Promise<NormalizedSpoolWithMasterRow[]> {
-  const loadPage = dependencies.loadPage ?? loadSpoolRowsPage;
-  const rows = await loadAllSpoolRowsWithPageLoader(options, limit, loadPage);
-  if (options.clientReadOnly) {
-    const hostTarget = resolveClientHostTarget(options);
-    const targetGeneration = options.clientTargetGeneration;
-    if (!hostTarget || !Number.isSafeInteger(targetGeneration) || targetGeneration! < 0) {
-      return rows;
-    }
-    const saveClientCache = dependencies.saveClientCache ?? saveLibrarySyncSpoolCache;
-    await saveClientCache(
-      rows,
-      hostTarget.baseUrl,
-      hostTarget.libraryId,
-      targetGeneration!,
-    ).catch(dependencies.onCacheError ?? console.warn);
+  return (await loadSpoolSnapshot(options, limit, dependencies)).rows;
+}
+
+export async function loadSpoolSnapshot(
+  options: SpoolDataSourceOptions,
+  limit = DEFAULT_SPOOL_PAGE_SIZE,
+  dependencies: LoadAllSpoolRowsDependencies = {},
+) {
+  const rows = await loadAllSpoolRowsWithPageLoader(
+    options,
+    limit,
+    dependencies.loadPage ?? loadSpoolRowsPage,
+    MAX_LOAD_ALL_SPOOL_PAGES,
+    dependencies.readRevision,
+  );
+  const target = options.clientReadOnly ? resolveClientHostCacheTarget(options) : null;
+  if (!target) return { rows, capturedAt: null };
+  const save = dependencies.saveClientCache ?? saveLibrarySyncSpoolCache;
+  try {
+    const capturedAt = await save(rows, target.baseUrl, target.libraryId, target.targetGeneration);
+    return { rows, capturedAt };
+  } catch (error) {
+    (dependencies.onCacheError ?? console.warn)(error);
+    return { rows, capturedAt: null };
   }
-  return rows;
+}
+
+async function readSpoolRevision(options: SpoolDataSourceOptions): Promise<SpoolRevision> {
+  if (!options.clientReadOnly) return getLibraryDomainRevisions();
+  const target = resolveClientHostTarget(options);
+  if (!target) throw new Error("Host connection details are missing for client inventory loading.");
+  return fetchLibrarySyncDomainRevisions(target.baseUrl, target.libraryId);
 }
 
 export async function loadAllSpoolRowsWithPageLoader(
@@ -82,27 +104,52 @@ export async function loadAllSpoolRowsWithPageLoader(
   limit = 200,
   loadPage: SpoolRowsPageLoader,
   maxPages = MAX_LOAD_ALL_SPOOL_PAGES,
+  readRevision = readSpoolRevision,
 ): Promise<NormalizedSpoolWithMasterRow[]> {
-  const allRows: SpoolWithMasterRow[] = [];
-  const seenSpoolIds = new Set<string>();
-  const pageLimit = Math.max(1, Math.floor(limit));
-  let offset = 0;
-  for (let pageIndex = 0; pageIndex < maxPages; pageIndex += 1) {
-    const page = await loadPage(options, pageLimit, offset);
-    for (const row of page) {
-      if (seenSpoolIds.has(row.spool.id)) {
-        throw new Error(`Stopped loading spools because pagination repeated id ${row.spool.id}.`);
+  const requested = Number.isFinite(limit) ? Math.max(1, Math.floor(limit)) : DEFAULT_SPOOL_PAGE_SIZE;
+  const pageLimit = options.clientReadOnly ? Math.min(requested, MAX_HOST_SPOOL_PAGE_SIZE) : requested;
+  const first = await loadPage(options, pageLimit, 0);
+  if (first.length < pageLimit) {
+    const duplicate = findDuplicateId(first, new Set());
+    if (duplicate != null) throw repeatedSpoolError(duplicate);
+    return normalizeSpoolWithMasterRows(first);
+  }
+
+  // A single SELECT is consistent. For larger lists, bracket every page,
+  // including the first, with revisions covering both spool and master data.
+  let before = await readRevision(options);
+  for (let attempt = 0; attempt < 2; attempt++) {
+    const rows: SpoolWithMasterRow[] = [];
+    const seenIds = new Set<string>();
+    for (let pageIndex = 0; pageIndex < maxPages; pageIndex++) {
+      const page = await loadPage(options, pageLimit, rows.length);
+      const duplicate = findDuplicateId(page, seenIds);
+      rows.push(...page);
+      if (duplicate != null || page.length < pageLimit) {
+        const after = await readRevision(options);
+        if (before.inventory === after.inventory && before.catalog === after.catalog) {
+          if (duplicate != null) throw repeatedSpoolError(duplicate);
+          return normalizeSpoolWithMasterRows(rows);
+        }
+        before = after;
+        break;
       }
-      seenSpoolIds.add(row.spool.id);
+      if (pageIndex + 1 === maxPages) {
+        throw new Error("Stopped loading spools because pagination did not finish.");
+      }
     }
-    allRows.push(...page);
-    if (page.length < pageLimit) {
-      break;
-    }
-    offset += page.length;
   }
-  if (allRows.length >= pageLimit * maxPages) {
-    throw new Error("Stopped loading spools because pagination did not finish.");
+  throw new Error("Inventory changed during pagination.");
+}
+
+function findDuplicateId(page: SpoolWithMasterRow[], seen: Set<string>): string | null {
+  for (const { spool } of page) {
+    if (seen.has(spool.id)) return spool.id;
+    seen.add(spool.id);
   }
-  return normalizeSpoolWithMasterRows(allRows);
+  return null;
+}
+
+function repeatedSpoolError(id: string) {
+  return new Error(`Stopped loading spools because pagination repeated id ${id}.`);
 }

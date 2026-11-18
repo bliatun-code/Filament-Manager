@@ -75,8 +75,16 @@ mod tests {
         let saved = db
             .save_library_sync_settings(&settings)
             .expect("save target A");
-        db.save_library_sync_cached_spools(&[])
+        let captured_at = db
+            .save_library_sync_cached_spools(&[])
             .expect("seed target A cache");
+        let stored = db
+            .get_library_sync_settings()
+            .unwrap()
+            .cached_spools
+            .unwrap();
+        assert!(!captured_at.is_empty());
+        assert_eq!(captured_at, stored.captured_at);
         drop(db);
         let input = LibrarySyncCacheTargetInput {
             base_url: "http://host-a.local:4278".to_string(),
@@ -147,7 +155,7 @@ mod tests {
 pub(crate) fn save_library_sync_spool_cache(
     state: tauri::State<'_, AppState>,
     input: SaveLibrarySyncSpoolCacheInput,
-) -> Result<(), String> {
+) -> Result<String, String> {
     let target =
         capture_library_sync_target(&state, &input.base_url, Some(&input.expected_library_id))?;
     if target.generation() != input.target_generation {
