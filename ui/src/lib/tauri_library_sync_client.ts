@@ -73,6 +73,11 @@ export type LibrarySyncSettings = {
   cached_wishlist?: LibrarySyncCachedWishlistList | null;
 };
 
+export type LibrarySyncPageStatus = Pick<
+  LibrarySyncSettings,
+  "mode" | "library_id" | "host_base_url" | "target_generation" | "host_device_name" | "client_auth_paired"
+>;
+
 export type LibraryDomainRevisions = {
   inventory: number;
   catalog: number;
@@ -158,6 +163,10 @@ export type TrustedLanPairedBrowser = {
 
 export async function getTrustedLanCompanionStatus() {
   return invoke<TrustedLanCompanionStatus>("get_trusted_lan_companion_status");
+}
+
+export async function getLibrarySyncPageStatus() {
+  return invoke<LibrarySyncPageStatus>("get_library_sync_page_status");
 }
 
 export async function getLibrarySyncSettings() {

@@ -10,6 +10,16 @@ use super::statistics::{FilamentConsumptionRow, InventoryOverview};
 
 pub(crate) type LibrarySyncClientAuthState = (String, String, String, Option<String>);
 
+#[derive(Debug, Serialize)]
+pub struct LibrarySyncPageStatusRow {
+    pub mode: String,
+    pub library_id: String,
+    pub host_base_url: Option<String>,
+    pub target_generation: u64,
+    pub host_device_name: Option<String>,
+    pub client_auth_paired: bool,
+}
+
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct LibrarySyncSettingsRow {
     pub mode: String,

@@ -643,6 +643,17 @@ export function resolveUiBrowserPerformanceInvoke(
         ...fixture.desktopLifecycleSettings,
         launch_at_login: Boolean(payload.enabled),
       };
+    case "get_library_sync_page_status": {
+      const settings = fixture.librarySyncSettings;
+      return {
+        mode: settings.mode,
+        library_id: settings.library_id,
+        host_base_url: settings.host_base_url ?? null,
+        host_device_name: settings.host_device_name ?? null,
+        target_generation: settings.target_generation ?? 0,
+        client_auth_paired: settings.client_auth_paired,
+      };
+    }
     case "get_library_sync_settings":
       return fixture.librarySyncSettings;
     case "get_trusted_lan_companion_status":

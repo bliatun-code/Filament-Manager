@@ -1,6 +1,6 @@
 import {
-  getLibrarySyncSettings,
-  type LibrarySyncSettings,
+  getLibrarySyncPageStatus,
+  type LibrarySyncPageStatus,
 } from "./tauri_client";
 
 export type LibrarySyncPageState = {
@@ -13,7 +13,7 @@ export type LibrarySyncPageState = {
 };
 
 export function deriveLibrarySyncPageState(
-  syncSettings: LibrarySyncSettings,
+  syncSettings: LibrarySyncPageStatus,
 ): LibrarySyncPageState {
   const isClientMode = syncSettings.mode === "CLIENT";
 
@@ -32,9 +32,9 @@ export function deriveLibrarySyncPageState(
 
 export async function loadLibrarySyncPageState(
   dependencies: {
-    loadSyncSettings?: typeof getLibrarySyncSettings;
+    loadSyncSettings?: typeof getLibrarySyncPageStatus;
   } = {},
 ): Promise<LibrarySyncPageState> {
-  const loadSyncSettings = dependencies.loadSyncSettings ?? getLibrarySyncSettings;
-  return deriveLibrarySyncPageState(await loadSyncSettings());
+  const loadPageStatus = dependencies.loadSyncSettings ?? getLibrarySyncPageStatus;
+  return deriveLibrarySyncPageState(await loadPageStatus());
 }

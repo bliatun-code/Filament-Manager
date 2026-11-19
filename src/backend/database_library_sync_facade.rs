@@ -21,10 +21,10 @@ use super::database_library_sync_cache::{
 };
 use super::database_library_sync_models::{
     LibrarySyncCachedLocationListRow, LibrarySyncCachedSnapshotRow, LibrarySyncClientAuthState,
-    LibrarySyncSettingsRow,
+    LibrarySyncPageStatusRow, LibrarySyncSettingsRow,
 };
 use super::database_library_sync_settings::{
-    get_library_sync_library_id as get_library_sync_library_id_row,
+    get_library_sync_library_id as get_library_sync_library_id_row, get_library_sync_page_status,
     get_library_sync_settings as get_library_sync_setting_rows,
     save_library_sync_settings as save_library_sync_setting_rows,
 };
@@ -40,6 +40,13 @@ use super::statistics::FilamentConsumptionRow;
 impl FilamentDatabase {
     pub fn get_library_sync_library_id(&self) -> InventoryResult<String> {
         get_library_sync_library_id_row(self.connection())
+    }
+
+    pub fn get_library_sync_page_status(&self) -> InventoryResult<LibrarySyncPageStatusRow> {
+        let transaction = self.connection().unchecked_transaction()?;
+        let status = get_library_sync_page_status(&transaction)?;
+        transaction.commit()?;
+        Ok(status)
     }
 
     pub fn get_library_sync_settings(&self) -> InventoryResult<LibrarySyncSettingsRow> {

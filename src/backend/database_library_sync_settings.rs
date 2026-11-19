@@ -6,7 +6,8 @@ use super::database_library_sync_cache::CACHED_ACTIVE_LOANS_KEY;
 use super::database_library_sync_models::{
     LibrarySyncCachedFilamentConsumptionListRow, LibrarySyncCachedLoanListRow,
     LibrarySyncCachedPrinterOverviewRow, LibrarySyncCachedSnapshotRow,
-    LibrarySyncCachedSpoolListRow, LibrarySyncCachedWishlistListRow, LibrarySyncSettingsRow,
+    LibrarySyncCachedSpoolListRow, LibrarySyncCachedWishlistListRow, LibrarySyncPageStatusRow,
+    LibrarySyncSettingsRow,
 };
 use super::database_low_stock_policy::{load_low_stock_policy, save_low_stock_policy};
 use super::database_result::InventoryResult;
@@ -24,15 +25,11 @@ const LIBRARY_SYNC_HOST_CACHE_KEYS: &[&str] = &[
     "library_sync_cached_wishlist_json",
 ];
 
-pub(crate) fn get_library_sync_settings(
+pub(crate) fn get_library_sync_page_status(
     conn: &Connection,
-) -> InventoryResult<LibrarySyncSettingsRow> {
+) -> InventoryResult<LibrarySyncPageStatusRow> {
     let mode = normalize_library_sync_mode(get_setting(conn, "library_sync_mode")?.as_deref());
-    let device_name = trimmed_setting(conn, "library_sync_device_name")?
-        .unwrap_or_else(default_library_sync_device_name);
-
     let library_id = get_library_sync_library_id(conn)?;
-
     let host_base_url = get_setting(conn, "library_sync_host_base_url")?
         .map(|value| value.trim().trim_end_matches('/').to_string())
         .filter(|value| !value.is_empty());
@@ -41,6 +38,29 @@ pub(crate) fn get_library_sync_settings(
     let client_auth_paired = trimmed_setting(conn, "library_sync_client_auth_configured")?
         .is_some()
         || trimmed_setting(conn, "library_sync_client_session_id")?.is_some();
+    Ok(LibrarySyncPageStatusRow {
+        mode,
+        library_id,
+        host_base_url,
+        target_generation,
+        host_device_name,
+        client_auth_paired,
+    })
+}
+
+pub(crate) fn get_library_sync_settings(
+    conn: &Connection,
+) -> InventoryResult<LibrarySyncSettingsRow> {
+    let LibrarySyncPageStatusRow {
+        mode,
+        library_id,
+        host_base_url,
+        target_generation,
+        host_device_name,
+        client_auth_paired,
+    } = get_library_sync_page_status(conn)?;
+    let device_name = trimmed_setting(conn, "library_sync_device_name")?
+        .unwrap_or_else(default_library_sync_device_name);
     let client_auth_paired_at = trimmed_setting(conn, "library_sync_client_auth_paired_at")?;
     let client_auth_expires_at = trimmed_setting(conn, "library_sync_client_auth_expires_at")?;
     let last_checked_at = trimmed_setting(conn, "library_sync_last_checked_at")?;
@@ -259,5 +279,32 @@ fn save_optional_setting(conn: &Connection, key: &str, value: Option<&str>) -> I
     match value {
         Some(value) => set_setting(conn, key, value),
         None => delete_setting(conn, key),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::backend::filament_database::FilamentDatabase;
+
+    #[test]
+    fn page_status_never_reads_a_host_cache_setting() {
+        let db = FilamentDatabase::open(":memory:").unwrap();
+        db.apply_schema().unwrap();
+        for key in LIBRARY_SYNC_HOST_CACHE_KEYS {
+            // Reading this as a settings string fails before JSON decoding.
+            db.connection()
+                .execute(
+                    "INSERT OR REPLACE INTO settings (key, value) VALUES (?1, X'FF')",
+                    [key],
+                )
+                .unwrap();
+            assert!(get_setting(db.connection(), key).is_err());
+        }
+        assert!(db.get_library_sync_settings().is_err());
+        assert_eq!(
+            db.get_library_sync_page_status().unwrap().mode,
+            "STANDALONE"
+        );
     }
 }

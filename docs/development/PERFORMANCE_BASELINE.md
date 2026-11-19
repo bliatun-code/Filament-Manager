@@ -26,6 +26,12 @@ once. Complete pagination is separately covered by
 `ui/src/lib/spool_data_source.test.ts`, including the 10,000-row case with
 1,000-row pages.
 
+Loans, Printers, and Inventory use `get_library_sync_page_status` to resolve
+the current role, pairing and Host target. `cargo test page_status` verifies
+that this lookup can read the settings with unreadable cache values and
+returns identical JSON with zero and 10,000 cached spools. Each page loads
+the lists it needs separately.
+
 The source contract rejects artificial waits in the dashboard load path. A
 three-second `sleep`, delay promise, or timer cannot be added to the initial
 dashboard loader without failing verification. Polling timers remain allowed

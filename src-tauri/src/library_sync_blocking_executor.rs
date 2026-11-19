@@ -343,6 +343,7 @@ mod tests {
         let settings_commands = include_str!("library_sync_settings_commands.rs");
         for command in [
             "get_library_sync_settings",
+            "get_library_sync_page_status",
             "save_library_sync_settings",
             "clear_library_sync_client_auth",
         ] {
