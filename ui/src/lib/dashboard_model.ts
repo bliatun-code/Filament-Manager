@@ -7,6 +7,7 @@ import {
   isSpoolStatusAssigned,
   isSpoolStatusEmptyOrLost,
   isSpoolStatusOnHand,
+  resolveSpoolStockGrams,
 } from "./inventory_domain";
 import type { NormalizedLoanDetailsRow } from "./loan_row_normalization";
 import { isActiveOutboundLoan } from "./loan_state";
@@ -209,41 +210,34 @@ export function buildDashboardDerivedState(params: {
   const onHandInUse = onHandRows.filter((row) =>
     isSpoolStatusAssigned(row.spool.normalized_status),
   ).length;
-  const thresholdResolutions = onHandRows.map(resolveSpoolLowStockThreshold);
-  const thresholdValues = new Set(
-    thresholdResolutions.map((resolution) => resolution.thresholdGrams),
-  );
-  const usesLegacyThresholdFallback = thresholdResolutions.some(
-    (resolution) => resolution.legacyFallback,
-  ) || (onHandRows.length === 0 && overview.low_stock_policy == null);
-  const lowStockCandidates = spoolRows.filter((row) => {
+  const thresholdValues = new Set<number>();
+  let usesLegacyThresholdFallback = onHandTotal === 0 && overview.low_stock_policy == null;
+  let lowestRemaining: number | null = null;
+  let ownedLowStockCount = 0;
+  let borrowedInLowStockCount = 0;
+  let healthySpools = 0;
+  for (const row of onHandRows) {
     const threshold = resolveSpoolLowStockThreshold(row);
-    return isSpoolLowStock(
-      {
-        status: row.spool.normalized_status,
-        remainingGrams: row.spool.remaining_g,
-        currentWeightGrams: row.spool.current_weight_g,
-        initialWeightGrams: row.spool.initial_weight_g,
-      },
-      threshold.thresholdGrams,
-    );
-  });
-  const lowStockRows = [...lowStockCandidates]
-    .sort((left, right) => (left.spool.remaining_g ?? 0) - (right.spool.remaining_g ?? 0))
-    .slice(0, 5)
-    .map((row) => ({
-      id: row.spool.id,
-      name: row.master.filament_name,
-      color: row.master.color_name,
-      remaining: formatGrams(row.spool.remaining_g ?? 0, "zero", locale),
-    }));
-  const lowStockCount = lowStockCandidates.length;
-  const ownedLowStockCount = lowStockCandidates.filter(
-    (row) => !isBorrowedInOwnership(row.spool.ownership_type),
-  ).length;
-  const borrowedInLowStockCount = lowStockCandidates.filter((row) =>
-    isBorrowedInOwnership(row.spool.ownership_type),
-  ).length;
+    thresholdValues.add(threshold.thresholdGrams);
+    usesLegacyThresholdFallback ||= threshold.legacyFallback;
+    const remainingGrams = resolveSpoolStockGrams({
+      remainingGrams: row.spool.remaining_g,
+      currentWeightGrams: row.spool.current_weight_g,
+      initialWeightGrams: row.spool.initial_weight_g,
+    });
+    const stock = { status: row.spool.normalized_status, remainingGrams };
+    if (isSpoolLowStock(stock, threshold.thresholdGrams)) {
+      lowestRemaining = Math.min(lowestRemaining ?? remainingGrams, remainingGrams);
+      if (isBorrowedInOwnership(row.spool.ownership_type)) {
+        borrowedInLowStockCount++;
+      } else {
+        ownedLowStockCount++;
+      }
+    } else if (isSpoolStockHealthy(stock, threshold.thresholdGrams)) {
+      healthySpools++;
+    }
+  }
+  const lowStockCount = ownedLowStockCount + borrowedInLowStockCount;
   const fallbackThreshold = overview.low_stock_policy?.default_threshold_g ?? 200;
   const onlyThreshold = thresholdValues.values().next().value ?? fallbackThreshold;
   const lowStockSubtitle = usesLegacyThresholdFallback
@@ -289,7 +283,9 @@ export function buildDashboardDerivedState(params: {
       title: t("dashboard.lowStock", "Low Stock"),
       value: formatDisplayInteger(lowStockCount, locale),
       subtitle: lowStockSubtitle,
-      trend: lowStockRows.length > 0 ? `${lowStockRows[0].remaining} ${t("dashboard.lowest", "lowest")}` : t("dashboard.noAlerts", "No alerts"),
+      trend: lowestRemaining == null
+        ? t("dashboard.noAlerts", "No alerts")
+        : `${formatGrams(lowestRemaining, "zero", locale)} ${t("dashboard.lowest", "lowest")}`,
       accent: "rose",
     },
     {
@@ -327,18 +323,6 @@ export function buildDashboardDerivedState(params: {
     loadedSlots: effectiveSlotTotals.loadedSlots,
   };
 
-  const healthySpools = onHandRows.filter((row) => {
-    const threshold = resolveSpoolLowStockThreshold(row);
-    return isSpoolStockHealthy(
-      {
-        status: row.spool.normalized_status,
-        remainingGrams: row.spool.remaining_g,
-        currentWeightGrams: row.spool.current_weight_g,
-        initialWeightGrams: row.spool.initial_weight_g,
-      },
-      threshold.thresholdGrams,
-    );
-  }).length;
   const healthScore =
     onHandTotal === 0
       ? null

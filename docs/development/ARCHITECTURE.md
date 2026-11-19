@@ -246,6 +246,12 @@ credentials after the target changes. Read-only last-good data may remain
 visible during a bounded outage, but it must be labelled as cached and must
 never be combined with the Client's unrelated local shadow data.
 
+A spool list spanning multiple pages must have the same inventory and catalog
+revisions before and after the read. A change triggers one fresh read from
+page zero. A second change or a failed revision check preserves the previous
+cache. A short first page completes in a single read. Inventory uses the
+timestamp returned by the cache write when displaying live rows.
+
 Client feedback follows the same authority state. It stays quiet while the
 library role and initial request are unresolved, prefers one precise Host/cache
 warning over a simultaneous generic request error, and clears fallback feedback

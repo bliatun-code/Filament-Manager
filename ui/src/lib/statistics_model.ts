@@ -8,6 +8,7 @@ import {
   isBorrowedInOwnership,
   isInboundLoanDirection,
   isLoanDirection,
+  isSpoolLowStock,
   isSpoolStatusAssigned,
   isSpoolStatusOnHand,
   normalizeOwnershipType,
@@ -290,7 +291,6 @@ export function deriveInventoryOverviewFromRows(
     const isOnHand = isSpoolStatusOnHand(row.spool.normalized_status);
     const isAssigned = isSpoolStatusAssigned(row.spool.normalized_status);
     const borrowedIn = isBorrowedInOwnership(row.spool.ownership_type);
-    const remaining = row.spool.remaining_g ?? null;
 
     if (isOnHand) {
       if (borrowedIn) {
@@ -310,13 +310,12 @@ export function deriveInventoryOverviewFromRows(
     }
 
     const lowStockThreshold = resolveSpoolLowStockThreshold(row).thresholdGrams;
-    if (
-      remaining != null &&
-      Number.isFinite(remaining) &&
-      remaining > 0 &&
-      remaining <= lowStockThreshold &&
-      isOnHand
-    ) {
+    if (isSpoolLowStock({
+      status: row.spool.normalized_status,
+      remainingGrams: row.spool.remaining_g,
+      currentWeightGrams: row.spool.current_weight_g,
+      initialWeightGrams: row.spool.initial_weight_g,
+    }, lowStockThreshold)) {
       lowStock += 1;
       if (borrowedIn) {
         borrowedInLowStock += 1;

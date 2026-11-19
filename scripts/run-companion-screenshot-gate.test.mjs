@@ -783,12 +783,12 @@ test("companion screenshot launch need detection covers unreachable server failu
   assert.equal(companionScreenshotGateNeedsLaunch(new Error("layout overflow")), false);
 });
 
-test("companion screenshot launch uses the local Tauri wrapper without a shell", () => {
+test("companion screenshot launch keeps the same server for the full browser session", () => {
   const executable = "node-runtime";
   const launch = resolveCompanionScreenshotTauriLaunch({ executable });
 
   assert.deepEqual(launch, {
-    args: [fileURLToPath(new URL("./run-tauri.mjs", import.meta.url)), "dev"],
+    args: [fileURLToPath(new URL("./run-tauri.mjs", import.meta.url)), "dev", "--no-watch"],
     command: executable,
     shell: false,
   });
@@ -905,6 +905,7 @@ test("launched companion screenshot gate starts Tauri dev and cleans up temp DB"
   assert.deepEqual(calls.spawn[0]?.args, [
     fileURLToPath(new URL("./run-tauri.mjs", import.meta.url)),
     "dev",
+    "--no-watch",
   ]);
   assert.equal(calls.spawn[0]?.options.cwd, testProjectDir);
   assert.equal(calls.spawn[0]?.options.detached, true);

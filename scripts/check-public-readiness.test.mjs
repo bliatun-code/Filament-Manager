@@ -204,6 +204,19 @@ test("public readiness rejects internal notes and sensitive or built artifacts",
   ]);
 });
 
+test("public readiness rejects SQLite sidecars, including empty rollback journals", () => {
+  const files = {};
+  for (const extension of ["db", "sqlite", "sqlite3"]) {
+    for (const suffix of ["shm", "wal", "journal"]) {
+      files[`data/library.${extension}-${suffix}`] = "";
+    }
+  }
+  assert.deepEqual(
+    analyzeFixture(files).errors.map(({ file, label }) => ({ file, label })),
+    Object.keys(files).map((file) => ({ file, label: "database artifact" })),
+  );
+});
+
 test("public readiness rejects personal absolute home paths but supports documented fixtures", () => {
   const macosPrivatePath = [
     "",

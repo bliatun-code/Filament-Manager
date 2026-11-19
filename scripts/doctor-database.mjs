@@ -1,3 +1,19 @@
+import { randomUUID } from "node:crypto";
+import { closeSync, mkdirSync, openSync, unlinkSync, writeFileSync } from "node:fs";
+import path from "node:path";
+
+export function checkDataDirectoryWritable(directory) {
+  mkdirSync(directory, { recursive: true });
+  const probe = path.join(directory, `.doctor-write-${randomUUID()}`);
+  const fd = openSync(probe, "wx", 0o600);
+  try {
+    writeFileSync(fd, "ok\n");
+  } finally {
+    closeSync(fd);
+    unlinkSync(probe);
+  }
+}
+
 export function parseNodeModuleVersionMismatch(message) {
   const compactMessage = String(message ?? "").replace(/\s+/g, " ").trim();
   const match = compactMessage.match(

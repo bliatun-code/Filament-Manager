@@ -160,7 +160,7 @@ impl FilamentDatabase {
     pub fn save_library_sync_cached_spools(
         &self,
         rows: &[SpoolWithMasterRow],
-    ) -> InventoryResult<()> {
+    ) -> InventoryResult<String> {
         save_library_sync_cached_spool_rows(self.connection(), rows)
     }
 

@@ -229,6 +229,39 @@ test("purchase duplicate resolution prefers master id, then normalized product i
   );
 });
 
+test("dashboard indexes open purchase identities once across low-stock groups", () => {
+  let identityReads = 0;
+  const openItem = {
+    ...wishlist("open", { master_id: null }),
+    get color_name() {
+      identityReads++;
+      return " BLACK ";
+    },
+  };
+  const actions = buildDashboardActionItems({
+    bambuLiveAttention: [],
+    loans: [],
+    now: new Date("2026-08-21T12:00:00Z"),
+    spoolRows: normalizeSpoolWithMasterRows([
+      spool("one", { masterId: "black" }),
+      spool("two", { masterId: "gray" }),
+      spool("three", { masterId: "also-gray" }),
+    ]),
+    today: "2026-08-21",
+    wishlist: [openItem],
+  });
+  assert.deepEqual(actions.map((item) => item.id), ["low-stock:master:also-gray", "low-stock:master:gray"]);
+  assert.equal(identityReads, 1);
+});
+
+test("duplicate purchases prefer on-order rows, then the lowest ID", () => {
+  const candidate = { colorName: "Gray", filamentName: "Basic", masterId: null, material: "PLA", vendor: "Bambu Lab" };
+  const rows = [wishlist("a"), wishlist("c", { status: "ON_ORDER" }), wishlist("b", { status: "ON_ORDER" })];
+  assert.deepEqual(findOpenPurchaseDuplicate(candidate, rows), { itemId: "b", match: "IDENTITY", status: "ON_ORDER" });
+  assert.deepEqual(findOpenPurchaseDuplicate({ ...candidate, masterId: rows[0].master_id! }, rows),
+    { itemId: "b", match: "MASTER_ID", status: "ON_ORDER" });
+});
+
 test("dashboard actions use calendar due dates, real order timestamps, and honest fallbacks", () => {
   const actions = buildDashboardActionItems({
     bambuLiveAttention: [

@@ -5,7 +5,9 @@ use crate::library_sync_host_client::get_library_sync_host_json_authenticated_fo
 use crate::library_sync_models::{
     LibrarySyncDomainRevisionsResponse, ValidateLibrarySyncHostInput,
 };
-use crate::library_sync_target_guard::ensure_library_sync_target_current;
+use crate::library_sync_target_guard::{
+    ensure_library_sync_target_current, LibrarySyncTargetGuard,
+};
 use crate::state::AppState;
 use crate::with_db;
 
@@ -33,17 +35,25 @@ fn fetch_library_sync_domain_revisions_blocking(
     // Verify the library identity without credentials before sending the runtime session to a
     // cached LAN address. This also refreshes a stale DHCP route before revision polling.
     let (_, expected_library_id, target) = prepare_library_sync_host_checked(state, &input)?;
-    let expected_library_id = expected_library_id
-        .ok_or_else(|| "Expected host library id is required for revision polling.".to_string())?;
+    if expected_library_id.is_none() {
+        return Err("Expected host library id is required for revision polling.".to_string());
+    }
+    read_target_revisions(state, &target)
+}
+
+pub(crate) fn read_target_revisions(
+    state: &AppState,
+    target: &LibrarySyncTargetGuard,
+) -> Result<LibraryDomainRevisions, String> {
     let response: LibrarySyncDomainRevisionsResponse =
         get_library_sync_host_json_authenticated_for_target(
             state,
             "/api/v1/library/revisions",
-            &target,
+            target,
         )?;
-    if response.library_id.trim() != expected_library_id {
+    if response.library_id.trim() != target.library_id() {
         return Err("Host library identity changed during revision polling.".to_string());
     }
-    ensure_library_sync_target_current(state, &target)?;
+    ensure_library_sync_target_current(state, target)?;
     Ok(response.revisions)
 }

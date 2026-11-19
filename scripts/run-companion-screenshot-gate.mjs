@@ -368,7 +368,7 @@ function releaseChild(child) {
 }
 
 export function resolveCompanionScreenshotTauriLaunch({
-  args = ["dev"],
+  args = ["dev", "--no-watch"],
   executable = process.execPath,
 } = {}) {
   return {
