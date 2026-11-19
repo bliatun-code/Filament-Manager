@@ -227,10 +227,13 @@ profiles. `Windows Smoke` executes this command. On macOS, the UI job runs
 `npm run smoke` and the WebKit check while the native job builds the production
 UI, runs `npm run test:rust`, and exercises the data-backed Companion workflow
 with a generated fixture. The required `macOS Smoke` check succeeds only
-after both jobs succeed. Release publication separately verifies the successful
-`Database Migration Integrity`, `macOS Smoke`, and `Windows Smoke` check runs
-for the exact commit. The platform smoke jobs also invoke the installed
-Host-Client gate through `--packaged-host-client-e2e` on macOS and
+after both jobs succeed. Release publication waits up to 90 minutes for
+`Database Migration Integrity`, `macOS Smoke`, and `Windows Smoke` in the
+`ci.yml` push run on `main` for the tagged commit. It polls every minute while
+the run or a required job is pending or missing. A failed, cancelled, or skipped
+required job, an incomplete set of checks in a finished run, or a timeout
+stops publication before a draft is created. The platform smoke jobs also
+invoke the installed Host-Client gate through `--packaged-host-client-e2e` on macOS and
 `-RunPackagedHostClientE2E` on Windows. Windows retains the explicit
 `UnsignedRequired` Authenticode policy until signing work is resumed.
 

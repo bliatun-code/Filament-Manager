@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { existsSync, readFileSync } from "node:fs";
 import test from "node:test";
+import { requiredReleaseChecks } from "./wait-for-release-ci.mjs";
 
 const releaseWorkflow = readFileSync(
   ".github/workflows/release-build.yml",
@@ -136,7 +137,7 @@ test("release workflow gates tag and manual installer builds", () => {
   const requiredChecksStep = readSection(
     publishJob,
     "      - name: Require successful CI checks",
-    "      - name: Checkout release notes",
+    "      - name: Download verified macOS artifact",
   );
   const updateMetadataGate = validationJob.match(
     /canonical_repository="bliatun-code\/Filament-Manager"[\s\S]*?Canonical tag releases require repository variable FILAMENT_MANAGER_UPDATE_METADATA_URL to equal \$expected_update_metadata_url\.[\s\S]*?\n\s+fi/,
@@ -365,7 +366,7 @@ test("release workflow gates tag and manual installer builds", () => {
   );
   assert.match(
     publishJob,
-    /permissions:\s*\n\s+checks: read\s*\n\s+contents: write/,
+    /permissions:\s*\n\s+actions: read\s*\n\s+contents: write/,
   );
   assert.match(publishJob, /environment: github-release/);
   assert.equal(
@@ -390,24 +391,12 @@ test("release workflow gates tag and manual installer builds", () => {
     publishJob,
     /tag_commit="\$\([\s\S]*?\)"[\s\S]*?draft_release_json="\$\(/,
   );
-  assert.match(
-    publishJob,
-    /required_checks=\("Database Migration Integrity" "macOS Smoke" "Windows Smoke"\)/,
-  );
+  assert.match(requiredChecksStep, /run: node \.\/scripts\/wait-for-release-ci\.mjs/);
+  assert.match(publishJob, /^    timeout-minutes: 100$/m);
   assert.equal(
     countOccurrences(requiredChecksStep, "GH_TOKEN: ${{ github.token }}"),
     1,
   );
-  assert.match(
-    publishJob,
-    /\/repos\/\$GITHUB_REPOSITORY\/commits\/\$GITHUB_SHA\/check-runs/,
-  );
-  assert.match(publishJob, /-f check_name="\$check_name"/);
-  assert.match(publishJob, /-f filter=latest/);
-  assert.match(publishJob, /\.app\.slug == "github-actions"/);
-  assert.match(publishJob, /sort_by\(\[\(\.started_at/);
-  assert.match(publishJob, /"completed:success"/);
-  assert.match(publishJob, /Required CI check '\$check_name'/);
   assert.match(
     publishJob,
     /actions\/download-artifact@[a-f0-9]{40} # v8\.\d+\.\d+/,
@@ -535,8 +524,8 @@ test("release workflow gates tag and manual installer builds", () => {
   );
 
   assertStepOrder(publishJob, [
-    "Require successful CI checks",
     "Checkout release notes",
+    "Require successful CI checks",
     "Download verified macOS artifact",
     "Download verified Windows artifact",
     "Download verified source dependency SBOM",
@@ -1327,12 +1316,6 @@ test("CI rejects published migration rewrites and exercises both database paths"
     "  migration-integrity:",
     "  macos-smoke:",
   );
-  const publishJob = readSection(releaseWorkflow, "  publish-github-release:");
-  const requiredChecksStep = readSection(
-    publishJob,
-    "      - name: Require successful CI checks",
-    "      - name: Checkout release notes",
-  );
 
   assert.equal(
     packageManifest.scripts["check:database-migrations"],
@@ -1362,10 +1345,7 @@ test("CI rejects published migration rewrites and exercises both database paths"
     "Setup Rust",
     "Test clean install and historical upgrades",
   ]);
-  assert.match(
-    requiredChecksStep,
-    /required_checks=\("Database Migration Integrity" "macOS Smoke" "Windows Smoke"\)/,
-  );
+  assert.ok(requiredReleaseChecks.includes("Database Migration Integrity"));
 });
 
 test("CI executes real browser accessibility and sanitized Companion workflows", () => {
@@ -1455,12 +1435,6 @@ test("macOS CI makes the sanitized database upgrade smoke a release gate", () =>
     "  macos-smoke:",
     "  windows-smoke:",
   );
-  const publishJob = readSection(releaseWorkflow, "  publish-github-release:");
-  const requiredChecksStep = readSection(
-    publishJob,
-    "      - name: Require successful CI checks",
-    "      - name: Checkout release notes",
-  );
 
   assert.equal(
     packageManifest.scripts["qa:release:upgrade-ci-fixture"],
@@ -1487,10 +1461,7 @@ test("macOS CI makes the sanitized database upgrade smoke a release gate", () =>
     macosJob,
     /- name: Upload database upgrade smoke logs\s+if: always\(\)[\s\S]*?if-no-files-found: warn[\s\S]*?retention-days: 7/,
   );
-  assert.match(
-    requiredChecksStep,
-    /required_checks=\("Database Migration Integrity" "macOS Smoke" "Windows Smoke"\)/,
-  );
+  assert.ok(requiredReleaseChecks.includes("macOS Smoke"));
   assertStepOrder(macosJob, [
     "Run Rust verification",
     "Run data-backed Companion E2E",

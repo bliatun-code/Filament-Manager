@@ -1091,56 +1091,20 @@ jobs:
       )
     environment: github-release
     runs-on: ubuntu-26.04
-    timeout-minutes: 10
+    timeout-minutes: 100
     permissions:
-      checks: read
+      actions: read
       contents: write
     steps:
-      - name: Require successful CI checks
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          set -euo pipefail
-          required_checks=("Database Migration Integrity" "macOS Smoke" "Windows Smoke")
-
-          for check_name in "${required_checks[@]}"; do
-            check_runs="$(
-              gh api \
-                --method GET \
-                -H "Accept: application/vnd.github+json" \
-                "/repos/$GITHUB_REPOSITORY/commits/$GITHUB_SHA/check-runs" \
-                -f check_name="$check_name" \
-                -f filter=latest \
-                -F per_page=100
-            )"
-            check_state="$(
-              jq -r --arg check_name "$check_name" '
-                [
-                  .check_runs[]
-                  | select(
-                      .name == $check_name
-                      and .app.slug == "github-actions"
-                    )
-                ]
-                | sort_by([(.started_at // .created_at // ""), .id])
-                | if length == 0 then
-                    "missing"
-                  else
-                    (last | "\(.status):\(.conclusion // "pending")")
-                  end
-              ' <<< "$check_runs"
-            )"
-
-            if [[ "$check_state" != "completed:success" ]]; then
-              echo "::error::Required CI check '$check_name' for $GITHUB_SHA is $check_state, not completed:success."
-              exit 1
-            fi
-          done
-
       - name: Checkout release notes
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+
+      - name: Require successful CI checks
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: node ./scripts/wait-for-release-ci.mjs
 
       - name: Download verified macOS artifact
         uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
