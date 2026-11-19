@@ -166,9 +166,9 @@ GitHub Actions instead of adding another report under `docs`. The ignored
 
 ## Recent Release Notes
 
+- [v0.36.5](docs/releases/RELEASE_NOTES_v0.36.5.md)
 - [v0.36.4](docs/releases/RELEASE_NOTES_v0.36.4.md)
 - [v0.36.3](docs/releases/RELEASE_NOTES_v0.36.3.md)
-- [v0.36.2](docs/releases/RELEASE_NOTES_v0.36.2.md)
 
 The three newest release-note files stay in the working tree. Older source and
 checked-in notes remain available through their published Git tags. Archive
