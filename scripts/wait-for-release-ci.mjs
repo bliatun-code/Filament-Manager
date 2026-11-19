@@ -2,8 +2,6 @@ import { execFileSync } from "node:child_process";
 import { setTimeout as delay } from "node:timers/promises";
 import { pathToFileURL } from "node:url";
 
-export const requiredReleaseChecks = ["Database Migration Integrity", "macOS Smoke", "Windows Smoke"];
-
 const pollIntervalMs = 60_000;
 const waitLimitMs = 90 * 60_000;
 
@@ -12,10 +10,13 @@ function ghJson(args) {
 }
 
 export async function waitForReleaseCi({
-  repository, sha, gh = ghJson, sleep = delay, now = Date.now, log = console.log,
+  repository, sha, requiredChecks, gh = ghJson, sleep = delay, now = Date.now, log = console.log,
 }) {
   if (!repository || !/^[0-9a-f]{40}$/.test(sha)) {
     throw new Error("The release gate requires GITHUB_REPOSITORY and the full GITHUB_SHA.");
+  }
+  if (!requiredChecks?.length) {
+    throw new Error("Specify the required CI job names before publishing.");
   }
   const deadline = now() + waitLimitMs;
   let waitingFor = "the CI push run on main";
@@ -31,7 +32,7 @@ export async function waitForReleaseCi({
         "--json", "jobs,status,url",
       ]);
       const pending = [];
-      for (const name of requiredReleaseChecks) {
+      for (const name of requiredChecks) {
         const job = jobs.find((job) => job.name === name);
         if (job?.status !== "completed") {
           pending.push(`${name} (${job?.status ?? "missing"})`);
@@ -56,7 +57,11 @@ export async function waitForReleaseCi({
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   try {
-    await waitForReleaseCi({ repository: process.env.GITHUB_REPOSITORY, sha: process.env.GITHUB_SHA });
+    await waitForReleaseCi({
+      repository: process.env.GITHUB_REPOSITORY,
+      sha: process.env.GITHUB_SHA,
+      requiredChecks: process.argv.slice(2),
+    });
   } catch (error) {
     console.error(error.message);
     process.exitCode = 1;

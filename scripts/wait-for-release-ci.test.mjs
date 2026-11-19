@@ -1,17 +1,18 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { requiredReleaseChecks, waitForReleaseCi } from "./wait-for-release-ci.mjs";
+import { waitForReleaseCi } from "./wait-for-release-ci.mjs";
 
 const repository = "example/filament";
 const sha = "a".repeat(40);
-const jobs = requiredReleaseChecks.map((name) => ({ name, status: "completed", conclusion: "success" }));
+const requiredChecks = ["Database Migration Integrity", "macOS Smoke", "Windows Smoke"];
+const jobs = requiredChecks.map((name) => ({ name, status: "completed", conclusion: "success" }));
 const url = "https://github.com/example/filament/actions/runs/123";
 
 function simulate(polls) {
   let elapsed = 0;
   let index = 0;
   return {
-    repository, sha,
+    repository, sha, requiredChecks,
     gh(args) {
       const poll = polls[index];
       if (args[1] === "list") {
@@ -81,4 +82,8 @@ test("an API error blocks publication", async () => {
   const checks = simulate([]);
   checks.gh = () => { throw new Error("GitHub API failed"); };
   await assert.rejects(waitForReleaseCi(checks), /GitHub API failed/);
+});
+
+test("an empty checklist cannot publish a release", async () => {
+  await assert.rejects(waitForReleaseCi({ repository, sha, requiredChecks: [] }), /required CI job names/);
 });

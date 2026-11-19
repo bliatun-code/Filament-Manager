@@ -1,7 +1,6 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
-import { requiredReleaseChecks } from "./wait-for-release-ci.mjs";
 
 const packageManifest = JSON.parse(readFileSync("package.json", "utf8"));
 const ciWorkflow = readFileSync(".github/workflows/ci.yml", "utf8");
@@ -240,6 +239,8 @@ test("required platform jobs keep every documented gate blocking", () => {
   assert.match(windowsJob, /-RunPackagedHostClientE2E/);
 
   const publishJob = section(releaseWorkflow, "  publish-github-release:");
-  assert.match(publishJob, /run: node \.\/scripts\/wait-for-release-ci\.mjs/);
-  assert.deepEqual(requiredReleaseChecks, ["Database Migration Integrity", "macOS Smoke", "Windows Smoke"]);
+  assert.match(
+    publishJob,
+    /required_checks=\("Database Migration Integrity" "macOS Smoke" "Windows Smoke"\)/,
+  );
 });
