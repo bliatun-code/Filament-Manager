@@ -139,7 +139,10 @@ test("actual StatisticsPage keeps its range, keyboard navigation, filters and de
     await page.exposeFunction("statisticsInvoke", (command: string, payload: Record<string, unknown> = {}) => {
       calls.push({ command, payload });
       switch (command) {
-        case "get_library_sync_settings": return { mode: "STANDALONE", device_name: "Synthetic statistics" };
+        case "get_library_sync_page_status": return {
+          mode: "STANDALONE", host_base_url: null, host_device_name: null,
+          library_id: "test-library", target_generation: 1, client_auth_paired: false,
+        };
         case "list_spools": return [];
         case "inventory_overview": return inventoryOverview;
         case "list_printer_overview": return printers;
@@ -263,6 +266,7 @@ test("Statistics keeps its layout and last report visible while changing periods
         const failedReportStarted = Promise.withResolvers<void>();
         const releaseFailure = Promise.withResolvers<void>();
         let reportCalls = 0;
+        const cacheReads: string[] = [];
         try {
           page.setDefaultTimeout(8_000);
           await page.route("**/*", (route) => {
@@ -273,8 +277,18 @@ test("Statistics keeps its layout and last report visible while changing periods
           });
           await page.exposeFunction("statisticsInvoke", async (command: string, payload: Record<string, unknown> = {}) => {
             switch (command) {
-              case "get_library_sync_settings":
-                return { mode: scenario.mode, device_name: "Test desktop", host_base_url: "https://host.test", library_id: "test-library" };
+              case "get_library_sync_page_status":
+                return {
+                  mode: scenario.mode, host_base_url: "https://host.test", library_id: "test-library",
+                  host_device_name: "Test Host", target_generation: 1, client_auth_paired: scenario.mode === "CLIENT",
+                };
+              case "save_library_sync_spool_cache":
+                return "2026-09-15T00:00:00Z";
+              case "fetch_cached_library_sync_spools":
+              case "fetch_cached_library_sync_printer_overview":
+              case "fetch_cached_library_sync_loans":
+                cacheReads.push(command);
+                return null;
               case "inventory_overview":
                 return inventoryOverview;
               case "fetch_library_sync_snapshot":
@@ -357,6 +371,7 @@ test("Statistics keeps its layout and last report visible while changing periods
           assert.equal(await pendingFeedback.count(), 0);
           releaseFailure.resolve();
           await failure.first().waitFor();
+          assert.deepEqual(cacheReads, [], "a period-only failure needs no cached lists");
         } finally {
           releaseReport.resolve();
           releaseFailure.resolve();
