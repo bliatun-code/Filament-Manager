@@ -98,12 +98,16 @@ export function inspectReleaseUpgradeBatchJournal(database) {
   return assertCatalogSpoolBatchSchema(database);
 }
 
+function databaseValueAsText(value) {
+  return value instanceof Uint8Array ? Buffer.from(value).toString("utf8") : String(value);
+}
+
 export function parseReleaseUpgradeBatchJournalRow(row) {
   let request;
   let receipt;
   try {
-    request = JSON.parse(row.request_json);
-    receipt = JSON.parse(row.receipt_json);
+    request = JSON.parse(databaseValueAsText(row.request_json));
+    receipt = JSON.parse(databaseValueAsText(row.receipt_json));
   } catch {
     throw new Error("Upgrade fixture contains malformed catalog batch JSON.");
   }
@@ -218,7 +222,7 @@ export function snapshotReleaseUpgradeProtectedValues(database) {
   if (tables.has("settings")) {
     const rows = readReleaseUpgradeValueRows(database, "SELECT key, value FROM settings ORDER BY key");
     for (const { key, value } of rows) {
-      settings[String(key)] = canonicalDatabaseValue(value);
+      settings[databaseValueAsText(key)] = canonicalDatabaseValue(value);
     }
   }
 
@@ -261,7 +265,7 @@ export function snapshotReleaseUpgradeProtectedValues(database) {
     ...(hasCatalogSource ? SEED_MANAGED_CATALOG_SOURCES : []),
   );
   for (const row of rows) {
-    const id = String(row.id);
+    const id = databaseValueAsText(row.id);
     catalog.rows[id] = catalog.columns.map((column) =>
       canonicalDatabaseValue(row[column]),
     );
@@ -335,10 +339,8 @@ export function assertReleaseUpgradeFixtureSanitized(database) {
     throw new Error("Upgrade fixture has no settings table.");
   }
 
-  const settings = database
-    .prepare("SELECT key, CAST(value AS TEXT) AS value FROM settings")
-    .all()
-    .map(({ key, value }) => [String(key), String(value ?? "")]);
+  const settings = readReleaseUpgradeValueRows(database, "SELECT key, value FROM settings")
+    .map(({ key, value }) => [databaseValueAsText(key), databaseValueAsText(value ?? "")]);
   const settingsMap = new Map(settings);
   if (
     settingsMap.get(RELEASE_UPGRADE_FIXTURE_MARKER_KEY) !==

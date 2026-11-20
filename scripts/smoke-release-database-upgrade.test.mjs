@@ -406,6 +406,18 @@ test("release database upgrade smoke requires the exact sanitized fixture contra
       () => assertSanitizedReleaseUpgradeFixture(privatePrefixPath),
       /private setting trusted_lan_pairing_pending/,
     );
+
+    const binaryKeyPath = path.join(directory, "binary-key.db");
+    createSanitizedFixture(binaryKeyPath);
+    database = new Database(binaryKeyPath);
+    database.prepare("INSERT INTO settings (key, value) VALUES (?, ?)").run(
+      Buffer.from("credential_store_profile_id"), "private",
+    );
+    database.close();
+    assert.throws(
+      () => assertSanitizedReleaseUpgradeFixture(binaryKeyPath),
+      /private setting credential_store_profile_id/,
+    );
   } finally {
     rmSync(directory, { force: true, recursive: true });
   }
