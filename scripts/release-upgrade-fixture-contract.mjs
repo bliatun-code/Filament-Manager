@@ -88,7 +88,7 @@ function tableColumns(database, table) {
 }
 
 export function inspectReleaseUpgradeBatchJournal(database) {
-  const schemaVersion = Number(database.pragma("user_version", { simple: true }));
+  const schemaVersion = database.prepare("PRAGMA user_version").get().user_version;
   if (schemaVersion < 7) {
     if (databaseTables(database).has("catalog_spool_batches")) {
       throw new Error("A historical schema below 7 must not already contain catalog_spool_batches.");
@@ -98,12 +98,16 @@ export function inspectReleaseUpgradeBatchJournal(database) {
   return assertCatalogSpoolBatchSchema(database);
 }
 
+function databaseValueAsText(value) {
+  return value instanceof Uint8Array ? Buffer.from(value).toString("utf8") : String(value);
+}
+
 export function parseReleaseUpgradeBatchJournalRow(row) {
   let request;
   let receipt;
   try {
-    request = JSON.parse(row.request_json);
-    receipt = JSON.parse(row.receipt_json);
+    request = JSON.parse(databaseValueAsText(row.request_json));
+    receipt = JSON.parse(databaseValueAsText(row.receipt_json));
   } catch {
     throw new Error("Upgrade fixture contains malformed catalog batch JSON.");
   }
@@ -177,9 +181,24 @@ function assertFixedColumn(database, table, column, expected) {
   }
 }
 
-function canonicalDatabaseValue(value) {
-  if (Buffer.isBuffer(value)) {
-    return { base64: value.toString("base64"), type: "blob" };
+export function readReleaseUpgradeValueRows(database, sql, ...parameters) {
+  const statement = database.prepare(sql);
+  // node:sqlite and the fixture writer's better-sqlite3 both expose int64s on request.
+  if (statement.setReadBigInts) {
+    statement.setReadBigInts(true);
+  } else {
+    statement.safeIntegers(true);
+  }
+  return statement.all(...parameters);
+}
+
+export function canonicalDatabaseValue(value) {
+  if (value instanceof Uint8Array) {
+    return { base64: Buffer.from(value).toString("base64"), type: "blob" };
+  }
+  if (typeof value === "bigint") {
+    const number = Number(value);
+    return Number.isSafeInteger(number) ? number : { type: "integer", value: String(value) };
   }
   return value;
 }
@@ -201,10 +220,9 @@ export function snapshotReleaseUpgradeProtectedValues(database) {
   const tables = databaseTables(database);
   const settings = Object.create(null);
   if (tables.has("settings")) {
-    for (const { key, value } of database
-      .prepare("SELECT key, value FROM settings ORDER BY key")
-      .all()) {
-      settings[String(key)] = canonicalDatabaseValue(value);
+    const rows = readReleaseUpgradeValueRows(database, "SELECT key, value FROM settings ORDER BY key");
+    for (const { key, value } of rows) {
+      settings[databaseValueAsText(key)] = canonicalDatabaseValue(value);
     }
   }
 
@@ -238,16 +256,16 @@ export function snapshotReleaseUpgradeProtectedValues(database) {
         .join(", ")})`,
     );
   }
-  const rows = database
-    .prepare(
-      `SELECT ${catalog.columns.map(quoteIdentifier).join(", ")}
-         FROM filament_master_list
-        WHERE ${predicates.map((predicate) => `(${predicate})`).join(" OR ")}
-        ORDER BY id`,
-    )
-    .all(...(hasCatalogSource ? SEED_MANAGED_CATALOG_SOURCES : []));
+  const rows = readReleaseUpgradeValueRows(
+    database,
+    `SELECT ${catalog.columns.map(quoteIdentifier).join(", ")}
+       FROM filament_master_list
+      WHERE ${predicates.map((predicate) => `(${predicate})`).join(" OR ")}
+      ORDER BY id`,
+    ...(hasCatalogSource ? SEED_MANAGED_CATALOG_SOURCES : []),
+  );
   for (const row of rows) {
-    const id = String(row.id);
+    const id = databaseValueAsText(row.id);
     catalog.rows[id] = catalog.columns.map((column) =>
       canonicalDatabaseValue(row[column]),
     );
@@ -321,10 +339,8 @@ export function assertReleaseUpgradeFixtureSanitized(database) {
     throw new Error("Upgrade fixture has no settings table.");
   }
 
-  const settings = database
-    .prepare("SELECT key, value FROM settings")
-    .all()
-    .map(({ key, value }) => [String(key), String(value ?? "")]);
+  const settings = readReleaseUpgradeValueRows(database, "SELECT key, value FROM settings")
+    .map(({ key, value }) => [databaseValueAsText(key), databaseValueAsText(value ?? "")]);
   const settingsMap = new Map(settings);
   if (
     settingsMap.get(RELEASE_UPGRADE_FIXTURE_MARKER_KEY) !==

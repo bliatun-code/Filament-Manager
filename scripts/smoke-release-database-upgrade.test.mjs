@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { spawnSync } from "node:child_process";
 import { EventEmitter } from "node:events";
 import { mkdtempSync, readFileSync, readdirSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { createRequire } from "node:module";
@@ -405,8 +406,100 @@ test("release database upgrade smoke requires the exact sanitized fixture contra
       () => assertSanitizedReleaseUpgradeFixture(privatePrefixPath),
       /private setting trusted_lan_pairing_pending/,
     );
+
+    const binaryKeyPath = path.join(directory, "binary-key.db");
+    createSanitizedFixture(binaryKeyPath);
+    database = new Database(binaryKeyPath);
+    database.prepare("INSERT INTO settings (key, value) VALUES (?, ?)").run(
+      Buffer.from("credential_store_profile_id"), "private",
+    );
+    database.close();
+    assert.throws(
+      () => assertSanitizedReleaseUpgradeFixture(binaryKeyPath),
+      /private setting credential_store_profile_id/,
+    );
   } finally {
     rmSync(directory, { force: true, recursive: true });
+  }
+});
+
+test("upgrade checks read committed WAL values without native addons or writes", (t) => {
+  const directory = mkdtempSync(path.join(tmpdir(), "filament-manager-upgrade-wal-"));
+  t.after(() => rmSync(directory, { force: true, recursive: true }));
+  const databasePath = path.join(directory, "fixture.db");
+  createSanitizedFixture(databasePath);
+  const writer = new Database(databasePath);
+  try {
+    writer.pragma("journal_mode = WAL");
+    writer.pragma("wal_autocheckpoint = 0");
+    writer.exec(`
+      CREATE TABLE samples (reading INTEGER, payload BLOB);
+      INSERT INTO samples VALUES (9007199254740993, X'00FF80');
+      INSERT INTO settings VALUES ('sample_bytes', X'00FF80');
+    `);
+    const originalDatabase = readFileSync(databasePath);
+    const originalWal = readFileSync(`${databasePath}-wal`);
+    assert.ok(originalWal.length > 0);
+    const verifier = new URL("./smoke-release-database-upgrade.mjs", import.meta.url);
+    const child = spawnSync(process.execPath, ["--no-addons", "--input-type=module", "-e", `
+      import { assertSanitizedReleaseUpgradeFixture, snapshotReleaseUpgradeDatabase } from ${JSON.stringify(verifier.href)};
+      assertSanitizedReleaseUpgradeFixture(process.argv[1]);
+      console.log(JSON.stringify(snapshotReleaseUpgradeDatabase(process.argv[1])));
+    `, databasePath], { encoding: "utf8" });
+    assert.equal(child.status, 0, child.stderr);
+    const before = JSON.parse(child.stdout);
+    const blob = { base64: "AP+A", type: "blob" };
+    assert.deepEqual(before.valueRows.samples, [[{ type: "integer", value: "9007199254740993" }, blob]]);
+    assert.deepEqual(before.protectedValues.settings.sample_bytes, blob);
+    assert.deepEqual(readFileSync(databasePath), originalDatabase);
+    assert.deepEqual(readFileSync(`${databasePath}-wal`), originalWal);
+
+    for (const change of [
+      "UPDATE samples SET reading = 9007199254740992",
+      "UPDATE samples SET reading = 9007199254740993, payload = X'00FF81'",
+    ]) {
+      writer.exec(change);
+      assert.throws(
+        () => assertPreservedReleaseUpgradeData(before, snapshotReleaseUpgradeDatabase(databasePath)),
+        /changed preserved values in samples/,
+      );
+    }
+  } finally {
+    writer.close();
+  }
+});
+
+test("both upgrade checks refuse to create a missing fixture", (t) => {
+  const directory = mkdtempSync(path.join(tmpdir(), "filament-manager-upgrade-missing-"));
+  t.after(() => rmSync(directory, { force: true, recursive: true }));
+  for (const check of [assertSanitizedReleaseUpgradeFixture, snapshotReleaseUpgradeDatabase]) {
+    assert.throws(() => check(path.join(directory, "missing.db")), /unable to open database file/i);
+    assert.deepEqual(readdirSync(directory), []);
+  }
+});
+
+test("upgrade snapshots reject broken foreign keys and orphaned database pages", (t) => {
+  const directory = mkdtempSync(path.join(tmpdir(), "filament-manager-upgrade-integrity-"));
+  t.after(() => rmSync(directory, { force: true, recursive: true }));
+  const databasePath = path.join(directory, "fixture.db");
+  const writer = new Database(databasePath);
+  try {
+    writer.exec(`
+      PRAGMA foreign_keys = OFF;
+      CREATE TABLE parents (id INTEGER PRIMARY KEY);
+      CREATE TABLE children (parent_id INTEGER REFERENCES parents(id));
+      INSERT INTO children VALUES (1);
+    `);
+    assert.throws(() => snapshotReleaseUpgradeDatabase(databasePath), /foreign_key_check returned 1 failure/);
+    // Removing only the schema entry leaves the table's page allocated.
+    writer.unsafeMode(true);
+    writer.exec(`
+      PRAGMA writable_schema = ON;
+      DELETE FROM sqlite_schema WHERE name = 'children';
+    `);
+    assert.throws(() => snapshotReleaseUpgradeDatabase(databasePath), /SQLite quick_check returned/);
+  } finally {
+    writer.close();
   }
 });
 

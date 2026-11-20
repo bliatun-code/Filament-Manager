@@ -20,7 +20,7 @@ function invalid(message) {
 }
 
 function readJobs(database) {
-  const schema = Number(database.pragma("user_version", { simple: true }));
+  const schema = database.prepare("PRAGMA user_version").get().user_version;
   const definition = database.prepare(
     "SELECT type FROM sqlite_master WHERE name = 'catalog_refresh_jobs'",
   ).get();
@@ -29,7 +29,7 @@ function readJobs(database) {
     return [];
   }
   if (definition?.type !== "table") throw invalid("require their schema-6 table");
-  const columns = database.pragma("table_xinfo(catalog_refresh_jobs)");
+  const columns = database.prepare("PRAGMA table_xinfo(catalog_refresh_jobs)").all();
   if (
     columns.length !== COLUMNS.length ||
     columns.some((column, index) => column.name !== COLUMNS[index] || column.hidden !== 0)

@@ -15,14 +15,15 @@ import {
 } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
+import { DatabaseSync } from "node:sqlite";
 import { fileURLToPath } from "node:url";
-
-import Database from "better-sqlite3";
 
 import {
   assertReleaseUpgradeFixtureSanitized,
   assertReleaseUpgradeProtectedValuesPreserved,
+  canonicalDatabaseValue,
   inspectReleaseUpgradeBatchJournal,
+  readReleaseUpgradeValueRows,
   snapshotReleaseUpgradeProtectedValues,
 } from "./release-upgrade-fixture-contract.mjs";
 
@@ -79,13 +80,6 @@ function tableColumns(database, table) {
     .map(({ name }) => String(name));
 }
 
-function canonicalDatabaseValue(value) {
-  if (Buffer.isBuffer(value)) {
-    return { base64: value.toString("base64"), type: "blob" };
-  }
-  return value;
-}
-
 function digestCanonicalRows(rows) {
   return createHash("sha256")
     .update(rows.map((row) => JSON.stringify(row)).sort().join("\n"))
@@ -94,25 +88,22 @@ function digestCanonicalRows(rows) {
 
 function tableValueRows(database, table, columns) {
   const selectedColumns = columns.map(quoteIdentifier).join(", ");
-  return database
-    .prepare(`SELECT ${selectedColumns} FROM ${quoteIdentifier(table)}`)
-    .all()
-    .map((row) =>
-      columns.map((column) => canonicalDatabaseValue(row[column])),
-    );
+  const rows = readReleaseUpgradeValueRows(database, `SELECT ${selectedColumns} FROM ${quoteIdentifier(table)}`);
+  return rows.map((row) => columns.map((column) => canonicalDatabaseValue(row[column])));
+}
+
+function openReadOnlyUpgradeDatabase(databasePath) {
+  return new DatabaseSync(databasePath, { readOnly: true, timeout: 5_000 });
 }
 
 export function snapshotReleaseUpgradeDatabase(databasePath) {
-  const database = new Database(databasePath, {
-    fileMustExist: true,
-    readonly: true,
-  });
+  const database = openReadOnlyUpgradeDatabase(databasePath);
   try {
-    const quickCheck = database.pragma("quick_check", { simple: true });
+    const quickCheck = database.prepare("PRAGMA quick_check").get()?.quick_check;
     if (quickCheck !== "ok") {
       throw new Error(`SQLite quick_check returned ${String(quickCheck)}.`);
     }
-    const foreignKeyFailures = database.pragma("foreign_key_check");
+    const foreignKeyFailures = readReleaseUpgradeValueRows(database, "PRAGMA foreign_key_check");
     if (foreignKeyFailures.length > 0) {
       throw new Error(
         `SQLite foreign_key_check returned ${foreignKeyFailures.length} failure(s).`,
@@ -163,7 +154,7 @@ export function snapshotReleaseUpgradeDatabase(databasePath) {
       counts,
       ids,
       protectedValues,
-      schemaVersion: Number(database.pragma("user_version", { simple: true })),
+      schemaVersion: database.prepare("PRAGMA user_version").get().user_version,
       tableCount: tables.size,
       valueColumns,
       valueDigests,
@@ -175,10 +166,7 @@ export function snapshotReleaseUpgradeDatabase(databasePath) {
 }
 
 export function assertSanitizedReleaseUpgradeFixture(databasePath) {
-  const database = new Database(databasePath, {
-    fileMustExist: true,
-    readonly: true,
-  });
+  const database = openReadOnlyUpgradeDatabase(databasePath);
   try {
     assertReleaseUpgradeFixtureSanitized(database);
   } finally {
