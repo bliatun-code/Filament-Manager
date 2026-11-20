@@ -119,7 +119,7 @@ test("dashboard startup has no artificial wait and keeps independent reads concu
   );
   assert.match(
     loader,
-    /\] =\s*await Promise\.allSettled\(\[\s*fetchHostSnapshot\(/,
+    /await Promise\.allSettled\(\[\s*fetchHostSnapshot\(/,
   );
   assert.doesNotMatch(loader, /\bvalidateHost\(/);
   assert.match(

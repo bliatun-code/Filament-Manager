@@ -1,11 +1,11 @@
 use filament_manager_core::backend::database_result::InventoryResult;
 use filament_manager_core::backend::inventory_engine::InventoryEngine;
 
-use crate::backend::filament_database::LibrarySyncSettingsRow;
+use crate::backend::filament_database::{FilamentDatabase, LibrarySyncPageStatusRow};
 use crate::library_sync_host_client::VerifiedLibrarySyncPeer;
 use crate::secure_credential_mutation::lock_secure_credential_mutation;
 use crate::state::AppState;
-use crate::with_inventory;
+use crate::{with_db, with_inventory};
 
 #[derive(Clone, Debug)]
 pub(crate) struct LibrarySyncTargetGuard {
@@ -54,7 +54,7 @@ pub(crate) fn capture_current_library_sync_target_if_matching(
     base_url: &str,
     expected_library_id: Option<&str>,
 ) -> Result<Option<LibrarySyncTargetGuard>, String> {
-    let settings = with_inventory(state, |engine| engine.get_library_sync_settings())?;
+    let settings = with_db(state, FilamentDatabase::get_library_sync_page_status)?;
     let guard = LibrarySyncTargetGuard {
         base_url: normalized_host(base_url).ok_or_else(target_changed_error)?,
         library_id: settings.library_id.trim().to_string(),
@@ -78,7 +78,7 @@ pub(crate) fn ensure_library_sync_target_current(
     state: &AppState,
     guard: &LibrarySyncTargetGuard,
 ) -> Result<(), String> {
-    let settings = with_inventory(state, |engine| engine.get_library_sync_settings())?;
+    let settings = with_db(state, FilamentDatabase::get_library_sync_page_status)?;
     if target_matches(&settings, guard) {
         Ok(())
     } else {
@@ -105,14 +105,14 @@ pub(crate) fn with_current_library_sync_target_if_current<T>(
     // before the settings transaction clears it, or rejected after the target
     // generation changes.
     let _target_mutation = lock_secure_credential_mutation()?;
-    let settings = with_inventory(state, |engine| engine.get_library_sync_settings())?;
+    let settings = with_db(state, FilamentDatabase::get_library_sync_page_status)?;
     if !target_matches(&settings, guard) {
         return Ok(None);
     }
     with_inventory(state, operation).map(Some)
 }
 
-fn target_matches(settings: &LibrarySyncSettingsRow, guard: &LibrarySyncTargetGuard) -> bool {
+fn target_matches(settings: &LibrarySyncPageStatusRow, guard: &LibrarySyncTargetGuard) -> bool {
     settings.mode == "CLIENT"
         && normalized_host(settings.host_base_url.as_deref().unwrap_or_default()).as_deref()
             == Some(guard.base_url.as_str())
@@ -176,6 +176,24 @@ mod tests {
             },
             db_path,
         )
+    }
+
+    #[test]
+    fn dashboard_host_reads_can_guard_the_target_without_reading_the_spool_cache() {
+        let (state, path) = client_test_state();
+        let db = FilamentDatabase::open(&path).unwrap();
+        db.connection().execute(
+            "INSERT OR REPLACE INTO settings (key, value) VALUES ('library_sync_cached_spools_json', X'FF')",
+            [],
+        ).unwrap();
+        assert!(db.get_library_sync_settings().is_err());
+        let guard =
+            capture_library_sync_target(&state, "http://host-a.local:4278", Some("library-a"))
+                .unwrap();
+        ensure_library_sync_target_current(&state, &guard).unwrap();
+        with_current_library_sync_target(&state, &guard, |_| Ok(())).unwrap();
+        drop(db);
+        std::fs::remove_file(path).unwrap();
     }
 
     #[test]

@@ -4,10 +4,7 @@ use super::database_ids::new_id;
 use super::database_library_sync_auth::clear_library_sync_client_auth_state;
 use super::database_library_sync_cache::CACHED_ACTIVE_LOANS_KEY;
 use super::database_library_sync_models::{
-    LibrarySyncCachedFilamentConsumptionListRow, LibrarySyncCachedLoanListRow,
-    LibrarySyncCachedPrinterOverviewRow, LibrarySyncCachedSnapshotRow,
-    LibrarySyncCachedSpoolListRow, LibrarySyncCachedWishlistListRow, LibrarySyncPageStatusRow,
-    LibrarySyncSettingsRow,
+    LibrarySyncCacheDomain, LibrarySyncPageStatusRow, LibrarySyncSettingsRow,
 };
 use super::database_low_stock_policy::{load_low_stock_policy, save_low_stock_policy};
 use super::database_result::InventoryResult;
@@ -51,6 +48,15 @@ pub(crate) fn get_library_sync_page_status(
 pub(crate) fn get_library_sync_settings(
     conn: &Connection,
 ) -> InventoryResult<LibrarySyncSettingsRow> {
+    read_library_sync_settings(conn, None)
+}
+
+pub(crate) fn read_library_sync_settings(
+    conn: &Connection,
+    domains: Option<&[LibrarySyncCacheDomain]>,
+) -> InventoryResult<LibrarySyncSettingsRow> {
+    use LibrarySyncCacheDomain::*;
+    let includes = |domain| domains.is_none_or(|selected| selected.contains(&domain));
     let LibrarySyncPageStatusRow {
         mode,
         library_id,
@@ -71,24 +77,30 @@ pub(crate) fn get_library_sync_settings(
         Err(rusqlite::Error::FromSqlConversionFailure(_, _, _)) => (Default::default(), false),
         Err(error) => return Err(error.into()),
     };
-    let cached_snapshot =
-        cached_setting::<LibrarySyncCachedSnapshotRow>(conn, "library_sync_cached_snapshot_json")?;
-    let cached_spools =
-        cached_setting::<LibrarySyncCachedSpoolListRow>(conn, "library_sync_cached_spools_json")?;
-    let cached_printers = cached_setting::<LibrarySyncCachedPrinterOverviewRow>(
+    let cached_snapshot = selected_cache(
         conn,
+        includes(Snapshot),
+        "library_sync_cached_snapshot_json",
+    )?;
+    let cached_spools = selected_cache(conn, includes(Spools), "library_sync_cached_spools_json")?;
+    let cached_printers = selected_cache(
+        conn,
+        includes(Printers),
         "library_sync_cached_printers_json",
     )?;
-    let cached_loans =
-        cached_setting::<LibrarySyncCachedLoanListRow>(conn, "library_sync_cached_loans_json")?;
-    let cached_active_loans =
-        cached_setting::<LibrarySyncCachedLoanListRow>(conn, CACHED_ACTIVE_LOANS_KEY)?;
-    let cached_consumption = cached_setting::<LibrarySyncCachedFilamentConsumptionListRow>(
+    let cached_active_loans = selected_cache(conn, includes(ActiveLoans), CACHED_ACTIVE_LOANS_KEY)?;
+    // Older clients may only have the full loan history.
+    let read_history =
+        domains.is_none() || (includes(ActiveLoans) && cached_active_loans.is_none());
+    let cached_loans = selected_cache(conn, read_history, "library_sync_cached_loans_json")?;
+    let cached_consumption = selected_cache(
         conn,
+        domains.is_none(),
         "library_sync_cached_consumption_json",
     )?;
-    let cached_wishlist = cached_setting::<LibrarySyncCachedWishlistListRow>(
+    let cached_wishlist = selected_cache(
         conn,
+        includes(Wishlist),
         "library_sync_cached_wishlist_json",
     )?;
 
@@ -268,10 +280,13 @@ fn trimmed_setting(conn: &Connection, key: &str) -> InventoryResult<Option<Strin
         .filter(|value| !value.is_empty()))
 }
 
-fn cached_setting<T>(conn: &Connection, key: &str) -> InventoryResult<Option<T>>
+fn selected_cache<T>(conn: &Connection, selected: bool, key: &str) -> InventoryResult<Option<T>>
 where
     T: serde::de::DeserializeOwned,
 {
+    if !selected {
+        return Ok(None);
+    }
     Ok(get_setting(conn, key)?.and_then(|value| serde_json::from_str::<T>(&value).ok()))
 }
 
@@ -286,6 +301,37 @@ fn save_optional_setting(conn: &Connection, key: &str, value: Option<&str>) -> I
 mod tests {
     use super::*;
     use crate::backend::filament_database::FilamentDatabase;
+
+    #[test]
+    fn dashboard_cache_selection_only_reads_requested_domains_and_legacy_fallback() {
+        use LibrarySyncCacheDomain::*;
+        let db = FilamentDatabase::open(":memory:").unwrap();
+        db.apply_schema().unwrap();
+        let conn = db.connection();
+        for key in LIBRARY_SYNC_HOST_CACHE_KEYS {
+            conn.execute(
+                "INSERT OR REPLACE INTO settings (key, value) VALUES (?1, X'FF')",
+                [key],
+            )
+            .unwrap();
+        }
+        assert!(db.get_library_sync_settings_for_domains(&[]).is_ok());
+        assert!(db.get_library_sync_settings_for_domains(&[Spools]).is_err());
+        let rows = r#"{"captured_at":"cached","rows":[]}"#;
+        set_setting(conn, CACHED_ACTIVE_LOANS_KEY, rows).unwrap();
+        let active = db
+            .get_library_sync_settings_for_domains(&[ActiveLoans])
+            .unwrap();
+        assert!(active.cached_active_loans.is_some());
+        assert!(active.cached_loans.is_none());
+        delete_setting(conn, CACHED_ACTIVE_LOANS_KEY).unwrap();
+        set_setting(conn, "library_sync_cached_loans_json", rows).unwrap();
+        let historical = db
+            .get_library_sync_settings_for_domains(&[ActiveLoans])
+            .unwrap();
+        assert!(historical.cached_active_loans.is_none());
+        assert!(historical.cached_loans.is_some());
+    }
 
     #[test]
     fn page_status_never_reads_a_host_cache_setting() {

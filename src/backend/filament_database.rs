@@ -9,8 +9,9 @@ pub use super::database_inventory_bulk_models::{
     InventoryBulkMutationInput, InventoryBulkMutationResult, InventoryBulkSpoolPrecondition,
 };
 pub use super::database_library_sync_models::{
-    LibrarySyncCachedFilamentConsumptionListRow, LibrarySyncCachedLocationListRow,
-    LibrarySyncCachedSnapshotRow, LibrarySyncPageStatusRow, LibrarySyncSettingsRow,
+    LibrarySyncCacheDomain, LibrarySyncCachedFilamentConsumptionListRow,
+    LibrarySyncCachedLocationListRow, LibrarySyncCachedSnapshotRow, LibrarySyncPageStatusRow,
+    LibrarySyncSettingsRow,
 };
 pub use super::database_loan_models::{
     ActiveSpoolLoanRow, LoanUsageByPersonRow, SpoolLoanDetailsRow, SpoolLoanRow,
