@@ -169,7 +169,7 @@ export async function getLibrarySyncPageStatus() {
   return invoke<LibrarySyncPageStatus>("get_library_sync_page_status");
 }
 
-export type LibrarySyncCacheDomain = "snapshot" | "spools" | "printers" | "active_loans" | "wishlist";
+export type LibrarySyncCacheDomain = "snapshot" | "spools" | "printers" | "active_loans" | "loan_history" | "wishlist";
 
 export async function getLibrarySyncSettings(cacheDomains?: readonly LibrarySyncCacheDomain[]) {
   return invoke<LibrarySyncSettings>("get_library_sync_settings", cacheDomains && { cacheDomains });

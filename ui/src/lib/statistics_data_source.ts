@@ -6,14 +6,14 @@ import {
   fetchLibrarySyncPrinterOverview,
   fetchLibrarySyncSnapshot,
   fetchLibrarySyncStatisticsPeriodReport,
-  getLibrarySyncSettings,
+  getLibrarySyncPageStatus,
   inventoryOverview,
   listLoanUsageByPerson,
   listPrinterOverview,
   listSpoolLoans,
   statisticsPeriodReport,
   type InventoryOverview,
-  type LibrarySyncSettings,
+  type LibrarySyncPageStatus,
   type LoanUsageByPersonRow,
   type PrinterOverviewRow,
   type FilamentConsumptionRow,
@@ -79,7 +79,7 @@ type LoanBreakdownRowsDependencies = {
 };
 
 type StatisticsPageDataDependencies = {
-  loadSyncSettings?: typeof getLibrarySyncSettings;
+  loadSyncStatus?: typeof getLibrarySyncPageStatus;
   loadData?: typeof loadStatisticsData;
 };
 
@@ -104,7 +104,7 @@ function normalizeLoanDetailsRows(rows: SpoolLoanDetailsRow[]): NormalizedLoanDe
 }
 
 export function deriveStatisticsLibrarySyncState(
-  syncSettings: LibrarySyncSettings,
+  syncSettings: LibrarySyncPageStatus,
 ): StatisticsLibrarySyncState {
   return deriveLibrarySyncPageState(syncSettings);
 }
@@ -148,22 +148,45 @@ export function groupLoanUsageByPerson(
   });
 }
 
+function emptyStatisticsData(): StatisticsDataLoadResult {
+  return {
+    overview: null,
+    printers: [],
+    spoolRows: [],
+    consumptionRows: [],
+    loanDetails: [],
+    loanUsage: [],
+    inboundLoanUsage: [],
+    periodReport: null,
+    periodStatus: "UNAVAILABLE",
+    updatedAt: null,
+    source: "OFFLINE",
+  };
+}
+
 export async function loadStatisticsPageData(
   period: StatisticsPeriod,
   dependencies: StatisticsPageDataDependencies = {},
 ): Promise<StatisticsPageDataLoadResult> {
-  const loadSyncSettings = dependencies.loadSyncSettings ?? getLibrarySyncSettings;
+  const loadSyncStatus = dependencies.loadSyncStatus ?? getLibrarySyncPageStatus;
   const loadData = dependencies.loadData ?? loadStatisticsData;
-  const syncSettings = await loadSyncSettings();
-  const [syncState, data] = await Promise.all([
-    Promise.resolve(deriveStatisticsLibrarySyncState(syncSettings)),
-    loadData(syncSettings, period),
-  ]);
-
-  return {
-    ...data,
-    syncState,
-  };
+  let status = await loadSyncStatus();
+  // A Host switch invalidates successful replies as well as cached fallbacks.
+  // Retry once for the replacement target, even when the URL cycles back to A.
+  for (let attempt = 0; attempt < 2; attempt++) {
+    const data = await loadData(status, period);
+    const current = await loadSyncStatus();
+    if (
+      current.mode === status.mode &&
+      current.host_base_url === status.host_base_url &&
+      current.library_id === status.library_id &&
+      current.target_generation === status.target_generation
+    ) {
+      return { ...data, syncState: deriveStatisticsLibrarySyncState(current) };
+    }
+    status = current;
+  }
+  return { ...emptyStatisticsData(), syncState: deriveStatisticsLibrarySyncState(status) };
 }
 
 export async function loadLoanBreakdownRows(
@@ -181,7 +204,7 @@ export async function loadLoanBreakdownRows(
 }
 
 export async function loadStatisticsData(
-  syncSettings: LibrarySyncSettings,
+  syncSettings: LibrarySyncPageStatus,
   period: StatisticsPeriod,
   dependencies: StatisticsDataDependencies = {},
 ): Promise<StatisticsDataLoadResult> {
@@ -203,98 +226,57 @@ export async function loadStatisticsData(
     const fetchCachedLoans = dependencies.fetchCachedLoans ?? fetchCachedLibrarySyncLoans;
     const fetchCachedSpools = dependencies.fetchCachedSpools ?? fetchCachedLibrarySyncSpools;
     const loadHostSpools = dependencies.loadHostSpools ?? loadAllSpoolRows;
-    const [
-      snapshotResult,
-      printersResult,
-      loansResult,
-      spoolsResult,
-      periodReportResult,
-      cachedPrinters,
-      cachedLoans,
-      cachedSpools,
-    ] =
-      await Promise.all([
-        fetchHostSnapshot(hostTarget.baseUrl, hostTarget.libraryId).then(
-          (value) => ({ ok: true as const, value }),
-          (error) => ({ ok: false as const, error }),
-        ),
-        fetchHostPrinterOverview(hostTarget.baseUrl, hostTarget.libraryId).then(
-          (value) => ({ ok: true as const, value }),
-          (error) => ({ ok: false as const, error }),
-        ),
-        fetchHostLoans(hostTarget.baseUrl, hostTarget.libraryId).then(
-          (value) => ({ ok: true as const, value }),
-          (error) => ({ ok: false as const, error }),
-        ),
+    const { baseUrl, libraryId } = hostTarget;
+    const [snapshotResult, printersResult, loansResult, spoolsResult, periodReportResult] =
+      await Promise.allSettled([
+        fetchHostSnapshot(baseUrl, libraryId),
+        fetchHostPrinterOverview(baseUrl, libraryId),
+        fetchHostLoans(baseUrl, libraryId),
         loadHostSpools({
           clientReadOnly: true,
-          clientHostBaseUrl: hostTarget.baseUrl,
-          clientLibraryId: hostTarget.libraryId,
+          clientHostBaseUrl: baseUrl,
+          clientLibraryId: libraryId,
           clientTargetGeneration: syncSettings.target_generation ?? null,
-        }).then(
-          (value) => ({ ok: true as const, value }),
-          (error) => ({ ok: false as const, error }),
-        ),
-        fetchHostPeriodReport(
-          hostTarget.baseUrl,
-          hostTarget.libraryId,
-          period,
-        ).then(
-          (value) => ({ ok: true as const, value }),
-          (error) => ({ ok: false as const, error }),
-        ),
-        cacheTarget
-          ? fetchCachedPrinterOverview(
-              cacheTarget.baseUrl,
-              cacheTarget.libraryId,
-              cacheTarget.targetGeneration,
-            ).catch(() => null)
-          : null,
-        cacheTarget
-          ? fetchCachedLoans(
-              cacheTarget.baseUrl,
-              cacheTarget.libraryId,
-              cacheTarget.targetGeneration,
-            ).catch(() => null)
-          : null,
-        cacheTarget
-          ? fetchCachedSpools(
-              cacheTarget.baseUrl,
-              cacheTarget.libraryId,
-              cacheTarget.targetGeneration,
-            ).catch(() => null)
-          : null,
+        }),
+        fetchHostPeriodReport(baseUrl, libraryId, period),
       ]);
 
-    if (!snapshotResult.ok) {
-      console.error(snapshotResult.error);
-    }
-    if (!printersResult.ok) {
-      console.error(printersResult.error);
-    }
-    if (!loansResult.ok) {
-      console.error(loansResult.error);
-    }
-    if (!spoolsResult.ok) {
-      console.error(spoolsResult.error);
-    }
-    if (!periodReportResult.ok) {
-      console.error(periodReportResult.error);
+    // Each fallback is scoped to the target captured before the Host requests.
+    const [cachedPrinters, cachedLoans, cachedSpools] = await Promise.all([
+      printersResult.status === "rejected" && cacheTarget
+        ? fetchCachedPrinterOverview(
+            cacheTarget.baseUrl, cacheTarget.libraryId, cacheTarget.targetGeneration,
+          ).catch(() => null)
+        : null,
+      loansResult.status === "rejected" && cacheTarget
+        ? fetchCachedLoans(
+            cacheTarget.baseUrl, cacheTarget.libraryId, cacheTarget.targetGeneration,
+          ).catch(() => null)
+        : null,
+      spoolsResult.status === "rejected" && cacheTarget
+        ? fetchCachedSpools(
+            cacheTarget.baseUrl, cacheTarget.libraryId, cacheTarget.targetGeneration,
+          ).catch(() => null)
+        : null,
+    ]);
+
+    for (const result of [snapshotResult, printersResult, loansResult, spoolsResult, periodReportResult]) {
+      if (result.status === "rejected") console.error(result.reason);
     }
 
-    const resolvedSnapshot = snapshotResult.ok ? snapshotResult.value : null;
-    const resolvedPrinters = printersResult.ok
+    const resolvedSnapshot = snapshotResult.status === "fulfilled" ? snapshotResult.value : null;
+    const resolvedPrinters = printersResult.status === "fulfilled"
       ? printersResult.value
       : cachedPrinters?.rows ?? [];
-    const resolvedLoanRows = loansResult.ok
+    const resolvedLoanRows = loansResult.status === "fulfilled"
       ? loansResult.value
       : cachedLoans?.rows ?? [];
     const resolvedLoans = normalizeLoanDetailsRows(resolvedLoanRows);
-    const resolvedSpoolRowsRaw = spoolsResult.ok
+    const resolvedSpoolRowsRaw = spoolsResult.status === "fulfilled"
       ? spoolsResult.value
       : cachedSpools?.rows ?? [];
     const resolvedSpoolRows = normalizeSpoolWithMasterRows(resolvedSpoolRowsRaw);
-    const resolvedPeriodReport = periodReportResult.ok ? periodReportResult.value : null;
+    const resolvedPeriodReport = periodReportResult.status === "fulfilled" ? periodReportResult.value : null;
     const resolvedConsumptionRows = resolvedPeriodReport?.filament_consumption ?? [];
     const derivedOverview =
       resolvedSpoolRows.length > 0
@@ -313,20 +295,20 @@ export async function loadStatisticsData(
         }
       : resolvedSnapshot?.inventory ?? null;
     const hasLiveOverview =
-      snapshotResult.ok ||
-      (spoolsResult.ok && derivedOverview != null);
+      snapshotResult.status === "fulfilled" ||
+      (spoolsResult.status === "fulfilled" && derivedOverview != null);
     const allHostSlicesLoaded =
       hasLiveOverview &&
-      printersResult.ok &&
-      loansResult.ok &&
-      spoolsResult.ok &&
-      periodReportResult.ok;
+      printersResult.status === "fulfilled" &&
+      loansResult.status === "fulfilled" &&
+      spoolsResult.status === "fulfilled" &&
+      periodReportResult.status === "fulfilled";
     const anyHostSliceLoaded =
-      snapshotResult.ok ||
-      printersResult.ok ||
-      loansResult.ok ||
-      spoolsResult.ok ||
-      periodReportResult.ok;
+      snapshotResult.status === "fulfilled" ||
+      printersResult.status === "fulfilled" ||
+      loansResult.status === "fulfilled" ||
+      spoolsResult.status === "fulfilled" ||
+      periodReportResult.status === "fulfilled";
     const anyCachedSliceAvailable = Boolean(
       cachedPrinters || cachedLoans || cachedSpools,
     );
@@ -343,17 +325,12 @@ export async function loadStatisticsData(
         : anyHostSliceLoaded
           ? "PARTIAL"
           : "CACHED";
-      const liveUpdatedAt = firstDefinedTimestamp(
-        resolvedSnapshot?.captured_at,
+      // Only failed reads have a fallback. Prefer its timestamp for partial data.
+      const updatedAt = firstDefinedTimestamp(
+        cachedSpools?.captured_at,
         cachedPrinters?.captured_at,
         cachedLoans?.captured_at,
-        cachedSpools?.captured_at,
-      );
-      const fallbackUpdatedAt = firstDefinedTimestamp(
-        spoolsResult.ok ? null : cachedSpools?.captured_at,
-        printersResult.ok ? null : cachedPrinters?.captured_at,
-        loansResult.ok ? null : cachedLoans?.captured_at,
-        snapshotResult.ok || derivedOverview ? null : resolvedSnapshot?.captured_at,
+        resolvedSnapshot?.captured_at,
       );
       return {
         overview: resolvedOverview,
@@ -366,43 +343,19 @@ export async function loadStatisticsData(
         periodReport: resolvedPeriodReport,
         periodStatus: resolvedPeriodReport
           ? "AVAILABLE"
-          : periodReportResult.ok
+          : periodReportResult.status === "fulfilled"
             ? "LEGACY_HOST"
             : "UNAVAILABLE",
-        updatedAt: source === "LIVE" ? liveUpdatedAt : fallbackUpdatedAt ?? liveUpdatedAt,
+        updatedAt,
         source,
       };
     }
 
-    return {
-      overview: null,
-      printers: [],
-      spoolRows: [],
-      consumptionRows: [],
-      loanDetails: [],
-      loanUsage: [],
-      inboundLoanUsage: [],
-      periodReport: null,
-      periodStatus: "UNAVAILABLE",
-      updatedAt: null,
-      source: "OFFLINE",
-    };
+    return emptyStatisticsData();
   }
 
   if (syncState.clientReadOnly) {
-    return {
-      overview: null,
-      printers: [],
-      spoolRows: [],
-      consumptionRows: [],
-      loanDetails: [],
-      loanUsage: [],
-      inboundLoanUsage: [],
-      periodReport: null,
-      periodStatus: "UNAVAILABLE",
-      updatedAt: null,
-      source: "OFFLINE",
-    };
+    return emptyStatisticsData();
   }
 
   const loadLocalSpools = dependencies.loadLocalSpools ?? loadAllSpoolRows;

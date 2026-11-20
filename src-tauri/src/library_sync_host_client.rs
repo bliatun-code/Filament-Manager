@@ -1,3 +1,4 @@
+use crate::backend::filament_database::FilamentDatabase;
 use crate::credential_store::{CredentialKey, SecretValue};
 use crate::library_sync_command_support::normalize_library_sync_base_url;
 use crate::library_sync_runtime_auth::LibrarySyncRenewalFailureKind;
@@ -7,7 +8,7 @@ use crate::library_sync_target_guard::{
 use crate::secure_credential_mutation::lock_secure_credential_mutation;
 use crate::state::AppState;
 use crate::trusted_lan_health::CompanionHealthCheckResponse;
-use crate::with_inventory;
+use crate::with_db;
 use reqwest::header::{AUTHORIZATION, CONTENT_TYPE, COOKIE, HOST, ORIGIN, SET_COOKIE};
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use std::{
@@ -1365,7 +1366,7 @@ fn validated_library_sync_device_token(
     base_url: &str,
     expected_device_token: Option<&str>,
 ) -> Result<String, String> {
-    let settings = with_inventory(state, |engine| engine.get_library_sync_settings())?;
+    let settings = with_db(state, FilamentDatabase::get_library_sync_page_status)?;
     let current_host = settings
         .host_base_url
         .as_deref()

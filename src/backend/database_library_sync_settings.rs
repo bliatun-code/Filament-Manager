@@ -91,7 +91,7 @@ pub(crate) fn read_library_sync_settings(
     let cached_active_loans = selected_cache(conn, includes(ActiveLoans), CACHED_ACTIVE_LOANS_KEY)?;
     // Older clients may only have the full loan history.
     let read_history =
-        domains.is_none() || (includes(ActiveLoans) && cached_active_loans.is_none());
+        includes(LoanHistory) || (includes(ActiveLoans) && cached_active_loans.is_none());
     let cached_loans = selected_cache(conn, read_history, "library_sync_cached_loans_json")?;
     let cached_consumption = selected_cache(
         conn,

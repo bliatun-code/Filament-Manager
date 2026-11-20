@@ -18,6 +18,7 @@ pub enum LibrarySyncCacheDomain {
     Spools,
     Printers,
     ActiveLoans,
+    LoanHistory,
     Wishlist,
 }
 

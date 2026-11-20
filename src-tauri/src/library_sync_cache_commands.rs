@@ -1,3 +1,4 @@
+use crate::backend::filament_database::LibrarySyncCacheDomain;
 use crate::library_sync_models::{
     LibrarySyncCacheTargetInput, LibrarySyncCachedLoanList, LibrarySyncCachedPrinterOverview,
     LibrarySyncCachedSpoolList, LibrarySyncCachedWishlistList, SaveLibrarySyncSpoolCacheInput,
@@ -35,7 +36,8 @@ pub(crate) fn fetch_cached_library_sync_spools_blocking(
 ) -> Result<Option<LibrarySyncCachedSpoolList>, String> {
     let target = capture_cache_target(state, input)?;
     with_current_library_sync_target(state, &target, |engine| {
-        let settings = engine.get_library_sync_settings()?;
+        let settings =
+            engine.get_library_sync_settings_for_domains(&[LibrarySyncCacheDomain::Spools])?;
         Ok(settings
             .cached_spools
             .map(|cached| LibrarySyncCachedSpoolList {
@@ -100,6 +102,57 @@ mod tests {
             library_sync_auth: LibrarySyncRuntimeAuth::new(),
         };
         (state, db_path, input)
+    }
+
+    #[test]
+    fn statistics_fallback_reads_only_its_requested_cache() {
+        let (state, path, input) = client_state();
+        let db = FilamentDatabase::open(&path).unwrap();
+        let poison = |key: &str| {
+            db.connection()
+                .execute(
+                    "INSERT OR REPLACE INTO settings (key, value) VALUES (?1, X'FF')",
+                    [key],
+                )
+                .unwrap();
+        };
+        let printers = "library_sync_cached_printers_json";
+        let history = "library_sync_cached_loans_json";
+        let spools = "library_sync_cached_spools_json";
+        let saved = r#"{"captured_at":"selected","rows":[]}"#;
+        poison("library_sync_cached_active_loans_json");
+        poison(printers);
+        poison(spools);
+        db.set_setting(history, saved).unwrap();
+        assert_eq!(
+            super::fetch_cached_library_sync_loans_blocking(&state, &input)
+                .unwrap()
+                .unwrap()
+                .captured_at,
+            "selected"
+        );
+
+        poison(history);
+        db.set_setting(printers, saved).unwrap();
+        assert_eq!(
+            super::fetch_cached_library_sync_printer_overview_blocking(&state, &input)
+                .unwrap()
+                .unwrap()
+                .captured_at,
+            "selected"
+        );
+
+        poison(printers);
+        db.set_setting(spools, saved).unwrap();
+        assert_eq!(
+            fetch_cached_library_sync_spools_blocking(&state, &input)
+                .unwrap()
+                .unwrap()
+                .captured_at,
+            "selected"
+        );
+        drop(db);
+        std::fs::remove_file(path).unwrap();
     }
 
     #[test]
@@ -182,7 +235,8 @@ pub(crate) fn fetch_cached_library_sync_printer_overview_blocking(
 ) -> Result<Option<LibrarySyncCachedPrinterOverview>, String> {
     let target = capture_cache_target(state, input)?;
     with_current_library_sync_target(state, &target, |engine| {
-        let settings = engine.get_library_sync_settings()?;
+        let settings =
+            engine.get_library_sync_settings_for_domains(&[LibrarySyncCacheDomain::Printers])?;
         Ok(settings
             .cached_printers
             .map(|cached| LibrarySyncCachedPrinterOverview {
@@ -206,7 +260,8 @@ pub(crate) fn fetch_cached_library_sync_loans_blocking(
 ) -> Result<Option<LibrarySyncCachedLoanList>, String> {
     let target = capture_cache_target(state, input)?;
     with_current_library_sync_target(state, &target, |engine| {
-        let settings = engine.get_library_sync_settings()?;
+        let settings =
+            engine.get_library_sync_settings_for_domains(&[LibrarySyncCacheDomain::LoanHistory])?;
         Ok(settings
             .cached_loans
             .map(|cached| LibrarySyncCachedLoanList {
