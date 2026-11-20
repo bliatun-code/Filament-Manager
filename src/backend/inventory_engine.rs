@@ -70,10 +70,10 @@ pub use crate::backend::database_wishlist::{
 };
 use crate::backend::filament_database::{
     ActiveSpoolLoanRow, CatalogResetStats, FilamentDatabase, InventoryLocationRow,
-    LibrarySyncCachedLocationListRow, LibrarySyncCachedSnapshotRow, LibrarySyncSettingsRow,
-    LoanUsageByPersonRow, ManualMasterInput, MasterCatalogUpdateInput, PrinterOverviewRow,
-    PrinterRow, SpoolHistoryEventRow, SpoolLoanDetailsRow, SpoolLoanRow, SpoolRow,
-    SpoolUsagePointRow, SpoolWithMasterRow, WishlistItemRow, WishlistReceiptResult,
+    LibrarySyncCacheDomain, LibrarySyncCachedLocationListRow, LibrarySyncCachedSnapshotRow,
+    LibrarySyncSettingsRow, LoanUsageByPersonRow, ManualMasterInput, MasterCatalogUpdateInput,
+    PrinterOverviewRow, PrinterRow, SpoolHistoryEventRow, SpoolLoanDetailsRow, SpoolLoanRow,
+    SpoolRow, SpoolUsagePointRow, SpoolWithMasterRow, WishlistItemRow, WishlistReceiptResult,
 };
 use crate::backend::filament_standards::PURCHASE_PRICE_SOURCE_MANUAL;
 pub use crate::backend::filament_standards::{
@@ -381,6 +381,13 @@ impl InventoryEngine {
 
     pub fn get_library_sync_settings(&self) -> InventoryResult<LibrarySyncSettingsRow> {
         self.db.get_library_sync_settings()
+    }
+
+    pub fn get_library_sync_settings_for_domains(
+        &self,
+        domains: &[LibrarySyncCacheDomain],
+    ) -> InventoryResult<LibrarySyncSettingsRow> {
+        self.db.get_library_sync_settings_for_domains(domains)
     }
 
     pub fn save_library_sync_settings(

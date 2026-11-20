@@ -26,11 +26,17 @@ once. Complete pagination is separately covered by
 `ui/src/lib/spool_data_source.test.ts`, including the 10,000-row case with
 1,000-row pages.
 
-Loans, Printers, and Inventory use `get_library_sync_page_status` to resolve
+Loans, Printers, Inventory, and Statistics use `get_library_sync_page_status` to resolve
 the current role, pairing and Host target. `cargo test page_status` verifies
 that this lookup can read the settings with unreadable cache values and
 returns identical JSON with zero and 10,000 cached spools. Each page loads
 the lists it needs separately.
+
+Opening Statistics or changing the reporting period starts the Host reads
+together. A healthy response reads no cache lists. A failed spool, printer or
+loan-history read uses only its own cache for the original Host, library and
+generation. The page checks the target again before displaying any results.
+Period reports have no cached fallback.
 
 The Client dashboard paints its cached figures before contacting the Host. The
 following live refresh consumes that first read once, scoped to the same Host,
