@@ -112,26 +112,6 @@ function parseSyncMode(syncSettings: LibrarySyncPageStatus | null): string {
   return (syncSettings?.mode ?? "STANDALONE").trim().toUpperCase();
 }
 
-function emptyInventoryOverview() {
-  return {
-    total_spools: 0,
-    total_owned_spools: 0,
-    total_borrowed_in_spools: 0,
-    in_use: 0,
-    owned_in_use: 0,
-    borrowed_in_in_use: 0,
-    low_stock: 0,
-    owned_low_stock: 0,
-    borrowed_in_low_stock: 0,
-    total_consumption_30d: 0,
-    owned_consumption_30d: 0,
-    borrowed_in_consumption_30d: 0,
-    consumption_12m_available: false,
-    total_consumption_12m: 0,
-    consumption_12m: [],
-  };
-}
-
 function preserveSnapshotConsumption(
   overview: InventoryOverview | null,
   snapshotOverview: InventoryOverview | null,
@@ -393,13 +373,14 @@ async function readDashboardData(
       snapshotResult, spoolsResult, printersResult, loansResult, wishlistResult, printerSettingsResult,
     ] = live;
 
+    for (const result of live) {
+      if (result.status === "rejected") onLoadError(result.reason);
+    }
     if (printerSettingsResult.status === "fulfilled") {
       clientLiveIntegrations = sanitizeDashboardBambuLiveIntegrations(
         printerSettingsResult.value.bambu_live_integrations,
       );
       clientPrinterSettingsLive = true;
-    } else {
-      onLoadError(printerSettingsResult.reason);
     }
 
     if (snapshotResult.status === "fulfilled") {
@@ -409,53 +390,29 @@ async function readDashboardData(
         snapshotResult.value.device_name ??
         syncSettings?.host_device_name ??
         null;
-    } else {
-      onLoadError(snapshotResult.reason);
     }
 
     if (spoolsResult.status === "fulfilled") {
       clientSpoolRows = spoolsResult.value;
       clientSpoolsLive = true;
-    } else {
-      onLoadError(spoolsResult.reason);
     }
     if (printersResult.status === "fulfilled") {
       clientPrinterRows = printersResult.value;
       clientPrintersLive = true;
-    } else {
-      onLoadError(printersResult.reason);
     }
     if (loansResult.status === "fulfilled") {
       clientLoanRows = loansResult.value;
       clientLoansLive = true;
-    } else {
-      onLoadError(loansResult.reason);
     }
     if (wishlistResult.status === "fulfilled") {
       clientWishlistRows = wishlistResult.value;
       clientWishlistLive = true;
-    } else {
-      onLoadError(wishlistResult.reason);
     }
 
-    const rejectedHostErrors = [
-      snapshotResult,
-      spoolsResult,
-      printersResult,
-      loansResult,
-      wishlistResult,
-    ].flatMap((result) =>
-      result.status === "rejected" ? [result.reason] : [],
-    );
-    const anyCoreHostReadSucceeded = [
-      snapshotResult,
-      spoolsResult,
-      printersResult,
-      loansResult,
-      wishlistResult,
-    ].some((result) => result.status === "fulfilled");
-    const pairingRepairRequired = rejectedHostErrors.some(
-      hasImmediateClientPairingRepairError,
+    const coreReads = [snapshotResult, spoolsResult, printersResult, loansResult, wishlistResult];
+    const anyCoreHostReadSucceeded = coreReads.some((result) => result.status === "fulfilled");
+    const pairingRepairRequired = coreReads.some((result) =>
+      result.status === "rejected" && hasImmediateClientPairingRepairError(result.reason),
     );
     if (pairingRepairRequired) {
       clientHostNeedsRepair = true;
@@ -556,7 +513,7 @@ async function readDashboardData(
       }),
       bambuLiveAttention: [],
       derived: buildDashboardDerivedState({
-        overview: clientOverview ?? emptyInventoryOverview(),
+        overview: clientOverview ?? deriveInventoryOverviewFromRows([], []),
         printers: clientPrinterRows ?? [],
         spoolRows: normalizedClientSpoolRows ?? [],
         loans: normalizedClientLoans,
