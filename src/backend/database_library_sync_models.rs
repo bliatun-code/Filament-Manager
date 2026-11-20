@@ -10,6 +10,17 @@ use super::statistics::{FilamentConsumptionRow, InventoryOverview};
 
 pub(crate) type LibrarySyncClientAuthState = (String, String, String, Option<String>);
 
+/// Cache lists requested by a read-only settings consumer.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum LibrarySyncCacheDomain {
+    Snapshot,
+    Spools,
+    Printers,
+    ActiveLoans,
+    Wishlist,
+}
+
 #[derive(Debug, Serialize)]
 pub struct LibrarySyncPageStatusRow {
     pub mode: String,

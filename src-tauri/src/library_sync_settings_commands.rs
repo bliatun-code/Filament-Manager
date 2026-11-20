@@ -1,5 +1,5 @@
 use crate::backend::filament_database::{
-    FilamentDatabase, LibrarySyncPageStatusRow, LibrarySyncSettingsRow,
+    FilamentDatabase, LibrarySyncCacheDomain, LibrarySyncPageStatusRow, LibrarySyncSettingsRow,
 };
 use crate::library_sync_blocking_executor::run_library_sync_blocking;
 use crate::library_sync_command_support::normalize_library_sync_base_url;
@@ -52,9 +52,20 @@ fn get_library_sync_page_status_blocking(
 #[tauri::command]
 pub(crate) async fn get_library_sync_settings(
     state: tauri::State<'_, AppState>,
+    cache_domains: Option<Vec<LibrarySyncCacheDomain>>,
 ) -> Result<LibrarySyncSettingsRow, String> {
     let state = state.inner().clone();
-    run_library_sync_blocking(move || get_library_sync_settings_blocking(&state)).await
+    run_library_sync_blocking(move || match cache_domains {
+        Some(domains) => {
+            let _target_guard = lock_secure_credential_mutation()?;
+            let settings = with_db(&state, |db| {
+                db.get_library_sync_settings_for_domains(&domains)
+            })?;
+            settings_with_secure_pairing_state(&state, settings)
+        }
+        None => get_library_sync_settings_blocking(&state),
+    })
+    .await
 }
 
 fn get_library_sync_settings_blocking(state: &AppState) -> Result<LibrarySyncSettingsRow, String> {

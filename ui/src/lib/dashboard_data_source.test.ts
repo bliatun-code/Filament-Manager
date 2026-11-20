@@ -5,6 +5,7 @@ import {
   hasInvalidClientPairingMessage,
   loadDashboardData,
 } from "./dashboard_data_source";
+import type { LibrarySyncCacheDomain } from "./tauri_library_sync_client";
 import type {
   ActiveSpoolLoanRow,
   FilamentConsumptionRow,
@@ -1377,4 +1378,121 @@ test("client dashboard reads sanitized live settings from its Host and clears th
   assert.deepEqual(cached.bambuLiveIntegrations, []);
   assert.equal(settingsCalls, callsBeforeCache);
   assert.equal(localReads, 0, "client must never read this device's shadow printer settings");
+});
+
+test("dashboard paints offline rows first, then reuses just the failed loan slice", async () => {
+  const target = syncSettings({
+    mode: "CLIENT", host_base_url: "http://host", target_generation: 3, client_auth_paired: true,
+  });
+  const domainReads: string[][] = [];
+  let hostCalls = 0;
+  let loansOffline = true;
+  const dependencies = {
+    loadSyncSettings: async (domains?: readonly LibrarySyncCacheDomain[]) => {
+      if (domains?.length) domainReads.push([...domains]);
+      return {
+        ...target,
+        cached_spools: domains?.includes("spools")
+          ? { captured_at: "spools-time", rows: [spoolWithMasterRow("cached-spool")] } : null,
+        cached_active_loans: domains?.includes("active_loans")
+          ? { captured_at: "loans-time", rows: [activeLoan("cached-loan", "2026-08-01")] } : null,
+      };
+    },
+    loadTrustedLanStatus: async () => null,
+    fetchHostSnapshot: async () => { hostCalls++; return snapshot("Live host"); },
+    loadSpoolRows: async () => [spoolWithMasterRow("fresh-spool"), spoolWithMasterRow("another-spool")],
+    fetchHostActiveLoans: async () => {
+      if (loansOffline) throw new Error("loan endpoint unavailable");
+      return [];
+    },
+    fetchHostPrinterOverview: async () => [],
+    fetchHostPrinterSettings: async () => printerSettingsSnapshot(),
+    fetchHostWishlist: async () => [],
+    onLoadError: () => {},
+  };
+  const params = { bootstrapCache: { current: null }, previousClientHostNeedsRepair: false, t };
+  const first = await loadDashboardData({ ...params, clientCacheOnly: true }, dependencies);
+  assert.equal(first.derived.ownershipOnHand.total, 1);
+  assert.equal(first.syncSource, "client-cached");
+  assert.equal(hostCalls, 0);
+  assert.deepEqual(domainReads, [["snapshot", "spools", "printers", "active_loans", "wishlist"]]);
+  domainReads.length = 0;
+
+  const partial = await loadDashboardData(params, dependencies);
+  assert.equal(partial.derived.ownershipOnHand.total, 2);
+  assert.equal(partial.derived.stats.find(stat => stat.id === "outboundLoans")?.value, "1");
+  assert.equal(partial.syncSource, "client-cached");
+  assert.equal(partial.capturedAt, "loans-time");
+  assert.deepEqual(domainReads, []);
+  assert.equal(params.bootstrapCache.current, null);
+
+  await loadDashboardData(params, dependencies);
+  assert.deepEqual(domainReads, [["active_loans"]]);
+  domainReads.length = 0;
+  loansOffline = false;
+  const recovered = await loadDashboardData(params, dependencies);
+  assert.equal(recovered.syncSource, "client-live");
+  assert.equal(recovered.derived.stats.find(stat => stat.id === "outboundLoans")?.value, "0");
+  assert.deepEqual(domainReads, []);
+});
+
+for (const [change, newUrl, newLibrary] of [
+  ["different Host", "http://other", "library-1"],
+  ["different library on the same Host", "http://host", "library-2"],
+  ["same Host and library after switching away and back", "http://host", "library-1"],
+]) {
+  test(`dashboard discards an in-flight reply for a ${change}`, async () => {
+    const original = syncSettings({ mode: "CLIENT", host_base_url: "http://host", target_generation: 3 });
+    let target = original;
+    const params = { bootstrapCache: { current: null }, previousClientHostNeedsRepair: false, t };
+    const dependencies = {
+      loadSyncSettings: async (domains?: readonly LibrarySyncCacheDomain[]) => ({
+        ...target,
+        cached_printers: domains?.includes("printers") ? {
+          captured_at: "printer-cache",
+          rows: [printerOverviewRow(target === original ? "original-printer" : "new-printer")],
+        } : null,
+      }),
+      loadTrustedLanStatus: async () => null,
+      fetchHostSnapshot: async () => snapshot("Old host"),
+      fetchHostPrinterOverview: async () => {
+        target = { ...original, host_base_url: newUrl, library_id: newLibrary, target_generation: 5 };
+        return [printerOverviewRow("late-old-printer")];
+      },
+      loadSpoolRows: async () => [spoolWithMasterRow("late-old-spool")],
+      fetchHostActiveLoans: async () => [],
+      fetchHostWishlist: async () => [],
+      fetchHostPrinterSettings: async () => printerSettingsSnapshot(),
+    };
+    await loadDashboardData({ ...params, clientCacheOnly: true }, dependencies);
+    const switched = await loadDashboardData(params, dependencies);
+    assert.deepEqual(switched.printerOverview, [printerOverviewRow("new-printer")]);
+    assert.equal(switched.derived.ownershipOnHand.total, 0);
+    assert.equal(switched.libraryId, newLibrary);
+    assert.equal(switched.syncSource, "client-cached");
+  });
+}
+
+test("a switch during disk fallback discards the old Host's successful domains", async () => {
+  let target = syncSettings({ mode: "CLIENT", host_base_url: "http://old", target_generation: 1 });
+  const result = await loadDashboardData({ previousClientHostNeedsRepair: false, t }, {
+    loadSyncSettings: async (domains) => {
+      if (domains?.length === 1 && domains[0] === "active_loans") {
+        target = syncSettings({ mode: "CLIENT", host_base_url: "http://new", library_id: "new-library", target_generation: 2 });
+      }
+      return { ...target, cached_spools: domains?.includes("spools") ? { captured_at: "new-cache", rows: [] } : null };
+    },
+    loadTrustedLanStatus: async () => null,
+    fetchHostSnapshot: async () => snapshot("Old host"),
+    loadSpoolRows: async () => [spoolWithMasterRow("old-spool")],
+    fetchHostActiveLoans: async () => { throw new Error("old loan endpoint unavailable"); },
+    fetchHostPrinterOverview: async () => [printerOverviewRow("old-printer")],
+    fetchHostPrinterSettings: async () => printerSettingsSnapshot(),
+    fetchHostWishlist: async () => [],
+    onLoadError: () => {},
+  });
+  assert.equal(result.libraryId, "new-library");
+  assert.equal(result.derived.ownershipOnHand.total, 0);
+  assert.deepEqual(result.printerOverview, []);
+  assert.equal(result.syncSource, "client-cached");
 });

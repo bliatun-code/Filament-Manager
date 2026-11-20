@@ -20,8 +20,8 @@ use super::database_library_sync_cache::{
     save_library_sync_cached_wishlist as save_library_sync_cached_wishlist_rows,
 };
 use super::database_library_sync_models::{
-    LibrarySyncCachedLocationListRow, LibrarySyncCachedSnapshotRow, LibrarySyncClientAuthState,
-    LibrarySyncPageStatusRow, LibrarySyncSettingsRow,
+    LibrarySyncCacheDomain, LibrarySyncCachedLocationListRow, LibrarySyncCachedSnapshotRow,
+    LibrarySyncClientAuthState, LibrarySyncPageStatusRow, LibrarySyncSettingsRow,
 };
 use super::database_library_sync_settings::{
     get_library_sync_library_id as get_library_sync_library_id_row, get_library_sync_page_status,
@@ -51,6 +51,19 @@ impl FilamentDatabase {
 
     pub fn get_library_sync_settings(&self) -> InventoryResult<LibrarySyncSettingsRow> {
         get_library_sync_setting_rows(self.connection())
+    }
+
+    pub fn get_library_sync_settings_for_domains(
+        &self,
+        domains: &[LibrarySyncCacheDomain],
+    ) -> InventoryResult<LibrarySyncSettingsRow> {
+        let transaction = self.connection().unchecked_transaction()?;
+        let settings = super::database_library_sync_settings::read_library_sync_settings(
+            &transaction,
+            Some(domains),
+        )?;
+        transaction.commit()?;
+        Ok(settings)
     }
 
     pub fn save_library_sync_settings(

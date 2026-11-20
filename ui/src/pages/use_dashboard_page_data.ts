@@ -10,7 +10,7 @@ import {
   dashboardCalendarMonthKey,
   normalizeDashboardUsageMonths,
 } from "../lib/dashboard_model";
-import { loadDashboardData, type DashboardSyncSource } from "../lib/dashboard_data_source";
+import { loadDashboardData, type DashboardSyncSettings, type DashboardSyncSource } from "../lib/dashboard_data_source";
 import type { DashboardStockPreviewRow } from "../lib/dashboard_overview_data";
 import type { DashboardBambuLiveAttention } from "../lib/dashboard_bambu_live_attention";
 import type { DashboardActionItem } from "../lib/dashboard_action_model";
@@ -181,6 +181,7 @@ export function useDashboardPageData(t: TranslateFn, locale: string) {
   );
   const usageCalendarMonthRef = useRef(dashboardCalendarMonthKey());
   const refreshInFlightRef = useRef(false);
+  const bootstrapCache = useRef<DashboardSyncSettings | null>(null);
   const clientHostConnectionStateRef = useRef(
     createDashboardHostConnectionState(
       initialSnapshot?.clientHostCompanionTone ?? "off",
@@ -317,6 +318,7 @@ export function useDashboardPageData(t: TranslateFn, locale: string) {
       try {
         const loaded = await loadDashboardData({
           clientCacheOnly: options.clientCacheOnly,
+          bootstrapCache,
           locale,
           previousClientHostConnectionState:
             clientHostConnectionStateRef.current,
@@ -468,7 +470,7 @@ export function useDashboardPageData(t: TranslateFn, locale: string) {
             loaded.clientHostConnectionObservation === "repair");
         return {
           clientCacheRead:
-            options.clientCacheOnly === true && loaded.syncMode === "CLIENT",
+            bootstrapCache.current !== null && loaded.syncMode === "CLIENT",
           revisionPollComplete: loaded.revisionPollComplete,
           revisionSource: loaded.revisionSource,
           succeeded: !clientHostRefreshFailed,
@@ -673,7 +675,8 @@ export function useDashboardPageData(t: TranslateFn, locale: string) {
       clearRefreshTimeout();
       loading = true;
       const clientCacheOnly = initialRefreshPending && !initialClientCacheAttempted;
-      if (clientCacheOnly) {
+      // A refresh left in flight by the previous effect cannot paint this mount.
+      if (clientCacheOnly && !refreshInFlightRef.current) {
         initialClientCacheAttempted = true;
       }
       let succeeded: boolean;

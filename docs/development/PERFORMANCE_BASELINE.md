@@ -32,6 +32,13 @@ that this lookup can read the settings with unreadable cache values and
 returns identical JSON with zero and 10,000 cached spools. Each page loads
 the lists it needs separately.
 
+The Client dashboard paints its cached figures before contacting the Host. The
+following live refresh consumes that first read once, scoped to the same Host,
+library and target generation. Healthy refreshes request no cache lists. On a
+later partial failure, the dashboard requests only the failed domains, including
+loan history when an older client lacks an active-loans cache. A target change
+during a refresh discards the old replies and restarts from the new cache.
+
 The source contract rejects artificial waits in the dashboard load path. A
 three-second `sleep`, delay promise, or timer cannot be added to the initial
 dashboard loader without failing verification. Polling timers remain allowed

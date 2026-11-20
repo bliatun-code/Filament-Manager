@@ -4,6 +4,7 @@ import {
   fetchLibrarySyncPrinterSettings,
   fetchLibrarySyncSnapshot,
   fetchLibrarySyncWishlistItems,
+  getLibrarySyncPageStatus,
   getLibrarySyncSettings,
   getPrinterSettings,
   getTrustedLanCompanionStatus,
@@ -12,6 +13,8 @@ import {
   listPrinterOverview,
   listWishlistItems,
   type validateLibrarySyncHost,
+  type LibrarySyncCacheDomain,
+  type LibrarySyncPageStatus,
   type LibrarySyncSettings,
   type InventoryOverview,
   type TrustedLanCompanionStatus,
@@ -88,7 +91,7 @@ export type DashboardDataLoadResult = {
 };
 
 type DashboardDataDependencies = {
-  loadSyncSettings?: () => Promise<LibrarySyncSettings | null>;
+  loadSyncSettings?: (domains?: readonly LibrarySyncCacheDomain[]) => Promise<DashboardSyncSettings | null>;
   loadTrustedLanStatus?: () => Promise<TrustedLanCompanionStatus | null>;
   validateHost?: typeof validateLibrarySyncHost;
   fetchHostSnapshot?: typeof fetchLibrarySyncSnapshot;
@@ -105,7 +108,7 @@ type DashboardDataDependencies = {
   onLoadError?: (error: unknown) => void;
 };
 
-function parseSyncMode(syncSettings: LibrarySyncSettings | null): string {
+function parseSyncMode(syncSettings: LibrarySyncPageStatus | null): string {
   return (syncSettings?.mode ?? "STANDALONE").trim().toUpperCase();
 }
 
@@ -185,20 +188,66 @@ function hasImmediateClientPairingRepairError(error: unknown): boolean {
   );
 }
 
+const dashboardCacheDomains = ["snapshot", "spools", "printers", "active_loans", "wishlist"] as const;
+
+export type DashboardSyncSettings = LibrarySyncPageStatus & Partial<LibrarySyncSettings>;
+type DashboardBootstrapCache = { current: DashboardSyncSettings | null };
+
+// Omitted domains request only target status. An empty list also returns validation metadata.
+function readDashboardSettings(domains?: readonly LibrarySyncCacheDomain[]): Promise<DashboardSyncSettings> {
+  return domains ? getLibrarySyncSettings(domains) : getLibrarySyncPageStatus();
+}
+
+class DashboardTargetChanged extends Error {
+  constructor() {
+    super("The dashboard library changed during refresh.");
+  }
+}
+
+function assertDashboardTarget(expected: LibrarySyncPageStatus | null, current: LibrarySyncPageStatus | null) {
+  if (
+    expected?.mode !== current?.mode || expected?.host_base_url !== current?.host_base_url ||
+    expected?.library_id !== current?.library_id || expected?.target_generation !== current?.target_generation
+  ) {
+    throw new DashboardTargetChanged();
+  }
+}
+
+type DashboardLoadParams = {
+  clientCacheOnly?: boolean;
+  bootstrapCache?: DashboardBootstrapCache;
+  locale?: NumberDisplayLocale;
+  now?: Date;
+  previousClientHostConnectionState?: DashboardHostConnectionState;
+  previousClientHostNeedsRepair: boolean;
+  t: TranslateFn;
+  today?: string;
+};
+
 export async function loadDashboardData(
-  params: {
-    clientCacheOnly?: boolean;
-    locale?: NumberDisplayLocale;
-    now?: Date;
-    previousClientHostConnectionState?: DashboardHostConnectionState;
-    previousClientHostNeedsRepair: boolean;
-    t: TranslateFn;
-    today?: string;
-  },
+  params: DashboardLoadParams,
   dependencies: DashboardDataDependencies = {},
 ): Promise<DashboardDataLoadResult> {
+  try {
+    return await readDashboardData(params, dependencies);
+  } catch (error) {
+    if (!(error instanceof DashboardTargetChanged)) throw error;
+    // Discard the entire old response. Paint the new target's offline view before retrying live.
+    return readDashboardData({
+      ...params,
+      clientCacheOnly: true,
+      previousClientHostConnectionState: undefined,
+      previousClientHostNeedsRepair: false,
+    }, dependencies);
+  }
+}
+
+async function readDashboardData(
+  params: DashboardLoadParams,
+  dependencies: DashboardDataDependencies,
+): Promise<DashboardDataLoadResult> {
   const loadSyncSettings =
-    dependencies.loadSyncSettings ?? getLibrarySyncSettings;
+    dependencies.loadSyncSettings ?? readDashboardSettings;
   const loadTrustedLanStatus =
     dependencies.loadTrustedLanStatus ?? getTrustedLanCompanionStatus;
   const fetchHostSnapshot =
@@ -222,8 +271,14 @@ export async function loadDashboardData(
   const actionNow = params.now ?? new Date();
   const actionToday = params.today ?? localCalendarDate(actionNow);
 
+  const bootstrap = params.bootstrapCache?.current;
+  if (params.bootstrapCache) params.bootstrapCache.current = null;
+  // The handoff already includes validation metadata. Only recheck its current target.
+  const domains = params.clientCacheOnly
+    ? dashboardCacheDomains
+    : bootstrap ? undefined : [];
   const [syncSettings, trustedLan] = await Promise.all([
-    loadSyncSettings(),
+    loadSyncSettings(domains),
     loadTrustedLanStatus().catch((error) => {
       onLoadError(error);
       return null;
@@ -232,22 +287,21 @@ export async function loadDashboardData(
 
   const syncMode = parseSyncMode(syncSettings);
   const libraryId = syncSettings?.library_id?.trim() || null;
-  const cachedSnapshot = syncSettings?.cached_snapshot ?? null;
   const clientMode = syncMode === "CLIENT";
   const revisionSource = resolveLibraryRevisionSource({
     clientReadOnly: clientMode,
     clientHostBaseUrl: syncSettings?.host_base_url,
     clientLibraryId: syncSettings?.library_id,
   });
+  if (bootstrap && !params.clientCacheOnly) assertDashboardTarget(bootstrap, syncSettings);
+  const pairingMetadata = params.clientCacheOnly ? syncSettings : bootstrap ?? syncSettings;
   const persistedPairingNeedsRepair =
     clientMode &&
     !!syncSettings?.client_auth_paired &&
-    hasInvalidClientPairingMessage(syncSettings?.last_validation_message);
+    hasInvalidClientPairingMessage(pairingMetadata?.last_validation_message);
   let clientHostNeedsRepair =
     clientMode &&
     (params.previousClientHostNeedsRepair || persistedPairingNeedsRepair);
-  let clientHostDisplayName =
-    syncSettings?.host_device_name ?? cachedSnapshot?.device_name ?? null;
   let clientHostConnectionObservation: DashboardHostConnectionObservation =
     clientMode ? "checking" : "unconfigured";
 
@@ -255,13 +309,6 @@ export async function loadDashboardData(
     clientHostNeedsRepair = false;
   }
 
-  let activeClientSnapshot = cachedSnapshot;
-  let clientSpoolRows = syncSettings?.cached_spools?.rows ?? null;
-  let clientPrinterRows = syncSettings?.cached_printers?.rows ?? null;
-  const cachedActiveLoans = syncSettings?.cached_active_loans ?? syncSettings?.cached_loans;
-  let clientLoanRows = cachedActiveLoans?.rows ?? null;
-  let clientWishlistRows: WishlistItemRow[] =
-    syncSettings?.cached_wishlist?.rows ?? [];
   let clientLiveIntegrations: BambuLiveIntegrationEntry[] = [];
   let clientPrinterSettingsLive = false;
   let clientSnapshotLive = false;
@@ -276,37 +323,75 @@ export async function loadDashboardData(
       })
     : null;
 
-  if (clientHostTarget && !params.clientCacheOnly) {
+  const live = clientHostTarget && !params.clientCacheOnly
+    ? await Promise.allSettled([
+        fetchHostSnapshot(clientHostTarget.baseUrl, clientHostTarget.libraryId),
+        loadSpoolRows({
+          clientReadOnly: true,
+          clientHostBaseUrl: clientHostTarget.baseUrl,
+          clientLibraryId: clientHostTarget.libraryId,
+          clientTargetGeneration: syncSettings?.target_generation ?? null,
+        }),
+        fetchHostPrinterOverview(
+          clientHostTarget.baseUrl,
+          clientHostTarget.libraryId,
+        ),
+        fetchHostActiveLoans(
+          clientHostTarget.baseUrl,
+          clientHostTarget.libraryId,
+        ),
+        fetchHostWishlist(
+          clientHostTarget.baseUrl,
+          clientHostTarget.libraryId,
+          500,
+        ),
+        fetchHostPrinterSettings(clientHostTarget.baseUrl, clientHostTarget.libraryId),
+      ])
+    : null;
+
+  let cache = syncSettings;
+  if (clientMode && params.clientCacheOnly) {
+    assertDashboardTarget(syncSettings, await loadSyncSettings());
+    if (params.bootstrapCache) params.bootstrapCache.current = syncSettings;
+  } else if (clientMode) {
+    const [summary, spools, printers, loans, wishlist] = live ?? [];
+    const cacheableReads = [
+      ["snapshot", summary], ["spools", spools], ["printers", printers],
+      ["active_loans", loans], ["wishlist", wishlist],
+    ] as const;
+    const missing = cacheableReads.flatMap(([domain, result]) =>
+      result?.status === "fulfilled" ? [] : [domain],
+    );
+    const reuseBootstrap = bootstrap && Number.isSafeInteger(bootstrap.target_generation);
+    if (missing.length > 0 && !reuseBootstrap) {
+      // This one transaction both reads the failed domains and confirms their target.
+      cache = await loadSyncSettings(missing).catch((error) => {
+        onLoadError(error);
+        return null;
+      });
+      assertDashboardTarget(syncSettings, cache ?? await loadSyncSettings());
+    } else {
+      if (reuseBootstrap) cache = bootstrap;
+      // A switch (including A -> B -> A) invalidates already completed Host replies, too.
+      assertDashboardTarget(syncSettings, await loadSyncSettings());
+    }
+  }
+
+  const cachedSnapshot = cache?.cached_snapshot ?? null;
+  let clientHostDisplayName =
+    syncSettings?.host_device_name ?? cachedSnapshot?.device_name ?? null;
+  let activeClientSnapshot = cachedSnapshot;
+  let clientSpoolRows = cache?.cached_spools?.rows ?? null;
+  let clientPrinterRows = cache?.cached_printers?.rows ?? null;
+  const cachedActiveLoans = cache?.cached_active_loans ?? cache?.cached_loans;
+  let clientLoanRows = cachedActiveLoans?.rows ?? null;
+  let clientWishlistRows: WishlistItemRow[] =
+    cache?.cached_wishlist?.rows ?? [];
+
+  if (live) {
     const [
-      snapshotResult,
-      spoolsResult,
-      printersResult,
-      loansResult,
-      wishlistResult,
-      printerSettingsResult,
-    ] = await Promise.allSettled([
-      fetchHostSnapshot(clientHostTarget.baseUrl, clientHostTarget.libraryId),
-      loadSpoolRows({
-        clientReadOnly: true,
-        clientHostBaseUrl: clientHostTarget.baseUrl,
-        clientLibraryId: clientHostTarget.libraryId,
-        clientTargetGeneration: syncSettings?.target_generation ?? null,
-      }),
-      fetchHostPrinterOverview(
-        clientHostTarget.baseUrl,
-        clientHostTarget.libraryId,
-      ),
-      fetchHostActiveLoans(
-        clientHostTarget.baseUrl,
-        clientHostTarget.libraryId,
-      ),
-      fetchHostWishlist(
-        clientHostTarget.baseUrl,
-        clientHostTarget.libraryId,
-        500,
-      ),
-      fetchHostPrinterSettings(clientHostTarget.baseUrl, clientHostTarget.libraryId),
-    ]);
+      snapshotResult, spoolsResult, printersResult, loansResult, wishlistResult, printerSettingsResult,
+    ] = live;
 
     if (printerSettingsResult.status === "fulfilled") {
       clientLiveIntegrations = sanitizeDashboardBambuLiveIntegrations(
@@ -401,7 +486,7 @@ export async function loadDashboardData(
     clientSpoolRows != null
       ? normalizeSpoolWithMasterRows(clientSpoolRows)
       : null;
-  const rowsCapturedAt = parseDateTimeMs(syncSettings?.cached_spools?.captured_at);
+  const rowsCapturedAt = parseDateTimeMs(cache?.cached_spools?.captured_at);
   const summaryCapturedAt = parseDateTimeMs(activeClientSnapshot?.captured_at);
   const cacheConfirmsEmptyStock = !clientSnapshotLive && (
     activeClientSnapshot == null ||
@@ -418,13 +503,13 @@ export async function loadDashboardData(
   );
   const clientRowsOverviewCapturedAt =
     clientRowsOverview && !clientHostTarget
-      ? (syncSettings?.cached_spools?.captured_at ?? null)
+      ? (cache?.cached_spools?.captured_at ?? null)
       : null;
 
   if (clientMode) {
     const hasClientData =
       clientOverview != null || clientSpoolRows != null || clientPrinterRows != null ||
-      clientLoanRows != null || clientWishlistLive || syncSettings?.cached_wishlist != null;
+      clientLoanRows != null || clientWishlistLive || cache?.cached_wishlist != null;
     const allClientReadsLive =
       !!clientHostTarget &&
       clientSnapshotLive &&
@@ -439,18 +524,18 @@ export async function loadDashboardData(
       : "client-offline";
     const fallbackCapturedAt = firstDefinedTimestamp(
       clientRowsOverviewCapturedAt,
-      clientSpoolsLive ? null : syncSettings?.cached_spools?.captured_at,
-      clientPrintersLive ? null : syncSettings?.cached_printers?.captured_at,
+      clientSpoolsLive ? null : cache?.cached_spools?.captured_at,
+      clientPrintersLive ? null : cache?.cached_printers?.captured_at,
       clientLoansLive ? null : cachedActiveLoans?.captured_at,
-      clientWishlistLive ? null : syncSettings?.cached_wishlist?.captured_at,
+      clientWishlistLive ? null : cache?.cached_wishlist?.captured_at,
       clientSnapshotLive ? null : activeClientSnapshot?.captured_at,
     );
     const liveCapturedAt = firstDefinedTimestamp(
       activeClientSnapshot?.captured_at,
-      syncSettings?.cached_spools?.captured_at,
-      syncSettings?.cached_printers?.captured_at,
+      cache?.cached_spools?.captured_at,
+      cache?.cached_printers?.captured_at,
       cachedActiveLoans?.captured_at,
-      syncSettings?.cached_wishlist?.captured_at,
+      cache?.cached_wishlist?.captured_at,
     );
     const normalizedClientLoans = (clientLoanRows ?? []).map(
       normalizeLoanDetailsRow,
