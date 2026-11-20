@@ -10,7 +10,7 @@ pub use super::database_inventory_bulk_models::{
 };
 pub use super::database_library_sync_models::{
     LibrarySyncCachedFilamentConsumptionListRow, LibrarySyncCachedLocationListRow,
-    LibrarySyncCachedSnapshotRow, LibrarySyncSettingsRow,
+    LibrarySyncCachedSnapshotRow, LibrarySyncPageStatusRow, LibrarySyncSettingsRow,
 };
 pub use super::database_loan_models::{
     ActiveSpoolLoanRow, LoanUsageByPersonRow, SpoolLoanDetailsRow, SpoolLoanRow,

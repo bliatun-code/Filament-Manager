@@ -439,6 +439,7 @@ fn main() {
             app_error::application_diagnostics::get_application_diagnostics,
             app_error::application_diagnostics::get_sanitized_support_bundle_json,
             library_sync_settings_commands::get_library_sync_settings,
+            library_sync_settings_commands::get_library_sync_page_status,
             library_revision_commands::get_library_domain_revisions,
             library_revision_commands::fetch_library_sync_domain_revisions,
             library_sync_settings_commands::save_library_sync_settings,

@@ -1,4 +1,6 @@
-use crate::backend::filament_database::LibrarySyncSettingsRow;
+use crate::backend::filament_database::{
+    FilamentDatabase, LibrarySyncPageStatusRow, LibrarySyncSettingsRow,
+};
 use crate::library_sync_blocking_executor::run_library_sync_blocking;
 use crate::library_sync_command_support::normalize_library_sync_base_url;
 use crate::library_sync_host_client::{
@@ -10,7 +12,7 @@ use crate::library_sync_runtime_auth::LibrarySyncRuntimeSession;
 use crate::secure_credential_mutation::lock_secure_credential_mutation;
 use crate::state::AppState;
 use crate::trusted_lan_runtime_commands::reload_trusted_lan_runtime_after_library_change;
-use crate::with_inventory;
+use crate::{with_db, with_inventory};
 use zeroize::Zeroizing;
 
 struct LibrarySyncPairingSnapshot {
@@ -22,6 +24,29 @@ struct LibrarySyncPairingSnapshot {
 enum LibrarySyncDeviceTokenSnapshot {
     Readable(Option<Zeroizing<Vec<u8>>>),
     Unreadable,
+}
+
+#[tauri::command]
+pub(crate) async fn get_library_sync_page_status(
+    state: tauri::State<'_, AppState>,
+) -> Result<LibrarySyncPageStatusRow, String> {
+    let state = state.inner().clone();
+    run_library_sync_blocking(move || get_library_sync_page_status_blocking(&state)).await
+}
+
+fn get_library_sync_page_status_blocking(
+    state: &AppState,
+) -> Result<LibrarySyncPageStatusRow, String> {
+    // A Host switch updates SQLite and the credential store under this same lock.
+    let _target_guard = lock_secure_credential_mutation()?;
+    let mut status = with_db(state, FilamentDatabase::get_library_sync_page_status)?;
+    status.client_auth_paired = secure_pairing_state(
+        state,
+        &status.mode,
+        status.host_base_url.as_deref(),
+        status.client_auth_paired,
+    );
+    Ok(status)
 }
 
 #[tauri::command]
@@ -188,22 +213,36 @@ fn settings_with_secure_pairing_state(
     state: &AppState,
     mut settings: LibrarySyncSettingsRow,
 ) -> Result<LibrarySyncSettingsRow, String> {
-    settings.client_auth_paired = if settings.mode == "CLIENT" {
-        match normalized_optional_host(settings.host_base_url.as_deref()) {
+    settings.client_auth_paired = secure_pairing_state(
+        state,
+        &settings.mode,
+        settings.host_base_url.as_deref(),
+        settings.client_auth_paired,
+    );
+    Ok(settings)
+}
+
+fn secure_pairing_state(
+    state: &AppState,
+    mode: &str,
+    host: Option<&str>,
+    sqlite_marker: bool,
+) -> bool {
+    if mode == "CLIENT" {
+        match normalized_optional_host(host) {
             Some(host) => match load_library_sync_device_token_optional(state, &host) {
                 Ok(device_token) => device_token.is_some(),
                 // The SQLite marker is intentionally retained when the platform
                 // credential cannot be read. This keeps the repair/remove controls
                 // available while authenticated sync itself continues to fail
                 // closed when it attempts to load the unusable token.
-                Err(_) => settings.client_auth_paired,
+                Err(_) => sqlite_marker,
             },
             None => false,
         }
     } else {
         false
-    };
-    Ok(settings)
+    }
 }
 
 fn normalized_optional_host(value: Option<&str>) -> Option<String> {
@@ -331,10 +370,10 @@ fn with_library_sync_pairing_rollback(error: String, rollback: Result<(), String
 #[cfg(test)]
 mod tests {
     use super::{
-        clear_library_sync_client_auth_blocking, get_library_sync_settings_blocking,
-        restore_library_sync_pairing, save_library_sync_settings_blocking,
-        settings_with_secure_pairing_state, LibrarySyncDeviceTokenSnapshot,
-        LibrarySyncPairingSnapshot,
+        clear_library_sync_client_auth_blocking, get_library_sync_page_status_blocking,
+        get_library_sync_settings_blocking, restore_library_sync_pairing,
+        save_library_sync_settings_blocking, settings_with_secure_pairing_state,
+        LibrarySyncDeviceTokenSnapshot, LibrarySyncPairingSnapshot,
     };
     use crate::backend::filament_database::{
         FilamentDatabase, LibrarySyncSettingsRow, LowStockMaterialOverride, LowStockPolicy,
@@ -614,6 +653,44 @@ mod tests {
     }
 
     #[test]
+    fn page_status_has_the_same_wire_response_with_zero_and_ten_thousand_cached_spools() {
+        let state = test_state();
+        let host = "http://host.local:4278";
+        with_test_database(&state, |db| {
+            db.save_library_sync_settings(&client_settings(host, false))?;
+            db.save_library_sync_cached_spools(&[])
+        });
+        store_library_sync_device_token(&state, host, "device-token").unwrap();
+        let status =
+            || serde_json::to_vec(&get_library_sync_page_status_blocking(&state).unwrap()).unwrap();
+        let empty = status();
+        let expected = serde_json::json!({
+            "mode": "CLIENT", "host_base_url": host, "host_device_name": "Host",
+            "library_id": "library-id", "target_generation": 1, "client_auth_paired": true
+        });
+        assert_eq!(
+            serde_json::from_slice::<serde_json::Value>(&empty).unwrap(),
+            expected
+        );
+
+        let sample: crate::backend::filament_database::SpoolWithMasterRow =
+            serde_json::from_value(serde_json::json!({
+                "spool": {"id": "spool", "master_id": "master", "status": "IN_STOCK", "ownership_type": "OWNED"},
+                "master": {"id": "master", "vendor": "Generic", "material": "PLA", "filament_name": "Basic", "color_name": "Black", "default_weight": 1000}
+            })).unwrap();
+        let rows: Vec<_> = (0..10_000)
+            .map(|id| {
+                let mut row = sample.clone();
+                row.spool.id = format!("spool-{id}");
+                row
+            })
+            .collect();
+        with_test_database(&state, |db| db.save_library_sync_cached_spools(&rows));
+        assert_eq!(status(), empty);
+        let _ = std::fs::remove_file(&state.db_path);
+    }
+
+    #[test]
     fn changing_client_host_removes_old_token_and_runtime_session() {
         let state = test_state();
         let old_host = "http://old-host.local:4278";
@@ -626,6 +703,10 @@ mod tests {
             .library_sync_auth
             .replace(old_host, "session", "csrf")
             .expect("save runtime session");
+
+        let before = get_library_sync_page_status_blocking(&state).unwrap();
+        assert_eq!(before.host_base_url.as_deref(), Some(old_host));
+        assert!(before.client_auth_paired);
 
         let saved = save_library_sync_settings_blocking(
             &state,
@@ -640,6 +721,12 @@ mod tests {
         )
         .expect("change host");
 
+        let after = get_library_sync_page_status_blocking(&state).unwrap();
+        assert_eq!(after.host_base_url.as_deref(), Some(new_host));
+        assert_eq!(after.library_id, saved.library_id);
+        assert_eq!(after.host_device_name, None);
+        assert!(after.target_generation > before.target_generation);
+        assert!(!after.client_auth_paired);
         assert_eq!(saved.host_base_url.as_deref(), Some(new_host));
         assert!(!saved.client_auth_paired);
         assert!(load_library_sync_device_token_optional(&state, old_host)
@@ -685,6 +772,10 @@ mod tests {
         )
         .expect("change library on same Host");
 
+        let status = get_library_sync_page_status_blocking(&state).unwrap();
+        assert_eq!(status.library_id, "replacement-library-id");
+        assert_eq!(status.target_generation, saved.target_generation);
+        assert!(!status.client_auth_paired);
         assert_eq!(saved.library_id, "replacement-library-id");
         assert_eq!(saved.host_base_url.as_deref(), Some(host));
         assert!(saved.target_generation > initial.target_generation);
