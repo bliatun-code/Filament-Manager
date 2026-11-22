@@ -15,7 +15,7 @@ import { InventoryRfidCaptureModal } from "../components/inventory_rfid_capture_
 import { InventoryLabelSheetModal } from "../components/inventory_label_sheet_modal";
 
 import { matchesWishlistPurchaseTarget } from "../lib/tauri_wishlist_client";
-import type { InventoryNavigationIntent } from "../lib/app_navigation_model";
+import { dashboardPurchaseNotice, type InventoryNavigationIntent } from "../lib/app_navigation_model";
 import { useInventoryMarkEmptyAction } from "../lib/use_inventory_mark_empty_action";
 import { useI18n } from "../lib/i18n";
 import {
@@ -385,21 +385,7 @@ export default function InventoryPage({
       }
       resetPurchaseQueue(navigationIntent.status);
       openPurchaseQueue();
-      if (navigationIntent.notice === "CREATED") {
-        setInfoMessage(
-          t(
-            "dashboard.actionPurchaseAdded",
-            "Added to the wishlist. Opening Purchases.",
-          ),
-        );
-      } else if (navigationIntent.notice === "REUSED") {
-        setInfoMessage(
-          t(
-            "dashboard.actionPurchaseReused",
-            "An open purchase already exists. Reusing it and opening Purchases.",
-          ),
-        );
-      }
+      if (navigationIntent.notice) setInfoMessage(dashboardPurchaseNotice(navigationIntent.notice, t));
     }
     onConsumeNavigationIntent?.();
   }, [

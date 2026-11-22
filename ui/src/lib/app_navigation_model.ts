@@ -45,6 +45,12 @@ export type InventoryNavigationIntent =
     }
   | null;
 
+export function dashboardPurchaseNotice(notice: "CREATED" | "REUSED", t: (key: string, fallback: string) => string): string {
+  return notice === "CREATED"
+    ? t("dashboard.actionPurchaseAdded", "Added to the wishlist. Opening Purchases.")
+    : t("dashboard.actionPurchaseReused", "An open purchase already exists. Reusing it and opening Purchases.");
+}
+
 export function resolveAppNavigationDestination(
   page: PageKey,
   inventoryIntent: InventoryNavigationIntent = null,

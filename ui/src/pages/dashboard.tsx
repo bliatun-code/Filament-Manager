@@ -44,10 +44,11 @@ import {
   DESKTOP_VISUAL_QA_DASHBOARD_CONSUMPTION_READINESS_TOKEN,
 } from "../lib/desktop_visual_qa_readiness";
 import { useI18n } from "../lib/i18n";
-import { isTauri, signalDesktopVisualQaReadiness } from "../lib/tauri_client";
+import { hasDashboardPurchaseSnapshot, validateDashboardPurchaseSnapshot } from "../lib/dashboard_page_snapshot_cache";
+import { getLibrarySyncPageStatus, isTauri, signalDesktopVisualQaReadiness } from "../lib/tauri_client";
 import { useDashboardPageData } from "./use_dashboard_page_data";
 import { readLatestFullBackupExport } from "./settings_full_backup_activity";
-import type { PageKey } from "../lib/app_navigation_model";
+import { dashboardPurchaseNotice, type PageKey } from "../lib/app_navigation_model";
 import { useResolvedTheme } from "../lib/theme_mode";
 
 const ActivityTimeline = lazy(() => import("../components/dashboard_activity_timeline").then((module) => ({ default: module.ActivityTimeline })));
@@ -68,7 +69,23 @@ type DashboardPageProps = {
   ) => void;
 };
 
-export default function DashboardPage({
+export default function DashboardPage(props: DashboardPageProps) {
+  const { t } = useI18n();
+  const [checking, setChecking] = useState(hasDashboardPurchaseSnapshot);
+  useEffect(() => {
+    if (!checking) return;
+    let cancelled = false;
+    void getLibrarySyncPageStatus().catch(() => null).then((status) => {
+      if (cancelled) return;
+      validateDashboardPurchaseSnapshot(status);
+      setChecking(false);
+    });
+    return () => { cancelled = true; };
+  }, [checking]);
+  return checking ? <p role="status">{t("common.loading", "Loading...")}</p> : <DashboardContent {...props} />;
+}
+
+function DashboardContent({
   onNavigate,
   onAddFirstSpool,
   onOpenLowStock,
@@ -378,9 +395,7 @@ export default function DashboardPage({
         }
         confirmPurchase(item.id, target);
         if (!dashboardMounted.current) return;
-        setActionMessage(result.kind === "CREATED"
-          ? t("dashboard.actionPurchaseAdded", "Added to the wishlist. Opening Purchases.")
-          : t("dashboard.actionPurchaseReused", "An open purchase already exists. Reusing it and opening Purchases."));
+        setActionMessage(dashboardPurchaseNotice(result.kind, t));
         onOpenPurchases?.(result.status, result.kind, target);
       } catch (purchaseError) {
         if (purchaseError instanceof Error && purchaseError.message === DASHBOARD_PURCHASE_TARGET_CHANGED) {

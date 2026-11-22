@@ -394,7 +394,9 @@ export function useDashboardPageData(t: TranslateFn, locale: string) {
           )} ${formatDashboardSyncTime(new Date(), locale)}`;
         }
 
-        const nextActions = reconcileDashboardPurchaseActions(loaded.actionItems, loaded.freshWishlistTarget, snapshotRequest);
+        const nextActions = reconcileDashboardPurchaseActions(
+          loaded.actionItems, loaded.wishlistFresh ? loaded.libraryTarget : undefined, snapshotRequest,
+        );
         const cacheAccepted = writeDashboardPageSnapshot(
           {
             printerOverview: loaded.printerOverview,
@@ -416,6 +418,7 @@ export function useDashboardPageData(t: TranslateFn, locale: string) {
             health: loaded.derived.health,
             lastSyncLabel: nextLastSyncLabel,
             libraryId: loaded.libraryId,
+            libraryTarget: loaded.libraryTarget,
             locale,
             ownershipLowStock: loaded.derived.ownershipLowStock,
             ownershipOnHand: loaded.derived.ownershipOnHand,

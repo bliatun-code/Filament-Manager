@@ -168,8 +168,7 @@ test("dashboard purchase actions use an explicit guard-preserving inventory inte
   assert.match(inventorySource, /navigationIntent\.kind === "PURCHASES"/);
   assert.match(inventorySource, /resetPurchaseQueue\(navigationIntent\.status\)/);
   assert.match(inventorySource, /openPurchaseQueue\(\)/);
-  assert.match(inventorySource, /navigationIntent\.notice === "REUSED"/);
-  assert.match(inventorySource, /dashboard\.actionPurchaseReused/);
+  assert.match(inventorySource, /dashboardPurchaseNotice\(navigationIntent\.notice, t\)/);
   assert.match(source, /await refreshDashboard\(\)/);
   assert.match(
     dashboardDataHookSource,

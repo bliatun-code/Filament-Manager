@@ -32,7 +32,7 @@ test("Dashboard purchase handoff stays with the reviewed library", async (t) => 
   const replacement = { ...origin, host_base_url: "http://host-b.test", library_id: "library-b", target_generation: 2 };
   const backToA = { ...origin, target_generation: 3 };
 
-  for (const scenario of ["switch after save", "A–B–A after save", "switch on arrival", "A–B–A on arrival", "offline return"] as const) {
+  for (const scenario of ["switch after save", "A–B–A after save", "switch on arrival", "A–B–A on arrival", "offline return", "switch before offline return"] as const) {
     await t.test(scenario, async () => {
       const page = await browser.newPage();
       try {
@@ -99,8 +99,12 @@ test("Dashboard purchase handoff stays with the reviewed library", async (t) => 
         await page.addInitScript(`let cb=0; const invoke=window.purchaseInvoke;
           window.__TAURI__={invoke};window.__TAURI_EVENT_PLUGIN_INTERNALS__={unregisterListener(){}};
           window.__TAURI_INTERNALS__={invoke,metadata:{currentWindow:{label:'main'},currentWebview:{label:'main'}},transformCallback:()=>++cb,unregisterCallback(){}};
-          window.purchasePaints=[];new MutationObserver(()=>{if(document.body)window.purchasePaints.push(document.body.innerText)})
-            .observe(document,{subtree:true,childList:true,characterData:true});`);
+          window.purchasePaints=[];window.stockPaints=[];
+          new MutationObserver(()=>{
+            if(document.body)window.purchasePaints.push(document.body.innerText);
+            const stock=document.querySelector('section[aria-labelledby=dashboard-stock-overview-title]');
+            if(stock)window.stockPaints.push(stock.innerText);
+          }).observe(document,{subtree:true,childList:true,characterData:true});`);
         await page.goto(server.resolvedUrls!.local[0] + "?bfm_locale=en&bfm_visual_qa=dashboard-overview");
         await page.getByText(/Live host snapshot/i).first().waitFor();
         const showSuggestions = page.getByRole("button", { name: /Show suggestions/ });
@@ -111,23 +115,35 @@ test("Dashboard purchase handoff stays with the reviewed library", async (t) => 
 
         const queue = page.locator("#inventory-purchases-panel:not([hidden])");
         const notice = "Added to the wishlist. Opening Purchases.";
-        if (scenario === "offline return") {
+        if (scenario === "offline return" || scenario === "switch before offline return") {
           await queue.getByText(/Purchased roll/).first().waitFor();
           await page.getByText(notice, { exact: true }).first().waitFor();
           assert.ok(!calls.includes("fetch_library_sync_snapshot"), "Dashboard refreshed on the successful path");
           assert.equal(calls.filter(cmd => cmd === "fetch_library_sync_spool_snapshot").length, 1, "only Inventory loads spools");
           offline = true;
+          if (scenario === "switch before offline return") target = backToA;
+          await page.evaluate("window.stockPaints = []");
           await page.getByRole("button", { name: "Dashboard", exact: true }).click();
           await page.getByText(/Cached host snapshot/i).first().waitFor();
           await showSuggestions.click();
           await page.getByRole("button", { name: /Add .*Other roll.*wishlist/i }).waitFor();
           assert.equal(await purchased.count(), 0);
-          await page.locator("section[aria-labelledby=dashboard-stock-overview-title] li").filter({ hasText: "Purchased roll" }).first().waitFor();
+          const expectedRoll = target === origin ? "Purchased roll" : "Replacement roll";
+          await page.locator("section[aria-labelledby=dashboard-stock-overview-title] li").filter({ hasText: expectedRoll }).first().waitFor();
+          if (target !== origin) {
+            assert.ok(!await page.evaluate("window.stockPaints.some(text => text.includes('Purchased roll'))"));
+          }
         } else if (scenario === "switch on arrival" || scenario === "A–B–A on arrival") {
           await page.getByRole("heading", { name: "Inventory", exact: true }).waitFor();
           await page.getByText(/Replacement roll/).first().waitFor();
           assert.equal(await queue.count(), 0);
           assert.ok(!await page.evaluate("window.purchasePaints.some(text => text.includes('Replacement roll') && text.includes('Added to the wishlist.'))"));
+          offline = true;
+          await page.evaluate("window.stockPaints = []");
+          await page.getByRole("button", { name: "Dashboard", exact: true }).click();
+          await page.getByText(/Cached host snapshot/i).first().waitFor();
+          assert.ok(!await page.evaluate("window.stockPaints.some(text => text.includes('Purchased roll'))"),
+            "returning offline to the replacement library painted stock from the reviewed library");
         } else {
           await page.getByRole("button", { name: /Add .*Replacement roll.*wishlist/i }).waitFor();
           assert.equal(await queue.count(), 0);

@@ -73,7 +73,8 @@ export type DashboardDataLoadResult = {
   lowStockPreview: DashboardStockPreviewRow[];
   lowStockPreviewAvailable: boolean;
   actionItems: DashboardActionItem[];
-  freshWishlistTarget?: WishlistPurchaseTarget;
+  libraryTarget?: WishlistPurchaseTarget;
+  wishlistFresh: boolean;
   bambuLiveAttention: DashboardBambuLiveAttention[];
   derived: DashboardDerivedState;
   libraryId: string | null;
@@ -510,7 +511,8 @@ async function readDashboardData(
       bambuLiveIntegrations: syncSource === "client-live" ? clientLiveIntegrations : [],
       lowStockPreview: buildDashboardLowStockPreview(normalizedClientSpoolRows ?? []),
       lowStockPreviewAvailable: normalizedClientSpoolRows != null,
-      freshWishlistTarget: clientWishlistLive ? purchaseTarget : undefined,
+      libraryTarget: purchaseTarget,
+      wishlistFresh: clientWishlistLive,
       actionItems: buildDashboardActionItems({
         purchaseTarget,
         bambuLiveAttention: [],
@@ -580,7 +582,8 @@ async function readDashboardData(
     bambuLiveIntegrations: sanitizeDashboardBambuLiveIntegrations(printerSettings?.bambu_live_integrations ?? []),
     lowStockPreview: buildDashboardLowStockPreview(spoolRows),
     lowStockPreviewAvailable: true,
-    freshWishlistTarget: purchaseTarget,
+    libraryTarget: purchaseTarget,
+    wishlistFresh: true,
     actionItems: buildDashboardActionItems({
       purchaseTarget,
       bambuLiveAttention,

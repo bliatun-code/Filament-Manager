@@ -5,6 +5,7 @@ import type {
   DashboardStat,
   DashboardUsageMonth,
 } from "./dashboard_model";
+import type { LibrarySyncPageStatus } from "./tauri_library_sync_client";
 import type { LibraryRevisionSource } from "./library_domain_revisions";
 import type { BambuLiveIntegrationEntry, PrinterOverviewRow, TrustedLanCompanionStatus } from "./tauri_client";
 import type { DashboardSyncSource } from "./dashboard_data_source";
@@ -33,6 +34,7 @@ export type DashboardPageSnapshot = {
   health: DashboardHealth;
   lastSyncLabel: string;
   libraryId?: string | null;
+  libraryTarget?: WishlistPurchaseTarget;
   locale: string;
   ownershipLowStock: {
     owned: number;
@@ -62,6 +64,7 @@ let dashboardPageSnapshotGeneration = 0;
 let dashboardPageSnapshotRequestSequence = 0;
 let latestAcceptedDashboardPageSnapshotRequestSequence = 0;
 
+let purchaseReturnPending = false;
 const confirmedPurchases = new Map<string, WishlistPurchaseTarget>();
 
 export function remainingDashboardSuggestions(items: DashboardActionItem[]): DashboardActionItem[] {
@@ -74,6 +77,7 @@ export function remainingDashboardSuggestions(items: DashboardActionItem[]): Das
 }
 
 export function recordDashboardPurchase(id: string, target: WishlistPurchaseTarget): void {
+  purchaseReturnPending = true;
   confirmedPurchases.set(id, target);
   // A refresh that started before the acknowledgement may still carry the old wishlist.
   latestAcceptedDashboardPageSnapshotRequestSequence = beginDashboardPageSnapshotRequest().sequence;
@@ -151,6 +155,7 @@ function cloneDashboardPageSnapshot(
       metrics: snapshot.health.metrics.map((metric) => ({ ...metric })),
     },
     libraryId,
+    ...(snapshot.libraryTarget && { libraryTarget: { ...snapshot.libraryTarget } }),
     ownershipLowStock: { ...snapshot.ownershipLowStock },
     ownershipOnHand: { ...snapshot.ownershipOnHand },
     revisionSource: snapshot.revisionSource
@@ -222,7 +227,23 @@ export function readDashboardPageSnapshotGeneration(): number {
   return dashboardPageSnapshotGeneration;
 }
 
+export function hasDashboardPurchaseSnapshot(): boolean {
+  return purchaseReturnPending && cachedDashboardPageSnapshot !== null;
+}
+
+export function validateDashboardPurchaseSnapshot(current: LibrarySyncPageStatus | null): void {
+  purchaseReturnPending = false;
+  const target = cachedDashboardPageSnapshot?.libraryTarget;
+  if (!target || !matchesWishlistPurchaseTarget(current, target)) {
+    // An unavailable status cannot authorize a paint. Keep the receipt for a scoped offline retry.
+    if (current) confirmedPurchases.clear();
+    cachedDashboardPageSnapshot = null;
+    dashboardPageSnapshotGeneration += 1;
+  }
+}
+
 export function clearDashboardPageSnapshot(): void {
+  purchaseReturnPending = false;
   confirmedPurchases.clear();
   cachedDashboardPageSnapshot = null;
   dashboardPageSnapshotGeneration += 1;
