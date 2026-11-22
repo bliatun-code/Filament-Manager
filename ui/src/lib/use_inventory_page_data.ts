@@ -389,19 +389,29 @@ export function useInventoryPageData({
         clientLibraryId,
         clientTargetGeneration,
       });
-      if (dataRequestIsCurrent("spools", requestId) &&
-          clientReadOnly && clientHostWritePaired && result.source !== "LIVE" &&
-          clientHostBaseUrl && clientLibraryId) {
-        const pairingRejected = await inventoryFallbackPairingRejected(clientHostBaseUrl, clientLibraryId);
-        if (dataRequestIsCurrent("spools", requestId) && pairingRejected) {
-          setClientHostWritePaired(false);
-        }
-      }
+      const pairingRejected = dataRequestIsCurrent("spools", requestId) &&
+        clientReadOnly && clientHostWritePaired && result.source !== "LIVE" &&
+        clientHostBaseUrl && clientLibraryId &&
+        await inventoryFallbackPairingRejected(clientHostBaseUrl, clientLibraryId);
+      // Another window can switch the persisted target while a live or fallback read is in flight.
+      const current = clientReadOnly && dataRequestIsCurrent("spools", requestId)
+        ? await loadLibrarySyncPageState()
+        : null;
       if (!dataRequestIsCurrent("spools", requestId)) {
         reportResult?.("spools", "SUPERSEDED");
         reportResult?.("locations", "SUPERSEDED");
         return;
       }
+      if (current && (
+        !current.clientReadOnly ||
+        current.clientHostBaseUrl !== clientHostBaseUrl ||
+        current.clientLibraryId !== clientLibraryId ||
+        current.clientTargetGeneration !== clientTargetGeneration
+      )) {
+        await resolveLibrarySyncRole();
+        return;
+      }
+      if (pairingRejected) setClientHostWritePaired(false);
       if (clientReadOnly) {
         const hasLastGoodSnapshot =
           clientInventorySourceRef.current === "LIVE" ||
@@ -470,6 +480,7 @@ export function useInventoryPageData({
     recordClientInventoryDomainSource,
     refreshClientInventoryPartial,
     reloadLocations,
+    resolveLibrarySyncRole,
     clientHostWritePaired,
     tauriAvailable,
   ]);

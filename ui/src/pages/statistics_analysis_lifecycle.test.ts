@@ -282,8 +282,8 @@ test("Statistics keeps its layout and last report visible while changing periods
                   mode: scenario.mode, host_base_url: "https://host.test", library_id: "test-library",
                   host_device_name: "Test Host", target_generation: 1, client_auth_paired: scenario.mode === "CLIENT",
                 };
-              case "save_library_sync_spool_cache":
-                return "2026-09-15T00:00:00Z";
+              case "fetch_library_sync_spool_snapshot":
+                return { rows: [], captured_at: "2026-09-15T00:00:00Z" };
               case "fetch_cached_library_sync_spools":
               case "fetch_cached_library_sync_printer_overview":
               case "fetch_cached_library_sync_loans":
@@ -298,7 +298,6 @@ test("Statistics keeps its layout and last report visible while changing periods
                 return printers;
               case "list_spools":
               case "list_loan_usage_by_person":
-              case "fetch_library_sync_spools":
               case "fetch_library_sync_loans":
                 return [];
               case "statistics_period_report":

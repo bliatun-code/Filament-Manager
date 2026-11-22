@@ -1,10 +1,10 @@
 import {
   fetchLibrarySyncDomainRevisions,
   fetchLibrarySyncSpools,
+  fetchLibrarySyncSpoolSnapshot,
   getLibraryDomainRevisions,
   type LibraryDomainRevisions,
   listSpools,
-  saveLibrarySyncSpoolCache,
   type SpoolWithMasterRow,
 } from "./tauri_client";
 import { resolveClientHostCacheTarget, resolveClientHostTarget } from "./host_write_target";
@@ -38,8 +38,7 @@ type SpoolRevision = Pick<LibraryDomainRevisions, "inventory" | "catalog">;
 type LoadAllSpoolRowsDependencies = {
   readRevision?: (options: SpoolDataSourceOptions) => Promise<SpoolRevision>;
   loadPage?: SpoolRowsPageLoader;
-  saveClientCache?: typeof saveLibrarySyncSpoolCache;
-  onCacheError?: (error: unknown) => void;
+  fetchHostSnapshot?: typeof fetchLibrarySyncSpoolSnapshot;
 };
 
 export async function loadSpoolRowsPage(
@@ -73,6 +72,14 @@ export async function loadSpoolSnapshot(
   limit = DEFAULT_SPOOL_PAGE_SIZE,
   dependencies: LoadAllSpoolRowsDependencies = {},
 ) {
+  const target = options.clientReadOnly ? resolveClientHostCacheTarget(options) : null;
+  if (target) {
+    const fetchSnapshot = dependencies.fetchHostSnapshot ?? fetchLibrarySyncSpoolSnapshot;
+    const snapshot = await fetchSnapshot(target.baseUrl, target.libraryId, target.targetGeneration);
+    return { rows: normalizeSpoolWithMasterRows(snapshot.rows), capturedAt: snapshot.captured_at };
+  }
+
+  // Local reads and live-only reads without a target generation do not write a Client cache.
   const rows = await loadAllSpoolRowsWithPageLoader(
     options,
     limit,
@@ -80,16 +87,7 @@ export async function loadSpoolSnapshot(
     MAX_LOAD_ALL_SPOOL_PAGES,
     dependencies.readRevision,
   );
-  const target = options.clientReadOnly ? resolveClientHostCacheTarget(options) : null;
-  if (!target) return { rows, capturedAt: null };
-  const save = dependencies.saveClientCache ?? saveLibrarySyncSpoolCache;
-  try {
-    const capturedAt = await save(rows, target.baseUrl, target.libraryId, target.targetGeneration);
-    return { rows, capturedAt };
-  } catch (error) {
-    (dependencies.onCacheError ?? console.warn)(error);
-    return { rows, capturedAt: null };
-  }
+  return { rows, capturedAt: null };
 }
 
 async function readSpoolRevision(options: SpoolDataSourceOptions): Promise<SpoolRevision> {

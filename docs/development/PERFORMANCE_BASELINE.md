@@ -24,7 +24,12 @@ bundle sizes.
 The 10,000-spool contract renders at most 200 list rows or 96 card groups at
 once. Complete pagination is separately covered by
 `ui/src/lib/spool_data_source.test.ts`, including the 10,000-row case with
-1,000-row pages.
+1,000-row pages. When the Client has a Host address, library ID and target
+generation, the shared full-list loader delegates pagination and offline storage
+to `fetch_library_sync_spool_snapshot`. Rows cross into the UI once, alongside
+the SQLite capture time. Inventory owns its scoped fallback and rechecks the
+target before displaying rows. The loan picker requires fresh Host rows.
+Native spool snapshot tests cover interrupted pagination and target switches.
 
 Loans, Printers, Inventory, and Statistics use `get_library_sync_page_status` to resolve
 the current role, pairing and Host target. `cargo test page_status` verifies

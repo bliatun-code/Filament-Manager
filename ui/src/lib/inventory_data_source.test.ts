@@ -124,8 +124,10 @@ test("loadInventorySpools uses the confirmed cache-write timestamp without readi
       clientTargetGeneration: 7,
     },
     {
-      loadRowsPage: async () => [spoolRow("live-spool", { status: "IN_USE" })],
-      saveClientCache: async () => "2026-04-01 10:00:00",
+      fetchHostSnapshot: async (...target) => {
+        assert.deepEqual(target, ["http://host", "library-1", 7]);
+        return { rows: [spoolRow("live-spool", { status: "IN_USE" })], captured_at: "2026-04-01 10:00:00" };
+      },
       fetchCachedSpools: async () => assert.fail("live inventory must not reread cached rows"),
     },
   );
@@ -146,13 +148,13 @@ test("loadInventorySpools falls back to cached client rows when host load fails"
       clientTargetGeneration: 7,
     },
     {
-      loadRowsPage: async () => {
+      fetchHostSnapshot: async () => {
         throw new Error("host unavailable");
       },
-      fetchCachedSpools: async () => ({
-        captured_at: "2026-04-01 11:00:00",
-        rows: [spoolRow("cached-spool", { status: "loaned out" })],
-      }),
+      fetchCachedSpools: async (...target) => {
+        assert.deepEqual(target, ["http://host", "library-1", 7]);
+        return { captured_at: "2026-04-01 11:00:00", rows: [spoolRow("cached-spool", { status: "loaned out" })] };
+      },
     },
   );
 
@@ -165,9 +167,9 @@ test("loadInventorySpools falls back to cached client rows when host load fails"
 
 test("loadInventorySpools reports offline when client host and cache are unavailable", async () => {
   const result = await loadInventorySpools(
-    { clientReadOnly: true, clientHostBaseUrl: "http://host", clientLibraryId: "library-1" },
+    { clientReadOnly: true, clientHostBaseUrl: "http://host", clientLibraryId: "library-1", clientTargetGeneration: 7 },
     {
-      loadRowsPage: async () => {
+      fetchHostSnapshot: async () => {
         throw new Error("host unavailable");
       },
       fetchCachedSpools: async () => null,
