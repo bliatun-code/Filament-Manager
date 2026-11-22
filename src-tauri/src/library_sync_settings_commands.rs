@@ -53,10 +53,17 @@ fn get_library_sync_page_status_blocking(
 pub(crate) async fn get_library_sync_settings(
     state: tauri::State<'_, AppState>,
     cache_domains: Option<Vec<LibrarySyncCacheDomain>>,
+    expected_generation: Option<u64>,
+    fetched_snapshot_at: Option<String>,
 ) -> Result<LibrarySyncSettingsRow, String> {
     let state = state.inner().clone();
     run_library_sync_blocking(move || {
-        get_library_sync_settings_blocking(&state, cache_domains.as_deref())
+        get_library_sync_settings_blocking(
+            &state,
+            cache_domains.as_deref(),
+            expected_generation,
+            fetched_snapshot_at.as_deref(),
+        )
     })
     .await
 }
@@ -64,11 +71,17 @@ pub(crate) async fn get_library_sync_settings(
 fn get_library_sync_settings_blocking(
     state: &AppState,
     cache_domains: Option<&[LibrarySyncCacheDomain]>,
+    expected_generation: Option<u64>,
+    fetched_snapshot_at: Option<&str>,
 ) -> Result<LibrarySyncSettingsRow, String> {
     if let Some(domains) = cache_domains {
         let _target_guard = lock_secure_credential_mutation()?;
         let settings = with_db(state, |db| {
-            db.get_library_sync_settings_for_domains(domains)
+            db.get_library_sync_settings_at_generation(
+                domains,
+                expected_generation,
+                fetched_snapshot_at,
+            )
         })?;
         return settings_with_secure_pairing_state(state, settings);
     }
@@ -514,7 +527,7 @@ mod tests {
             db.set_setting("low_stock_policy_json", "not-json")
         });
 
-        let damaged = get_library_sync_settings_blocking(&state, None)
+        let damaged = get_library_sync_settings_blocking(&state, None, None, None)
             .expect("settings remain available for policy repair");
         assert!(!damaged.low_stock_policy_valid);
 
@@ -547,8 +560,8 @@ mod tests {
     #[test]
     fn host_settings_bump_inventory_only_when_normalized_low_stock_policy_changes() {
         let state = test_state();
-        let initial =
-            get_library_sync_settings_blocking(&state, None).expect("load initial settings");
+        let initial = get_library_sync_settings_blocking(&state, None, None, None)
+            .expect("load initial settings");
         let initial_revision =
             with_test_database(&state, |db| db.library_domain_revisions()).inventory;
 
@@ -753,7 +766,7 @@ mod tests {
             .expect("read runtime")
             .is_none());
         assert!(
-            !get_library_sync_settings_blocking(&state, None)
+            !get_library_sync_settings_blocking(&state, None, None, None)
                 .expect("read settings")
                 .client_auth_paired
         );
@@ -804,7 +817,7 @@ mod tests {
             .expect("read runtime")
             .is_none());
         assert!(
-            !get_library_sync_settings_blocking(&state, None)
+            !get_library_sync_settings_blocking(&state, None, None, None)
                 .expect("read settings")
                 .client_auth_paired
         );
@@ -1085,7 +1098,7 @@ mod tests {
         store_library_sync_device_token_bytes(&state, host, &[0xff, 0xfe])
             .expect("store corrupt token fixture");
 
-        let settings = get_library_sync_settings_blocking(&state, None)
+        let settings = get_library_sync_settings_blocking(&state, None, None, None)
             .expect("settings remain available for repair");
         assert!(settings.client_auth_paired);
         assert!(load_library_sync_device_token_optional(&state, host).is_err());

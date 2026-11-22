@@ -38,6 +38,13 @@ loan-history read uses only its own cache for the original Host, library and
 generation. The page checks the target again before displaying any results.
 Period reports have no cached fallback.
 
+Settings opens and refreshes with cache-free sync settings, including the device
+name, validation status and low-stock policy. Client reads run concurrently.
+Failed printer, spool and summary reads select just their own saved data. The
+final settings read checks the target generation within the same SQLite
+transaction and recovers a newer summary if another request overtook this one.
+A target change restarts the load once.
+
 The Client dashboard paints its cached figures before contacting the Host. The
 following live refresh consumes that first read once, scoped to the same Host,
 library and target generation. Healthy refreshes request no cache lists. On a

@@ -7,11 +7,11 @@ import {
   listPrinterOverview,
   type BambuLiveIntegrationEntry,
   type LibrarySyncSettings,
+  type LibrarySyncCacheDomain,
   type LibrarySyncRemoteSnapshot,
   type MasterCatalogRow,
   type PrinterOverviewRow,
   type PrinterSettingsSnapshot,
-  type SpoolWithMasterRow,
 } from "./tauri_client";
 import { loadCatalogMasters } from "./catalog_data_source";
 import { mapBambuLiveIntegrations } from "./printer_data_source";
@@ -41,7 +41,7 @@ type SettingsPageDataDependencies = {
   loadSpoolRows?: typeof loadAllSpoolRows;
   fetchHostPrinterOverview?: typeof fetchLibrarySyncPrinterOverview;
   fetchHostPrinterSettings?: typeof fetchLibrarySyncPrinterSettings;
-  refreshHostSnapshot?: typeof refreshLibrarySyncSnapshot;
+  fetchHostSnapshot?: typeof fetchLibrarySyncSnapshot;
   listLocalPrinterOverview?: typeof listPrinterOverview;
   onHostLoadError?: (error: unknown) => void;
 };
@@ -79,162 +79,133 @@ function neutralPrinterSettingsSnapshot(): PrinterSettingsSnapshot {
 export async function loadSettingsPageData(
   dependencies: SettingsPageDataDependencies = {},
 ): Promise<SettingsPageData> {
-  const loadPrinterSettings = dependencies.loadPrinterSettings ?? getPrinterSettings;
-  const loadCatalogRows = dependencies.loadCatalogRows ?? loadCatalogMasters;
-  const loadSyncSettings = dependencies.loadSyncSettings ?? getLibrarySyncSettings;
-  const loadSpoolRows = dependencies.loadSpoolRows ?? loadAllSpoolRows;
-  const fetchHostPrinterOverview =
-    dependencies.fetchHostPrinterOverview ?? fetchLibrarySyncPrinterOverview;
-  const fetchHostPrinterSettings =
-    dependencies.fetchHostPrinterSettings ?? fetchLibrarySyncPrinterSettings;
-  const listLocalPrinterOverview = dependencies.listLocalPrinterOverview ?? listPrinterOverview;
-  const refreshHostSnapshot = dependencies.refreshHostSnapshot ?? refreshLibrarySyncSnapshot;
-  const onHostLoadError = dependencies.onHostLoadError ?? console.warn;
-
-  // The persisted library role is authoritative. Resolve it before touching
-  // local printer settings so a Client never reads its local shadow while the
-  // role is still unknown. Client data below comes from the Host or its
-  // target-bound cache, so a neutral local snapshot is sufficient.
-  const loadedSyncSettings = await loadSyncSettings();
-  const snapshot =
-    loadedSyncSettings.mode === "CLIENT"
-      ? neutralPrinterSettingsSnapshot()
-      : await loadPrinterSettings();
-  let syncSettings = loadedSyncSettings;
-  let librarySyncSnapshot = syncSettings.cached_snapshot ?? null;
-
-  let catalogRows: MasterCatalogRow[] = [];
-  let catalogRowsAvailable = false;
-  let overviewRows: PrinterOverviewRow[];
-  let spoolRows: SpoolWithMasterRow[];
-  // A client must never associate this device's local Bambu Live settings with
-  // printers loaded from the Host (or its cache). Host settings are not cached
-  // today, so fail closed until the target-bound Host endpoint succeeds.
-  let bambuLiveIntegrations =
-    syncSettings.mode === "CLIENT"
-      ? {}
-      : mapBambuLiveIntegrations(snapshot.bambu_live_integrations);
-  let revisionPollComplete = true;
-
-  if (syncSettings.mode === "CLIENT") {
-    revisionPollComplete = false;
-    const cachedPrinterRows = syncSettings.cached_printers?.rows ?? [];
-    const cachedSpoolRows = syncSettings.cached_spools?.rows ?? [];
-    spoolRows = cachedSpoolRows;
-    const hostTarget = resolveClientHostTarget({
-      clientHostBaseUrl: syncSettings.host_base_url,
-      clientLibraryId: syncSettings.library_id,
-    });
-    if (hostTarget) {
-      const [
-        hostCatalogRowsResult,
-        hostOverviewResult,
-        hostPrinterSettingsResult,
-        hostSpoolRowsResult,
-        hostSnapshotResult,
-      ] = await Promise.allSettled([
-        loadCatalogRows({
-          clientReadOnly: true,
-          clientHostBaseUrl: hostTarget.baseUrl,
-          clientLibraryId: hostTarget.libraryId,
-          limit: 5000,
-        }),
-        fetchHostPrinterOverview(hostTarget.baseUrl, hostTarget.libraryId),
-        fetchHostPrinterSettings(hostTarget.baseUrl, hostTarget.libraryId),
-        loadSpoolRows(
-          {
-            clientReadOnly: true,
-            clientHostBaseUrl: hostTarget.baseUrl,
-            clientLibraryId: hostTarget.libraryId,
-            clientTargetGeneration: syncSettings.target_generation ?? null,
-          },
-          1000,
-        ),
-        refreshHostSnapshot(
-          hostTarget.baseUrl,
-          hostTarget.libraryId,
-          syncSettings.target_generation,
-        ),
-      ]);
-
-      notifySettledErrors(
-        [
-          hostCatalogRowsResult,
-          hostOverviewResult,
-          hostPrinterSettingsResult,
-          hostSpoolRowsResult,
-          hostSnapshotResult,
-        ],
-        onHostLoadError,
-      );
-
-      if (hostCatalogRowsResult.status === "fulfilled") {
-        catalogRows = hostCatalogRowsResult.value;
-        catalogRowsAvailable = true;
-      }
-
-      if (hostOverviewResult.status === "fulfilled") {
-        overviewRows = hostOverviewResult.value;
-      } else {
-        overviewRows = cachedPrinterRows;
-      }
-
-      if (hostSpoolRowsResult.status === "fulfilled") {
-        spoolRows = hostSpoolRowsResult.value;
-      }
-
-      if (hostPrinterSettingsResult.status === "fulfilled") {
-        bambuLiveIntegrations = mapBambuLiveIntegrations(
-          hostPrinterSettingsResult.value.bambu_live_integrations,
-        );
-      }
-      if (hostSnapshotResult.status === "fulfilled") {
-        syncSettings = hostSnapshotResult.value.syncSettings;
-        librarySyncSnapshot = hostSnapshotResult.value.snapshot;
-      }
-      revisionPollComplete = [
-        hostCatalogRowsResult,
-        hostOverviewResult,
-        hostPrinterSettingsResult,
-        hostSpoolRowsResult,
-        hostSnapshotResult,
-      ].every((result) => result.status === "fulfilled");
-    } else {
-      overviewRows = cachedPrinterRows;
-    }
-  } else {
-    catalogRows = await loadCatalogRows({
-      clientReadOnly: false,
-      limit: 5000,
-    });
-    catalogRowsAvailable = true;
-    spoolRows =
-      syncSettings.low_stock_policy_valid === false
-        ? await loadSpoolRows(
-            {
-              clientReadOnly: false,
-            },
-            1000,
-          ).catch(() => [])
-        : await loadSpoolRows(
-            {
-              clientReadOnly: false,
-            },
-            1000,
-          );
-    overviewRows = await listLocalPrinterOverview();
+  const loadSettings = dependencies.loadSyncSettings ?? getLibrarySyncSettings;
+  let settings = await loadSettings([]);
+  // A changed target invalidates every reply, even a successful Host read.
+  for (let attempt = 0; attempt < 2; attempt++) {
+    const data = settings.mode === "CLIENT"
+      ? await loadClientSettings(settings, dependencies)
+      : await loadLocalSettings(settings, dependencies);
+    if (sameSettingsTarget(settings, data.syncSettings)) return data;
+    settings = data.syncSettings;
   }
+  // If the replacement also changed, show its identity without publishing
+  // rows or a summary from either discarded request. The next poll can retry.
+  return {
+    syncSettings: { ...settings, cached_snapshot: null },
+    librarySyncSnapshot: null,
+    snapshot: neutralPrinterSettingsSnapshot(),
+    overviewRows: [],
+    spoolRows: [],
+    catalogRows: [],
+    catalogRowsAvailable: false,
+    bambuLiveIntegrations: {},
+    revisionPollComplete: false,
+  };
+}
 
+function sameSettingsTarget(left: LibrarySyncSettings, right: LibrarySyncSettings) {
+  return left.mode === right.mode && left.host_base_url === right.host_base_url &&
+    left.library_id === right.library_id && left.target_generation === right.target_generation;
+}
+
+function latestSettingsSnapshot(settings: LibrarySyncSettings, fetched: LibrarySyncRemoteSnapshot | null) {
+  const saved = settings.cached_snapshot;
+  if (saved?.library_id === settings.library_id.trim() && saved.captured_at &&
+      (!fetched || saved.captured_at >= fetched.captured_at)) {
+    return saved;
+  }
+  return fetched;
+}
+
+// Checking reachability does not fetch a new summary. Keep the displayed
+// summary for a successful check and consult its cache only on failure.
+export async function settingsAfterHostCheck(
+  previous: LibrarySyncSettings | null,
+  succeeded: boolean,
+  loadSettings = getLibrarySyncSettings,
+) {
+  const current = await loadSettings(succeeded ? [] : ["snapshot"], previous?.target_generation);
+  if (!previous) return current;
+  if (!sameSettingsTarget(previous, current)) {
+    throw new Error("Host connection changed while validating.");
+  }
+  return succeeded ? { ...current, cached_snapshot: previous.cached_snapshot } : current;
+}
+
+async function loadClientSettings(
+  settings: LibrarySyncSettings,
+  dependencies: SettingsPageDataDependencies,
+): Promise<SettingsPageData> {
+  const {
+    loadSyncSettings = getLibrarySyncSettings,
+    loadCatalogRows = loadCatalogMasters,
+    fetchHostPrinterOverview = fetchLibrarySyncPrinterOverview,
+    fetchHostPrinterSettings = fetchLibrarySyncPrinterSettings,
+    loadSpoolRows = loadAllSpoolRows,
+    fetchHostSnapshot = fetchLibrarySyncSnapshot,
+    onHostLoadError = console.warn,
+  } = dependencies;
+  const target = resolveClientHostTarget({
+    clientHostBaseUrl: settings.host_base_url,
+    clientLibraryId: settings.library_id,
+  });
+  const options = {
+    clientReadOnly: true,
+    clientHostBaseUrl: target?.baseUrl,
+    clientLibraryId: target?.libraryId,
+    clientTargetGeneration: settings.target_generation,
+  };
+  const results = target ? await Promise.allSettled([
+    loadCatalogRows({ ...options, limit: 5000 }),
+    fetchHostPrinterOverview(target.baseUrl, target.libraryId),
+    fetchHostPrinterSettings(target.baseUrl, target.libraryId),
+    loadSpoolRows(options, 1000),
+    fetchHostSnapshot(target.baseUrl, target.libraryId),
+  ]) : null;
+  if (results) notifySettledErrors(results, onHostLoadError);
+  const [catalog, printers, printerSettings, spools, snapshot] = results ?? [];
+  const fallback: LibrarySyncCacheDomain[] = [];
+  if (printers?.status !== "fulfilled") fallback.push("printers");
+  if (spools?.status !== "fulfilled") fallback.push("spools");
+  if (snapshot?.status !== "fulfilled") fallback.push("snapshot");
+  const fetched = snapshot?.status === "fulfilled" ? snapshot.value : null;
+  const current = await loadSyncSettings(fallback, settings.target_generation, fetched?.captured_at);
+  const librarySyncSnapshot = latestSettingsSnapshot(current, fetched);
+  return {
+    snapshot: neutralPrinterSettingsSnapshot(),
+    catalogRows: catalog?.status === "fulfilled" ? catalog.value : [],
+    catalogRowsAvailable: catalog?.status === "fulfilled",
+    syncSettings: { ...current, cached_snapshot: librarySyncSnapshot },
+    librarySyncSnapshot,
+    overviewRows: printers?.status === "fulfilled" ? printers.value : current.cached_printers?.rows ?? [],
+    spoolRows: normalizeSpoolWithMasterRows(spools?.status === "fulfilled" ? spools.value : current.cached_spools?.rows ?? []),
+    bambuLiveIntegrations: printerSettings?.status === "fulfilled"
+      ? mapBambuLiveIntegrations(printerSettings.value.bambu_live_integrations) : {},
+    revisionPollComplete: results?.every(result => result.status === "fulfilled") ?? false,
+  };
+}
+
+async function loadLocalSettings(
+  settings: LibrarySyncSettings,
+  dependencies: SettingsPageDataDependencies,
+): Promise<SettingsPageData> {
+  const snapshot = await (dependencies.loadPrinterSettings ?? getPrinterSettings)();
+  const catalogRows = await (dependencies.loadCatalogRows ?? loadCatalogMasters)({ clientReadOnly: false, limit: 5000 });
+  const spools = (dependencies.loadSpoolRows ?? loadAllSpoolRows)({ clientReadOnly: false }, 1000);
+  const spoolRows = await (settings.low_stock_policy_valid === false ? spools.catch(() => []) : spools);
+  const overviewRows = await (dependencies.listLocalPrinterOverview ?? listPrinterOverview)();
+  const current = await (dependencies.loadSyncSettings ?? getLibrarySyncSettings)([]);
   return {
     snapshot,
     catalogRows,
-    catalogRowsAvailable,
-    syncSettings,
-    librarySyncSnapshot,
+    catalogRowsAvailable: true,
     overviewRows,
+    syncSettings: current,
+    librarySyncSnapshot: null,
     spoolRows: normalizeSpoolWithMasterRows(spoolRows),
-    bambuLiveIntegrations,
-    revisionPollComplete,
+    bambuLiveIntegrations: mapBambuLiveIntegrations(snapshot.bambu_live_integrations),
+    revisionPollComplete: true,
   };
 }
 
@@ -252,7 +223,7 @@ export async function refreshLibrarySyncSnapshot(
   );
 
   const snapshot = await fetchHostSnapshot(hostTarget.baseUrl, hostTarget.libraryId);
-  const syncSettings = await loadSyncSettings();
+  const syncSettings = await loadSyncSettings([], expectedTargetGeneration, snapshot.captured_at);
   const refreshedTarget =
     syncSettings.mode === "CLIENT"
       ? resolveClientHostTarget({
@@ -268,16 +239,6 @@ export async function refreshLibrarySyncSnapshot(
   ) {
     throw new Error("Host connection changed while the snapshot was refreshing.");
   }
-  const cachedSnapshot = syncSettings.cached_snapshot ?? null;
-  const resolvedSnapshot =
-    cachedSnapshot?.library_id === hostTarget.libraryId &&
-    cachedSnapshot.captured_at &&
-    cachedSnapshot.captured_at >= snapshot.captured_at
-      ? cachedSnapshot
-      : snapshot;
-
-  return {
-    snapshot: resolvedSnapshot,
-    syncSettings,
-  };
+  const latest = latestSettingsSnapshot(syncSettings, snapshot) ?? snapshot;
+  return { snapshot: latest, syncSettings: { ...syncSettings, cached_snapshot: latest } };
 }

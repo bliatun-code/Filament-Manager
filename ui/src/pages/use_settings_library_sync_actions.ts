@@ -3,7 +3,6 @@ import { clearDashboardPageSnapshot } from "../lib/dashboard_page_snapshot_cache
 import { toErrorMessage } from "../lib/error_text";
 import {
   clearLibrarySyncClientAuth,
-  getLibrarySyncSettings,
   pairLibrarySyncHost,
   saveLibrarySyncSettings,
   validateLibrarySyncHost,
@@ -13,7 +12,7 @@ import {
   type TrustedLanInterfaceOption,
   type TrustedLanCompanionStatus,
 } from "../lib/tauri_client";
-import { refreshLibrarySyncSnapshot } from "../lib/settings_data_source";
+import { refreshLibrarySyncSnapshot, settingsAfterHostCheck } from "../lib/settings_data_source";
 import { extractBaseUrlFromPairingInput } from "../lib/settings_utils";
 import { persistLibrarySyncDeviceName } from "./settings_library_device_name";
 import {
@@ -279,8 +278,9 @@ export function useSettingsLibrarySyncActions({
     setInfo(null);
     try {
       const result = await validateLibrarySyncHost(baseUrl, expectedLibraryId);
+      const refreshed = await settingsAfterHostCheck(librarySyncSettings,
+        result.ok && result.matches_library_id && (!result.pairing_checked || result.pairing_valid));
       setLibrarySyncValidation(result);
-      const refreshed = await getLibrarySyncSettings();
       setLibrarySyncSettings(refreshed);
       setLibrarySyncSnapshot(refreshed.cached_snapshot ?? null);
       if (result.ok && result.matches_library_id) {
@@ -513,10 +513,10 @@ export function useSettingsLibrarySyncActions({
         librarySyncHostBaseUrlDraft,
         librarySyncSettings.library_id,
       );
-      setLibrarySyncValidation(validation);
       if (!validation.ok || !validation.matches_library_id ||
           (validation.pairing_checked && !validation.pairing_valid)) {
-        const refreshed = await getLibrarySyncSettings();
+        const refreshed = await settingsAfterHostCheck(librarySyncSettings, false);
+        setLibrarySyncValidation(validation);
         setLibrarySyncSettings(refreshed);
         setLibrarySyncSnapshot(refreshed.cached_snapshot ?? null);
         return;
@@ -526,6 +526,7 @@ export function useSettingsLibrarySyncActions({
         librarySyncSettings.library_id,
         librarySyncSettings.target_generation,
       );
+      setLibrarySyncValidation(validation);
       setLibrarySyncSettings(refreshed.syncSettings);
       setLibrarySyncSnapshot(refreshed.snapshot);
       setInfo(buildLibrarySyncActionMessage("snapshotRefreshed", librarySyncActionMessageLabels()));

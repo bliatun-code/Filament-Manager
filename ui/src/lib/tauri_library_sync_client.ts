@@ -171,8 +171,12 @@ export async function getLibrarySyncPageStatus() {
 
 export type LibrarySyncCacheDomain = "snapshot" | "spools" | "printers" | "active_loans" | "loan_history" | "wishlist";
 
-export async function getLibrarySyncSettings(cacheDomains?: readonly LibrarySyncCacheDomain[]) {
-  return invoke<LibrarySyncSettings>("get_library_sync_settings", cacheDomains && { cacheDomains });
+export async function getLibrarySyncSettings(
+  cacheDomains?: readonly LibrarySyncCacheDomain[],
+  expectedGeneration?: number,
+  fetchedSnapshotAt?: string,
+) {
+  return invoke<LibrarySyncSettings>("get_library_sync_settings", cacheDomains && { cacheDomains, expectedGeneration, fetchedSnapshotAt });
 }
 
 export async function getLibraryDomainRevisions() {

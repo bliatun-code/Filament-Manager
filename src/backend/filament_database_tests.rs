@@ -89,6 +89,15 @@ fn assert_all_library_sync_host_caches_present(db: &FilamentDatabase) -> Result<
         .get_library_sync_settings()
         .map_err(|error| error.to_string())?;
     assert!(settings.cached_snapshot.is_some());
+    let overtaken = db
+        .get_library_sync_settings_at_generation(
+            &[],
+            Some(settings.target_generation),
+            Some("2000"),
+        )
+        .map_err(|error| error.to_string())?;
+    assert_eq!(overtaken.cached_snapshot, settings.cached_snapshot);
+    assert!(overtaken.cached_spools.is_none());
     assert_eq!(
         settings
             .cached_snapshot
