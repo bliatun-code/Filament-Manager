@@ -190,6 +190,7 @@ test("loadPrinterPageData ignores unscoped cache when host target is incomplete"
       clientReadOnly: true,
       clientHostBaseUrl: "",
       clientLibraryId: "library-1",
+      clientTargetGeneration: 7,
       supportedPrinterModels: ["Generic"],
     },
     {
@@ -199,7 +200,7 @@ test("loadPrinterPageData ignores unscoped cache when host target is incomplete"
       fetchHostSettings: async () => {
         throw new Error("host settings should not load without a complete target");
       },
-      loadHostSpools: async () => {
+      fetchHostSpoolSnapshot: async () => {
         throw new Error("host spools should not load without a complete target");
       },
       listLocalOverview: async () => {
@@ -244,12 +245,9 @@ test("loadPrinterPageData keeps fulfilled client spools when host overview fails
       fetchHostOverview: async () => {
         throw new Error("overview unavailable");
       },
-      loadHostSpools: async (options, limit, offset) => {
-        assert.equal(options.clientHostBaseUrl, "http://host");
-        assert.equal(options.clientLibraryId, "library-1");
-        assert.equal(limit, 1000);
-        assert.equal(offset, 0);
-        return [spoolRow("host-spool")];
+      fetchHostSpoolSnapshot: async (url, library, generation) => {
+        assert.deepEqual([url, library, generation], ["http://host", "library-1", 7]);
+        return { rows: [spoolRow("host-spool")], captured_at: "live-spools" };
       },
       fetchHostSettings: async () => printerSettingsSnapshot("printer-host"),
       fetchCachedOverview: async () => ({
@@ -285,7 +283,7 @@ test("loadPrinterPageData uses cached spool timestamp when spool data falls back
     },
     {
       fetchHostOverview: async () => [printerOverviewRow("printer-host")],
-      loadHostSpools: async () => {
+      fetchHostSpoolSnapshot: async () => {
         throw new Error("spools unavailable");
       },
       fetchHostSettings: async () => printerSettingsSnapshot("printer-host"),
@@ -308,7 +306,7 @@ test("loadPrinterPageData uses cached spool timestamp when spool data falls back
   assert.equal(errors.length, 1);
 });
 
-test("loadPrinterPageData timestamps the cache piece actually used during partial fallback", async () => {
+test("loadPrinterPageData reports offline when host and cache are unavailable", async () => {
   const result = await loadPrinterPageData(
     {
       clientReadOnly: true,
@@ -318,42 +316,10 @@ test("loadPrinterPageData timestamps the cache piece actually used during partia
       supportedPrinterModels: ["Generic"],
     },
     {
-      fetchHostOverview: async () => [printerOverviewRow("printer-host")],
-      loadHostSpools: async () => {
-        throw new Error("spools unavailable");
-      },
-      fetchHostSettings: async () => printerSettingsSnapshot("printer-host"),
-      fetchCachedOverview: async () => ({
-        captured_at: "printer-cache",
-        rows: [printerOverviewRow("unused-printer-cache")],
-      }),
-      fetchCachedSpools: async () => ({
-        captured_at: "spool-cache",
-        rows: [spoolRow("cached-spool")],
-      }),
-      onLoadError: () => {},
-    },
-  );
-
-  assert.equal(result.source, "CACHED");
-  assert.equal(result.updatedAt, "spool-cache");
-  assert.deepEqual(result.printers.map((entry) => entry.printer.id), ["printer-host"]);
-  assert.deepEqual(result.spools.map((entry) => entry.spool.id), ["cached-spool"]);
-});
-
-test("loadPrinterPageData reports offline when host and cache are unavailable", async () => {
-  const result = await loadPrinterPageData(
-    {
-      clientReadOnly: true,
-      clientHostBaseUrl: "http://host",
-      clientLibraryId: "library-1",
-      supportedPrinterModels: ["Generic"],
-    },
-    {
       fetchHostOverview: async () => {
         throw new Error("overview unavailable");
       },
-      loadHostSpools: async () => {
+      fetchHostSpoolSnapshot: async () => {
         throw new Error("spools unavailable");
       },
       fetchHostSettings: async () => {
@@ -395,15 +361,75 @@ test("loadPrinterPageData marks complete local and fully live host reads", async
       clientReadOnly: true,
       clientHostBaseUrl: "http://host",
       clientLibraryId: "library-1",
+      clientTargetGeneration: 7,
       supportedPrinterModels: ["Generic"],
     },
     {
       fetchHostOverview: async () => [printerOverviewRow("printer-host")],
-      loadHostSpools: async () => [spoolRow("spool-host")],
+      fetchHostSpoolSnapshot: async () => ({ rows: [spoolRow("spool-host")], captured_at: "saved" }),
       fetchHostSettings: async () => printerSettingsSnapshot("printer-host"),
       fetchCachedOverview: async () => null,
       fetchCachedSpools: async () => null,
     },
   );
   assert.equal(host.revisionPollComplete, true);
+});
+
+test("Client Printers reads only the failed domains from the original library's cache", async () => {
+  const target = ["http://host", "library-1", 7] as const;
+  for (const failed of [[], ["printers"], ["spools"], ["settings"], ["printers", "spools", "settings"]]) {
+    const reads: Array<[string, ...unknown[]]> = [];
+    const live = <T>(domain: string, value: T) =>
+      failed.includes(domain) ? Promise.reject(new Error(domain)) : Promise.resolve(value);
+    const result = await loadPrinterPageData({
+      clientReadOnly: true, clientHostBaseUrl: target[0], clientLibraryId: target[1],
+      clientTargetGeneration: target[2], supportedPrinterModels: ["Generic"],
+    }, {
+      fetchHostOverview: () => live("printers", [printerOverviewRow("live-printer")]),
+      fetchHostSpoolSnapshot: (...args) => {
+        reads.push(["snapshot", ...args]);
+        return live("spools", { rows: [spoolRow("live-spool")], captured_at: "live-time" });
+      },
+      fetchHostSettings: () => live("settings", printerSettingsSnapshot("live-printer")),
+      fetchCachedOverview: async (...args) => {
+        reads.push(["printers", ...args]);
+        return { rows: [printerOverviewRow("saved-printer")], captured_at: "printer-time" };
+      },
+      fetchCachedSpools: async (...args) => {
+        reads.push(["spools", ...args]);
+        return { rows: [spoolRow("saved-spool")], captured_at: "spool-time" };
+      },
+      onLoadError: () => {},
+    });
+    const cachedDomains = ["printers", "spools"].filter(domain => failed.includes(domain));
+    assert.deepEqual(reads, ["snapshot", ...cachedDomains].map(domain => [domain, ...target]));
+    assert.equal(result.source, cachedDomains.length ? "CACHED" : "LIVE");
+    assert.equal(result.revisionPollComplete, failed.length === 0);
+    assert.equal(result.printers[0].printer.id, failed.includes("printers") ? "saved-printer" : "live-printer");
+    assert.equal(result.spools[0].spool.id, failed.includes("spools") ? "saved-spool" : "live-spool");
+    assert.deepEqual(Object.keys(result.bambuLiveIntegrations), failed.includes("settings") ? [] : ["live-printer"]);
+    assert.equal(result.updatedAt, failed.includes("printers") ? "printer-time" : failed.includes("spools") ? "spool-time" : "live-time");
+  }
+});
+
+test("empty live and saved lists retain their source, including when a live cache write failed", async () => {
+  const options = { clientReadOnly: true, clientHostBaseUrl: "http://host", clientLibraryId: "library-1",
+    clientTargetGeneration: 7, supportedPrinterModels: ["Generic"] };
+  for (const online of [true, false]) {
+    const reads: string[] = [];
+    const unavailable = () => Promise.reject(new Error("Host unavailable"));
+    const result = await loadPrinterPageData(options, {
+      fetchHostOverview: () => online ? Promise.resolve([]) : unavailable(),
+      fetchHostSpoolSnapshot: () => online ? Promise.resolve({ rows: [], captured_at: null }) : unavailable(),
+      fetchHostSettings: () => online ? Promise.resolve(printerSettingsSnapshot("host")) : unavailable(),
+      fetchCachedOverview: async () => { reads.push("printers"); return { rows: [], captured_at: "saved" }; },
+      fetchCachedSpools: async () => { reads.push("spools"); return { rows: [], captured_at: "saved" }; },
+      onLoadError: () => {},
+    });
+    assert.deepEqual(reads, online ? [] : ["printers", "spools"]);
+    assert.deepEqual(result.spools, []);
+    assert.deepEqual(result.printers, []);
+    assert.equal(result.source, online ? "LIVE" : "CACHED");
+    assert.equal(result.updatedAt, online ? null : "saved");
+  }
 });

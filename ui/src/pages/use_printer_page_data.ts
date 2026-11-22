@@ -10,6 +10,7 @@ import {
   loadPrinterPageData,
   type PrinterSnapshotSource,
 } from "../lib/printer_data_source";
+import { loadLibrarySyncPageState } from "../lib/library_sync_state";
 import { loadCatalogMasters } from "../lib/catalog_data_source";
 import {
   createLibraryRevisionTracker,
@@ -39,6 +40,7 @@ type UsePrinterPageDataInput = {
   supportedPrinterModels: string[];
   loadErrorMessage: string;
   onInteractiveReload: () => void;
+  onTargetChanged: () => void;
 };
 
 const PRINTER_REVISION_DOMAINS = [
@@ -72,6 +74,7 @@ export function usePrinterPageData({
   supportedPrinterModels,
   loadErrorMessage,
   onInteractiveReload,
+  onTargetChanged,
 }: UsePrinterPageDataInput): UsePrinterPageDataResult {
   const {
     beginRefresh,
@@ -147,7 +150,18 @@ export function usePrinterPageData({
           console.warn("Failed to load master catalog for printer assistance.", catalogLoadError);
         }
       }
+      // The selected library can change in another window during a Host or cache read.
+      const current = clientReadOnly && requestIsCurrent() ? await loadLibrarySyncPageState() : null;
       if (!requestIsCurrent()) {
+        return { succeeded: false, revisionPollComplete: false };
+      }
+      if (current && (
+        !current.clientReadOnly ||
+        current.clientHostBaseUrl !== clientHostBaseUrl ||
+        current.clientLibraryId !== clientLibraryId ||
+        current.clientTargetGeneration !== clientTargetGeneration
+      )) {
+        onTargetChanged();
         return { succeeded: false, revisionPollComplete: false };
       }
       if (loadedCatalogMasters) {
@@ -191,6 +205,7 @@ export function usePrinterPageData({
     failRefresh,
     loadErrorMessage,
     onInteractiveReload,
+    onTargetChanged,
     supportedPrinterModels,
     tauri,
   ]);
