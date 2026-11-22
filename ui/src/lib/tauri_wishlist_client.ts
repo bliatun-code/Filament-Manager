@@ -1,4 +1,5 @@
 import { invoke } from "./tauri_invoke";
+import type { LibrarySyncPageStatus } from "./tauri_library_sync_client";
 import type { PurchaseReceiptMetadata } from "./purchase_receipt_metadata";
 
 export type WishlistItemRow = {
@@ -21,6 +22,16 @@ export type WishlistPurchaseTarget = {
   host_base_url: string | null;
   target_generation: number;
 };
+
+export function matchesWishlistPurchaseTarget(
+  current: Pick<LibrarySyncPageStatus, keyof WishlistPurchaseTarget> | null | undefined,
+  reviewed: WishlistPurchaseTarget,
+): boolean {
+  return !!current && current.mode === reviewed.mode &&
+    current.library_id?.trim() === reviewed.library_id &&
+    (current.host_base_url ?? null) === reviewed.host_base_url &&
+    current.target_generation === reviewed.target_generation;
+}
 
 export type CreateWishlistItemInput = {
   id: string;

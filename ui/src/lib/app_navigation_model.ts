@@ -1,3 +1,4 @@
+import type { WishlistPurchaseTarget } from "./tauri_wishlist_client";
 import { desktopVisualQaInitialPage } from "./desktop_visual_qa_scenario";
 
 export const APP_PAGE_ORDER = [
@@ -33,6 +34,7 @@ export type InventoryNavigationIntent =
   | {
       kind: "PURCHASES";
       notice?: "CREATED" | "REUSED";
+      purchaseTarget?: WishlistPurchaseTarget;
       seq: number;
       status: "WISHLIST" | "ON_ORDER";
     }

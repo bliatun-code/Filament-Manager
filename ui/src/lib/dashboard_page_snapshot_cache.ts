@@ -10,6 +10,7 @@ import type { BambuLiveIntegrationEntry, PrinterOverviewRow, TrustedLanCompanion
 import type { DashboardSyncSource } from "./dashboard_data_source";
 import { sanitizeDashboardBambuLiveIntegrations, type DashboardStockPreviewRow } from "./dashboard_overview_data";
 import type { DashboardBambuLiveAttention } from "./dashboard_bambu_live_attention";
+import { matchesWishlistPurchaseTarget, type WishlistPurchaseTarget } from "./tauri_wishlist_client";
 import type { DashboardActionItem } from "./dashboard_action_model";
 
 export type DashboardPageSnapshot = {
@@ -60,6 +61,44 @@ let cachedDashboardPageSnapshot: DashboardPageSnapshot | null = null;
 let dashboardPageSnapshotGeneration = 0;
 let dashboardPageSnapshotRequestSequence = 0;
 let latestAcceptedDashboardPageSnapshotRequestSequence = 0;
+
+const confirmedPurchases = new Map<string, WishlistPurchaseTarget>();
+
+export function remainingDashboardSuggestions(items: DashboardActionItem[]): DashboardActionItem[] {
+  if (!confirmedPurchases.size) return items;
+  return items.filter((item) => {
+    if (item.kind !== "LOW_STOCK") return true;
+    const target = confirmedPurchases.get(item.id);
+    return !target || !matchesWishlistPurchaseTarget(item.purchaseTarget, target);
+  });
+}
+
+export function recordDashboardPurchase(id: string, target: WishlistPurchaseTarget): void {
+  confirmedPurchases.set(id, target);
+  // A refresh that started before the acknowledgement may still carry the old wishlist.
+  latestAcceptedDashboardPageSnapshotRequestSequence = beginDashboardPageSnapshotRequest().sequence;
+  if (cachedDashboardPageSnapshot?.actionItems) {
+    cachedDashboardPageSnapshot.actionItems = remainingDashboardSuggestions(cachedDashboardPageSnapshot.actionItems);
+  }
+}
+
+function acceptsSnapshotRequest(request: DashboardPageSnapshotRequest): boolean {
+  return request.generation === dashboardPageSnapshotGeneration &&
+    request.sequence >= latestAcceptedDashboardPageSnapshotRequestSequence;
+}
+
+export function reconcileDashboardPurchaseActions(
+  items: DashboardActionItem[],
+  freshWishlistTarget: WishlistPurchaseTarget | undefined,
+  request: DashboardPageSnapshotRequest,
+): DashboardActionItem[] {
+  if (freshWishlistTarget && acceptsSnapshotRequest(request)) {
+    for (const [id, target] of confirmedPurchases) {
+      if (matchesWishlistPurchaseTarget(freshWishlistTarget, target)) confirmedPurchases.delete(id);
+    }
+  }
+  return remainingDashboardSuggestions(items);
+}
 
 function cloneDashboardActionItem(item: DashboardActionItem): DashboardActionItem {
   if (item.kind === "LOW_STOCK") {
@@ -153,10 +192,7 @@ export function writeDashboardPageSnapshot(
   snapshot: DashboardPageSnapshot,
   request = beginDashboardPageSnapshotRequest(),
 ): boolean {
-  if (
-    request.generation !== dashboardPageSnapshotGeneration ||
-    request.sequence < latestAcceptedDashboardPageSnapshotRequestSequence
-  ) {
+  if (!acceptsSnapshotRequest(request)) {
     return false;
   }
   cachedDashboardPageSnapshot = cloneDashboardPageSnapshot(snapshot);
@@ -187,6 +223,7 @@ export function readDashboardPageSnapshotGeneration(): number {
 }
 
 export function clearDashboardPageSnapshot(): void {
+  confirmedPurchases.clear();
   cachedDashboardPageSnapshot = null;
   dashboardPageSnapshotGeneration += 1;
 }

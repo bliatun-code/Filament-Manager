@@ -19,6 +19,7 @@ import {
   type InventoryOverview,
   type TrustedLanCompanionStatus,
   type WishlistItemRow,
+  type WishlistPurchaseTarget,
   type BambuLiveIntegrationEntry,
   type PrinterOverviewRow,
 } from "./tauri_client";
@@ -72,6 +73,7 @@ export type DashboardDataLoadResult = {
   lowStockPreview: DashboardStockPreviewRow[];
   lowStockPreviewAvailable: boolean;
   actionItems: DashboardActionItem[];
+  freshWishlistTarget?: WishlistPurchaseTarget;
   bambuLiveAttention: DashboardBambuLiveAttention[];
   derived: DashboardDerivedState;
   libraryId: string | null;
@@ -508,6 +510,7 @@ async function readDashboardData(
       bambuLiveIntegrations: syncSource === "client-live" ? clientLiveIntegrations : [],
       lowStockPreview: buildDashboardLowStockPreview(normalizedClientSpoolRows ?? []),
       lowStockPreviewAvailable: normalizedClientSpoolRows != null,
+      freshWishlistTarget: clientWishlistLive ? purchaseTarget : undefined,
       actionItems: buildDashboardActionItems({
         purchaseTarget,
         bambuLiveAttention: [],
@@ -577,6 +580,7 @@ async function readDashboardData(
     bambuLiveIntegrations: sanitizeDashboardBambuLiveIntegrations(printerSettings?.bambu_live_integrations ?? []),
     lowStockPreview: buildDashboardLowStockPreview(spoolRows),
     lowStockPreviewAvailable: true,
+    freshWishlistTarget: purchaseTarget,
     actionItems: buildDashboardActionItems({
       purchaseTarget,
       bambuLiveAttention,

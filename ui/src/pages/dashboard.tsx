@@ -17,6 +17,7 @@ import {
   DASHBOARD_PURCHASE_TARGET_CHANGED,
   DASHBOARD_PURCHASE_HOST_TARGET_REQUIRED,
 } from "../lib/dashboard_action_model";
+import type { WishlistPurchaseTarget } from "../lib/tauri_wishlist_client";
 import type { createDashboardLowStockPurchaseCoordinator } from "../lib/dashboard_low_stock_purchase";
 import type {
   DashboardActionItem,
@@ -63,6 +64,7 @@ type DashboardPageProps = {
   onOpenPurchases?: (
     status: "WISHLIST" | "ON_ORDER",
     notice?: "CREATED" | "REUSED",
+    purchaseTarget?: WishlistPurchaseTarget,
   ) => void;
 };
 
@@ -93,6 +95,7 @@ export default function DashboardPage({
     clientHostNeedsRepair,
     clientHostPaired,
     companionStatus,
+    confirmPurchase,
     dashboardSyncMode,
     error,
     goalMetrics,
@@ -301,6 +304,11 @@ export default function DashboardPage({
     () => new Set(),
   );
   const [actionMessage, setActionMessage] = useState<string | null>(null);
+  const dashboardMounted = useRef(false);
+  useEffect(() => {
+    dashboardMounted.current = true;
+    return () => { dashboardMounted.current = false; };
+  }, []);
   const [actionError, setActionError] = useState<string | null>(null);
   const [lowStockPreferences, setLowStockPreferences] =
     useState<DashboardLowStockPreferences>(() => ({ hiddenProductKeys: [] }));
@@ -363,25 +371,17 @@ export default function DashboardPage({
         const { createDashboardLowStockPurchaseCoordinator } = await import("../lib/dashboard_low_stock_purchase");
         const coordinator = purchaseCoordinator.current ??= createDashboardLowStockPurchaseCoordinator();
         const result = await coordinator.enqueue(item.candidate, item.purchaseTarget);
-        if (result.kind === "CREATED") {
-          await refreshDashboard();
-          // A completed purchase belongs to the reviewed library even if another window has moved on.
-          if (!item.purchaseTarget || !(await coordinator.isTargetCurrent(item.purchaseTarget))) return;
-          setActionMessage(
-            t(
-              "dashboard.actionPurchaseAdded",
-              "Added to the wishlist. Opening Purchases.",
-            ),
-          );
-        } else {
-          setActionMessage(
-            t(
-              "dashboard.actionPurchaseReused",
-              "An open purchase already exists. Reusing it and opening Purchases.",
-            ),
-          );
+        const target = item.purchaseTarget;
+        if (!target || !(await coordinator.isTargetCurrent(target))) {
+          if (dashboardMounted.current) await refreshDashboard();
+          return;
         }
-        onOpenPurchases?.(result.status, result.kind);
+        confirmPurchase(item.id, target);
+        if (!dashboardMounted.current) return;
+        setActionMessage(result.kind === "CREATED"
+          ? t("dashboard.actionPurchaseAdded", "Added to the wishlist. Opening Purchases.")
+          : t("dashboard.actionPurchaseReused", "An open purchase already exists. Reusing it and opening Purchases."));
+        onOpenPurchases?.(result.status, result.kind, target);
       } catch (purchaseError) {
         if (purchaseError instanceof Error && purchaseError.message === DASHBOARD_PURCHASE_TARGET_CHANGED) {
           await refreshDashboard();
@@ -419,7 +419,7 @@ export default function DashboardPage({
         });
       }
     },
-    [onOpenPurchases, refreshDashboard, t],
+    [confirmPurchase, onOpenPurchases, refreshDashboard, t],
   );
 
   const loadErrorBanner = error ? (

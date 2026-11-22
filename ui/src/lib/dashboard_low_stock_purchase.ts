@@ -11,6 +11,7 @@ import { resolveClientHostTarget } from "./host_write_target";
 import {
   fetchLibrarySyncWishlistItems,
   getLibrarySyncPageStatus,
+  matchesWishlistPurchaseTarget,
   listWishlistItems,
   type CreateWishlistItemInput,
   type LibrarySyncPageStatus,
@@ -126,8 +127,7 @@ export function createDashboardLowStockPurchaseCoordinator(
 
   const checkedOptions = async (target: WishlistPurchaseTarget): Promise<WishlistDataSourceOptions> => {
     const status = await loadStatus();
-    if (status.mode !== target.mode || status.library_id.trim() !== target.library_id ||
-        (status.host_base_url ?? null) !== target.host_base_url || status.target_generation !== target.target_generation) {
+    if (!matchesWishlistPurchaseTarget(status, target)) {
       throw new Error(DASHBOARD_PURCHASE_TARGET_CHANGED);
     }
     return resolveDashboardPurchaseDataSourceOptions(status);
