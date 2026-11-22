@@ -529,6 +529,7 @@ export function useSettingsLibrarySyncActions({
       setLibrarySyncValidation(validation);
       setLibrarySyncSettings(refreshed.syncSettings);
       setLibrarySyncSnapshot(refreshed.snapshot);
+      if (!refreshed.ok) throw refreshed.error;
       setInfo(buildLibrarySyncActionMessage("snapshotRefreshed", librarySyncActionMessageLabels()));
     } catch (snapshotError) {
       console.error(snapshotError);

@@ -51,10 +51,10 @@ type LibrarySyncSnapshotRefreshDependencies = {
   loadSyncSettings?: typeof getLibrarySyncSettings;
 };
 
-export type LibrarySyncSnapshotRefreshResult = {
-  snapshot: LibrarySyncRemoteSnapshot;
-  syncSettings: LibrarySyncSettings;
-};
+type LibrarySyncSnapshotRefreshResult = { syncSettings: LibrarySyncSettings } & (
+  | { ok: true; snapshot: LibrarySyncRemoteSnapshot }
+  | { ok: false; snapshot: LibrarySyncRemoteSnapshot | null; error: unknown }
+);
 
 function notifySettledErrors(
   results: PromiseSettledResult<unknown>[],
@@ -222,8 +222,11 @@ export async function refreshLibrarySyncSnapshot(
     "Host snapshot requires a configured host and library id.",
   );
 
-  const snapshot = await fetchHostSnapshot(hostTarget.baseUrl, hostTarget.libraryId);
-  const syncSettings = await loadSyncSettings([], expectedTargetGeneration, snapshot.captured_at);
+  const [read] = await Promise.allSettled([fetchHostSnapshot(hostTarget.baseUrl, hostTarget.libraryId)]);
+  const fetched = read.status === "fulfilled" ? read.value : null;
+  const syncSettings = await loadSyncSettings(
+    fetched ? [] : ["snapshot"], expectedTargetGeneration, fetched?.captured_at,
+  );
   const refreshedTarget =
     syncSettings.mode === "CLIENT"
       ? resolveClientHostTarget({
@@ -239,6 +242,10 @@ export async function refreshLibrarySyncSnapshot(
   ) {
     throw new Error("Host connection changed while the snapshot was refreshing.");
   }
-  const latest = latestSettingsSnapshot(syncSettings, snapshot) ?? snapshot;
-  return { snapshot: latest, syncSettings: { ...syncSettings, cached_snapshot: latest } };
+  const latest = latestSettingsSnapshot(syncSettings, fetched);
+  const metadata = { ...syncSettings, cached_snapshot: latest };
+  if (read.status === "rejected") {
+    return { ok: false, snapshot: latest, syncSettings: metadata, error: read.reason };
+  }
+  return { ok: true, snapshot: latest ?? read.value, syncSettings: metadata };
 }

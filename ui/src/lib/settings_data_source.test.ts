@@ -494,8 +494,28 @@ test("manual refresh returns the committed Host snapshot and reloads metadata on
       return current;
     },
   });
+  assert.ok(result.ok);
   assert.equal(result.snapshot, snapshot);
   assert.equal(result.syncSettings.cached_snapshot, snapshot);
+});
+
+test("manual refresh retains the same Host summary and reports a failed snapshot request", async () => {
+  const cached = remoteSnapshot();
+  const failure = new Error("summary endpoint unavailable");
+  for (const saved of [cached, null]) {
+    const result = await refreshLibrarySyncSnapshot("http://host", cached.library_id, 7, {
+      fetchHostSnapshot: async () => { throw failure; },
+      loadSyncSettings: async (domains, generation) => {
+        assert.deepEqual(domains, ["snapshot"]);
+        assert.equal(generation, 7);
+        return { ...pairedSettings, cached_snapshot: saved };
+      },
+    });
+    assert.equal(result.ok, false);
+    assert.equal(result.snapshot, saved);
+    assert.equal(result.syncSettings.cached_snapshot, saved);
+    assert.equal(result.error, failure);
+  }
 });
 
 test("snapshot refresh accepts a newer saved summary only from the same library", async () => {
@@ -514,6 +534,7 @@ test("snapshot refresh accepts a newer saved summary only from the same library"
         return { ...pairedSettings, cached_snapshot: saved };
       },
     });
+    assert.ok(result.ok);
     assert.equal(result.snapshot.device_name, expected);
     assert.equal(result.syncSettings.cached_snapshot, result.snapshot);
   }
