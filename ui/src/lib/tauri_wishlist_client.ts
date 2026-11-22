@@ -15,6 +15,13 @@ export type WishlistItemRow = {
   updated_at: string;
 };
 
+export type WishlistPurchaseTarget = {
+  mode: string;
+  library_id: string;
+  host_base_url: string | null;
+  target_generation: number;
+};
+
 export type CreateWishlistItemInput = {
   id: string;
   master_id?: string | null;
@@ -52,19 +59,21 @@ export async function listWishlistItems(limit = 500) {
   return invoke<WishlistItemRow[]>("list_wishlist_items", { limit });
 }
 
-export async function createWishlistItem(input: CreateWishlistItemInput) {
-  return invoke<void>("create_wishlist_item", { input });
+export async function createWishlistItem(input: CreateWishlistItemInput, expectedTarget?: WishlistPurchaseTarget) {
+  return invoke<void>("create_wishlist_item", { input, ...(expectedTarget && { expectedTarget }) });
 }
 
 export async function createLibrarySyncHostWishlistItem(
   baseUrl: string,
   expectedLibraryId: string | null | undefined,
   input: CreateWishlistItemInput,
+  expectedGeneration?: number | null,
 ) {
   return invoke<void>("create_library_sync_host_wishlist_item", {
     input: {
       base_url: baseUrl,
       expected_library_id: expectedLibraryId ?? null,
+      ...(expectedGeneration != null && { expected_target_generation: expectedGeneration }),
       master_id: input.master_id ?? null,
       vendor: input.vendor,
       material: input.material,
@@ -153,12 +162,14 @@ export async function fetchLibrarySyncWishlistItems(
   baseUrl: string,
   expectedLibraryId: string | null | undefined,
   limit = 500,
+  expectedGeneration?: number | null,
 ) {
   return invoke<WishlistItemRow[]>("fetch_library_sync_wishlist_items", {
     input: {
       base_url: baseUrl,
       expected_library_id: expectedLibraryId ?? null,
       limit,
+      ...(expectedGeneration != null && { expected_target_generation: expectedGeneration }),
     },
   });
 }

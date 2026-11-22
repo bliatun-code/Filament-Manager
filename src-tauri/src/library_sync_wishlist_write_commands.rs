@@ -12,8 +12,9 @@ use crate::library_sync_cache_refresh::{
 };
 use crate::library_sync_command_support::{
     encode_library_sync_path_segment, library_sync_host_input, prepare_library_sync_host_write,
-    purchase_receipt_metadata_has_values, require_host_purchase_receipt_metadata_capability,
-    save_library_sync_success, trimmed_non_empty,
+    prepare_library_sync_host_write_for_generation, purchase_receipt_metadata_has_values,
+    require_host_purchase_receipt_metadata_capability, save_library_sync_success,
+    trimmed_non_empty,
 };
 use crate::library_sync_host_client::{
     library_sync_host_error_code, perform_library_sync_host_write,
@@ -40,12 +41,16 @@ pub(crate) async fn create_library_sync_host_wishlist_item(
     .await
 }
 
-fn create_library_sync_host_wishlist_item_blocking(
+pub(crate) fn create_library_sync_host_wishlist_item_blocking(
     state: &AppState,
     input: LibrarySyncCreateWishlistItemInput,
 ) -> Result<(), String> {
     let host_input = library_sync_host_input(&input.base_url, input.expected_library_id.as_deref());
-    let (_, _, target) = prepare_library_sync_host_write(state, &host_input)?;
+    let (_, _, target) = prepare_library_sync_host_write_for_generation(
+        state,
+        &host_input,
+        input.expected_target_generation,
+    )?;
 
     perform_library_sync_host_write(
         state,

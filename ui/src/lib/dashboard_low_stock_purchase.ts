@@ -1,5 +1,8 @@
 import {
   dashboardPurchaseCandidateKey,
+  DASHBOARD_PURCHASE_CLIENT_PAIRING_REQUIRED,
+  DASHBOARD_PURCHASE_HOST_TARGET_REQUIRED,
+  DASHBOARD_PURCHASE_TARGET_CHANGED,
   findOpenPurchaseDuplicate,
   type DashboardOpenPurchaseDuplicate,
   type DashboardPurchaseCandidate,
@@ -7,10 +10,11 @@ import {
 import { resolveClientHostTarget } from "./host_write_target";
 import {
   fetchLibrarySyncWishlistItems,
-  getLibrarySyncSettings,
+  getLibrarySyncPageStatus,
   listWishlistItems,
   type CreateWishlistItemInput,
-  type LibrarySyncSettings,
+  type LibrarySyncPageStatus,
+  type WishlistPurchaseTarget,
   type WishlistItemRow,
 } from "./tauri_client";
 import {
@@ -18,10 +22,6 @@ import {
   type WishlistDataSourceOptions,
 } from "./wishlist_data_source";
 
-export const DASHBOARD_PURCHASE_CLIENT_PAIRING_REQUIRED =
-  "Pair this desktop client with its host before adding a purchase.";
-export const DASHBOARD_PURCHASE_HOST_TARGET_REQUIRED =
-  "Host connection details are missing for this purchase action.";
 export const DASHBOARD_PURCHASE_MODE_UNSUPPORTED =
   "The active library mode is not supported for this purchase action.";
 
@@ -40,7 +40,7 @@ type DashboardLowStockPurchaseDependencies = {
   ) => Promise<void>;
   createId?: () => string;
   loadItems?: (options: WishlistDataSourceOptions) => Promise<WishlistItemRow[]>;
-  loadSettings?: () => Promise<LibrarySyncSettings>;
+  loadStatus?: typeof getLibrarySyncPageStatus;
 };
 
 function defaultWishlistId(): string {
@@ -53,7 +53,7 @@ function defaultWishlistId(): string {
 
 export function resolveDashboardPurchaseDataSourceOptions(
   settings: Pick<
-    LibrarySyncSettings,
+    LibrarySyncPageStatus,
     "mode" | "client_auth_paired" | "host_base_url" | "library_id"
   >,
 ): WishlistDataSourceOptions {
@@ -109,6 +109,7 @@ async function loadFreshWishlistItems(
       hostTarget.baseUrl,
       hostTarget.libraryId,
       options.limit ?? 500,
+      options.reviewedTarget?.target_generation,
     );
   }
   return listWishlistItems(options.limit ?? 500);
@@ -116,30 +117,39 @@ async function loadFreshWishlistItems(
 
 export function createDashboardLowStockPurchaseCoordinator(
   dependencies: DashboardLowStockPurchaseDependencies = {},
-): {
-  enqueue: (
-    candidate: DashboardPurchaseCandidate,
-  ) => Promise<DashboardLowStockPurchaseResult>;
-} {
-  const loadSettings = dependencies.loadSettings ?? getLibrarySyncSettings;
+) {
+  const loadStatus = dependencies.loadStatus ?? getLibrarySyncPageStatus;
   const loadItems = dependencies.loadItems ?? loadFreshWishlistItems;
   const createEntry = dependencies.createEntry ?? createWishlistEntry;
   const createId = dependencies.createId ?? defaultWishlistId;
   const inFlight = new Map<string, Promise<DashboardLowStockPurchaseResult>>();
 
+  const checkedOptions = async (target: WishlistPurchaseTarget): Promise<WishlistDataSourceOptions> => {
+    const status = await loadStatus();
+    if (status.mode !== target.mode || status.library_id.trim() !== target.library_id ||
+        (status.host_base_url ?? null) !== target.host_base_url || status.target_generation !== target.target_generation) {
+      throw new Error(DASHBOARD_PURCHASE_TARGET_CHANGED);
+    }
+    return resolveDashboardPurchaseDataSourceOptions(status);
+  };
+
   const enqueue = (
     candidate: DashboardPurchaseCandidate,
+    target: WishlistPurchaseTarget | undefined,
   ): Promise<DashboardLowStockPurchaseResult> => {
-    const productKey = dashboardPurchaseCandidateKey(candidate);
+    if (!target) return Promise.reject(new Error(DASHBOARD_PURCHASE_TARGET_CHANGED));
+    const productKey = JSON.stringify([
+      target.mode, target.host_base_url, target.library_id, target.target_generation, dashboardPurchaseCandidateKey(candidate),
+    ]);
     const existing = inFlight.get(productKey);
     if (existing) {
       return existing;
     }
 
     const operation = (async (): Promise<DashboardLowStockPurchaseResult> => {
-      const settings = await loadSettings();
-      const options = resolveDashboardPurchaseDataSourceOptions(settings);
+      const options = { ...await checkedOptions(target), reviewedTarget: target };
       const currentItems = await loadItems(options);
+      await checkedOptions(target);
       const duplicate = findOpenPurchaseDuplicate(candidate, currentItems);
       if (duplicate) {
         return { ...duplicate, kind: "REUSED" };
@@ -159,5 +169,8 @@ export function createDashboardLowStockPurchaseCoordinator(
     return operation;
   };
 
-  return { enqueue };
+  return {
+    enqueue,
+    isTargetCurrent: (target: WishlistPurchaseTarget) => checkedOptions(target).then(() => true, () => false),
+  };
 }

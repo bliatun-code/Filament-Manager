@@ -16,6 +16,7 @@ import {
   type UpdateWishlistStatusInput,
   type WishlistItemRow,
   type WishlistReceiptResult,
+  type WishlistPurchaseTarget,
 } from "./tauri_client";
 import {
   requireClientHostWriteTarget,
@@ -29,6 +30,7 @@ export type WishlistDataSourceOptions = {
   clientHostBaseUrl?: string | null;
   clientLibraryId?: string | null;
   clientTargetGeneration?: number | null;
+  reviewedTarget?: WishlistPurchaseTarget;
   limit?: number;
 };
 
@@ -353,11 +355,11 @@ export async function createWishlistEntry(
       options,
       missingWishlistHostTargetMessage,
     );
-    await createHostWishlistItem(hostTarget.baseUrl, hostTarget.libraryId, input);
+    await createHostWishlistItem(hostTarget.baseUrl, hostTarget.libraryId, input, options.reviewedTarget?.target_generation);
     return;
   }
 
-  await createLocalWishlistItem(input);
+  await createLocalWishlistItem(input, options.reviewedTarget);
 }
 
 export async function updateWishlistEntryStatus(

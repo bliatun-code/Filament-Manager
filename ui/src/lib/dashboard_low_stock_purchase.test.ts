@@ -1,16 +1,15 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import type { DashboardPurchaseCandidate } from "./dashboard_action_model";
+import { DASHBOARD_PURCHASE_CLIENT_PAIRING_REQUIRED, DASHBOARD_PURCHASE_HOST_TARGET_REQUIRED, DASHBOARD_PURCHASE_TARGET_CHANGED, type DashboardPurchaseCandidate } from "./dashboard_action_model";
 import {
   createDashboardLowStockPurchaseCoordinator,
-  DASHBOARD_PURCHASE_CLIENT_PAIRING_REQUIRED,
-  DASHBOARD_PURCHASE_HOST_TARGET_REQUIRED,
   resolveDashboardPurchaseDataSourceOptions,
 } from "./dashboard_low_stock_purchase";
 import type {
   CreateWishlistItemInput,
   LibrarySyncSettings,
+  WishlistPurchaseTarget,
   WishlistItemRow,
 } from "./tauri_client";
 import type { WishlistDataSourceOptions } from "./wishlist_data_source";
@@ -32,9 +31,14 @@ function settings(
     device_name: "Desktop",
     library_id: "library-local",
     mode: "STANDALONE",
+    target_generation: 1,
     ...overrides,
   };
 }
+
+const local: WishlistPurchaseTarget = { mode: "STANDALONE", library_id: "library-local", host_base_url: null, target_generation: 1 };
+const host: WishlistPurchaseTarget = { mode: "CLIENT", library_id: "library-host", host_base_url: "http://host.local:4278", target_generation: 7 };
+const hostStatus = () => ({ ...host, client_auth_paired: true });
 
 function wishlistItem(
   id: string,
@@ -72,11 +76,11 @@ test("low-stock purchase coordinator creates exactly one local wishlist entry un
     },
     createId: () => "wish-dashboard-1",
     loadItems: async () => [],
-    loadSettings: async () => settings(),
+    loadStatus: async () => settings(),
   });
 
-  const first = coordinator.enqueue(candidate);
-  const second = coordinator.enqueue({ ...candidate });
+  const first = coordinator.enqueue(candidate, local);
+  const second = coordinator.enqueue({ ...candidate }, local);
   await new Promise((resolve) => setImmediate(resolve));
 
   assert.equal(creates.length, 1);
@@ -97,7 +101,7 @@ test("low-stock purchase coordinator creates exactly one local wishlist entry un
         quantity: 1,
         vendor: "Bambu Lab",
       },
-      options: { clientReadOnly: false },
+      options: { clientReadOnly: false, reviewedTarget: local },
     },
   ]);
 });
@@ -111,22 +115,17 @@ test("low-stock purchase coordinator rechecks the queue and reuses an open dupli
     createId: () => "must-not-be-used",
     loadItems: async (options) => {
       assert.deepEqual(options, {
-        clientHostBaseUrl: "http://host.local:4278/",
+        clientHostBaseUrl: host.host_base_url,
+        reviewedTarget: host,
         clientLibraryId: "library-host",
         clientReadOnly: true,
       });
       return [wishlistItem("existing", { status: "ON_ORDER" })];
     },
-    loadSettings: async () =>
-      settings({
-        client_auth_paired: true,
-        host_base_url: " http://host.local:4278/ ",
-        library_id: " library-host ",
-        mode: "CLIENT",
-      }),
+    loadStatus: async () => hostStatus(),
   });
 
-  assert.deepEqual(await coordinator.enqueue(candidate), {
+  assert.deepEqual(await coordinator.enqueue(candidate, host), {
     itemId: "existing",
     kind: "REUSED",
     match: "MASTER_ID",
@@ -166,17 +165,11 @@ test("a failed fresh duplicate check never falls through to a client write", asy
     loadItems: async () => {
       throw new Error("host wishlist unavailable");
     },
-    loadSettings: async () =>
-      settings({
-        client_auth_paired: true,
-        host_base_url: "http://host.local:4278",
-        library_id: "library-host",
-        mode: "CLIENT",
-      }),
+    loadStatus: async () => hostStatus(),
   });
 
   await assert.rejects(
-    () => coordinator.enqueue(candidate),
+    () => coordinator.enqueue(candidate, host),
     /host wishlist unavailable/,
   );
   assert.equal(creates, 0);
@@ -191,4 +184,73 @@ test("standalone and host modes both retain local wishlist writes", () => {
     resolveDashboardPurchaseDataSourceOptions(settings({ mode: "HOST" })),
     { clientReadOnly: false },
   );
+});
+
+const other = { ...host, host_base_url: "http://host-b.local", library_id: "library-b", target_generation: 8 };
+
+test("a suggestion is bound to the displayed mode, Host, library and generation before the click", async () => {
+  for (const current of [
+    other, { ...host, mode: "HOST" }, { ...host, host_base_url: other.host_base_url },
+    { ...host, library_id: other.library_id }, { ...host, target_generation: 9 },
+  ]) {
+    const coordinator = createDashboardLowStockPurchaseCoordinator({
+      loadStatus: async () => ({ ...current, client_auth_paired: true }),
+      loadItems: () => assert.fail("must reject before reading the replacement queue"),
+      createEntry: () => assert.fail("must not create an entry"),
+    });
+    await assert.rejects(coordinator.enqueue(candidate, host), { message: DASHBOARD_PURCHASE_TARGET_CHANGED });
+    await assert.rejects(coordinator.enqueue(candidate, undefined), { message: DASHBOARD_PURCHASE_TARGET_CHANGED });
+  }
+});
+
+test("switching Hosts during the duplicate check invalidates both empty and duplicate replies, including A–B–A", async () => {
+  for (const back of [false, true]) {
+    for (const rows of [[], [wishlistItem("old-duplicate")]]) {
+      let current = host;
+      const started = Promise.withResolvers<void>();
+      const reply = Promise.withResolvers<WishlistItemRow[]>();
+      const coordinator = createDashboardLowStockPurchaseCoordinator({
+        loadStatus: async () => ({ ...current, client_auth_paired: true }),
+        loadItems: async () => { started.resolve(); return reply.promise; },
+        createEntry: () => assert.fail("a delayed reply cannot authorize a write"),
+      });
+      const purchase = coordinator.enqueue(candidate, host);
+      await started.promise;
+      current = other;
+      if (back) current = { ...host, target_generation: other.target_generation + 1 };
+      reply.resolve(rows);
+      await assert.rejects(purchase, { message: DASHBOARD_PURCHASE_TARGET_CHANGED });
+    }
+  }
+});
+
+test("double clicks share one Host create, and a new generation has its own duplicate check", async () => {
+  let current = host;
+  const started = Promise.withResolvers<void>();
+  const reply = Promise.withResolvers<WishlistItemRow[]>();
+  const calls: number[] = [];
+  const writes: number[] = [];
+  const coordinator = createDashboardLowStockPurchaseCoordinator({
+    loadStatus: async () => ({ ...current, client_auth_paired: true }),
+    loadItems: async options => {
+      calls.push(options.reviewedTarget!.target_generation);
+      if (options.reviewedTarget!.target_generation === host.target_generation) {
+        started.resolve();
+        return reply.promise;
+      }
+      return [];
+    },
+    createEntry: async (_input, options) => { writes.push(options.reviewedTarget!.target_generation); },
+  });
+  const old = coordinator.enqueue(candidate, host);
+  assert.equal(coordinator.enqueue({ ...candidate }, { ...host }), old);
+  await started.promise;
+  current = other;
+  const fresh = coordinator.enqueue(candidate, other);
+  assert.equal(coordinator.enqueue(candidate, other), fresh);
+  assert.equal((await fresh).kind, "CREATED");
+  reply.resolve([]);
+  await assert.rejects(old, { message: DASHBOARD_PURCHASE_TARGET_CHANGED });
+  assert.deepEqual(calls, [7, 8]);
+  assert.deepEqual(writes, [8]);
 });
