@@ -267,6 +267,11 @@ async function readDashboardData(
 
   const syncMode = parseSyncMode(syncSettings);
   const libraryId = syncSettings?.library_id?.trim() || null;
+  // Only the displayed identity travels with a suggestion, including when restored from the page cache.
+  const generation = syncSettings?.target_generation;
+  const purchaseTarget = libraryId && generation !== undefined && Number.isSafeInteger(generation) && generation >= 0
+    ? { mode: syncMode, library_id: libraryId, host_base_url: syncSettings?.host_base_url ?? null, target_generation: generation }
+    : undefined;
   const clientMode = syncMode === "CLIENT";
   const revisionSource = resolveLibraryRevisionSource({
     clientReadOnly: clientMode,
@@ -504,6 +509,7 @@ async function readDashboardData(
       lowStockPreview: buildDashboardLowStockPreview(normalizedClientSpoolRows ?? []),
       lowStockPreviewAvailable: normalizedClientSpoolRows != null,
       actionItems: buildDashboardActionItems({
+        purchaseTarget,
         bambuLiveAttention: [],
         loans: normalizedClientLoans,
         now: actionNow,
@@ -572,6 +578,7 @@ async function readDashboardData(
     lowStockPreview: buildDashboardLowStockPreview(spoolRows),
     lowStockPreviewAvailable: true,
     actionItems: buildDashboardActionItems({
+      purchaseTarget,
       bambuLiveAttention,
       loans: normalizedLoans,
       now: actionNow,

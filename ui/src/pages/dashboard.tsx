@@ -13,10 +13,11 @@ import {
 } from "../lib/dashboard_model";
 import { commandErrorText } from "../lib/error_text";
 import {
-  createDashboardLowStockPurchaseCoordinator,
   DASHBOARD_PURCHASE_CLIENT_PAIRING_REQUIRED,
+  DASHBOARD_PURCHASE_TARGET_CHANGED,
   DASHBOARD_PURCHASE_HOST_TARGET_REQUIRED,
-} from "../lib/dashboard_low_stock_purchase";
+} from "../lib/dashboard_action_model";
+import type { createDashboardLowStockPurchaseCoordinator } from "../lib/dashboard_low_stock_purchase";
 import type {
   DashboardActionItem,
   DashboardLowStockAction,
@@ -295,10 +296,7 @@ export default function DashboardPage({
       onOpenPrinters={() => onOpenPrinters?.()}
     />
   ) : null;
-  const lowStockPurchaseCoordinator = useMemo(
-    () => createDashboardLowStockPurchaseCoordinator(),
-    [],
-  );
+  const purchaseCoordinator = useRef<ReturnType<typeof createDashboardLowStockPurchaseCoordinator> | null>(null);
   const [actionBusyIds, setActionBusyIds] = useState<Set<string>>(
     () => new Set(),
   );
@@ -362,9 +360,13 @@ export default function DashboardPage({
       setActionError(null);
       setActionMessage(null);
       try {
-        const result = await lowStockPurchaseCoordinator.enqueue(item.candidate);
+        const { createDashboardLowStockPurchaseCoordinator } = await import("../lib/dashboard_low_stock_purchase");
+        const coordinator = purchaseCoordinator.current ??= createDashboardLowStockPurchaseCoordinator();
+        const result = await coordinator.enqueue(item.candidate, item.purchaseTarget);
         if (result.kind === "CREATED") {
           await refreshDashboard();
+          // A completed purchase belongs to the reviewed library even if another window has moved on.
+          if (!item.purchaseTarget || !(await coordinator.isTargetCurrent(item.purchaseTarget))) return;
           setActionMessage(
             t(
               "dashboard.actionPurchaseAdded",
@@ -381,6 +383,11 @@ export default function DashboardPage({
         }
         onOpenPurchases?.(result.status, result.kind);
       } catch (purchaseError) {
+        if (purchaseError instanceof Error && purchaseError.message === DASHBOARD_PURCHASE_TARGET_CHANGED) {
+          await refreshDashboard();
+          setActionError(t("access.actionFailed", "The request changed or the service is unavailable. Try again."));
+          return;
+        }
         console.error(purchaseError);
         const configurationMessage =
           purchaseError instanceof Error &&
@@ -412,7 +419,7 @@ export default function DashboardPage({
         });
       }
     },
-    [lowStockPurchaseCoordinator, onOpenPurchases, refreshDashboard, t],
+    [onOpenPurchases, refreshDashboard, t],
   );
 
   const loadErrorBanner = error ? (

@@ -463,7 +463,11 @@ fn fetch_library_sync_wishlist_items_blocking(
     input: LibrarySyncWishlistListInput,
 ) -> Result<Vec<WishlistItemRow>, String> {
     let host_input = library_sync_host_input(&input.base_url, input.expected_library_id.as_deref());
-    let (_, _, target) = prepare_library_sync_host_checked(state, &host_input)?;
+    let (_, _, target) = prepare_library_sync_host_write_for_generation(
+        state,
+        &host_input,
+        input.expected_target_generation,
+    )?;
 
     let limit = input.limit.unwrap_or(500).clamp(1, 2_500);
     let primary_rows: Result<Vec<WishlistItemRow>, String> =
@@ -628,6 +632,7 @@ mod tests {
     }
 
     mod spool_snapshot;
+    mod wishlist_purchase;
 
     fn not_found_envelope() -> String {
         json!({
@@ -742,6 +747,7 @@ mod tests {
         let wishlist = fetch_library_sync_wishlist_items_blocking(
             &state,
             LibrarySyncWishlistListInput {
+                expected_target_generation: None,
                 base_url,
                 expected_library_id,
                 limit: None,

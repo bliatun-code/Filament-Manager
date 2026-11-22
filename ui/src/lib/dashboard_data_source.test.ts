@@ -402,11 +402,15 @@ test("loadDashboardData keeps unresolved low stock actionable until a purchase i
       loadSpoolRows: async () => [
         spoolWithMasterRow("low-a", { current_weight_g: 90, remaining_g: 90 }),
       ],
-      loadSyncSettings: async () => syncSettings(),
+      loadSyncSettings: async () => syncSettings({ target_generation: 4 }),
       loadTrustedLanStatus: async () => null,
     },
   );
 
+  const suggestion = result.actionItems.find(item => item.kind === "LOW_STOCK");
+  assert.deepEqual(suggestion?.purchaseTarget, {
+    mode: "STANDALONE", library_id: "library-1", host_base_url: null, target_generation: 4,
+  });
   assert.deepEqual(
     result.actionItems.map((item) => item.kind),
     ["LOW_STOCK"],
@@ -923,6 +927,7 @@ test("loadDashboardData renders paired-client cache without waiting for host rea
           mode: "CLIENT",
           host_base_url: "http://host",
           library_id: "library-1",
+          target_generation: 7,
           client_auth_paired: true,
           cached_snapshot: snapshot("Cached Host", {
             captured_at: "2026-04-01 08:00:00",
@@ -934,7 +939,7 @@ test("loadDashboardData renders paired-client cache without waiting for host rea
           }),
           cached_spools: {
             captured_at: "2026-04-01 08:30:00",
-            rows: [spoolWithMasterRow("spool-cache")],
+            rows: [spoolWithMasterRow("spool-cache", { current_weight_g: 20, remaining_g: 20 })],
           },
         }),
       loadTrustedLanStatus: async () => null,
@@ -953,6 +958,10 @@ test("loadDashboardData renders paired-client cache without waiting for host rea
     },
   );
 
+  const suggestion = result.actionItems.find(item => item.kind === "LOW_STOCK");
+  assert.deepEqual(suggestion?.purchaseTarget, {
+    mode: "CLIENT", host_base_url: "http://host", library_id: "library-1", target_generation: 7,
+  });
   assert.equal(hostCalls, 0);
   assert.equal(result.syncSource, "client-cached");
   assert.equal(result.clientHostConnectionObservation, "checking");

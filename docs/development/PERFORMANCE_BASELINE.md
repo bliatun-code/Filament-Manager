@@ -67,6 +67,13 @@ later partial failure, the dashboard requests only the failed domains, including
 loan history when an older client lacks an active-loans cache. A target change
 during a refresh discards the old replies and restarts from the new cache.
 
+A low-stock purchase suggestion carries the mode, Host address, library ID and
+target generation of the dashboard that displayed it. Clicking it checks compact
+status before and after checking the live purchase queue. Native writes verify
+the reviewed target again. Overlapping clicks share a request only for the same
+product and target. A completed purchase refreshes the dashboard before opening
+Purchases for that library.
+
 The source contract rejects artificial waits in the dashboard load path. A
 three-second `sleep`, delay promise, or timer cannot be added to the initial
 dashboard loader without failing verification. Polling timers remain allowed

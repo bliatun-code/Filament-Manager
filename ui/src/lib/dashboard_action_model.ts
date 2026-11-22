@@ -8,7 +8,7 @@ import {
 import type { NormalizedLoanDetailsRow } from "./loan_row_normalization";
 import { resolveSpoolLowStockThreshold } from "./low_stock_policy";
 import type { NormalizedSpoolWithMasterRow } from "./spool_row_normalization";
-import type { WishlistItemRow } from "./tauri_client";
+import type { WishlistItemRow, WishlistPurchaseTarget } from "./tauri_client";
 
 const DAY_MS = 24 * 60 * 60 * 1_000;
 
@@ -29,6 +29,12 @@ export type DashboardActionAge =
       value: null;
     };
 
+export const DASHBOARD_PURCHASE_CLIENT_PAIRING_REQUIRED =
+  "Pair this desktop client with its host before adding a purchase.";
+export const DASHBOARD_PURCHASE_HOST_TARGET_REQUIRED =
+  "Host connection details are missing for this purchase action.";
+export const DASHBOARD_PURCHASE_TARGET_CHANGED = "The library changed. Refresh the dashboard.";
+
 export type DashboardPurchaseCandidate = {
   colorName: string;
   filamentName: string;
@@ -47,6 +53,7 @@ export type DashboardOpenPurchaseDuplicate = {
 export type DashboardLowStockAction = {
   age: DashboardActionAge;
   candidate: DashboardPurchaseCandidate;
+  purchaseTarget?: WishlistPurchaseTarget;
   duplicate: DashboardOpenPurchaseDuplicate | null;
   id: string;
   kind: "LOW_STOCK";
@@ -231,6 +238,7 @@ type LowStockGroup = {
 function buildLowStockActions(
   spoolRows: NormalizedSpoolWithMasterRow[],
   wishlist: WishlistItemRow[],
+  purchaseTarget?: WishlistPurchaseTarget,
 ): DashboardLowStockAction[] {
   const groups = new Map<string, LowStockGroup>();
   for (const row of spoolRows) {
@@ -284,6 +292,7 @@ function buildLowStockActions(
       return [{
         age: { basis: "DETECTED_NOW", elapsedDays: null, value: null },
         candidate: group.candidate,
+        purchaseTarget,
         duplicate: null,
         id: `low-stock:${group.candidate.productKey}`,
         kind: "LOW_STOCK",
@@ -382,6 +391,7 @@ function buildBambuTrustActions(
 }
 
 export function buildDashboardActionItems(params: {
+  purchaseTarget?: WishlistPurchaseTarget;
   bambuLiveAttention: DashboardBambuLiveAttention[];
   loans: NormalizedLoanDetailsRow[];
   now: Date;
@@ -391,7 +401,7 @@ export function buildDashboardActionItems(params: {
 }): DashboardActionItem[] {
   return [
     ...buildOverdueLoanActions(params.loans, params.today),
-    ...buildLowStockActions(params.spoolRows, params.wishlist),
+    ...buildLowStockActions(params.spoolRows, params.wishlist, params.purchaseTarget),
     ...buildOnOrderActions(params.wishlist, params.now),
     ...buildBambuTrustActions(params.bambuLiveAttention),
   ];

@@ -67,6 +67,7 @@ function cloneDashboardActionItem(item: DashboardActionItem): DashboardActionIte
       ...item,
       age: { ...item.age },
       candidate: { ...item.candidate },
+      purchaseTarget: item.purchaseTarget && { ...item.purchaseTarget },
       duplicate: item.duplicate ? { ...item.duplicate } : null,
       spoolIds: [...item.spoolIds],
     };
