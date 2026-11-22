@@ -6,6 +6,7 @@ import {
   loadAllSpoolRows,
   loadAllSpoolRowsWithPageLoader,
   loadSpoolRowsPage,
+  loadSpoolSnapshot,
 } from "./spool_data_source";
 import type { SpoolWithMasterRow } from "./tauri_client";
 
@@ -187,96 +188,49 @@ for (const rowCount of [1_201, 5_000, 10_000]) {
   });
 }
 
-test("loadAllSpoolRows saves one complete client cache after all pages load", async () => {
-  const cachedRowIds: string[][] = [];
-  const rows = await loadAllSpoolRows(
-    {
-      clientReadOnly: true,
-      clientHostBaseUrl: "http://host",
-      clientLibraryId: "library-1",
-      clientTargetGeneration: 7,
-    },
-    2,
-    {
-      readRevision: stableRevision,
-      loadPage: async (_options, limit, offset) =>
-        [row("spool-1"), row("spool-2"), row("spool-3")].slice(offset, offset + limit),
-      saveClientCache: async (loadedRows, baseUrl, libraryId, targetGeneration) => {
-        assert.equal(baseUrl, "http://host");
-        assert.equal(libraryId, "library-1");
-        assert.equal(targetGeneration, 7);
-        cachedRowIds.push(loadedRows.map((entry) => entry.spool.id));
-        return "2026-11-18 12:00:00";
-      },
-    },
-  );
+const paired = { clientReadOnly: true, clientHostBaseUrl: " http://host ", clientLibraryId: " library ", clientTargetGeneration: 7 };
 
-  assert.deepEqual(rows.map((entry) => entry.spool.id), ["spool-1", "spool-2", "spool-3"]);
-  assert.deepEqual(cachedRowIds, [["spool-1", "spool-2", "spool-3"]]);
+test("paired clients get the complete normalized snapshot and SQLite timestamp in one native call", async () => {
+  for (const captured_at of ["2026-04-01 10:00:00", null]) {
+    const calls: unknown[] = [];
+    const result = await loadSpoolSnapshot(paired, 1, {
+      fetchHostSnapshot: async (...target) => {
+        calls.push(target);
+        return { rows: [row("one", "IN_USE", "borrowed-in"), row("two")], captured_at };
+      },
+      loadPage: async () => assert.fail("paired reads must not page through the UI"),
+    });
+    assert.deepEqual(calls, [["http://host", "library", 7]]);
+    assert.deepEqual(result.rows.map(item => item.spool.id), ["one", "two"]);
+    assert.equal(result.rows[0].spool.normalized_status, "ASSIGNED");
+    assert.equal(result.rows[0].spool.ownership_type, "BORROWED_IN");
+    assert.equal(result.capturedAt, captured_at);
+  }
 });
 
-test("loadAllSpoolRows keeps live client rows when refreshing the cache fails", async () => {
-  const cacheErrors: unknown[] = [];
-  const rows = await loadAllSpoolRows(
-    {
-      clientReadOnly: true,
-      clientHostBaseUrl: "http://host",
-      clientLibraryId: "library-1",
-      clientTargetGeneration: 7,
-    },
-    2,
-    {
-      readRevision: stableRevision,
-      loadPage: async () => [row("spool-1")],
-      saveClientCache: async () => {
-        throw new Error("cache unavailable");
-      },
-      onCacheError: (error) => cacheErrors.push(error),
-    },
-  );
-
-  assert.deepEqual(rows.map((entry) => entry.spool.id), ["spool-1"]);
-  assert.equal(cacheErrors.length, 1);
+test("a rejected native snapshot propagates to the caller without retrying with unscoped pages", async () => {
+  const error = new Error("Host changed or disconnected");
+  await assert.rejects(loadAllSpoolRows(paired, DEFAULT_SPOOL_PAGE_SIZE, {
+    fetchHostSnapshot: async () => { throw error; },
+    loadPage: async () => assert.fail("unexpected page read"),
+  }), error);
 });
 
-test("loadAllSpoolRows never replaces the client cache after an incomplete page sequence", async () => {
-  let saveCount = 0;
-  await assert.rejects(
-    () =>
-      loadAllSpoolRows(
-        {
-          clientReadOnly: true,
-          clientHostBaseUrl: "http://host",
-          clientLibraryId: "library-1",
-          clientTargetGeneration: 7,
-        },
-        2,
-        {
-          readRevision: stableRevision,
-          loadPage: async (_options, _limit, offset) => {
-            if (offset === 0) {
-              return [row("spool-1"), row("spool-2")];
-            }
-            throw new Error("second page unavailable");
-          },
-          saveClientCache: async () => {
-            saveCount += 1;
-            return "unexpected";
-          },
-        },
-      ),
-    /second page unavailable/,
-  );
-  assert.equal(saveCount, 0);
+test("a client without a generation can read live pages without touching the saved snapshot", async () => {
+  const result = await loadSpoolSnapshot({ ...paired, clientTargetGeneration: null }, 10, {
+    fetchHostSnapshot: async () => assert.fail("unexpected cache write"),
+    loadPage: async () => [row("live")],
+  });
+  assert.deepEqual(result.rows.map(item => item.spool.id), ["live"]);
+  assert.equal(result.capturedAt, null);
 });
 
 for (const domain of ["inventory", "catalog"] as const) {
-  test(`a change to ${domain} between spool pages restarts from page zero before caching`, async () => {
+  test(`a change to ${domain} between local spool pages restarts from page zero`, async () => {
     let source = ["a", "b", "c", "d"];
     const revision = { inventory: 1, catalog: 1 };
-    const saved: string[][] = [];
     const result = await loadAllSpoolRows(
-      { clientReadOnly: true, clientHostBaseUrl: "http://host", clientLibraryId: "library", clientTargetGeneration: 1 },
+      { clientReadOnly: false },
       2,
       {
         loadPage: async (_options, limit, offset) => {
@@ -287,31 +241,23 @@ for (const domain of ["inventory", "catalog"] as const) {
           return source.slice(offset, offset + limit).map(id => row(id));
         },
         readRevision: async () => ({ ...revision }),
-        saveClientCache: async rows => {
-          saved.push(rows.map(r => r.spool.id));
-          return "saved";
-        },
       },
     );
     assert.deepEqual(result.map(r => r.spool.id), ["b", "c", "d"]);
-    assert.deepEqual(saved, [["b", "c", "d"]]);
   });
 }
 
-test("persistent changes leave the last complete spool cache intact", async () => {
+test("local pagination rejects a continually changing inventory", async () => {
   let revision = 0;
-  let saves = 0;
   await assert.rejects(loadAllSpoolRows(
-    { clientReadOnly: true, clientHostBaseUrl: "http://host", clientLibraryId: "library", clientTargetGeneration: 1 },
+    { clientReadOnly: false },
     2,
     {
       loadPage: async (_options, _limit, offset) => offset ? [] : [row("a"), row("b")],
       readRevision: async () => ({ inventory: ++revision, catalog: 1 }),
-      saveClientCache: async () => { saves++; return "unexpected"; },
     },
   ), /changed during pagination/);
   assert.equal(revision, 3);
-  assert.equal(saves, 0);
 });
 
 test("requested pages above the Host limit still read the final spools", async () => {

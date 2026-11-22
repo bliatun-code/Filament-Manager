@@ -4,7 +4,7 @@ import {
   listSpoolHistory,
   listSpoolUsage,
   validateLibrarySyncHost,
-  type saveLibrarySyncSpoolCache,
+  type fetchLibrarySyncSpoolSnapshot,
   type LibrarySyncCachedSpoolList,
   type SpoolHistoryEventRow,
   type SpoolUsagePointRow,
@@ -72,7 +72,7 @@ export type InventorySpoolDetailLoadResult = {
 
 type InventoryDataSourceDependencies = {
   loadRowsPage?: typeof loadSpoolRowsPage;
-  saveClientCache?: typeof saveLibrarySyncSpoolCache;
+  fetchHostSnapshot?: typeof fetchLibrarySyncSpoolSnapshot;
   fetchCachedSpools?: typeof fetchCachedLibrarySyncSpools;
 };
 
@@ -162,7 +162,7 @@ export async function loadInventorySpools(
   try {
     const { rows, capturedAt } = await loadSpoolSnapshot(options, DEFAULT_SPOOL_PAGE_SIZE, {
       loadPage: dependencies.loadRowsPage,
-      saveClientCache: dependencies.saveClientCache,
+      fetchHostSnapshot: dependencies.fetchHostSnapshot,
     });
     return {
       rows: mapSpoolRowsToInventorySpools(rows),

@@ -165,16 +165,30 @@ for (const source of ["CACHED", "OFFLINE"] as const) {
   });
 }
 
-test("loan candidates fail when live spools cannot load", async () => {
-  await assert.rejects(loadLoanableSpoolCandidates(
-    { clientReadOnly: true, clientHostBaseUrl: "http://host", clientLibraryId: "library-1", clientTargetGeneration: 7 },
-    {
-      loadSpoolRows: async () => { throw new Error("live spools unavailable"); },
-      loadPrinterOverview: async () => ({
-        printers: [], bambuLiveIntegrations: {}, source: "LIVE", updatedAt: null,
-      }),
+test("loan candidates require the live native snapshot even when an offline copy exists", async () => {
+  const previousWindow = globalThis.window;
+  const calls: Array<[string, unknown]> = [];
+  globalThis.window = { __TAURI__: {
+    invoke: async <T>(command: string, payload?: Record<string, unknown>) => {
+      calls.push([command, payload?.input]);
+      if (command === "fetch_library_sync_spool_snapshot") throw new Error("live spools unavailable");
+      if (command === "fetch_cached_library_sync_spools") {
+        return { rows: [spoolRow("offline")], captured_at: "saved" } as T;
+      }
+      throw new Error("Unexpected command: " + command);
     },
-  ), /live spools unavailable/);
+  } } as unknown as Window & typeof globalThis;
+  try {
+    await assert.rejects(loadLoanableSpoolCandidates(
+      { clientReadOnly: true, clientHostBaseUrl: "http://host", clientLibraryId: "library-1", clientTargetGeneration: 7 },
+      { loadPrinterOverview: async () => ({ printers: [], bambuLiveIntegrations: {}, source: "LIVE", updatedAt: null }) },
+    ), /live spools unavailable/);
+    assert.deepEqual(calls, [["fetch_library_sync_spool_snapshot", {
+      base_url: "http://host", expected_library_id: "library-1", target_generation: 7,
+    }]]);
+  } finally {
+    globalThis.window = previousWindow;
+  }
 });
 
 
