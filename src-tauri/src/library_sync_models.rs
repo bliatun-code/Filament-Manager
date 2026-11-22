@@ -398,6 +398,12 @@ pub(crate) struct LibrarySyncRemoteSnapshot {
     pub(crate) printers: i64,
 }
 
+#[derive(Serialize)]
+pub(crate) struct LibrarySyncSpoolSnapshot {
+    pub(crate) captured_at: Option<String>,
+    pub(crate) rows: Vec<SpoolWithMasterRow>,
+}
+
 #[derive(Serialize, Deserialize, Clone)]
 pub(crate) struct LibrarySyncCachedSpoolList {
     pub(crate) captured_at: String,

@@ -7,19 +7,22 @@ use crate::backend::statistics::{
     FilamentConsumptionRow, StatisticsPeriod, StatisticsPeriodReport,
 };
 use crate::library_sync_blocking_executor::run_library_sync_blocking;
-use crate::library_sync_cache_refresh::fetch_and_cache_library_sync_active_loans;
+use crate::library_sync_cache_refresh::{
+    fetch_and_cache_library_sync_active_loans, fetch_and_cache_library_sync_spools,
+};
 use crate::library_sync_command_support::{
     encode_library_sync_path_segment, library_sync_host_input, prepare_library_sync_host_checked,
-    prepare_library_sync_host_read, require_host_filament_price_standards_capability,
-    save_library_sync_success,
+    prepare_library_sync_host_read, prepare_library_sync_host_write_for_generation,
+    require_host_filament_price_standards_capability, save_library_sync_success,
 };
 use crate::library_sync_host_client::{
     get_library_sync_host_json_authenticated_for_target, library_sync_host_error_code,
 };
 use crate::library_sync_models::{
-    LibrarySyncCatalogListInput, LibrarySyncFilamentConsumptionInput,
+    LibrarySyncCacheTargetInput, LibrarySyncCatalogListInput, LibrarySyncFilamentConsumptionInput,
     LibrarySyncFullBackupResponse, LibrarySyncSpoolDetailInput, LibrarySyncSpoolListInput,
-    LibrarySyncStatisticsPeriodInput, LibrarySyncWishlistListInput, ValidateLibrarySyncHostInput,
+    LibrarySyncSpoolSnapshot, LibrarySyncStatisticsPeriodInput, LibrarySyncWishlistListInput,
+    ValidateLibrarySyncHostInput,
 };
 use crate::library_sync_target_guard::{
     ensure_library_sync_target_current, with_current_library_sync_target,
@@ -103,6 +106,41 @@ pub(crate) fn fetch_library_sync_spools_blocking(
     )?;
 
     Ok(rows)
+}
+
+#[tauri::command]
+pub(crate) async fn fetch_library_sync_spool_snapshot(
+    state: tauri::State<'_, AppState>,
+    input: LibrarySyncCacheTargetInput,
+) -> Result<LibrarySyncSpoolSnapshot, String> {
+    let state = state.inner().clone();
+    run_library_sync_blocking(move || fetch_library_sync_spool_snapshot_blocking(&state, input))
+        .await
+}
+
+pub(crate) fn fetch_library_sync_spool_snapshot_blocking(
+    state: &AppState,
+    input: LibrarySyncCacheTargetInput,
+) -> Result<LibrarySyncSpoolSnapshot, String> {
+    if input.expected_library_id.trim().is_empty() {
+        return Err(crate::app_error::coded_command_error(
+            "common.invalid_request",
+        ));
+    }
+    let host = library_sync_host_input(&input.base_url, Some(&input.expected_library_id));
+    let (_, health, target) = prepare_library_sync_host_write_for_generation(
+        state,
+        &host,
+        Some(input.target_generation),
+    )?;
+    let snapshot = fetch_and_cache_library_sync_spools(state, &target, 1_000)?;
+    save_library_sync_success(
+        state,
+        &target,
+        "Host spool list refreshed.",
+        health.device_name.as_deref(),
+    )?;
+    Ok(snapshot)
 }
 
 #[tauri::command]
@@ -508,6 +546,13 @@ mod tests {
     }
 
     fn spawn_fake_host(responses: Vec<FakeHostResponse>) -> (String, thread::JoinHandle<()>) {
+        spawn_fake_host_with(responses, |_| {})
+    }
+
+    fn spawn_fake_host_with(
+        responses: Vec<FakeHostResponse>,
+        mut before_response: impl FnMut(&str) + Send + 'static,
+    ) -> (String, thread::JoinHandle<()>) {
         let listener = TcpListener::bind("127.0.0.1:0").expect("bind fake Host");
         let address = listener.local_addr().expect("read fake Host address");
         let handle = thread::spawn(move || {
@@ -520,6 +565,7 @@ mod tests {
                     request.starts_with(response.expected_request_prefix),
                     "unexpected fake Host request: {request}"
                 );
+                before_response(&request);
                 let wire = format!(
                     "HTTP/1.1 {}\r\nContent-Type: application/json\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{}",
                     response.status,
@@ -580,6 +626,8 @@ mod tests {
         })
         .to_string()
     }
+
+    mod spool_snapshot;
 
     fn not_found_envelope() -> String {
         json!({

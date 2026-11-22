@@ -43,7 +43,11 @@ name, validation status and low-stock policy. Client reads run concurrently.
 Failed printer, spool and summary reads select just their own saved data. The
 final settings read checks the target generation within the same SQLite
 transaction and recovers a newer summary if another request overtook this one.
-A target change restarts the load once.
+A target change restarts the load once. One native command reads the Host spool
+list and saves the complete offline copy before returning the rows to Settings.
+Multi-page lists must have stable inventory and catalog revisions. An interrupted
+read keeps the previous complete copy, and a stale target cannot replace it.
+If only the local save fails, Settings still displays the live rows.
 
 The Client dashboard paints its cached figures before contacting the Host. The
 following live refresh consumes that first read once, scoped to the same Host,

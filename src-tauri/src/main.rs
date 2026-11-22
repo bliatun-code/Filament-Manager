@@ -447,6 +447,7 @@ fn main() {
             library_sync_snapshot_commands::fetch_library_sync_snapshot,
             library_sync_read_commands::fetch_library_sync_spool_detail,
             library_sync_read_commands::fetch_library_sync_spools,
+            library_sync_read_commands::fetch_library_sync_spool_snapshot,
             library_sync_read_commands::fetch_library_sync_catalog_masters,
             library_sync_read_commands::fetch_library_sync_wishlist_items,
             library_sync_read_commands::fetch_library_sync_full_backup_json,

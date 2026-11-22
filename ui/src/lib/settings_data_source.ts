@@ -1,5 +1,6 @@
 import {
   fetchLibrarySyncSnapshot,
+  fetchLibrarySyncSpoolSnapshot,
   fetchLibrarySyncPrinterOverview,
   fetchLibrarySyncPrinterSettings,
   getLibrarySyncSettings,
@@ -39,6 +40,7 @@ type SettingsPageDataDependencies = {
   loadCatalogRows?: typeof loadCatalogMasters;
   loadSyncSettings?: typeof getLibrarySyncSettings;
   loadSpoolRows?: typeof loadAllSpoolRows;
+  fetchHostSpoolSnapshot?: typeof fetchLibrarySyncSpoolSnapshot;
   fetchHostPrinterOverview?: typeof fetchLibrarySyncPrinterOverview;
   fetchHostPrinterSettings?: typeof fetchLibrarySyncPrinterSettings;
   fetchHostSnapshot?: typeof fetchLibrarySyncSnapshot;
@@ -142,7 +144,7 @@ async function loadClientSettings(
     loadCatalogRows = loadCatalogMasters,
     fetchHostPrinterOverview = fetchLibrarySyncPrinterOverview,
     fetchHostPrinterSettings = fetchLibrarySyncPrinterSettings,
-    loadSpoolRows = loadAllSpoolRows,
+    fetchHostSpoolSnapshot = fetchLibrarySyncSpoolSnapshot,
     fetchHostSnapshot = fetchLibrarySyncSnapshot,
     onHostLoadError = console.warn,
   } = dependencies;
@@ -160,7 +162,9 @@ async function loadClientSettings(
     loadCatalogRows({ ...options, limit: 5000 }),
     fetchHostPrinterOverview(target.baseUrl, target.libraryId),
     fetchHostPrinterSettings(target.baseUrl, target.libraryId),
-    loadSpoolRows(options, 1000),
+    settings.target_generation !== undefined
+      ? fetchHostSpoolSnapshot(target.baseUrl, target.libraryId, settings.target_generation)
+      : Promise.reject(new Error("Missing Host target generation for the spool snapshot.")),
     fetchHostSnapshot(target.baseUrl, target.libraryId),
   ]) : null;
   if (results) notifySettledErrors(results, onHostLoadError);
@@ -179,7 +183,7 @@ async function loadClientSettings(
     syncSettings: { ...current, cached_snapshot: librarySyncSnapshot },
     librarySyncSnapshot,
     overviewRows: printers?.status === "fulfilled" ? printers.value : current.cached_printers?.rows ?? [],
-    spoolRows: normalizeSpoolWithMasterRows(spools?.status === "fulfilled" ? spools.value : current.cached_spools?.rows ?? []),
+    spoolRows: normalizeSpoolWithMasterRows(spools?.status === "fulfilled" ? spools.value.rows : current.cached_spools?.rows ?? []),
     bambuLiveIntegrations: printerSettings?.status === "fulfilled"
       ? mapBambuLiveIntegrations(printerSettings.value.bambu_live_integrations) : {},
     revisionPollComplete: results?.every(result => result.status === "fulfilled") ?? false,
