@@ -57,10 +57,21 @@ impl FilamentDatabase {
         &self,
         domains: &[LibrarySyncCacheDomain],
     ) -> InventoryResult<LibrarySyncSettingsRow> {
+        self.get_library_sync_settings_at_generation(domains, None, None)
+    }
+
+    pub fn get_library_sync_settings_at_generation(
+        &self,
+        domains: &[LibrarySyncCacheDomain],
+        expected_generation: Option<u64>,
+        fetched_snapshot_at: Option<&str>,
+    ) -> InventoryResult<LibrarySyncSettingsRow> {
         let transaction = self.connection().unchecked_transaction()?;
         let settings = super::database_library_sync_settings::read_library_sync_settings(
             &transaction,
             Some(domains),
+            expected_generation,
+            fetched_snapshot_at,
         )?;
         transaction.commit()?;
         Ok(settings)

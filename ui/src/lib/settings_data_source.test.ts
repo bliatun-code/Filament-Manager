@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { loadSettingsPageData, refreshLibrarySyncSnapshot } from "./settings_data_source";
+import { loadSettingsPageData, refreshLibrarySyncSnapshot, settingsAfterHostCheck } from "./settings_data_source";
 import type {
   LibrarySyncSettings,
   LibrarySyncRemoteSnapshot,
@@ -96,6 +96,10 @@ function syncSettings(
     ...overrides,
   };
 }
+
+const pairedSettings = syncSettings({
+  mode: "CLIENT", host_base_url: "http://host", library_id: "library-host", target_generation: 7,
+});
 
 const catalogRows: MasterCatalogRow[] = [];
 const hostCatalogRows: MasterCatalogRow[] = [
@@ -270,20 +274,10 @@ test("loadSettingsPageData prefers host overview, settings, and spools for clien
       assert.equal(libraryId, "library-host");
       return printerSettingsSnapshot("printer-host");
     },
-    refreshHostSnapshot: async (baseUrl, libraryId, targetGeneration) => {
+    fetchHostSnapshot: async (baseUrl, libraryId) => {
       assert.equal(baseUrl, "http://host");
       assert.equal(libraryId, "library-host");
-      assert.equal(targetGeneration, 7);
-      return {
-        snapshot: freshHostSnapshot,
-        syncSettings: syncSettings({
-          mode: "CLIENT",
-          host_base_url: "http://host",
-          library_id: "library-host",
-          target_generation: 7,
-          cached_snapshot: freshHostSnapshot,
-        }),
-      };
+      return freshHostSnapshot;
     },
   });
 
@@ -315,16 +309,7 @@ test("client settings distinguish an authoritative empty catalog from an unavail
     loadSpoolRows: async () => hostSpoolRows,
     fetchHostPrinterOverview: async () => [printerOverviewRow("printer-host")],
     fetchHostPrinterSettings: async () => printerSettingsSnapshot("printer-host"),
-    refreshHostSnapshot: async () => ({
-      snapshot: freshHostSnapshot,
-      syncSettings: syncSettings({
-        mode: "CLIENT",
-        host_base_url: "http://host",
-        library_id: "library-host",
-        target_generation: 7,
-        cached_snapshot: freshHostSnapshot,
-      }),
-    }),
+    fetchHostSnapshot: async () => freshHostSnapshot,
     onHostLoadError: () => {},
   };
 
@@ -388,7 +373,7 @@ test("loadSettingsPageData falls back to cached client printers and spools", asy
       throw new Error("host unavailable");
     },
     fetchHostPrinterSettings: async () => printerSettingsSnapshot("printer-host"),
-    refreshHostSnapshot: async () => {
+    fetchHostSnapshot: async () => {
       throw new Error("host snapshot unavailable");
     },
     onHostLoadError: () => {},
@@ -437,7 +422,7 @@ test("loadSettingsPageData avoids local spools and Bambu settings when client ho
     fetchHostPrinterSettings: async () => {
       throw new Error("host should not be loaded without a complete target");
     },
-    refreshHostSnapshot: async () => {
+    fetchHostSnapshot: async () => {
       throw new Error("host snapshot should not be loaded without a complete target");
     },
   });
@@ -480,15 +465,7 @@ test("loadSettingsPageData keeps fulfilled host client data without mixing local
     fetchHostPrinterSettings: async () => {
       throw new Error("settings endpoint unavailable");
     },
-    refreshHostSnapshot: async () => ({
-      snapshot: freshHostSnapshot,
-      syncSettings: syncSettings({
-        mode: "CLIENT",
-        host_base_url: "http://host",
-        library_id: "library-host",
-        cached_snapshot: freshHostSnapshot,
-      }),
-    }),
+    fetchHostSnapshot: async () => freshHostSnapshot,
     onHostLoadError: (error) => {
       errors.push(error);
     },
@@ -503,70 +480,64 @@ test("loadSettingsPageData keeps fulfilled host client data without mixing local
   assert.equal(result.revisionPollComplete, false);
 });
 
-test("refreshLibrarySyncSnapshot returns the freshly cached sync snapshot", async () => {
-  const fetchedSnapshot = remoteSnapshot({ device_name: "Fetched" });
-  const cachedSnapshot = remoteSnapshot({ device_name: "Cached" });
-
+test("manual refresh returns the committed Host snapshot and reloads metadata only", async () => {
+  const snapshot = remoteSnapshot();
+  const current = syncSettings({ mode: "CLIENT", host_base_url: "http://host", library_id: snapshot.library_id, target_generation: 11 });
   const result = await refreshLibrarySyncSnapshot(" http://host ", " library-host ", 11, {
-    fetchHostSnapshot: async (baseUrl, libraryId) => {
-      assert.equal(baseUrl, "http://host");
-      assert.equal(libraryId, "library-host");
-      return fetchedSnapshot;
+    fetchHostSnapshot: async (url, library) => {
+      assert.equal(url, "http://host");
+      assert.equal(library, snapshot.library_id);
+      return snapshot;
     },
-    loadSyncSettings: async () =>
-      syncSettings({
-        mode: "CLIENT",
-        host_base_url: "http://host",
-        library_id: "library-host",
-        target_generation: 11,
-        cached_snapshot: cachedSnapshot,
-      }),
+    loadSyncSettings: async domains => {
+      assert.deepEqual(domains, []);
+      return current;
+    },
   });
-
-  assert.equal(result.snapshot.device_name, "Cached");
-  assert.equal(result.syncSettings.cached_snapshot, cachedSnapshot);
+  assert.ok(result.ok);
+  assert.equal(result.snapshot, snapshot);
+  assert.equal(result.syncSettings.cached_snapshot, snapshot);
 });
 
-test("refreshLibrarySyncSnapshot falls back to the fetched snapshot before cache is updated", async () => {
-  const fetchedSnapshot = remoteSnapshot({ device_name: "Fetched" });
-
-  const result = await refreshLibrarySyncSnapshot("http://host", "library-host", undefined, {
-    fetchHostSnapshot: async () => fetchedSnapshot,
-    loadSyncSettings: async () =>
-      syncSettings({
-        mode: "CLIENT",
-        host_base_url: "http://host",
-        library_id: "library-host",
-        cached_snapshot: null,
-      }),
-  });
-
-  assert.equal(result.snapshot, fetchedSnapshot);
+test("manual refresh retains the same Host summary and reports a failed snapshot request", async () => {
+  const cached = remoteSnapshot();
+  const failure = new Error("summary endpoint unavailable");
+  for (const saved of [cached, null]) {
+    const result = await refreshLibrarySyncSnapshot("http://host", cached.library_id, 7, {
+      fetchHostSnapshot: async () => { throw failure; },
+      loadSyncSettings: async (domains, generation) => {
+        assert.deepEqual(domains, ["snapshot"]);
+        assert.equal(generation, 7);
+        return { ...pairedSettings, cached_snapshot: saved };
+      },
+    });
+    assert.equal(result.ok, false);
+    assert.equal(result.snapshot, saved);
+    assert.equal(result.syncSettings.cached_snapshot, saved);
+    assert.equal(result.error, failure);
+  }
 });
 
-test("refreshLibrarySyncSnapshot ignores stale cached snapshots", async () => {
-  const fetchedSnapshot = remoteSnapshot({
-    captured_at: "2026-04-01 12:00:00",
-    device_name: "Fetched",
-  });
-  const staleCachedSnapshot = remoteSnapshot({
-    captured_at: "2026-04-01 11:00:00",
-    device_name: "Stale Cached",
-  });
-
-  const result = await refreshLibrarySyncSnapshot("http://host", "library-host", undefined, {
-    fetchHostSnapshot: async () => fetchedSnapshot,
-    loadSyncSettings: async () =>
-      syncSettings({
-        mode: "CLIENT",
-        host_base_url: "http://host",
-        library_id: "library-host",
-        cached_snapshot: staleCachedSnapshot,
-      }),
-  });
-
-  assert.equal(result.snapshot, fetchedSnapshot);
-  assert.equal(result.syncSettings.cached_snapshot, staleCachedSnapshot);
+test("snapshot refresh accepts a newer saved summary only from the same library", async () => {
+  const fetched = remoteSnapshot();
+  for (const [saved, expected] of [
+    [remoteSnapshot({ captured_at: "2026-04-01 12:01:00", device_name: "Newer" }), "Newer"],
+    [remoteSnapshot({ captured_at: "2026-04-01 11:59:00", device_name: "Older" }), fetched.device_name],
+    [remoteSnapshot({ captured_at: "2026-04-01 12:01:00", library_id: "other" }), fetched.device_name],
+  ] as const) {
+    const result = await refreshLibrarySyncSnapshot("http://host", fetched.library_id, 7, {
+      fetchHostSnapshot: async () => fetched,
+      loadSyncSettings: async (domains, generation, capturedAt) => {
+        assert.deepEqual(domains, []);
+        assert.equal(generation, 7);
+        assert.equal(capturedAt, fetched.captured_at);
+        return { ...pairedSettings, cached_snapshot: saved };
+      },
+    });
+    assert.ok(result.ok);
+    assert.equal(result.snapshot.device_name, expected);
+    assert.equal(result.syncSettings.cached_snapshot, result.snapshot);
+  }
 });
 
 test("refreshLibrarySyncSnapshot rejects incomplete host targets before fetching", async () => {
@@ -597,4 +568,122 @@ test("refreshLibrarySyncSnapshot rejects a response after the client target gene
       }),
     /connection changed/,
   );
+});
+
+test("Settings requests only failed cache domains, including a disconnected Host", async () => {
+  const cachedSummary = remoteSnapshot({ device_name: "cached" });
+  const liveSummary = remoteSnapshot({ device_name: "live" });
+  for (const failed of [[], ["printers"], ["spools"], ["snapshot"], ["catalog", "printerSettings"],
+    ["catalog", "printerSettings", "printers", "spools", "snapshot"]]) {
+    const calls: string[][] = [];
+    const read = async <T,>(domain: string, live: T) => {
+      if (failed.includes(domain)) throw new Error(domain);
+      return live;
+    };
+    const result = await loadSettingsPageData({
+      loadSyncSettings: async (domains, generation, fetchedAt) => {
+        assert.ok(domains);
+        calls.push([...domains]);
+        if (calls.length === 2) {
+          assert.equal(generation, 7);
+          assert.equal(fetchedAt, failed.includes("snapshot") ? undefined : liveSummary.captured_at);
+        }
+        return {
+          ...pairedSettings,
+          cached_printers: domains.includes("printers")
+            ? { captured_at: "saved", rows: [printerOverviewRow("cached")] } : null,
+          cached_spools: domains.includes("spools") ? { captured_at: "saved", rows: cachedSpoolRows } : null,
+          cached_snapshot: domains.includes("snapshot") ? cachedSummary : null,
+        };
+      },
+      loadCatalogRows: () => read("catalog", hostCatalogRows),
+      fetchHostPrinterSettings: () => read("printerSettings", printerSettingsSnapshot("live")),
+      fetchHostPrinterOverview: () => read("printers", [printerOverviewRow("live")]),
+      loadSpoolRows: () => read("spools", hostSpoolRows),
+      fetchHostSnapshot: () => read("snapshot", liveSummary),
+      onHostLoadError: () => {},
+    });
+    assert.deepEqual(calls, [[], ["printers", "spools", "snapshot"].filter(d => failed.includes(d))]);
+    assert.equal(result.overviewRows[0].printer.id, failed.includes("printers") ? "cached" : "live");
+    assert.equal(result.spoolRows[0].spool.id, failed.includes("spools") ? "spool-cache" : "spool-host");
+    assert.equal(result.librarySyncSnapshot, failed.includes("snapshot") ? cachedSummary : liveSummary);
+    assert.equal(result.syncSettings.cached_snapshot, result.librarySyncSnapshot);
+    assert.equal(result.catalogRowsAvailable, !failed.includes("catalog"));
+    assert.equal(Boolean(result.bambuLiveIntegrations.live), !failed.includes("printerSettings"));
+    assert.equal(result.revisionPollComplete, failed.length === 0);
+  }
+});
+
+test("Settings discards all old results on a Host, library or generation switch during refresh", async () => {
+  for (const replacement of [
+    { ...pairedSettings, host_base_url: "http://new-host", target_generation: 8 },
+    { ...pairedSettings, library_id: "new-library", target_generation: 8 },
+    { ...pairedSettings, target_generation: 9 }, // switch away and back
+  ]) {
+    let current = pairedSettings;
+    const requests: string[][] = [];
+    const result = await loadSettingsPageData({
+      loadSyncSettings: async (domains, generation) => {
+        assert.ok(domains);
+        requests.push([...domains]);
+        if (generation === 7) current = replacement; // while waiting for the failed spool read's fallback
+        return current;
+      },
+      loadCatalogRows: async () => [{ ...hostCatalogRows[0], id: "catalog-" + current.target_generation }],
+      fetchHostPrinterOverview: async () => [printerOverviewRow("printer-" + current.target_generation)],
+      fetchHostPrinterSettings: async () => printerSettingsSnapshot("config-" + current.target_generation),
+      loadSpoolRows: async options => {
+        if (options.clientTargetGeneration === 7) throw new Error("old Host disconnected");
+        return [spoolWithMasterRow("replacement")];
+      },
+      fetchHostSnapshot: async () => remoteSnapshot({ library_id: current.library_id, device_name: "summary-" + current.target_generation }),
+      onHostLoadError: () => {},
+    });
+    assert.deepEqual(requests, [[], ["spools"], []]);
+    assert.equal(result.catalogRows[0].id, "catalog-" + replacement.target_generation);
+    assert.equal(result.overviewRows[0].printer.id, "printer-" + replacement.target_generation);
+    assert.deepEqual(Object.keys(result.bambuLiveIntegrations), ["config-" + replacement.target_generation]);
+    assert.equal(result.librarySyncSnapshot?.device_name, "summary-" + replacement.target_generation);
+    assert.equal(result.spoolRows[0].spool.id, "replacement");
+    assert.equal(result.syncSettings.target_generation, replacement.target_generation);
+    assert.ok(result.revisionPollComplete);
+  }
+});
+
+test("Host checks reuse the visible summary on success and read only the saved summary on failure", async () => {
+  const snapshot = remoteSnapshot();
+  const previous = { ...pairedSettings, cached_snapshot: snapshot };
+  for (const succeeded of [true, false]) {
+    const current = await settingsAfterHostCheck(previous, succeeded, async (domains, generation) => {
+      assert.deepEqual(domains, succeeded ? [] : ["snapshot"]);
+      assert.equal(generation, 7);
+      return succeeded ? pairedSettings : previous;
+    });
+    assert.equal(current.cached_snapshot, snapshot);
+  }
+  await assert.rejects(() => settingsAfterHostCheck(previous, false,
+    async () => ({ ...pairedSettings, target_generation: 9 })), /connection changed/);
+});
+
+test("overlapping successful Host switches publish only the latest identity", async () => {
+  let generation = 7;
+  const result = await loadSettingsPageData({
+    loadSyncSettings: async domains => {
+      assert.deepEqual(domains, []);
+      return { ...pairedSettings, target_generation: generation++ };
+    },
+    loadCatalogRows: async () => hostCatalogRows,
+    loadSpoolRows: async () => hostSpoolRows,
+    fetchHostPrinterSettings: async () => printerSettingsSnapshot("old"),
+    fetchHostPrinterOverview: async () => [printerOverviewRow("old")],
+    fetchHostSnapshot: async () => remoteSnapshot(),
+  });
+  assert.equal(result.syncSettings.target_generation, 9);
+  assert.equal(result.syncSettings.cached_snapshot, null);
+  assert.equal(result.librarySyncSnapshot, null);
+  assert.deepEqual(result.catalogRows, []);
+  assert.deepEqual(result.spoolRows, []);
+  assert.deepEqual(result.overviewRows, []);
+  assert.deepEqual(result.bambuLiveIntegrations, {});
+  assert.equal(result.revisionPollComplete, false);
 });

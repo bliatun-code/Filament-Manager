@@ -2,7 +2,7 @@ use rusqlite::Connection;
 
 use super::database_ids::new_id;
 use super::database_library_sync_auth::clear_library_sync_client_auth_state;
-use super::database_library_sync_cache::CACHED_ACTIVE_LOANS_KEY;
+use super::database_library_sync_cache::{CACHED_ACTIVE_LOANS_KEY, SNAPSHOT_CAPTURED_AT_KEY};
 use super::database_library_sync_models::{
     LibrarySyncCacheDomain, LibrarySyncPageStatusRow, LibrarySyncSettingsRow,
 };
@@ -13,6 +13,7 @@ use super::library_sync_defaults::{default_library_sync_device_name, normalize_l
 
 const LIBRARY_SYNC_HOST_CACHE_KEYS: &[&str] = &[
     "library_sync_cached_snapshot_json",
+    SNAPSHOT_CAPTURED_AT_KEY,
     "library_sync_cached_spools_json",
     "library_sync_cached_locations_json",
     "library_sync_cached_printers_json",
@@ -48,15 +49,16 @@ pub(crate) fn get_library_sync_page_status(
 pub(crate) fn get_library_sync_settings(
     conn: &Connection,
 ) -> InventoryResult<LibrarySyncSettingsRow> {
-    read_library_sync_settings(conn, None)
+    read_library_sync_settings(conn, None, None, None)
 }
 
 pub(crate) fn read_library_sync_settings(
     conn: &Connection,
     domains: Option<&[LibrarySyncCacheDomain]>,
+    expected_generation: Option<u64>,
+    fetched_snapshot_at: Option<&str>,
 ) -> InventoryResult<LibrarySyncSettingsRow> {
     use LibrarySyncCacheDomain::*;
-    let includes = |domain| domains.is_none_or(|selected| selected.contains(&domain));
     let LibrarySyncPageStatusRow {
         mode,
         library_id,
@@ -65,6 +67,15 @@ pub(crate) fn read_library_sync_settings(
         host_device_name,
         client_auth_paired,
     } = get_library_sync_page_status(conn)?;
+    // The identity and selected caches share a SQLite read transaction.
+    // On a target switch, return only the replacement settings so the UI can retry.
+    let target_matches = expected_generation.is_none_or(|expected| expected == target_generation);
+    let domains = if !target_matches {
+        Some(&[][..])
+    } else {
+        domains
+    };
+    let includes = |domain| domains.is_none_or(|selected| selected.contains(&domain));
     let device_name = trimmed_setting(conn, "library_sync_device_name")?
         .unwrap_or_else(default_library_sync_device_name);
     let client_auth_paired_at = trimmed_setting(conn, "library_sync_client_auth_paired_at")?;
@@ -77,9 +88,16 @@ pub(crate) fn read_library_sync_settings(
         Err(rusqlite::Error::FromSqlConversionFailure(_, _, _)) => (Default::default(), false),
         Err(error) => return Err(error.into()),
     };
+    // Overlapping Host reads can commit a newer summary before the page paints.
+    // Compare the small timestamp and only recover the payload for a stale reply.
+    let newer_snapshot = match fetched_snapshot_at {
+        Some(fetched) if target_matches => get_setting(conn, SNAPSHOT_CAPTURED_AT_KEY)?
+            .is_some_and(|saved| saved.as_str() > fetched),
+        _ => false,
+    };
     let cached_snapshot = selected_cache(
         conn,
-        includes(Snapshot),
+        includes(Snapshot) || newer_snapshot,
         "library_sync_cached_snapshot_json",
     )?;
     let cached_spools = selected_cache(conn, includes(Spools), "library_sync_cached_spools_json")?;
@@ -331,6 +349,48 @@ mod tests {
             .unwrap();
         assert!(historical.cached_active_loans.is_none());
         assert!(historical.cached_loans.is_some());
+    }
+
+    #[test]
+    fn settings_refresh_skips_unneeded_payloads_and_rejects_old_generations() {
+        use LibrarySyncCacheDomain::{Printers, Spools};
+        let db = FilamentDatabase::open(":memory:").unwrap();
+        db.apply_schema().unwrap();
+        let conn = db.connection();
+        let mut target = db.get_library_sync_settings().unwrap();
+        target.mode = "CLIENT".into();
+        target.host_base_url = Some("http://a.local".into());
+        let generation = db
+            .save_library_sync_settings(&target)
+            .unwrap()
+            .target_generation;
+        for key in [
+            "library_sync_cached_snapshot_json",
+            "library_sync_cached_spools_json",
+        ] {
+            conn.execute(
+                "INSERT OR REPLACE INTO settings (key, value) VALUES (?1, X'FF')",
+                [key],
+            )
+            .unwrap();
+        }
+        set_setting(conn, SNAPSHOT_CAPTURED_AT_KEY, "2026-11-01 12:00:00").unwrap();
+        let read = |domains: &[LibrarySyncCacheDomain], expected, fetched| {
+            db.get_library_sync_settings_at_generation(domains, Some(expected), fetched)
+        };
+        assert!(read(&[], generation, Some("2026-11-01 12:00:00")).is_ok());
+        assert!(read(&[Printers], generation, None).is_ok());
+        assert!(read(&[Spools], generation, None).is_err());
+        // A stale Host summary is the only successful read that needs the saved summary.
+        assert!(read(&[], generation, Some("2026-11-01 11:59:59")).is_err());
+        let replacement = read(&[Spools], generation - 1, Some("older")).unwrap();
+        assert_eq!(replacement.target_generation, generation);
+        assert!(replacement.cached_spools.is_none());
+        target.host_base_url = Some("http://b.local".into());
+        db.save_library_sync_settings(&target).unwrap();
+        assert!(get_setting(conn, SNAPSHOT_CAPTURED_AT_KEY)
+            .unwrap()
+            .is_none());
     }
 
     #[test]
