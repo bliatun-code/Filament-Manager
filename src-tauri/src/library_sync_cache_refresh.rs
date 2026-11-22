@@ -2,18 +2,26 @@ use crate::backend::filament_database::{
     PrinterOverviewRow, SpoolLoanDetailsRow, SpoolWithMasterRow, WishlistItemRow,
 };
 use crate::library_sync_host_client::get_library_sync_host_json_authenticated_for_target;
+use crate::library_sync_models::LibrarySyncSpoolSnapshot;
 use crate::library_sync_target_guard::{with_current_library_sync_target, LibrarySyncTargetGuard};
 use crate::state::AppState;
 
 pub(crate) fn refresh_library_sync_spool_cache(state: &AppState, target: &LibrarySyncTargetGuard) {
-    const PAGE_SIZE: usize = 2_500;
+    let _ = fetch_and_cache_library_sync_spools(state, target, 2_500);
+}
+
+pub(crate) fn fetch_and_cache_library_sync_spools(
+    state: &AppState,
+    target: &LibrarySyncTargetGuard,
+    page_size: usize,
+) -> Result<LibrarySyncSpoolSnapshot, String> {
     let rows = read_consistent_pages(
-        PAGE_SIZE,
-        200,
+        page_size,
+        500_000 / page_size,
         |offset| {
             get_library_sync_host_json_authenticated_for_target::<Vec<SpoolWithMasterRow>>(
                 state,
-                &format!("/api/v1/library/spools?limit={PAGE_SIZE}&offset={offset}"),
+                &format!("/api/v1/library/spools?limit={page_size}&offset={offset}"),
                 target,
             )
         },
@@ -21,15 +29,17 @@ pub(crate) fn refresh_library_sync_spool_cache(state: &AppState, target: &Librar
             let revision = crate::library_revision_commands::read_target_revisions(state, target)?;
             Ok((revision.inventory, revision.catalog))
         },
-    );
-    if let Ok(rows) = rows {
-        let mut ids = std::collections::HashSet::with_capacity(rows.len());
-        if rows.iter().all(|row| ids.insert(&row.spool.id)) {
-            let _ = with_current_library_sync_target(state, target, |engine| {
-                engine.save_library_sync_cached_spools(&rows)
-            });
-        }
+    )?;
+    let mut ids = std::collections::HashSet::with_capacity(rows.len());
+    if !rows.iter().all(|row| ids.insert(&row.spool.id)) {
+        return Err("Host spool pagination repeated a spool id.".into());
     }
+    // A local cache write failure still leaves a complete live read. A target
+    // change rejects the entire result outside the save, including its rows.
+    let captured_at = with_current_library_sync_target(state, target, |engine| {
+        Ok(engine.save_library_sync_cached_spools(&rows).ok())
+    })?;
+    Ok(LibrarySyncSpoolSnapshot { captured_at, rows })
 }
 
 fn read_consistent_pages<T>(

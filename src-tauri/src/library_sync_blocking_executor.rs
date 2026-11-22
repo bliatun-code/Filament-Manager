@@ -310,6 +310,7 @@ mod tests {
         for command in [
             "fetch_library_sync_spool_detail",
             "fetch_library_sync_spools",
+            "fetch_library_sync_spool_snapshot",
             "fetch_library_sync_printer_overview",
             "fetch_library_sync_printer_settings",
             "fetch_library_sync_loans",

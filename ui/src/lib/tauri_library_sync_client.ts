@@ -296,6 +296,17 @@ function librarySyncCacheTargetInput(
   };
 }
 
+export async function fetchLibrarySyncSpoolSnapshot(
+  baseUrl: string,
+  expectedLibraryId: string,
+  targetGeneration: number,
+) {
+  return invoke<{ rows: SpoolWithMasterRow[]; captured_at: string | null }>(
+    "fetch_library_sync_spool_snapshot",
+    { input: librarySyncCacheTargetInput(baseUrl, expectedLibraryId, targetGeneration) },
+  );
+}
+
 export async function fetchCachedLibrarySyncSpools(
   baseUrl: string,
   expectedLibraryId: string,

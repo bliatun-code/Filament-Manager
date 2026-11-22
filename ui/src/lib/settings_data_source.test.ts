@@ -260,9 +260,11 @@ test("loadSettingsPageData prefers host overview, settings, and spools for clien
         library_id: " library-host ",
         target_generation: 7,
       }),
-    loadSpoolRows: async (options) => {
-      assert.equal(options.clientTargetGeneration, 7);
-      return options.clientReadOnly ? hostSpoolRows : localSpoolRows;
+    fetchHostSpoolSnapshot: async (baseUrl, libraryId, generation) => {
+      assert.equal(baseUrl, "http://host");
+      assert.equal(libraryId, "library-host");
+      assert.equal(generation, 7);
+      return { rows: hostSpoolRows, captured_at: "saved" };
     },
     fetchHostPrinterOverview: async (baseUrl, libraryId) => {
       assert.equal(baseUrl, "http://host");
@@ -306,7 +308,7 @@ test("client settings distinguish an authoritative empty catalog from an unavail
         library_id: "library-host",
         target_generation: 7,
       }),
-    loadSpoolRows: async () => hostSpoolRows,
+    fetchHostSpoolSnapshot: async () => ({ rows: hostSpoolRows, captured_at: "saved" }),
     fetchHostPrinterOverview: async () => [printerOverviewRow("printer-host")],
     fetchHostPrinterSettings: async () => printerSettingsSnapshot("printer-host"),
     fetchHostSnapshot: async () => freshHostSnapshot,
@@ -355,6 +357,7 @@ test("loadSettingsPageData falls back to cached client printers and spools", asy
         mode: "CLIENT",
         host_base_url: "http://host",
         library_id: "library-host",
+        target_generation: 7,
         cached_snapshot: cachedSnapshot,
         cached_printers: {
           captured_at: "2026-04-01 11:00:00",
@@ -365,8 +368,7 @@ test("loadSettingsPageData falls back to cached client printers and spools", asy
           rows: cachedSpoolRows,
         },
       }),
-    loadSpoolRows: async (options) => {
-      assert.equal(options.clientReadOnly, true);
+    fetchHostSpoolSnapshot: async () => {
       throw new Error("host spools unavailable");
     },
     fetchHostPrinterOverview: async () => {
@@ -404,6 +406,7 @@ test("loadSettingsPageData avoids local spools and Bambu settings when client ho
         mode: "CLIENT",
         host_base_url: " ",
         library_id: "library-host",
+        target_generation: 7,
         cached_printers: {
           captured_at: "2026-04-01 11:00:00",
           rows: [printerOverviewRow("printer-cache")],
@@ -413,7 +416,7 @@ test("loadSettingsPageData avoids local spools and Bambu settings when client ho
           rows: cachedSpoolRows,
         },
       }),
-    loadSpoolRows: async () => {
+    fetchHostSpoolSnapshot: async () => {
       throw new Error("local spools should not be loaded for client settings");
     },
     fetchHostPrinterOverview: async () => {
@@ -454,13 +457,13 @@ test("loadSettingsPageData keeps fulfilled host client data without mixing local
         mode: "CLIENT",
         host_base_url: "http://host",
         library_id: "library-host",
+        target_generation: 7,
         cached_printers: {
           captured_at: "2026-04-01 11:00:00",
           rows: [printerOverviewRow("printer-cache")],
         },
       }),
-    loadSpoolRows: async (options) =>
-      options.clientReadOnly ? hostSpoolRows : localSpoolRows,
+    fetchHostSpoolSnapshot: async () => ({ rows: hostSpoolRows, captured_at: null }),
     fetchHostPrinterOverview: async () => [printerOverviewRow("printer-host")],
     fetchHostPrinterSettings: async () => {
       throw new Error("settings endpoint unavailable");
@@ -599,7 +602,7 @@ test("Settings requests only failed cache domains, including a disconnected Host
       loadCatalogRows: () => read("catalog", hostCatalogRows),
       fetchHostPrinterSettings: () => read("printerSettings", printerSettingsSnapshot("live")),
       fetchHostPrinterOverview: () => read("printers", [printerOverviewRow("live")]),
-      loadSpoolRows: () => read("spools", hostSpoolRows),
+      fetchHostSpoolSnapshot: () => read("spools", { rows: hostSpoolRows, captured_at: "saved" }),
       fetchHostSnapshot: () => read("snapshot", liveSummary),
       onHostLoadError: () => {},
     });
@@ -632,9 +635,9 @@ test("Settings discards all old results on a Host, library or generation switch 
       loadCatalogRows: async () => [{ ...hostCatalogRows[0], id: "catalog-" + current.target_generation }],
       fetchHostPrinterOverview: async () => [printerOverviewRow("printer-" + current.target_generation)],
       fetchHostPrinterSettings: async () => printerSettingsSnapshot("config-" + current.target_generation),
-      loadSpoolRows: async options => {
-        if (options.clientTargetGeneration === 7) throw new Error("old Host disconnected");
-        return [spoolWithMasterRow("replacement")];
+      fetchHostSpoolSnapshot: async (_url, _library, generation) => {
+        if (generation === 7) throw new Error("old Host disconnected");
+        return { rows: [spoolWithMasterRow("replacement")], captured_at: "saved" };
       },
       fetchHostSnapshot: async () => remoteSnapshot({ library_id: current.library_id, device_name: "summary-" + current.target_generation }),
       onHostLoadError: () => {},
@@ -673,7 +676,7 @@ test("overlapping successful Host switches publish only the latest identity", as
       return { ...pairedSettings, target_generation: generation++ };
     },
     loadCatalogRows: async () => hostCatalogRows,
-    loadSpoolRows: async () => hostSpoolRows,
+    fetchHostSpoolSnapshot: async () => ({ rows: hostSpoolRows, captured_at: "saved" }),
     fetchHostPrinterSettings: async () => printerSettingsSnapshot("old"),
     fetchHostPrinterOverview: async () => [printerOverviewRow("old")],
     fetchHostSnapshot: async () => remoteSnapshot(),
@@ -686,4 +689,37 @@ test("overlapping successful Host switches publish only the latest identity", as
   assert.deepEqual(result.overviewRows, []);
   assert.deepEqual(result.bambuLiveIntegrations, {});
   assert.equal(result.revisionPollComplete, false);
+});
+
+test("Client Settings makes one native spool request and keeps live rows if only the cache write failed", async () => {
+  const previousWindow = globalThis.window;
+  const calls: Array<{ command: string; payload?: Record<string, unknown> }> = [];
+  globalThis.window = {
+    __TAURI__: {
+      invoke: async <T>(command: string, payload?: Record<string, unknown>) => {
+        calls.push({ command, payload });
+        return { rows: hostSpoolRows, captured_at: null } as T;
+      },
+    },
+  } as unknown as Window & typeof globalThis;
+
+  try {
+    const result = await loadSettingsPageData({
+      loadSyncSettings: async (domains) => {
+        assert.deepEqual(domains, []);
+        return pairedSettings;
+      },
+      loadCatalogRows: async () => [],
+      fetchHostPrinterOverview: async () => [],
+      fetchHostPrinterSettings: async () => printerSettingsSnapshot("host"),
+      fetchHostSnapshot: async () => remoteSnapshot(),
+    });
+    assert.deepEqual(result.spoolRows.map(row => row.spool.id), ["spool-host"]);
+    assert.deepEqual(calls, [{
+      command: "fetch_library_sync_spool_snapshot",
+      payload: { input: { base_url: "http://host", expected_library_id: "library-host", target_generation: 7 } },
+    }]);
+  } finally {
+    globalThis.window = previousWindow;
+  }
 });
