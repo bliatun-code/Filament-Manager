@@ -21,6 +21,9 @@ import {
 import {
   beginDashboardPageSnapshotRequest,
   readDashboardPageSnapshotGeneration,
+  reconcileDashboardPurchaseActions,
+  recordDashboardPurchase,
+  remainingDashboardSuggestions,
   readDashboardPageSnapshot,
   updateDashboardPageSnapshot,
   writeDashboardPageSnapshot,
@@ -43,6 +46,7 @@ import {
   getTrustedLanCompanionStatus,
   isTauri,
   type TrustedLanCompanionStatus,
+  type WishlistPurchaseTarget,
   type BambuLiveIntegrationEntry,
   type PrinterOverviewRow,
 } from "../lib/tauri_client";
@@ -297,6 +301,11 @@ export function useDashboardPageData(t: TranslateFn, locale: string) {
     () => initialSnapshot?.setupDataAvailable ?? false,
   );
 
+  const confirmPurchase = useCallback((id: string, target: WishlistPurchaseTarget) => {
+    recordDashboardPurchase(id, target);
+    setActionItems(remainingDashboardSuggestions);
+  }, []);
+
   const performDashboardRefresh = useCallback(
     async (
       cancelledRef?: { current: boolean },
@@ -385,6 +394,9 @@ export function useDashboardPageData(t: TranslateFn, locale: string) {
           )} ${formatDashboardSyncTime(new Date(), locale)}`;
         }
 
+        const nextActions = reconcileDashboardPurchaseActions(
+          loaded.actionItems, loaded.wishlistFresh ? loaded.libraryTarget : undefined, snapshotRequest,
+        );
         const cacheAccepted = writeDashboardPageSnapshot(
           {
             printerOverview: loaded.printerOverview,
@@ -394,7 +406,7 @@ export function useDashboardPageData(t: TranslateFn, locale: string) {
             lowStockPreviewAvailable: loaded.lowStockPreviewAvailable,
             syncSource: loaded.syncSource,
             activity: loaded.derived.activity,
-            actionItems: loaded.actionItems,
+            actionItems: nextActions,
             bambuLiveAttention: loaded.bambuLiveAttention,
             clientHostCompanionTone: loaded.clientHostCompanionTone,
             clientHostDisplayName: loaded.clientHostDisplayName,
@@ -406,6 +418,7 @@ export function useDashboardPageData(t: TranslateFn, locale: string) {
             health: loaded.derived.health,
             lastSyncLabel: nextLastSyncLabel,
             libraryId: loaded.libraryId,
+            libraryTarget: loaded.libraryTarget,
             locale,
             ownershipLowStock: loaded.derived.ownershipLowStock,
             ownershipOnHand: loaded.derived.ownershipOnHand,
@@ -437,7 +450,7 @@ export function useDashboardPageData(t: TranslateFn, locale: string) {
         setLowStockPreview(loaded.lowStockPreview);
         setLowStockPreviewAvailable(loaded.lowStockPreviewAvailable);
         setSyncSource(loaded.syncSource);
-        setActionItems(loaded.actionItems);
+        setActionItems(nextActions);
         setBambuLiveAttention(loaded.bambuLiveAttention);
         setCompanionStatus(loaded.trustedLan);
         setClientHostCompanionTone(loaded.clientHostCompanionTone);
@@ -813,6 +826,7 @@ export function useDashboardPageData(t: TranslateFn, locale: string) {
     loading,
     ownershipLowStock,
     ownershipOnHand,
+    confirmPurchase,
     refreshAvailable: tauri,
     refreshDashboard,
     refreshing,

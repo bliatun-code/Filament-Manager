@@ -1,11 +1,16 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import type { DashboardLowStockAction } from "./dashboard_action_model";
 
 import {
   beginDashboardPageSnapshotRequest,
   clearDashboardPageSnapshot,
+  hasDashboardPurchaseSnapshot,
+  validateDashboardPurchaseSnapshot,
   readDashboardPageSnapshot,
   readDashboardPageSnapshotGeneration,
+  reconcileDashboardPurchaseActions,
+  recordDashboardPurchase,
   type DashboardPageSnapshot,
   updateDashboardPageSnapshot,
   writeDashboardPageSnapshot,
@@ -293,4 +298,47 @@ test("dashboard snapshot keeps polled companion status current", () => {
     true,
   );
   assert.equal(readDashboardPageSnapshot("en")?.companionStatus?.running, false);
+});
+
+test("an acknowledged purchase survives stale reads until a fresh wishlist can propose it again", () => {
+  clearDashboardPageSnapshot();
+  const target = { mode: "CLIENT", host_base_url: "http://host-a.test", library_id: "library-a", target_generation: 1 };
+  const action: DashboardLowStockAction = {
+    age: { basis: "DETECTED_NOW", elapsedDays: null, value: null }, kind: "LOW_STOCK", id: "low-stock:product",
+    candidate: { productKey: "product", colorName: "Red", filamentName: "Basic", masterId: null, material: "PLA", vendor: "" },
+    duplicate: null, lowestRemainingG: 20, spoolCount: 1, spoolIds: ["roll"], thresholdG: 200, purchaseTarget: target,
+  };
+  const snapshot = populatedSnapshot();
+  snapshot.actionItems!.push(action);
+  writeDashboardPageSnapshot(snapshot);
+  const late = beginDashboardPageSnapshotRequest();
+  recordDashboardPurchase(action.id, target);
+  assert.deepEqual(readDashboardPageSnapshot("en")?.actionItems?.map(item => item.kind), ["BAMBU_TRUST"]);
+  assert.deepEqual(reconcileDashboardPurchaseActions([action], target, late), []);
+  assert.equal(writeDashboardPageSnapshot(snapshot, late), false);
+
+  const offline = beginDashboardPageSnapshotRequest();
+  assert.deepEqual(reconcileDashboardPurchaseActions([action], undefined, offline), []);
+  for (const changed of [{ library_id: "other" }, { host_base_url: "http://host-b.test" }, { target_generation: 3 }]) {
+    const other = { ...action, purchaseTarget: { ...target, ...changed } };
+    assert.deepEqual(reconcileDashboardPurchaseActions([other], undefined, offline), [other]);
+  }
+  const live = beginDashboardPageSnapshotRequest();
+  assert.deepEqual(reconcileDashboardPurchaseActions([action], { ...target, target_generation: 3 }, live), []);
+  assert.deepEqual(reconcileDashboardPurchaseActions([action], target, live), [action]);
+});
+
+test("returning after a purchase validates the saved view even if the wishlist already caught up", () => {
+  const target = { mode: "CLIENT", host_base_url: "http://host-a.test", library_id: "library-a", target_generation: 1 };
+  const same = { ...target, client_auth_paired: true };
+  for (const current of [same, { ...same, target_generation: 3 }, null]) {
+    clearDashboardPageSnapshot();
+    writeDashboardPageSnapshot({ ...populatedSnapshot(), libraryTarget: target });
+    recordDashboardPurchase("low-stock:product", target);
+    reconcileDashboardPurchaseActions([], target, beginDashboardPageSnapshotRequest());
+    assert.equal(hasDashboardPurchaseSnapshot(), true);
+    validateDashboardPurchaseSnapshot(current);
+    assert.equal(readDashboardPageSnapshot("en") !== null, current === same);
+    assert.equal(hasDashboardPurchaseSnapshot(), false);
+  }
 });

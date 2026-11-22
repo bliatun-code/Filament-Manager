@@ -321,10 +321,11 @@ export default function App() {
                 seq: Date.now(),
               });
             }}
-            onOpenPurchases={(status, notice) => {
+            onOpenPurchases={(status, notice, purchaseTarget) => {
               navigateToPage("inventory", {
                 kind: "PURCHASES",
                 notice,
+                purchaseTarget,
                 seq: Date.now(),
                 status,
               });

@@ -1,3 +1,4 @@
+import type { WishlistPurchaseTarget } from "./tauri_wishlist_client";
 import { desktopVisualQaInitialPage } from "./desktop_visual_qa_scenario";
 
 export const APP_PAGE_ORDER = [
@@ -33,6 +34,7 @@ export type InventoryNavigationIntent =
   | {
       kind: "PURCHASES";
       notice?: "CREATED" | "REUSED";
+      purchaseTarget?: WishlistPurchaseTarget;
       seq: number;
       status: "WISHLIST" | "ON_ORDER";
     }
@@ -42,6 +44,12 @@ export type InventoryNavigationIntent =
       spoolId: string;
     }
   | null;
+
+export function dashboardPurchaseNotice(notice: "CREATED" | "REUSED", t: (key: string, fallback: string) => string): string {
+  return notice === "CREATED"
+    ? t("dashboard.actionPurchaseAdded", "Added to the wishlist. Opening Purchases.")
+    : t("dashboard.actionPurchaseReused", "An open purchase already exists. Reusing it and opening Purchases.");
+}
 
 export function resolveAppNavigationDestination(
   page: PageKey,

@@ -14,7 +14,8 @@ import type { InventoryWorkspaceView } from "../components/inventory_workspace_n
 import { InventoryRfidCaptureModal } from "../components/inventory_rfid_capture_modal";
 import { InventoryLabelSheetModal } from "../components/inventory_label_sheet_modal";
 
-import type { InventoryNavigationIntent } from "../lib/app_navigation_model";
+import { matchesWishlistPurchaseTarget } from "../lib/tauri_wishlist_client";
+import { dashboardPurchaseNotice, type InventoryNavigationIntent } from "../lib/app_navigation_model";
 import { useInventoryMarkEmptyAction } from "../lib/use_inventory_mark_empty_action";
 import { useI18n } from "../lib/i18n";
 import {
@@ -133,6 +134,9 @@ export default function InventoryPage({
     historyLoading,
     historyRows,
     librarySyncReady,
+    libraryStatus,
+    infoMessage,
+    setInfoMessage,
     librarySyncResolving,
     loadError,
     loading,
@@ -233,7 +237,6 @@ export default function InventoryPage({
     showRollModal,
   } = useInventorySpoolSelection();
   const [manageBusy, setManageBusy] = useState(false);
-  const [infoMessage, setInfoMessage] = useState<string | null>(null);
   const [recentlyAddedSpoolId, setRecentlyAddedSpoolId] = useState<string | null>(null);
   const [desktopVisualQaStage, setDesktopVisualQaStage] = useState<
     | "pending"
@@ -371,27 +374,25 @@ export default function InventoryPage({
       setActiveWorkspaceView("STOCK");
       openAddModal();
     } else if (navigationIntent.kind === "PURCHASES") {
+      if (navigationIntent.notice) {
+        if (!librarySyncReady) return;
+        const target = navigationIntent.purchaseTarget;
+        if (!target || !matchesWishlistPurchaseTarget(libraryStatus, target) ||
+            (clientReadOnly && !clientHostWritePaired)) {
+          onConsumeNavigationIntent?.();
+          return;
+        }
+      }
       resetPurchaseQueue(navigationIntent.status);
       openPurchaseQueue();
-      if (navigationIntent.notice === "CREATED") {
-        setInfoMessage(
-          t(
-            "dashboard.actionPurchaseAdded",
-            "Added to the wishlist. Opening Purchases.",
-          ),
-        );
-      } else if (navigationIntent.notice === "REUSED") {
-        setInfoMessage(
-          t(
-            "dashboard.actionPurchaseReused",
-            "An open purchase already exists. Reusing it and opening Purchases.",
-          ),
-        );
-      }
+      if (navigationIntent.notice) setInfoMessage(dashboardPurchaseNotice(navigationIntent.notice, t));
     }
     onConsumeNavigationIntent?.();
   }, [
     navigationIntent,
+    libraryStatus,
+    clientHostWritePaired,
+    clientReadOnly,
     librarySyncReady,
     loading,
     onConsumeNavigationIntent,
@@ -673,6 +674,7 @@ export default function InventoryPage({
     closeSelectedSpoolDetailModalThen,
     openRollModal,
     selectedSpoolId,
+    setInfoMessage,
     setShowRollHistory,
     showRollModal,
     switchToManageMode,

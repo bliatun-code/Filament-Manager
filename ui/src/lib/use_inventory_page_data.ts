@@ -13,6 +13,7 @@ import {
   inventoryFallbackPairingRejected,
 } from "./inventory_data_source";
 import { loadInventoryLocations } from "./inventory_location_data_source";
+import { getLibrarySyncPageStatus, type LibrarySyncPageStatus } from "./tauri_library_sync_client";
 import { loadLibrarySyncPageState } from "./library_sync_state";
 import {
   isClientCompositeSnapshotPartial,
@@ -134,10 +135,12 @@ export function useInventoryPageData({
   // persisted role has been read successfully.
   const [clientReadOnly, setClientReadOnly] = useState(tauriAvailable);
   const [clientHostWritePaired, setClientHostWritePaired] = useState(false);
-  const [clientHostDeviceName, setClientHostDeviceName] = useState<string | null>(null);
-  const [clientHostBaseUrl, setClientHostBaseUrl] = useState<string | null>(null);
-  const [clientLibraryId, setClientLibraryId] = useState<string | null>(null);
-  const [clientTargetGeneration, setClientTargetGeneration] = useState<number | null>(null);
+  const [libraryStatus, setLibraryStatus] = useState<LibrarySyncPageStatus | null>(null);
+  const clientHostDeviceName = libraryStatus?.host_device_name ?? null;
+  const clientHostBaseUrl = libraryStatus?.host_base_url ?? null;
+  const clientLibraryId = libraryStatus?.library_id ?? null;
+  const clientTargetGeneration = libraryStatus?.target_generation ?? null;
+  const [infoMessage, setInfoMessage] = useState<string | null>(null);
   const [librarySyncResolution, setLibrarySyncResolution] =
     useState<LibrarySyncResolution>(tauriAvailable ? "LOADING" : "READY");
   const librarySyncReady = librarySyncResolution === "READY";
@@ -206,6 +209,7 @@ export function useInventoryPageData({
   const clearTargetScopedData = useCallback(() => {
     spoolsRef.current = [];
     setSpools([]);
+    setInfoMessage(null);
     setLocations([]);
     setLocationsLoading(false);
     setLocationMutationsSupported(false);
@@ -239,23 +243,17 @@ export function useInventoryPageData({
     clearTargetScopedData();
     setClientReadOnly(true);
     setClientHostWritePaired(false);
-    setClientHostDeviceName(null);
-    setClientHostBaseUrl(null);
-    setClientLibraryId(null);
-    setClientTargetGeneration(null);
+    setLibraryStatus(null);
     setLibrarySyncResolution("LOADING");
     try {
-      const syncState = await loadLibrarySyncPageState();
+      const status = await getLibrarySyncPageStatus();
       if (requestId !== librarySyncRequestRef.current) {
         return false;
       }
       invalidateInventoryDataRequests();
-      setClientReadOnly(syncState.clientReadOnly);
-      setClientHostWritePaired(syncState.clientHostWritePaired);
-      setClientHostDeviceName(syncState.clientHostDeviceName);
-      setClientHostBaseUrl(syncState.clientHostBaseUrl);
-      setClientLibraryId(syncState.clientLibraryId);
-      setClientTargetGeneration(syncState.clientTargetGeneration);
+      setClientReadOnly(status.mode === "CLIENT");
+      setClientHostWritePaired(status.client_auth_paired === true);
+      setLibraryStatus(status);
       setLibrarySyncResolution("READY");
       return true;
     } catch (syncError) {
@@ -266,10 +264,7 @@ export function useInventoryPageData({
         // error banner a retry path. Never reinterpret an unknown role as local.
         setClientReadOnly(true);
         setClientHostWritePaired(false);
-        setClientHostDeviceName(null);
-        setClientHostBaseUrl(null);
-        setClientLibraryId(null);
-        setClientTargetGeneration(null);
+        setLibraryStatus(null);
         setLibrarySyncResolution("ERROR");
         failRefresh(t("inventory.error.loadInventory", "Failed to load inventory."));
       }
@@ -838,6 +833,9 @@ export function useInventoryPageData({
     clientLibraryId,
     clientReadOnly,
     clientTargetGeneration,
+    infoMessage,
+    setInfoMessage,
+    libraryStatus,
     completeDataLoad: completeRefresh,
     detailUnavailable,
     historyLoading,

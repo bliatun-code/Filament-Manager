@@ -5,11 +5,13 @@ import type {
   DashboardStat,
   DashboardUsageMonth,
 } from "./dashboard_model";
+import type { LibrarySyncPageStatus } from "./tauri_library_sync_client";
 import type { LibraryRevisionSource } from "./library_domain_revisions";
 import type { BambuLiveIntegrationEntry, PrinterOverviewRow, TrustedLanCompanionStatus } from "./tauri_client";
 import type { DashboardSyncSource } from "./dashboard_data_source";
 import { sanitizeDashboardBambuLiveIntegrations, type DashboardStockPreviewRow } from "./dashboard_overview_data";
 import type { DashboardBambuLiveAttention } from "./dashboard_bambu_live_attention";
+import { matchesWishlistPurchaseTarget, type WishlistPurchaseTarget } from "./tauri_wishlist_client";
 import type { DashboardActionItem } from "./dashboard_action_model";
 
 export type DashboardPageSnapshot = {
@@ -32,6 +34,7 @@ export type DashboardPageSnapshot = {
   health: DashboardHealth;
   lastSyncLabel: string;
   libraryId?: string | null;
+  libraryTarget?: WishlistPurchaseTarget;
   locale: string;
   ownershipLowStock: {
     owned: number;
@@ -60,6 +63,46 @@ let cachedDashboardPageSnapshot: DashboardPageSnapshot | null = null;
 let dashboardPageSnapshotGeneration = 0;
 let dashboardPageSnapshotRequestSequence = 0;
 let latestAcceptedDashboardPageSnapshotRequestSequence = 0;
+
+let purchaseReturnPending = false;
+const confirmedPurchases = new Map<string, WishlistPurchaseTarget>();
+
+export function remainingDashboardSuggestions(items: DashboardActionItem[]): DashboardActionItem[] {
+  if (!confirmedPurchases.size) return items;
+  return items.filter((item) => {
+    if (item.kind !== "LOW_STOCK") return true;
+    const target = confirmedPurchases.get(item.id);
+    return !target || !matchesWishlistPurchaseTarget(item.purchaseTarget, target);
+  });
+}
+
+export function recordDashboardPurchase(id: string, target: WishlistPurchaseTarget): void {
+  purchaseReturnPending = true;
+  confirmedPurchases.set(id, target);
+  // A refresh that started before the acknowledgement may still carry the old wishlist.
+  latestAcceptedDashboardPageSnapshotRequestSequence = beginDashboardPageSnapshotRequest().sequence;
+  if (cachedDashboardPageSnapshot?.actionItems) {
+    cachedDashboardPageSnapshot.actionItems = remainingDashboardSuggestions(cachedDashboardPageSnapshot.actionItems);
+  }
+}
+
+function acceptsSnapshotRequest(request: DashboardPageSnapshotRequest): boolean {
+  return request.generation === dashboardPageSnapshotGeneration &&
+    request.sequence >= latestAcceptedDashboardPageSnapshotRequestSequence;
+}
+
+export function reconcileDashboardPurchaseActions(
+  items: DashboardActionItem[],
+  freshWishlistTarget: WishlistPurchaseTarget | undefined,
+  request: DashboardPageSnapshotRequest,
+): DashboardActionItem[] {
+  if (freshWishlistTarget && acceptsSnapshotRequest(request)) {
+    for (const [id, target] of confirmedPurchases) {
+      if (matchesWishlistPurchaseTarget(freshWishlistTarget, target)) confirmedPurchases.delete(id);
+    }
+  }
+  return remainingDashboardSuggestions(items);
+}
 
 function cloneDashboardActionItem(item: DashboardActionItem): DashboardActionItem {
   if (item.kind === "LOW_STOCK") {
@@ -112,6 +155,7 @@ function cloneDashboardPageSnapshot(
       metrics: snapshot.health.metrics.map((metric) => ({ ...metric })),
     },
     libraryId,
+    ...(snapshot.libraryTarget && { libraryTarget: { ...snapshot.libraryTarget } }),
     ownershipLowStock: { ...snapshot.ownershipLowStock },
     ownershipOnHand: { ...snapshot.ownershipOnHand },
     revisionSource: snapshot.revisionSource
@@ -153,10 +197,7 @@ export function writeDashboardPageSnapshot(
   snapshot: DashboardPageSnapshot,
   request = beginDashboardPageSnapshotRequest(),
 ): boolean {
-  if (
-    request.generation !== dashboardPageSnapshotGeneration ||
-    request.sequence < latestAcceptedDashboardPageSnapshotRequestSequence
-  ) {
+  if (!acceptsSnapshotRequest(request)) {
     return false;
   }
   cachedDashboardPageSnapshot = cloneDashboardPageSnapshot(snapshot);
@@ -186,7 +227,24 @@ export function readDashboardPageSnapshotGeneration(): number {
   return dashboardPageSnapshotGeneration;
 }
 
+export function hasDashboardPurchaseSnapshot(): boolean {
+  return purchaseReturnPending && cachedDashboardPageSnapshot !== null;
+}
+
+export function validateDashboardPurchaseSnapshot(current: LibrarySyncPageStatus | null): void {
+  purchaseReturnPending = false;
+  const target = cachedDashboardPageSnapshot?.libraryTarget;
+  if (!target || !matchesWishlistPurchaseTarget(current, target)) {
+    // An unavailable status cannot authorize a paint. Keep the receipt for a scoped offline retry.
+    if (current) confirmedPurchases.clear();
+    cachedDashboardPageSnapshot = null;
+    dashboardPageSnapshotGeneration += 1;
+  }
+}
+
 export function clearDashboardPageSnapshot(): void {
+  purchaseReturnPending = false;
+  confirmedPurchases.clear();
   cachedDashboardPageSnapshot = null;
   dashboardPageSnapshotGeneration += 1;
 }
