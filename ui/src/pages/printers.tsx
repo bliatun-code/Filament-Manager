@@ -120,6 +120,7 @@ export default function PrintersPage() {
       "Failed to load printer overview.",
     ),
     onInteractiveReload: handleInteractiveReload,
+    onTargetChanged: retryLibrarySyncRole,
   });
   const { slotLabelById } = useInventoryPrinterSlots(printers, t);
 

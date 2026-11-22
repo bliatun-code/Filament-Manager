@@ -99,6 +99,10 @@ export function useLibrarySyncState(tauri: boolean): LibrarySyncUiState {
     };
   }, [resolveRole]);
 
+  const retryLibrarySyncRole = useCallback(() => {
+    if (state.librarySyncResolution !== "LOADING") void resolveRole();
+  }, [resolveRole, state.librarySyncResolution]);
+
   return {
     clientReadOnly: state.clientReadOnly,
     clientHostWritePaired: state.clientHostWritePaired,
@@ -109,10 +113,6 @@ export function useLibrarySyncState(tauri: boolean): LibrarySyncUiState {
     librarySyncError: state.librarySyncResolution === "ERROR",
     librarySyncReady: state.librarySyncResolution === "READY",
     librarySyncResolving: state.librarySyncResolution === "LOADING",
-    retryLibrarySyncRole: () => {
-      if (state.librarySyncResolution !== "LOADING") {
-        void resolveRole();
-      }
-    },
+    retryLibrarySyncRole,
   };
 }

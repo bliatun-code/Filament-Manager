@@ -3,17 +3,16 @@ import {
   fetchCachedLibrarySyncSpools,
   fetchLibrarySyncPrinterOverview,
   fetchLibrarySyncPrinterSettings,
+  fetchLibrarySyncSpoolSnapshot,
   getPrinterSettings,
   listPrinterOverview,
   type BambuLiveIntegrationEntry,
   type PrinterOverviewRow,
-  type SpoolWithMasterRow,
 } from "./tauri_client";
 import {
   DEFAULT_SPOOL_PAGE_SIZE,
   loadAllSpoolRows,
-  loadAllSpoolRowsWithPageLoader,
-  loadSpoolRowsPage,
+  type loadSpoolRowsPage,
 } from "./spool_data_source";
 import {
   normalizeSpoolWithMasterRows,
@@ -77,7 +76,7 @@ type PrinterPageDataSourceDependencies = {
   fetchHostSettings?: typeof fetchLibrarySyncPrinterSettings;
   fetchCachedOverview?: typeof fetchCachedLibrarySyncPrinterOverview;
   fetchCachedSpools?: typeof fetchCachedLibrarySyncSpools;
-  loadHostSpools?: typeof loadSpoolRowsPage;
+  fetchHostSpoolSnapshot?: typeof fetchLibrarySyncSpoolSnapshot;
   listLocalOverview?: typeof listPrinterOverview;
   loadLocalSettings?: typeof getPrinterSettings;
   loadLocalSpools?: typeof loadSpoolRowsPage;
@@ -97,43 +96,7 @@ function resolvePrinterModels(
   return printerModels && printerModels.length > 0 ? printerModels : supportedPrinterModels;
 }
 
-function resolveClientPrinterUpdatedAt({
-  overviewLive,
-  spoolsLive,
-  cachedOverviewCapturedAt,
-  cachedSpoolsCapturedAt,
-}: {
-  overviewLive: boolean;
-  spoolsLive: boolean;
-  cachedOverviewCapturedAt?: string | null;
-  cachedSpoolsCapturedAt?: string | null;
-}): string | null {
-  if (!overviewLive && !spoolsLive) {
-    return firstDefinedTimestamp(cachedOverviewCapturedAt, cachedSpoolsCapturedAt);
-  }
-  if (!overviewLive) {
-    return cachedOverviewCapturedAt ?? null;
-  }
-  if (!spoolsLive) {
-    return cachedSpoolsCapturedAt ?? null;
-  }
-  return firstDefinedTimestamp(cachedOverviewCapturedAt, cachedSpoolsCapturedAt);
-}
-
 export const derivePrinterLibrarySyncState = deriveLibrarySyncPageState;
-
-function normalizePrinterSpoolRows(rows: SpoolWithMasterRow[]): NormalizedSpoolWithMasterRow[] {
-  return normalizeSpoolWithMasterRows(rows);
-}
-
-async function loadPrinterSpoolRows(
-  options: PrinterOverviewDataSourceOptions,
-  loadPage?: typeof loadSpoolRowsPage,
-): Promise<NormalizedSpoolWithMasterRow[]> {
-  return loadPage
-    ? loadAllSpoolRowsWithPageLoader(options, DEFAULT_SPOOL_PAGE_SIZE, loadPage)
-    : loadAllSpoolRows(options);
-}
 
 export async function loadPrinterOverviewData(
   options: PrinterOverviewDataSourceOptions,
@@ -230,126 +193,10 @@ export async function loadPrinterPageData(
   const listLocalOverview = dependencies.listLocalOverview ?? listPrinterOverview;
   const loadLocalSettings = dependencies.loadLocalSettings ?? getPrinterSettings;
   const onLoadError = dependencies.onLoadError ?? console.error;
-  const { clientReadOnly, clientHostBaseUrl, clientLibraryId, supportedPrinterModels } = options;
-  const hostTarget = clientReadOnly ? resolveClientHostTarget(options) : null;
-  const cacheTarget = clientReadOnly ? resolveClientHostCacheTarget(options) : null;
-
+  const { clientReadOnly, supportedPrinterModels } = options;
   if (clientReadOnly) {
-    if (!hostTarget) {
-      const [cachedPrinters, cachedSpools] = cacheTarget
-        ? await Promise.all([
-            fetchCachedOverview(
-              cacheTarget.baseUrl,
-              cacheTarget.libraryId,
-              cacheTarget.targetGeneration,
-            ).catch(() => null),
-            fetchCachedSpools(
-              cacheTarget.baseUrl,
-              cacheTarget.libraryId,
-              cacheTarget.targetGeneration,
-            ).catch(() => null),
-          ])
-        : [null, null];
-      const printers = cachedPrinters?.rows ?? [];
-      const spools = normalizePrinterSpoolRows(cachedSpools?.rows ?? []);
-      if (printers.length > 0 || spools.length > 0) {
-        return {
-          printers,
-          spools,
-          bambuLiveIntegrations: {},
-          printerModels: supportedPrinterModels,
-          source: "CACHED",
-          updatedAt: cachedPrinters?.captured_at ?? cachedSpools?.captured_at ?? null,
-          revisionPollComplete: false,
-        };
-      }
-
-      return {
-        printers: [],
-        spools: [],
-        bambuLiveIntegrations: {},
-        printerModels: supportedPrinterModels,
-        source: "OFFLINE",
-        updatedAt: null,
-        revisionPollComplete: false,
-      };
-    }
-    const [overviewResult, spoolRowsResult, settingsResult, cachedPrinters, cachedSpools] =
-      await Promise.all([
-        fetchHostOverview(hostTarget.baseUrl, hostTarget.libraryId).then(
-          (value) => ({ ok: true as const, value }),
-          (error) => ({ ok: false as const, error }),
-        ),
-        loadPrinterSpoolRows(
-          {
-            clientReadOnly,
-            clientHostBaseUrl: hostTarget.baseUrl,
-            clientLibraryId: hostTarget.libraryId,
-            clientTargetGeneration: options.clientTargetGeneration,
-          },
-          dependencies.loadHostSpools,
-        ).then(
-          (value) => ({ ok: true as const, value }),
-          (error) => ({ ok: false as const, error }),
-        ),
-        fetchHostSettings(hostTarget.baseUrl, hostTarget.libraryId).then(
-          (value) => ({ ok: true as const, value }),
-          (error) => ({ ok: false as const, error }),
-        ),
-        cacheTarget
-          ? fetchCachedOverview(
-              cacheTarget.baseUrl,
-              cacheTarget.libraryId,
-              cacheTarget.targetGeneration,
-            ).catch(() => null)
-          : null,
-        cacheTarget
-          ? fetchCachedSpools(
-              cacheTarget.baseUrl,
-              cacheTarget.libraryId,
-              cacheTarget.targetGeneration,
-            ).catch(() => null)
-          : null,
-      ]);
-
-    if (!overviewResult.ok) {
-      onLoadError(overviewResult.error);
-    }
-    if (!spoolRowsResult.ok) {
-      onLoadError(spoolRowsResult.error);
-    }
-    if (!settingsResult.ok) {
-      onLoadError(settingsResult.error);
-    }
-
-    const printers = overviewResult.ok ? overviewResult.value : cachedPrinters?.rows ?? [];
-    const spools = normalizePrinterSpoolRows(
-      spoolRowsResult.ok ? spoolRowsResult.value : cachedSpools?.rows ?? [],
-    );
-
-    if (printers.length > 0 || spools.length > 0 || overviewResult.ok || spoolRowsResult.ok) {
-      return {
-        printers,
-        spools,
-        bambuLiveIntegrations: mapBambuLiveIntegrations(
-          settingsResult.ok ? settingsResult.value.bambu_live_integrations : [],
-        ),
-        printerModels: resolvePrinterModels(
-          settingsResult.ok ? settingsResult.value.printer_models : [],
-          supportedPrinterModels,
-        ),
-        source: overviewResult.ok && spoolRowsResult.ok ? "LIVE" : "CACHED",
-        updatedAt: resolveClientPrinterUpdatedAt({
-          overviewLive: overviewResult.ok,
-          spoolsLive: spoolRowsResult.ok,
-          cachedOverviewCapturedAt: cachedPrinters?.captured_at,
-          cachedSpoolsCapturedAt: cachedSpools?.captured_at,
-        }),
-        revisionPollComplete: overviewResult.ok && spoolRowsResult.ok && settingsResult.ok,
-      };
-    }
-
-    return {
+    const target = resolveClientHostCacheTarget(options);
+    const offline: PrinterDataLoadResult = {
       printers: [],
       spools: [],
       bambuLiveIntegrations: {},
@@ -358,24 +205,57 @@ export async function loadPrinterPageData(
       updatedAt: null,
       revisionPollComplete: false,
     };
+    if (!target) return offline;
+
+    const { baseUrl, libraryId, targetGeneration } = target;
+    const fetchSpools = dependencies.fetchHostSpoolSnapshot ?? fetchLibrarySyncSpoolSnapshot;
+    const results = await Promise.allSettled([
+      fetchHostOverview(baseUrl, libraryId),
+      fetchSpools(baseUrl, libraryId, targetGeneration),
+      fetchHostSettings(baseUrl, libraryId),
+    ]);
+    for (const result of results) {
+      if (result.status === "rejected") onLoadError(result.reason);
+    }
+    const [overview, spools, settings] = results;
+    const [cachedPrinters, cachedSpools] = await Promise.all([
+      overview.status === "rejected"
+        ? fetchCachedOverview(baseUrl, libraryId, targetGeneration).catch(() => null)
+        : null,
+      spools.status === "rejected"
+        ? fetchCachedSpools(baseUrl, libraryId, targetGeneration).catch(() => null)
+        : null,
+    ]);
+    if (overview.status === "rejected" && spools.status === "rejected" && !cachedPrinters && !cachedSpools) {
+      return offline;
+    }
+
+    const live = overview.status === "fulfilled" && spools.status === "fulfilled";
+    const hostSettings = settings.status === "fulfilled" ? settings.value : null;
+    return {
+      printers: overview.status === "fulfilled" ? overview.value : cachedPrinters?.rows ?? [],
+      spools: normalizeSpoolWithMasterRows(
+        spools.status === "fulfilled" ? spools.value.rows : cachedSpools?.rows ?? [],
+      ),
+      bambuLiveIntegrations: mapBambuLiveIntegrations(hostSettings?.bambu_live_integrations),
+      printerModels: resolvePrinterModels(hostSettings?.printer_models, supportedPrinterModels),
+      source: live ? "LIVE" : "CACHED",
+      updatedAt: live
+        ? spools.value.captured_at
+        : firstDefinedTimestamp(cachedPrinters?.captured_at, cachedSpools?.captured_at),
+      revisionPollComplete: live && settings.status === "fulfilled",
+    };
   }
 
   const [overview, spoolRows, settings] = await Promise.all([
     listLocalOverview(),
-    loadPrinterSpoolRows(
-      {
-        clientReadOnly,
-        clientHostBaseUrl,
-        clientLibraryId,
-      },
-      dependencies.loadLocalSpools,
-    ),
+    loadAllSpoolRows(options, DEFAULT_SPOOL_PAGE_SIZE, { loadPage: dependencies.loadLocalSpools }),
     loadLocalSettings(),
   ]);
 
   return {
     printers: overview,
-    spools: normalizePrinterSpoolRows(spoolRows),
+    spools: spoolRows,
     bambuLiveIntegrations: mapBambuLiveIntegrations(settings.bambu_live_integrations),
     printerModels: resolvePrinterModels(settings.printer_models, supportedPrinterModels),
     source: "LIVE",

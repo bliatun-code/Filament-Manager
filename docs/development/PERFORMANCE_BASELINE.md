@@ -32,6 +32,12 @@ that this lookup can read the settings with unreadable cache values and
 returns identical JSON with zero and 10,000 cached spools. Each page loads
 the lists it needs separately.
 
+Printers requests the live overview, spool snapshot and printer settings together.
+Rust saves the complete spool snapshot and returns its rows and capture time in
+one call. A failed overview or spool request reads only its matching offline
+copy. After loading the catalog, the page checks the current Host, library and
+generation before displaying results. A change restarts loading for the new target.
+
 Opening Statistics or changing the reporting period starts the Host reads
 together. A healthy response reads no cache lists. A failed spool, printer or
 loan-history read uses only its own cache for the original Host, library and
