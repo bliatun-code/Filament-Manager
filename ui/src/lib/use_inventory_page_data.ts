@@ -58,6 +58,7 @@ export type InventoryReloadReporter = (
 
 type InventoryRefreshInput = {
   selectedSpoolId?: string | null;
+  purchasesOnly?: boolean;
 };
 
 type LibrarySyncResolution = "LOADING" | "READY" | "ERROR";
@@ -145,11 +146,9 @@ export function useInventoryPageData({
     useState<LibrarySyncResolution>(tauriAvailable ? "LOADING" : "READY");
   const librarySyncReady = librarySyncResolution === "READY";
   const librarySyncResolving = librarySyncResolution === "LOADING";
-  const [clientInventorySource, setClientInventorySource] =
-    useState<ClientSnapshotSource>("UNRESOLVED");
   const clientInventorySourceRef = useRef<ClientSnapshotSource>("UNRESOLVED");
-  const clientInventoryDomainSourcesRef = useRef(createInventoryDomainSources());
-  const [clientInventoryPartial, setClientInventoryPartial] = useState(false);
+  const [domainSources, setDomainSources] = useState(createInventoryDomainSources);
+  const clientInventorySource = domainSources.spools;
   const [clientInventoryUpdatedAt, setClientInventoryUpdatedAt] = useState<string | null>(null);
   const [historyLoading, setHistoryLoading] = useState(false);
   const [detailUnavailable, setDetailUnavailable] = useState(false);
@@ -164,28 +163,19 @@ export function useInventoryPageData({
     Record<string, BambuLiveIntegrationSettings>
   >({});
 
-  const refreshClientInventoryPartial = useCallback(() => {
-    const secondarySources = INVENTORY_COMPOSITE_SECONDARY_DOMAINS
-      .map((domain) => clientInventoryDomainSourcesRef.current[domain])
-      .filter(
-        (source): source is ResolvedClientSnapshotSource => source !== "UNRESOLVED",
-      );
-    setClientInventoryPartial(
-      clientReadOnly &&
-        isClientCompositeSnapshotPartial({
-          primarySource: clientInventorySourceRef.current,
-          secondarySources,
-        }),
-    );
-  }, [clientReadOnly]);
+  const clientInventoryPartial = clientReadOnly && isClientCompositeSnapshotPartial({
+    primarySource: clientInventorySource,
+    secondarySources: INVENTORY_COMPOSITE_SECONDARY_DOMAINS
+      .map((domain) => domainSources[domain])
+      .filter((source): source is ResolvedClientSnapshotSource => source !== "UNRESOLVED"),
+  });
 
   const recordClientInventoryDomainSource = useCallback((
     domain: InventoryDataRequestDomain,
-    source: ResolvedClientSnapshotSource,
+    source: ClientSnapshotSource,
   ) => {
-    clientInventoryDomainSourcesRef.current[domain] = source;
-    refreshClientInventoryPartial();
-  }, [refreshClientInventoryPartial]);
+    setDomainSources((current) => current[domain] === source ? current : { ...current, [domain]: source });
+  }, []);
 
   const beginDataRequest = useCallback((domain: InventoryDataRequestDomain) => {
     const requestId = dataRequestRef.current[domain] + 1;
@@ -225,9 +215,7 @@ export function useInventoryPageData({
     setUsagePoints([]);
     setUsageLoading(false);
     clientInventorySourceRef.current = "UNRESOLVED";
-    clientInventoryDomainSourcesRef.current = createInventoryDomainSources();
-    setClientInventorySource("UNRESOLVED");
-    setClientInventoryPartial(false);
+    setDomainSources(createInventoryDomainSources());
     setClientInventoryUpdatedAt(null);
     setRfidCaptureFieldsBySlotId({});
   }, [setRfidCaptureFieldsBySlotId]);
@@ -370,6 +358,14 @@ export function useInventoryPageData({
     tauriAvailable,
   ]);
 
+  const clientReadTargetChanged = useCallback(async () => {
+    const current = await loadLibrarySyncPageState();
+    return !current.clientReadOnly ||
+      current.clientHostBaseUrl !== clientHostBaseUrl ||
+      current.clientLibraryId !== clientLibraryId ||
+      current.clientTargetGeneration !== clientTargetGeneration;
+  }, [clientHostBaseUrl, clientLibraryId, clientTargetGeneration]);
+
   const reloadSpools = useCallback(async (reportResult?: InventoryReloadReporter) => {
     if (!tauriAvailable) {
       reportResult?.("spools", "ERROR");
@@ -389,20 +385,13 @@ export function useInventoryPageData({
         clientHostBaseUrl && clientLibraryId &&
         await inventoryFallbackPairingRejected(clientHostBaseUrl, clientLibraryId);
       // Another window can switch the persisted target while a live or fallback read is in flight.
-      const current = clientReadOnly && dataRequestIsCurrent("spools", requestId)
-        ? await loadLibrarySyncPageState()
-        : null;
+      const targetChanged = clientReadOnly && dataRequestIsCurrent("spools", requestId) && await clientReadTargetChanged();
       if (!dataRequestIsCurrent("spools", requestId)) {
         reportResult?.("spools", "SUPERSEDED");
         reportResult?.("locations", "SUPERSEDED");
         return;
       }
-      if (current && (
-        !current.clientReadOnly ||
-        current.clientHostBaseUrl !== clientHostBaseUrl ||
-        current.clientLibraryId !== clientLibraryId ||
-        current.clientTargetGeneration !== clientTargetGeneration
-      )) {
+      if (targetChanged) {
         await resolveLibrarySyncRole();
         return;
       }
@@ -416,12 +405,10 @@ export function useInventoryPageData({
             ? "CACHED"
             : result.source;
         clientInventorySourceRef.current = source;
-        setClientInventorySource(source);
-        clientInventoryDomainSourcesRef.current.spools = source;
+        recordClientInventoryDomainSource("spools", source);
         if (result.source !== "OFFLINE" || reportResult) {
           setClientInventoryUpdatedAt(result.updatedAt);
         }
-        refreshClientInventoryPartial();
       }
       if (clientReadOnly && result.source === "OFFLINE" && !reportResult) {
         // Background and post-mutation refreshes have their own feedback
@@ -459,7 +446,7 @@ export function useInventoryPageData({
       console.error(loadError);
       if (reportResult && clientReadOnly) {
         clientInventorySourceRef.current = "UNRESOLVED";
-        setClientInventorySource("UNRESOLVED");
+        recordClientInventoryDomainSource("spools", "UNRESOLVED");
         setClientInventoryUpdatedAt(null);
       }
       reportResult?.("spools", "ERROR");
@@ -471,16 +458,16 @@ export function useInventoryPageData({
     clientLibraryId,
     clientReadOnly,
     clientTargetGeneration,
+    clientReadTargetChanged,
     dataRequestIsCurrent,
     recordClientInventoryDomainSource,
-    refreshClientInventoryPartial,
     reloadLocations,
     resolveLibrarySyncRole,
     clientHostWritePaired,
     tauriAvailable,
   ]);
 
-  const reloadWishlist = useCallback(async (reportResult?: InventoryReloadReporter) => {
+  const reloadWishlist = useCallback(async (reportResult?: InventoryReloadReporter, checkPairing = false) => {
     if (!tauriAvailable) {
       reportResult?.("wishlist", "ERROR");
       return;
@@ -494,10 +481,20 @@ export function useInventoryPageData({
         clientLibraryId,
         clientTargetGeneration,
       });
+      const pairingRejected = checkPairing && result.source !== "LIVE" && clientHostWritePaired &&
+        clientHostBaseUrl && clientLibraryId && dataRequestIsCurrent("wishlist", requestId) &&
+        await inventoryFallbackPairingRejected(clientHostBaseUrl, clientLibraryId);
+      // The paired target can change in another window while the Host or its offline copy is being read.
+      const targetChanged = clientReadOnly && dataRequestIsCurrent("wishlist", requestId) && await clientReadTargetChanged();
       if (!dataRequestIsCurrent("wishlist", requestId)) {
         reportResult?.("wishlist", "SUPERSEDED");
         return;
       }
+      if (targetChanged) {
+        await resolveLibrarySyncRole();
+        return;
+      }
+      if (pairingRejected) setClientHostWritePaired(false);
       if (result.source === "OFFLINE" && !reportResult) {
         recordClientInventoryDomainSource("wishlist", "OFFLINE");
         return;
@@ -526,11 +523,14 @@ export function useInventoryPageData({
   }, [
     beginDataRequest,
     clientHostBaseUrl,
+    clientHostWritePaired,
     clientLibraryId,
     clientReadOnly,
     clientTargetGeneration,
+    clientReadTargetChanged,
     dataRequestIsCurrent,
     recordClientInventoryDomainSource,
+    resolveLibrarySyncRole,
     tauriAvailable,
   ]);
 
@@ -736,6 +736,7 @@ export function useInventoryPageData({
   ]);
 
   const refreshInventoryData = useCallback(async ({
+    purchasesOnly = false,
     selectedSpoolId,
   }: InventoryRefreshInput = {}) => {
     if (!tauriAvailable) {
@@ -743,7 +744,7 @@ export function useInventoryPageData({
     }
     const requestId = refreshRequestRef.current + 1;
     refreshRequestRef.current = requestId;
-    if (clientReadOnly) {
+    if (clientReadOnly && !purchasesOnly) {
       // A previous fallback must not classify a later exceptional refresh as
       // another expected offline result before the primary spool read settles.
       clientInventorySourceRef.current = "UNRESOLVED";
@@ -754,14 +755,14 @@ export function useInventoryPageData({
       resolutions.set(domain, resolution);
     };
     try {
-      const expectedDomains: InventoryDataRequestDomain[] = [
+      const expectedDomains: InventoryDataRequestDomain[] = purchasesOnly ? ["wishlist"] : [
         "spools",
         "locations",
         "wishlist",
         "loans",
         "printers",
       ];
-      const refreshes = [
+      const refreshes = purchasesOnly ? [reloadWishlist(reportResult, true)] : [
         reloadSpools(reportResult),
         reloadWishlist(reportResult),
         reloadActiveLoans(reportResult),
@@ -781,9 +782,6 @@ export function useInventoryPageData({
       const unexpectedFailure = missingDomains.length > 0 || [...resolutions.values()].some(
         (resolution) => resolution === "ERROR",
       );
-      const superseded = [...resolutions.values()].some(
-        (resolution) => resolution === "SUPERSEDED",
-      );
       if (unexpectedFailure) {
         if (
           [...resolutions.values()].some(
@@ -795,14 +793,10 @@ export function useInventoryPageData({
         failRefresh(t("errors.requestFailed", "The request could not be completed."));
         return;
       }
-      if (!superseded) {
-        refreshClientInventoryPartial();
-      }
       completeRefresh();
     } catch (refreshError) {
       console.error(refreshError);
       if (refreshRequestRef.current === requestId) {
-        setClientInventoryPartial(false);
         failRefresh(t("errors.requestFailed", "The request could not be completed."));
       }
     }
@@ -816,7 +810,6 @@ export function useInventoryPageData({
     reloadSpoolDetail,
     reloadSpools,
     reloadWishlist,
-    refreshClientInventoryPartial,
     t,
     tauriAvailable,
   ]);
@@ -836,6 +829,7 @@ export function useInventoryPageData({
     infoMessage,
     setInfoMessage,
     libraryStatus,
+    domainSources,
     completeDataLoad: completeRefresh,
     detailUnavailable,
     historyLoading,

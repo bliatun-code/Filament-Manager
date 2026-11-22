@@ -13,6 +13,8 @@ import type { WishlistItemRow, WishlistPurchaseTarget } from "../lib/tauri_clien
 type CreatePayload = Pick<WishlistItemRow, "master_id" | "material" | "filament_name" | "color_name" | "vendor" | "quantity" | "note"> & {
   expected_library_id: string;
   expected_target_generation: number;
+  target_generation?: number;
+  item_id?: string;
 };
 
 test("Dashboard purchase handoff stays with the reviewed library", async (t) => {
@@ -32,12 +34,15 @@ test("Dashboard purchase handoff stays with the reviewed library", async (t) => 
   const replacement = { ...origin, host_base_url: "http://host-b.test", library_id: "library-b", target_generation: 2 };
   const backToA = { ...origin, target_generation: 3 };
 
-  for (const scenario of ["switch after save", "A–B–A after save", "switch on arrival", "A–B–A on arrival", "offline return", "switch before offline return"] as const) {
+  for (const scenario of ["switch after save", "A–B–A after save", "switch on arrival", "A–B–A on arrival", "offline return", "switch before offline return",
+    "refresh cached queue", "refresh without a saved queue", "switch during queue read", "A–B–A during cached read", "receive and open stock"] as const) {
     await t.test(scenario, async () => {
       const page = await browser.newPage();
       try {
         let target = origin;
         let offline = false;
+        let queueOffline = scenario === "refresh cached queue" || scenario === "refresh without a saved queue" || scenario === "A–B–A during cached read";
+        let received = false;
         let afterClick = false;
         let arrivalRead = false;
         let checkedAfterSave = false;
@@ -60,6 +65,7 @@ test("Dashboard purchase handoff stays with the reviewed library", async (t) => 
             checkedAfterSave = true;
           }
           const rows = [row(target === origin ? "Purchased roll" : "Replacement roll"), row("Other roll")];
+          if (received) rows.push(row("Delivered roll"));
           const status = { ...target, client_auth_paired: true, host_device_name: target.library_id };
           const snapshot = { library_id: target.library_id, device_name: target.library_id, captured_at: "2026-11-01 10:00:00",
             total_spools: 2, low_stock: 2, in_use: 0, active_loans: 0, printers: 0 };
@@ -73,7 +79,34 @@ test("Dashboard purchase handoff stays with the reviewed library", async (t) => 
             case "fetch_library_sync_snapshot": return snapshot;
             case "fetch_library_sync_spool_detail": return { spool: rows[0], history: [], usage: [] };
             case "fetch_library_sync_spool_snapshot": return { rows, captured_at: snapshot.captured_at };
-            case "fetch_library_sync_wishlist_items": return target === origin ? saved : [];
+            case "fetch_library_sync_wishlist_items": {
+              if (!saved.length) return [];
+              if (target !== origin) return [{ ...saved[0], filament_name: "Replacement purchase" }];
+              if (scenario === "switch during queue read") {
+                assert.equal(args.input?.expected_target_generation, origin.target_generation);
+                target = replacement;
+                return [{ ...saved[0], filament_name: "Obsolete purchase" }];
+              }
+              if (queueOffline) throw new Error("Host offline");
+              if (scenario === "refresh without a saved queue") return [];
+              return saved;
+            }
+            case "validate_library_sync_host": return { reachable: !queueOffline, matches_library_id: true, pairing_checked: true, pairing_valid: true };
+            case "fetch_cached_library_sync_wishlist":
+              assert.equal(args.input?.expected_library_id, origin.library_id);
+              assert.equal(args.input.target_generation, origin.target_generation);
+              if (scenario === "A–B–A during cached read") {
+                target = replacement;
+                target = backToA;
+                return { rows: [{ ...saved[0], filament_name: "Obsolete purchase" }], captured_at: snapshot.captured_at };
+              }
+              if (scenario === "refresh without a saved queue") return null;
+              return { rows: [{ ...saved[0], filament_name: "Cached purchase" }], captured_at: snapshot.captured_at };
+            case "receive_library_sync_host_wishlist_item":
+              assert.equal(args.input?.item_id, "host-assigned-id");
+              saved[0] = { ...saved[0], quantity: 0, status: "RECEIVED" };
+              received = true;
+              return { spool_ids: ["Delivered roll"], received_quantity: 1, remaining_quantity: 0, status: "RECEIVED" };
             case "create_library_sync_host_wishlist_item": {
               assert.ok(args.input);
               assert.equal(args.input.expected_library_id, origin.library_id);
@@ -115,11 +148,47 @@ test("Dashboard purchase handoff stays with the reviewed library", async (t) => 
 
         const queue = page.locator("#inventory-purchases-panel:not([hidden])");
         const notice = "Added to the wishlist. Opening Purchases.";
-        if (scenario === "offline return" || scenario === "switch before offline return") {
+        if (scenario === "switch during queue read" || scenario === "A–B–A during cached read") {
+          await queue.getByText(/Replacement purchase/).first().waitFor();
+          assert.ok(!await page.evaluate("window.purchasePaints.some(text => text.includes('Obsolete purchase'))"));
+          assert.equal(calls.filter(cmd => cmd === "fetch_library_sync_spool_snapshot").length, 0);
+        } else if (scenario === "refresh cached queue" || scenario === "refresh without a saved queue" || scenario === "receive and open stock") {
+          const stockTab = page.locator("#inventory-stock-tab");
+          if (queueOffline) {
+            if (scenario === "refresh without a saved queue") {
+              await page.getByText(/no cached inventory snapshot/i).first().waitFor();
+              assert.equal(await page.locator("#inventory-purchases-tab .inventory-workspace-count").innerText(), "–");
+            } else {
+              await queue.getByText(/Cached purchase/).first().waitFor();
+            }
+            queueOffline = false;
+            await page.getByRole("button", { name: "Refresh", exact: true }).click();
+          }
+          if (scenario === "refresh without a saved queue") {
+            await page.waitForFunction(() => document.querySelector("#inventory-purchases-tab .inventory-workspace-count")?.textContent === "0");
+          } else {
+            await queue.getByText(/Purchased roll/).first().waitFor();
+            assert.equal(await page.locator("#inventory-purchases-tab .inventory-workspace-count").innerText(), "1");
+          }
+          for (const tab of ["stock", "loans", "locations"]) {
+            assert.equal(await page.locator(`#inventory-${tab}-tab .inventory-workspace-count`).innerText(), "–");
+          }
+          assert.ok(!calls.some(cmd => ["fetch_library_sync_spool_snapshot", "fetch_cached_library_sync_spools",
+            "fetch_library_sync_active_loans", "fetch_library_sync_printer_overview", "fetch_library_sync_locations"].includes(cmd)));
+          if (scenario === "receive and open stock") {
+            await queue.getByRole("button", { name: "Stock roll now" }).click();
+            await page.getByRole("dialog").getByRole("button", { name: "Receive 1 roll", exact: true }).click();
+            await page.getByText(/Received 1 ×/).first().waitFor();
+            await stockTab.click();
+            await page.locator("#inventory-stock-panel").getByText(/Delivered roll/).first().waitFor();
+            assert.equal(await stockTab.locator(".inventory-workspace-count").innerText(), "3");
+            assert.equal(calls.filter(cmd => cmd === "receive_library_sync_host_wishlist_item").length, 1);
+          }
+        } else if (scenario === "offline return" || scenario === "switch before offline return") {
           await queue.getByText(/Purchased roll/).first().waitFor();
           await page.getByText(notice, { exact: true }).first().waitFor();
           assert.ok(!calls.includes("fetch_library_sync_snapshot"), "Dashboard refreshed on the successful path");
-          assert.equal(calls.filter(cmd => cmd === "fetch_library_sync_spool_snapshot").length, 1, "only Inventory loads spools");
+          assert.equal(calls.filter(cmd => cmd === "fetch_library_sync_spool_snapshot").length, 0, "opening Purchases must not load stock");
           offline = true;
           if (scenario === "switch before offline return") target = backToA;
           await page.evaluate("window.stockPaints = []");

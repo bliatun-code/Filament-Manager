@@ -89,7 +89,7 @@ function InventoryAddModalBoundary({
 type InventoryPageWorkspaceProps = {
   activeView: InventoryWorkspaceView;
   loansPanel?: ReactNode;
-  totalLoanCount?: number;
+  totalLoanCount?: number | null;
   addModalActive: boolean;
   addModalProps: InventoryAddModalProps;
   bulkActionsProps: InventoryBulkActionsPanelViewProps;
@@ -130,9 +130,9 @@ type InventoryPageWorkspaceProps = {
   onRetryLoadError: () => void;
   purchaseQueueProps: WishlistQueuePanelProps;
   showRollModal: boolean;
-  totalInventoryCount: number;
-  totalLocationCount: number;
-  totalPurchaseCount: number;
+  totalInventoryCount: number | null;
+  totalLocationCount: number | null;
+  totalPurchaseCount: number | null;
 };
 
 export function InventoryPageWorkspace({
@@ -327,7 +327,7 @@ export function InventoryPageWorkspace({
                 addSpoolDisabled={headerActionsProps.primaryActionsDisabled}
                 onAddSpool={headerActionsProps.onAddSpool}
                 onResetFilters={controlsProps.onResetFilters}
-                totalSpoolCount={totalInventoryCount}
+                totalSpoolCount={totalInventoryCount ?? 0}
               /></Suspense>
             </div>
             </>

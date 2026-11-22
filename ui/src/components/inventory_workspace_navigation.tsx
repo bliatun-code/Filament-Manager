@@ -4,11 +4,11 @@ export type InventoryWorkspaceView = "STOCK" | "LOANS" | "PURCHASES" | "LOCATION
 
 type InventoryWorkspaceNavigationProps = {
   activeView: InventoryWorkspaceView;
-  inventoryCount: number;
-  locationCount: number;
-  loanCount?: number;
+  inventoryCount: number | null;
+  locationCount: number | null;
+  loanCount?: number | null;
   onViewChange: (view: InventoryWorkspaceView) => void;
-  purchaseCount: number;
+  purchaseCount: number | null;
 };
 
 export function InventoryWorkspaceNavigation({ activeView, inventoryCount, locationCount, loanCount = 0, onViewChange, purchaseCount }: InventoryWorkspaceNavigationProps) {
@@ -23,7 +23,7 @@ export function InventoryWorkspaceNavigation({ activeView, inventoryCount, locat
     {views.map(({view, id, label, count}) => <button key={view} type="button"
       id={`inventory-${id}-tab`} aria-controls={`inventory-${id}-panel`} aria-pressed={activeView === view}
       className="inventory-workspace-tab app-control-focus" onClick={() => onViewChange(view)}>
-      <span>{label}</span><span className="inventory-workspace-count">{count}</span>
+      <span>{label}</span><span className="inventory-workspace-count">{count ?? "–"}</span>
     </button>)}
   </div>;
 }
