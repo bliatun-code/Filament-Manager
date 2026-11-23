@@ -15,6 +15,7 @@ const inventoryOverview = {
   low_stock: 0, owned_low_stock: 0, borrowed_in_low_stock: 0,
   total_consumption_30d: 2500, owned_consumption_30d: 1000, borrowed_in_consumption_30d: 1500,
 };
+const revisions = { inventory: 1, catalog: 2, loans: 3, printers: 4, jobs: 5, wishlist: 6 };
 const printers: PrinterOverviewRow[] = [
   {
     printer: { id: "atlas", name: "Atlas", model: "Bambu Lab P1S", created_at: "", updated_at: "" },
@@ -124,6 +125,11 @@ test("actual StatisticsPage keeps its range, keyboard navigation, filters and de
     const errors: string[] = [];
     const consoleIssues: string[] = [];
     const requests: string[] = [];
+    const slowStarted = Promise.withResolvers<void>();
+    const releaseSlow = Promise.withResolvers<void>();
+    const lateStatusChecked = Promise.withResolvers<void>();
+    let lateReturning = false;
+    let raceReport = 0;
     const calls: { command: string; payload: Record<string, unknown> }[] = [];
     page.on("pageerror", (error) => errors.push(error.message));
     page.on("console", (message) => {
@@ -136,18 +142,31 @@ test("actual StatisticsPage keeps its range, keyboard navigation, filters and de
       requests.push(route.request().url());
       return route.abort();
     });
-    await page.exposeFunction("statisticsInvoke", (command: string, payload: Record<string, unknown> = {}) => {
+    await page.exposeFunction("statisticsInvoke", async (command: string, payload: Record<string, unknown> = {}) => {
       calls.push({ command, payload });
       switch (command) {
-        case "get_library_sync_page_status": return {
-          mode: "STANDALONE", host_base_url: null, host_device_name: null,
-          library_id: "test-library", target_generation: 1, client_auth_paired: false,
-        };
+        case "get_library_sync_page_status":
+          if (lateReturning) lateStatusChecked.resolve();
+          return {
+            mode: "STANDALONE", host_base_url: null, host_device_name: null,
+            library_id: "test-library", target_generation: 1, client_auth_paired: false,
+          };
+        case "get_library_domain_revisions": return revisions;
         case "list_spools": return [];
         case "inventory_overview": return inventoryOverview;
         case "list_printer_overview": return printers;
         case "list_loan_usage_by_person": return [];
-        case "statistics_period_report": return periodResponse(payload.period as StatisticsPeriod);
+        case "statistics_period_report": {
+          const report = periodResponse(payload.period as StatisticsPeriod);
+          if (raceReport === 1) {
+            raceReport++;
+            slowStarted.resolve();
+            await releaseSlow.promise;
+            lateReturning = true;
+            return { ...report, total_used_g: 7120 };
+          }
+          return raceReport ? { ...report, total_used_g: 8230 } : report;
+        }
         default: throw new Error(`Unexpected command in isolated statistics test: ${command}`);
       }
     });
@@ -242,6 +261,19 @@ test("actual StatisticsPage keeps its range, keyboard navigation, filters and de
       await page.getByRole("dialog", { name: heading, exact: true }).waitFor();
       await closeDialog(page);
     }
+    raceReport = 1;
+    const raceStart = calls.length;
+    await page.getByRole("button", { name: "90 d", exact: true }).click();
+    await slowStarted.promise;
+    await page.getByRole("button", { name: "Last 12 months", exact: true }).click();
+    await page.getByText("8.23 kg", { exact: true }).first().waitFor();
+    releaseSlow.resolve();
+    // Wait for the late request's final target check and the following React render.
+    await lateStatusChecked.promise;
+    await page.evaluate(() => new Promise<void>(resolve => requestAnimationFrame(() => requestAnimationFrame(() => resolve()))));
+    assert.equal(await page.getByText("7.12 kg", { exact: true }).count(), 0);
+    assert.equal(await page.getByText("8.23 kg", { exact: true }).first().isVisible(), true);
+    assert.equal(calls.slice(raceStart).filter(call => call.command === "list_spools").length, 0);
     assert.deepEqual(errors, []);
     assert.deepEqual(consoleIssues, []);
     assert.deepEqual(requests, [], "the fixture must never reach a Host, printer or external service");
@@ -282,6 +314,8 @@ test("Statistics keeps its layout and last report visible while changing periods
                   mode: scenario.mode, host_base_url: "https://host.test", library_id: "test-library",
                   host_device_name: "Test Host", target_generation: 1, client_auth_paired: scenario.mode === "CLIENT",
                 };
+              case "get_library_domain_revisions":
+              case "fetch_library_sync_domain_revisions": return revisions;
               case "fetch_library_sync_spool_snapshot":
                 return { rows: [], captured_at: "2026-09-15T00:00:00Z" };
               case "fetch_cached_library_sync_spools":

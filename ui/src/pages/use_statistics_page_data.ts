@@ -13,6 +13,7 @@ import type {
 import type {
   NormalizedLoanDetailsRow,
   NormalizedSpoolWithMasterRow,
+  StatisticsPageDataLoadResult,
   StatisticsPeriodDataStatus,
   StatisticsSnapshotSource,
 } from "../lib/statistics_data_source";
@@ -50,6 +51,7 @@ export function useStatisticsPageData({
     loading,
     refreshing,
   } = usePageRefreshState(tauri);
+  const lastComplete = useRef<StatisticsPageDataLoadResult | null>(null);
   const loadRequestRef = useRef(0);
   const [clientReadOnly, setClientReadOnly] = useState(false);
   const [clientHostDeviceName, setClientHostDeviceName] = useState<string | null>(null);
@@ -65,7 +67,7 @@ export function useStatisticsPageData({
   } | null>(null);
 
   const loadStatistics = useCallback(
-    async () => {
+    async (periodChange = false) => {
       if (!tauri) {
         return;
       }
@@ -73,10 +75,13 @@ export function useStatisticsPageData({
       loadRequestRef.current = requestId;
       beginRefresh();
       try {
-        const result = await loadStatisticsPageData({ start_at_utc, end_at_utc });
+        const result = await loadStatisticsPageData({ start_at_utc, end_at_utc }, {
+          previous: periodChange ? lastComplete.current : null,
+        });
         if (requestId !== loadRequestRef.current) {
           return;
         }
+        lastComplete.current = result.baseline ? result : null;
         const { syncState } = result;
 
         setClientReadOnly(syncState.clientReadOnly);
@@ -84,10 +89,10 @@ export function useStatisticsPageData({
         setClientHostBaseUrl(syncState.clientHostBaseUrl);
         setClientLibraryId(syncState.clientLibraryId);
 
-        setOverview(result.overview ? { ...result.overview } : null);
+        setOverview(result.overview);
         setPrinters(result.printers);
-        setSpoolRows([...result.spoolRows]);
-        setOverviewConsumptionRows([...result.consumptionRows]);
+        setSpoolRows(result.spoolRows);
+        setOverviewConsumptionRows(result.consumptionRows);
         setLoanDetails(result.loanDetails);
         setLoanUsage(result.loanUsage);
         setInboundLoanUsage(result.inboundLoanUsage);
@@ -102,6 +107,7 @@ export function useStatisticsPageData({
       } catch (loadError) {
         console.error(loadError);
         if (requestId === loadRequestRef.current) {
+          lastComplete.current = null;
           failRefresh(t("statistics.error.load", "Failed to load statistics."));
         }
       }
@@ -120,7 +126,7 @@ export function useStatisticsPageData({
   );
 
   useEffect(() => {
-    void loadStatistics();
+    void loadStatistics(true);
   }, [loadStatistics]);
 
   return {

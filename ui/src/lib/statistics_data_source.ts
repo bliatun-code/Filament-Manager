@@ -13,6 +13,7 @@ import {
   listSpoolLoans,
   statisticsPeriodReport,
   type InventoryOverview,
+  type LibraryDomainRevisions,
   type LibrarySyncPageStatus,
   type LoanUsageByPersonRow,
   type PrinterOverviewRow,
@@ -41,6 +42,8 @@ import {
   resolveClientHostCacheTarget,
   resolveClientHostTarget,
 } from "./host_write_target";
+import { fetchLibraryDomainRevisionsForSource, resolveLibraryRevisionSource, type LibraryRevisionSource } from "./library_domain_revisions";
+import { localCalendarDate } from "./loan_due_state";
 import { firstDefinedTimestamp } from "./source_timestamps";
 
 export type StatisticsSnapshotSource = "LIVE" | "CACHED" | "PARTIAL" | "OFFLINE";
@@ -65,6 +68,7 @@ export type StatisticsDataLoadResult = {
 
 export type StatisticsPageDataLoadResult = StatisticsDataLoadResult & {
   syncState: StatisticsLibrarySyncState;
+  baseline: { target: LibrarySyncPageStatus; revisions: LibraryDomainRevisions; day: string } | null;
 };
 
 export type LoanBreakdownRowsOptions = {
@@ -79,6 +83,10 @@ type LoanBreakdownRowsDependencies = {
 };
 
 type StatisticsPageDataDependencies = {
+  previous?: StatisticsPageDataLoadResult | null;
+  readRevisions?: typeof fetchLibraryDomainRevisionsForSource;
+  loadLocalPeriodReport?: typeof statisticsPeriodReport;
+  fetchHostPeriodReport?: typeof fetchLibrarySyncStatisticsPeriodReport;
   loadSyncStatus?: typeof getLibrarySyncPageStatus;
   loadData?: typeof loadStatisticsData;
 };
@@ -164,29 +172,101 @@ function emptyStatisticsData(): StatisticsDataLoadResult {
   };
 }
 
+const statisticsDomains = ["inventory", "catalog", "jobs", "printers", "loans"] as const;
+
+function sameStatisticsTarget(a: LibrarySyncPageStatus, b: LibrarySyncPageStatus) {
+  return a.mode === b.mode &&
+    a.library_id === b.library_id &&
+    a.host_base_url === b.host_base_url &&
+    a.target_generation === b.target_generation &&
+    a.client_auth_paired === b.client_auth_paired;
+}
+
+function sameStatisticsRevisions(a: LibraryDomainRevisions, b: LibraryDomainRevisions | null) {
+  return b !== null && statisticsDomains.every(domain => a[domain] === b[domain]);
+}
+
+function statisticsRevisionSource(status: LibrarySyncPageStatus) {
+  if (!Number.isSafeInteger(status.target_generation) || (status.target_generation ?? -1) < 0 ||
+      !status.library_id?.trim() || (status.mode === "CLIENT" && !status.client_auth_paired)) {
+    return null;
+  }
+  return resolveLibraryRevisionSource(deriveStatisticsLibrarySyncState(status));
+}
+
+async function statisticsRevisions(source: LibraryRevisionSource | null, read = fetchLibraryDomainRevisionsForSource) {
+  if (!source) return null;
+  const revisions = await read(source).catch(() => null);
+  return revisions && statisticsDomains.every(domain => Number.isSafeInteger(revisions[domain]) && revisions[domain] >= 0)
+    ? revisions : null;
+}
+
+async function statisticsForTarget(
+  target: LibrarySyncPageStatus,
+  period: StatisticsPeriod,
+  options: StatisticsPageDataDependencies,
+): Promise<StatisticsDataLoadResult & Pick<StatisticsPageDataLoadResult, "baseline">> {
+  const previous = options.previous;
+  const base = previous?.baseline;
+  const day = localCalendarDate();
+  // Sample before the full read. A write during that read invalidates reuse on the next switch.
+  const source = statisticsRevisionSource(target);
+  let revisions = await statisticsRevisions(source, options.readRevisions);
+  if (source && base && base.day === day && sameStatisticsTarget(base.target, target) &&
+      sameStatisticsRevisions(base.revisions, revisions)) {
+    const report = source.kind === "host"
+      ? await (options.fetchHostPeriodReport ?? fetchLibrarySyncStatisticsPeriodReport)(
+          source.baseUrl, source.libraryId, period,
+        ).catch((error) => {
+          console.error(error);
+          return undefined;
+        })
+      : await (options.loadLocalPeriodReport ?? statisticsPeriodReport)(period);
+    // The report can overlap a stock change or a disconnect. Recover through the ordinary full read.
+    revisions = await statisticsRevisions(source, options.readRevisions);
+    if (sameStatisticsRevisions(base.revisions, revisions) && localCalendarDate() === day) {
+      return {
+        ...previous,
+        periodReport: report ?? null,
+        periodStatus: report === undefined ? "UNAVAILABLE" : report ? "AVAILABLE" : "LEGACY_HOST",
+        consumptionRows: report?.filament_consumption ?? [],
+        source: report === undefined ? "PARTIAL" : "LIVE",
+        baseline: report ? base : null,
+      };
+    }
+  }
+
+  const data = await (options.loadData ?? loadStatisticsData)(target, period);
+  // A Client can derive an overview from live rows when the Host summary fails.
+  // Its missing capture time distinguishes that fallback from a complete base.
+  const complete = data.source === "LIVE" && data.periodReport !== null &&
+    (target.mode !== "CLIENT" || data.updatedAt !== null);
+  return { ...data, baseline: complete && revisions ? { target, revisions, day } : null };
+}
+
 export async function loadStatisticsPageData(
   period: StatisticsPeriod,
-  dependencies: StatisticsPageDataDependencies = {},
+  options: StatisticsPageDataDependencies = {},
 ): Promise<StatisticsPageDataLoadResult> {
-  const loadSyncStatus = dependencies.loadSyncStatus ?? getLibrarySyncPageStatus;
-  const loadData = dependencies.loadData ?? loadStatisticsData;
-  let status = await loadSyncStatus();
-  // A Host switch invalidates successful replies as well as cached fallbacks.
-  // Retry once for the replacement target, even when the URL cycles back to A.
+  const loadStatus = options.loadSyncStatus ?? getLibrarySyncPageStatus;
+  let target = await loadStatus();
   for (let attempt = 0; attempt < 2; attempt++) {
-    const data = await loadData(status, period);
-    const current = await loadSyncStatus();
-    if (
-      current.mode === status.mode &&
-      current.host_base_url === status.host_base_url &&
-      current.library_id === status.library_id &&
-      current.target_generation === status.target_generation
-    ) {
+    let data;
+    try {
+      data = await statisticsForTarget(target, period, options);
+    } catch (error) {
+      const current = await loadStatus();
+      if (sameStatisticsTarget(target, current)) throw error;
+      target = current;
+      continue;
+    }
+    const current = await loadStatus();
+    if (sameStatisticsTarget(target, current)) {
       return { ...data, syncState: deriveStatisticsLibrarySyncState(current) };
     }
-    status = current;
+    target = current;
   }
-  return { ...emptyStatisticsData(), syncState: deriveStatisticsLibrarySyncState(status) };
+  return { ...emptyStatisticsData(), syncState: deriveStatisticsLibrarySyncState(target), baseline: null };
 }
 
 export async function loadLoanBreakdownRows(

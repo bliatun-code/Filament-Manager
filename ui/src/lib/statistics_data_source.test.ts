@@ -9,6 +9,7 @@ import {
 import type {
   FilamentConsumptionRow,
   InventoryOverview,
+  LibrarySyncPageStatus,
   LibrarySyncSettings,
   PrinterOverviewRow,
   StatisticsPeriod,
@@ -931,4 +932,127 @@ test("an unreachable paired Host with no saved lists is OFFLINE for the selected
   assert.equal(result.periodStatus, "UNAVAILABLE");
   assert.equal(result.updatedAt, null);
   assert.equal(result.periodReport, null);
+});
+
+const newPeriod = { ...reportingPeriod, start_at_utc: "2026-06-01T00:00:00Z" };
+const initialRevisions = { inventory: 1, catalog: 2, printers: 3, jobs: 4, loans: 5, wishlist: 6 };
+
+for (const mode of ["STANDALONE", "HOST", "CLIENT"]) {
+  test(mode + " period switch reuses only a complete and unchanged library", async () => {
+    const status = syncSettings({ mode, host_base_url: mode === "CLIENT" ? "http://a" : null,
+      client_auth_paired: mode === "CLIENT", target_generation: 1 });
+    let versions = { ...initialRevisions };
+    let full = 0, reports = 0;
+    const newReport = (period: StatisticsPeriod) => { reports++; return periodReport({ period, total_used_g: 900 }); };
+    const options = {
+      loadSyncStatus: async () => status,
+      readRevisions: async () => ({ ...versions }),
+      loadData: async (_status: LibrarySyncPageStatus, period: StatisticsPeriod) => {
+        full++;
+        return { overview: overview(), spoolRows: [], loanDetails: [], loanUsage: [], inboundLoanUsage: [],
+          printers: [printerRow("current")], updatedAt: "capture", source: "LIVE" as const, periodStatus: "AVAILABLE" as const,
+          periodReport: periodReport({ period }), consumptionRows: [] };
+      },
+      fetchHostPeriodReport: async (url: string, id: string | null | undefined, period: StatisticsPeriod) => {
+        assert.equal(mode, "CLIENT"); assert.equal(url, "http://a"); assert.equal(id, status.library_id);
+        return newReport(period);
+      },
+      loadLocalPeriodReport: async (period: StatisticsPeriod) => { assert.notEqual(mode, "CLIENT"); return newReport(period); },
+    };
+    const first = await loadStatisticsPageData(reportingPeriod, options);
+    versions.wishlist++;
+    const next = await loadStatisticsPageData(newPeriod, { ...options, previous: first });
+    assert.equal(full, 1);
+    assert.equal(reports, 1);
+    assert.strictEqual(next.spoolRows, first.spoolRows);
+    assert.strictEqual(next.printers, first.printers);
+    assert.deepEqual(next.periodReport?.period, newPeriod);
+    assert.equal(next.periodReport?.total_used_g, 900);
+    assert.deepEqual(next.consumptionRows, next.periodReport?.filament_consumption);
+
+    for (const key of ["inventory", "printers", "jobs", "catalog", "loans"] as const) {
+      versions = { ...initialRevisions, [key]: 50 };
+      const refreshed = await loadStatisticsPageData(newPeriod, { ...options, previous: first });
+      assert.notStrictEqual(refreshed.printers, first.printers);
+    }
+    assert.equal(full, 6);
+    assert.equal(reports, 1);
+    versions = { ...initialRevisions };
+    const changedDuringReport = () => { versions.inventory++; return periodReport({ period: newPeriod }); };
+    await loadStatisticsPageData(newPeriod, { ...options, previous: first,
+      fetchHostPeriodReport: async () => changedDuringReport(), loadLocalPeriodReport: async () => changedDuringReport() });
+    assert.equal(full, 7);
+
+    for (const revisions of [null, { ...initialRevisions, inventory: NaN }]) {
+      const uncertain = await loadStatisticsPageData(newPeriod, { ...options, previous: first, readRevisions: async () => revisions });
+      assert.equal(uncertain.baseline, null);
+    }
+    assert.equal(full, 9);
+
+    const interleaved = await loadStatisticsPageData(reportingPeriod, {
+      ...options,
+      loadData: async (status, period) => {
+        const result = await options.loadData(status, period);
+        versions.inventory++;
+        return result;
+      },
+    });
+    await loadStatisticsPageData(newPeriod, { ...options, previous: interleaved });
+    assert.equal(full, 11, "a write during the initial full read also invalidates reuse");
+    assert.equal(reports, 1);
+  });
+}
+
+test("period-only read discards A–B–A replies and recovers the paired offline copy on disconnect", async t => {
+  t.mock.method(console, "error", () => {});
+  let target = syncSettings({ mode: "CLIENT", host_base_url: "http://a", target_generation: 1, client_auth_paired: true });
+  let disconnected = false;
+  const full: number[] = [];
+  const host = async <T,>(value: T) => { if (disconnected) throw Error("disconnected"); return value; };
+  const options = {
+    loadSyncStatus: async () => target,
+    readRevisions: () => host(initialRevisions),
+    loadData: (status: LibrarySyncPageStatus, period: StatisticsPeriod) => {
+      const generation = status.target_generation!;
+      full.push(generation);
+      return loadStatisticsData(status, period, {
+        fetchHostSnapshot: () => host({ captured_at: "capture", library_id: status.library_id, sync_mode: "HOST",
+          device_name: "A", inventory: overview(), total_spools: 1, in_use: 0, low_stock: 0, active_loans: 0, printers: 0 }),
+        loadHostSpools: () => host([spoolRow("live-" + generation)]),
+        fetchHostLoans: () => host([]), fetchHostPrinterOverview: () => host([]),
+        fetchHostPeriodReport: () => host(periodReport({ period, total_used_g: generation })),
+        fetchCachedSpools: async (_url, _id, gen) => {
+          assert.equal(gen, generation); return { captured_at: "offline-copy", rows: [spoolRow("offline-" + gen)] };
+        },
+        fetchCachedPrinterOverview: async () => null, fetchCachedLoans: async () => null,
+      });
+    },
+  };
+  const first = await loadStatisticsPageData(reportingPeriod, options);
+  const started = Promise.withResolvers<void>(), finish = Promise.withResolvers<void>();
+  const pending = loadStatisticsPageData(newPeriod, { ...options, previous: first,
+    fetchHostPeriodReport: async () => { started.resolve(); await finish.promise; return periodReport({ total_used_g: 999 }); },
+  });
+  await started.promise;
+  const original = target;
+  target = { ...original, library_id: "library-b", host_base_url: "http://b", target_generation: 2 };
+  target = { ...original, target_generation: 3 };
+  finish.resolve();
+  const replacement = await pending;
+  assert.equal(replacement.periodReport?.total_used_g, 3);
+  assert.equal(replacement.spoolRows[0]?.spool.id, "live-3");
+  assert.deepEqual(full, [1, 3]);
+
+  const offline = await loadStatisticsPageData(reportingPeriod, { ...options, previous: replacement,
+    fetchHostPeriodReport: async () => { disconnected = true; throw Error("lost connection during report"); },
+  });
+  assert.equal(offline.source, "CACHED");
+  assert.equal(offline.periodStatus, "UNAVAILABLE");
+  assert.equal(offline.periodReport, null);
+  assert.equal(offline.spoolRows[0]?.spool.id, "offline-3");
+  assert.equal(offline.baseline, null);
+  disconnected = false;
+  const recovered = await loadStatisticsPageData(reportingPeriod, { ...options, previous: offline });
+  assert.equal(recovered.source, "LIVE");
+  assert.deepEqual(full, [1, 3, 3, 3]);
 });
