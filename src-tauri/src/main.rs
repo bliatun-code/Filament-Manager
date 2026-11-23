@@ -130,7 +130,7 @@ mod trusted_lan_runtime_commands;
 mod trusted_lan_status_commands;
 
 pub(crate) use app_storage::{with_db, with_inventory, with_stats};
-use filament_manager_core::backend::{self, filament_database::FilamentDatabase};
+use filament_manager_core::backend;
 #[cfg(target_os = "macos")]
 use objc2::{AnyThread, MainThreadMarker};
 #[cfg(all(target_os = "macos", debug_assertions))]
@@ -272,7 +272,7 @@ fn main() {
                     None,
                 );
             })?;
-            let credential_profile_id = FilamentDatabase::open(&db_path)
+            let credential_profile_id = backend::filament_database::FilamentDatabase::open(&db_path)
                 .and_then(|db| db.get_or_create_credential_store_profile_id())
                 .map_err(|error| {
                     std::io::Error::other(format!(
