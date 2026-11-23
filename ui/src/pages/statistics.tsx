@@ -27,7 +27,6 @@ import {
   sortLoggedPrinterRows,
   applyStatisticsPeriodReportToOverview,
   applyStatisticsPeriodReportToPrinters,
-  deriveInventoryOverviewFromRows,
   type BorrowerFilamentUsageRow,
   type BorrowerPopupPrefs,
   type ConsumptionPopupPrefs,
@@ -113,7 +112,6 @@ export default function StatisticsPage({ onOpenFilamentDefaults }: StatisticsPag
     refreshing,
     reloadData,
     renderedPeriodRange,
-    spoolRows,
   } = useStatisticsPageData({ range: periodPickerState, tauri, t });
   const [showConsumptionModal, setShowConsumptionModal] = useState(false);
   const [consumptionModalTitle, setConsumptionModalTitle] = useState("");
@@ -205,27 +203,19 @@ export default function StatisticsPage({ onOpenFilamentDefaults }: StatisticsPag
       periodReport ? applyStatisticsPeriodReportToPrinters(printers, periodReport) : [],
     [periodReport, printers],
   );
-  const ownershipOverview = useMemo(() => {
-    const currentOverview =
-      spoolRows.length > 0 ? deriveInventoryOverviewFromRows(spoolRows, []) : overview;
-    if (!currentOverview) {
-      return null;
-    }
-    return periodReport
-      ? applyStatisticsPeriodReportToOverview(currentOverview, periodReport)
-      : currentOverview;
-  }, [overview, periodReport, spoolRows]);
+  const ownershipOverview = useMemo(
+    () => overview && periodReport ? applyStatisticsPeriodReportToOverview(overview, periodReport) : overview,
+    [overview, periodReport],
+  );
   const consumptionForecast = useMemo(
     () =>
       buildConsumptionForecast({
         asOfDate:
           clientStatisticsUpdatedAt?.match(/^\d{4}-\d{2}-\d{2}/)?.[0] ??
           new Date().toISOString().slice(0, 10),
-        ownedConsumption30d:
-          overview?.owned_consumption_30d ?? 0,
-        spools: spoolRows,
+        overview,
       }),
-    [clientStatisticsUpdatedAt, overview, spoolRows],
+    [clientStatisticsUpdatedAt, overview],
   );
   const openConsumptionModal = useCallback(
     (printer?: PrinterOverviewRow) => {

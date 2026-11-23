@@ -11,6 +11,7 @@ import {
   normalizeSpoolWithMasterRow,
   type NormalizedSpoolWithMasterRow,
 } from "./spool_row_normalization";
+import { deriveInventoryOverviewFromRows } from "./statistics_model";
 import type { SpoolWithMasterRow } from "./tauri_client";
 
 function spool({
@@ -38,16 +39,17 @@ function spool({
 }
 
 test("forecast uses owned on-hand stock and the explicit 30-day usage basis", () => {
+  const stock = deriveInventoryOverviewFromRows([
+    spool({ remaining: 900 }),
+    spool({ current: 600, remaining: null, status: "ASSIGNED" }),
+    spool({ ownership: "BORROWED_IN", remaining: 700 }),
+    spool({ remaining: 500, status: "LOANED_OUT" }),
+    spool({ remaining: 500, status: "EMPTY" }),
+    spool({ initial: 400, remaining: null, status: "LOST" }),
+  ], []);
   const result = buildConsumptionForecast({
     asOfDate: "2026-08-21",
-    ownedConsumption30d: 3_000,
-    spools: [
-      spool({ remaining: 900 }),
-      spool({ current: 600, remaining: null, status: "ASSIGNED" }),
-      spool({ ownership: "BORROWED_IN", remaining: 700 }),
-      spool({ remaining: 500, status: "EMPTY" }),
-      spool({ initial: 400, remaining: null, status: "LOST" }),
-    ],
+    overview: { ...stock, owned_consumption_30d: 3_000 },
   });
 
   assert.equal(result.ownedOnHandSpoolCount, 2);
@@ -63,8 +65,7 @@ test("forecast uses owned on-hand stock and the explicit 30-day usage basis", ()
 test("forecast remains informational when no recorded usage basis exists", () => {
   const result = buildConsumptionForecast({
     asOfDate: "2026-08-21",
-    ownedConsumption30d: 0,
-    spools: [spool({ remaining: 850 })],
+    overview: { owned_on_hand_grams: 850, total_owned_spools: 1, owned_consumption_30d: 0 },
   });
 
   assert.equal(result.hasUsageBasis, false);
@@ -75,10 +76,10 @@ test("forecast remains informational when no recorded usage basis exists", () =>
 });
 
 test("forecast is deterministic for identical inputs and clamps invalid grams", () => {
+  const stock = deriveInventoryOverviewFromRows([spool({ remaining: Number.NaN }), spool({ remaining: -50 })], []);
   const input = {
     asOfDate: "2026-08-21",
-    ownedConsumption30d: -200,
-    spools: [spool({ remaining: Number.NaN }), spool({ remaining: -50 })],
+    overview: { ...stock, owned_consumption_30d: -200 },
   };
 
   assert.deepEqual(buildConsumptionForecast(input), buildConsumptionForecast(input));

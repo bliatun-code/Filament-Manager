@@ -345,6 +345,6 @@ fn read_library_sync_settings(
     state: &CompanionApiState,
 ) -> Result<LibrarySyncSettingsRow, CompanionApiError> {
     let db = FilamentDatabase::open(&state.db_path).map_err(CompanionApiError::from)?;
-    db.get_library_sync_settings()
+    db.get_library_sync_settings_for_domains(&[])
         .map_err(CompanionApiError::from)
 }

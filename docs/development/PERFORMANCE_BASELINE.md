@@ -43,16 +43,20 @@ one call. A failed overview or spool request reads only its matching offline
 copy. After loading the catalog, the page checks the current Host, library and
 generation before displaying results. A change restarts loading for the new target.
 
-Opening Statistics reads the current library revisions before starting the
-full load. A period change can reuse the last complete live overview, printers,
-spools and loans for the same day, library, Host and target generation. Inventory,
-catalog, printer, job and loan revisions must match before and after the new
-period report. A missing or changed revision falls back to the full load.
-Manual retries always reload all data. On a full load the Host reads start
-together. A healthy response reads no cache lists. A failed spool, printer or
-loan-history read uses only its own cache for the original Host, library and
-generation. The page checks the target again before displaying any results.
-Period reports have no cached fallback.
+Statistics opens with the inventory overview. It includes ownership counts and
+the remaining grams of owned, on-hand stock for the forecast. Zero is a complete
+measurement. Local libraries and current Hosts supply the overview without a
+spool list. An older Host without the weight uses its full spool read. A failed
+Host summary first checks the saved summary for the same Host, library and
+generation. Older copies can still use scoped spool rows. Printers and loan
+history each read their own cache only on failure. Period reports have no offline
+fallback.
+
+A period change reuses a complete live overview, printers and loans for the same
+day, library, Host and target generation if inventory, catalog, printer, job and
+loan revisions match before and after the new report. Missing or changed
+revisions and manual retries reload the page data. The final target check
+discards late replies after a Host or library change.
 
 Settings opens and refreshes with cache-free sync settings, including the device
 name, validation status and low-stock policy. Client reads run concurrently.
