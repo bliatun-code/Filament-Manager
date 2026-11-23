@@ -16,16 +16,28 @@ use super::database_time::sqlite_now;
 use super::database_wishlist_models::WishlistItemRow;
 use super::statistics::FilamentConsumptionRow;
 
+pub(crate) const DASHBOARD_SNAPSHOT_KEY: &str = "library_sync_cached_dashboard_snapshot_json";
 pub(crate) const SNAPSHOT_CAPTURED_AT_KEY: &str = "library_sync_snapshot_captured_at";
 pub(crate) const CACHED_ACTIVE_LOANS_KEY: &str = "library_sync_cached_active_loans_json";
 
 pub(crate) fn save_library_sync_cached_snapshot(
     conn: &Connection,
-    snapshot: &LibrarySyncCachedSnapshotRow,
+    mut snapshot: LibrarySyncCachedSnapshotRow,
+    dashboard: bool,
 ) -> InventoryResult<()> {
-    let serialized =
-        serde_json::to_string(snapshot).map_err(|error| InventoryError::Db(error.to_string()))?;
     let tx = conn.unchecked_transaction()?;
+    let encode = |snapshot: &LibrarySyncCachedSnapshotRow| {
+        serde_json::to_string(snapshot).map_err(|error| InventoryError::Db(error.to_string()))
+    };
+    if dashboard {
+        if snapshot.dashboard_stock.is_some() {
+            set_setting(&tx, DASHBOARD_SNAPSHOT_KEY, &encode(&snapshot)?)?;
+        } else {
+            super::database_settings::delete_setting(&tx, DASHBOARD_SNAPSHOT_KEY)?;
+        }
+    }
+    snapshot.dashboard_stock = None;
+    let serialized = encode(&snapshot)?;
     set_setting(&tx, "library_sync_cached_snapshot_json", &serialized)?;
     set_setting(&tx, SNAPSHOT_CAPTURED_AT_KEY, &snapshot.captured_at)?;
     tx.commit()?;

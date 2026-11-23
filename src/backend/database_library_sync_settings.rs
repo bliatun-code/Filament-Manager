@@ -2,7 +2,9 @@ use rusqlite::Connection;
 
 use super::database_ids::new_id;
 use super::database_library_sync_auth::clear_library_sync_client_auth_state;
-use super::database_library_sync_cache::{CACHED_ACTIVE_LOANS_KEY, SNAPSHOT_CAPTURED_AT_KEY};
+use super::database_library_sync_cache::{
+    CACHED_ACTIVE_LOANS_KEY, DASHBOARD_SNAPSHOT_KEY, SNAPSHOT_CAPTURED_AT_KEY,
+};
 use super::database_library_sync_models::{
     LibrarySyncCacheDomain, LibrarySyncPageStatusRow, LibrarySyncSettingsRow,
 };
@@ -14,6 +16,7 @@ use super::library_sync_defaults::{default_library_sync_device_name, normalize_l
 const LIBRARY_SYNC_HOST_CACHE_KEYS: &[&str] = &[
     "library_sync_cached_snapshot_json",
     SNAPSHOT_CAPTURED_AT_KEY,
+    DASHBOARD_SNAPSHOT_KEY,
     "library_sync_cached_spools_json",
     "library_sync_cached_locations_json",
     "library_sync_cached_printers_json",
@@ -95,12 +98,22 @@ pub(crate) fn read_library_sync_settings(
             .is_some_and(|saved| saved.as_str() > fetched),
         _ => false,
     };
-    let cached_snapshot = selected_cache(
+    let dashboard = domains.is_some_and(|selected| selected.contains(&DashboardStock));
+    let compact = selected_cache(conn, dashboard, DASHBOARD_SNAPSHOT_KEY)?;
+    let legacy_dashboard = dashboard && compact.is_none();
+    let cached_snapshot = match compact {
+        Some(snapshot) => Some(snapshot),
+        None => selected_cache(
+            conn,
+            includes(Snapshot) || newer_snapshot || legacy_dashboard,
+            "library_sync_cached_snapshot_json",
+        )?,
+    };
+    let cached_spools = selected_cache(
         conn,
-        includes(Snapshot) || newer_snapshot,
-        "library_sync_cached_snapshot_json",
+        includes(Spools) || legacy_dashboard,
+        "library_sync_cached_spools_json",
     )?;
-    let cached_spools = selected_cache(conn, includes(Spools), "library_sync_cached_spools_json")?;
     let cached_printers = selected_cache(
         conn,
         includes(Printers),
@@ -349,6 +362,67 @@ mod tests {
             .unwrap();
         assert!(historical.cached_active_loans.is_none());
         assert!(historical.cached_loans.is_some());
+    }
+
+    #[test]
+    fn compact_dashboard_cache_survives_other_summary_reads_and_is_scoped_to_the_target() {
+        use super::super::database_library_sync_models::LibrarySyncCachedSnapshotRow;
+        let db = FilamentDatabase::open(":memory:").unwrap();
+        db.apply_schema().unwrap();
+        let mut target = db.get_library_sync_settings().unwrap();
+        target.mode = "CLIENT".into();
+        target.host_base_url = Some("http://a.local".into());
+        let generation = db
+            .save_library_sync_settings(&target)
+            .unwrap()
+            .target_generation;
+        let mut summary = LibrarySyncCachedSnapshotRow {
+            captured_at: "time-a".into(),
+            app_version: None,
+            library_id: target.library_id.clone(),
+            device_name: "A".into(),
+            sync_mode: "HOST".into(),
+            inventory: db.inventory_overview().unwrap(),
+            total_spools: 0,
+            in_use: 0,
+            low_stock: 0,
+            active_loans: 0,
+            printers: 0,
+            dashboard_stock: Some(Default::default()),
+        };
+        db.save_library_sync_host_snapshot(summary.clone(), true)
+            .unwrap();
+        summary.dashboard_stock = None;
+        summary.captured_at = "time-b".into();
+        db.save_library_sync_cached_snapshot(&summary).unwrap();
+        db.connection().execute("INSERT OR REPLACE INTO settings(key,value) VALUES ('library_sync_cached_spools_json', X'FF')", []).unwrap();
+        let read = || {
+            db.get_library_sync_settings_at_generation(
+                &[LibrarySyncCacheDomain::DashboardStock],
+                Some(generation),
+                None,
+            )
+        };
+        let cached = read().unwrap();
+        assert!(cached.cached_spools.is_none());
+        let compact = cached.cached_snapshot.unwrap();
+        assert_eq!(compact.captured_at, "time-a");
+        db.save_library_sync_host_snapshot(summary, true).unwrap();
+        assert!(read().is_err(), "an older Host uses the legacy spool cache");
+        db.save_library_sync_host_snapshot(compact, true).unwrap();
+        target.host_base_url = Some("http://b.local".into());
+        db.save_library_sync_settings(&target).unwrap();
+        assert!(read().unwrap().cached_snapshot.is_none());
+        target.host_base_url = Some("http://a.local".into());
+        db.save_library_sync_settings(&target).unwrap();
+        let current = db
+            .get_library_sync_settings_for_domains(&[LibrarySyncCacheDomain::DashboardStock])
+            .unwrap();
+        assert_ne!(current.target_generation, generation);
+        assert!(current.cached_snapshot.is_none() && current.cached_spools.is_none());
+        assert!(get_setting(db.connection(), DASHBOARD_SNAPSHOT_KEY)
+            .unwrap()
+            .is_none());
     }
 
     #[test]

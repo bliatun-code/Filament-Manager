@@ -171,7 +171,7 @@ function hasImmediateClientPairingRepairError(error: unknown): boolean {
   );
 }
 
-const dashboardCacheDomains = ["snapshot", "spools", "printers", "active_loans", "wishlist"] as const;
+const dashboardCacheDomains = ["dashboard_stock", "printers", "active_loans", "wishlist"] as const;
 
 export type DashboardSyncSettings = LibrarySyncPageStatus & Partial<LibrarySyncSettings>;
 type DashboardBootstrapCache = { current: DashboardSyncSettings | null };
@@ -311,15 +311,22 @@ async function readDashboardData(
       })
     : null;
 
-  const live = clientHostTarget && !params.clientCacheOnly
+  const loadLegacyStock = (target: NonNullable<typeof clientHostTarget>) => loadSpoolRows({
+    clientReadOnly: true,
+    clientHostBaseUrl: target.baseUrl,
+    clientLibraryId: target.libraryId,
+    clientTargetGeneration: syncSettings?.target_generation ?? null,
+  });
+  const stockSnapshot = clientHostTarget && !params.clientCacheOnly
+    ? fetchHostSnapshot(clientHostTarget.baseUrl, clientHostTarget.libraryId, {
+        dashboard: true, expectedGeneration: syncSettings?.target_generation,
+      })
+    : null;
+  const live = clientHostTarget && stockSnapshot
     ? await Promise.allSettled([
-        fetchHostSnapshot(clientHostTarget.baseUrl, clientHostTarget.libraryId),
-        loadSpoolRows({
-          clientReadOnly: true,
-          clientHostBaseUrl: clientHostTarget.baseUrl,
-          clientLibraryId: clientHostTarget.libraryId,
-          clientTargetGeneration: syncSettings?.target_generation ?? null,
-        }),
+        stockSnapshot,
+        // Older Hosts omit the projection. Only those successful replies need the full legacy list.
+        stockSnapshot.then(snapshot => snapshot.dashboard_stock ? null : loadLegacyStock(clientHostTarget)),
         fetchHostPrinterOverview(
           clientHostTarget.baseUrl,
           clientHostTarget.libraryId,
@@ -344,12 +351,13 @@ async function readDashboardData(
   } else if (clientMode) {
     const [summary, spools, printers, loans, wishlist] = live ?? [];
     const cacheableReads = [
-      ["snapshot", summary], ["spools", spools], ["printers", printers],
+      ["dashboard_stock", summary], ["printers", printers],
       ["active_loans", loans], ["wishlist", wishlist],
     ] as const;
-    const missing = cacheableReads.flatMap(([domain, result]) =>
+    const missing: LibrarySyncCacheDomain[] = cacheableReads.flatMap(([domain, result]) =>
       result?.status === "fulfilled" ? [] : [domain],
     );
+    if (summary?.status === "fulfilled" && spools?.status === "rejected") missing.push("spools");
     const reuseBootstrap = bootstrap && Number.isSafeInteger(bootstrap.target_generation);
     if (missing.length > 0 && !reuseBootstrap) {
       // This one transaction both reads the failed domains and confirms their target.
@@ -382,7 +390,9 @@ async function readDashboardData(
     ] = live;
 
     for (const result of live) {
-      if (result.status === "rejected") onLoadError(result.reason);
+      if (result.status === "rejected" && (result !== spoolsResult || snapshotResult.status === "fulfilled")) {
+        onLoadError(result.reason);
+      }
     }
     if (printerSettingsResult.status === "fulfilled") {
       clientLiveIntegrations = sanitizeDashboardBambuLiveIntegrations(
@@ -403,6 +413,16 @@ async function readDashboardData(
     if (spoolsResult.status === "fulfilled") {
       clientSpoolRows = spoolsResult.value;
       clientSpoolsLive = true;
+    } else if (clientHostTarget && snapshotResult.status === "rejected" && cachedSnapshot && !cachedSnapshot.dashboard_stock &&
+        [printersResult, loansResult, wishlistResult].some(result => result.status === "fulfilled")) {
+      // A legacy Host may still serve fresh stock when only its summary endpoint fails.
+      try {
+        clientSpoolRows = await loadLegacyStock(clientHostTarget);
+        clientSpoolsLive = true;
+      } catch (error) {
+        onLoadError(error);
+      }
+      assertDashboardTarget(syncSettings, await loadSyncSettings());
     }
     if (printersResult.status === "fulfilled") {
       clientPrinterRows = printersResult.value;
@@ -447,8 +467,9 @@ async function readDashboardData(
   );
   const clientHostCompanionTone = clientHostConnectionState.tone;
 
+  const dashboardStock = activeClientSnapshot?.dashboard_stock;
   const normalizedClientSpoolRows =
-    clientSpoolRows != null
+    !dashboardStock && clientSpoolRows != null
       ? normalizeSpoolWithMasterRows(clientSpoolRows)
       : null;
   const rowsCapturedAt = parseDateTimeMs(cache?.cached_spools?.captured_at);
@@ -509,11 +530,12 @@ async function readDashboardData(
       printerOverview: clientPrinterRows ?? [],
       printerOverviewAvailable: clientPrinterRows != null,
       bambuLiveIntegrations: syncSource === "client-live" ? clientLiveIntegrations : [],
-      lowStockPreview: buildDashboardLowStockPreview(normalizedClientSpoolRows ?? []),
-      lowStockPreviewAvailable: normalizedClientSpoolRows != null,
+      lowStockPreview: dashboardStock?.preview ?? buildDashboardLowStockPreview(normalizedClientSpoolRows ?? []),
+      lowStockPreviewAvailable: dashboardStock != null || normalizedClientSpoolRows != null,
       libraryTarget: purchaseTarget,
       wishlistFresh: clientWishlistLive,
       actionItems: buildDashboardActionItems({
+        stockGroups: dashboardStock?.groups,
         purchaseTarget,
         bambuLiveAttention: [],
         loans: normalizedClientLoans,
@@ -524,6 +546,7 @@ async function readDashboardData(
       }),
       bambuLiveAttention: [],
       derived: buildDashboardDerivedState({
+        dashboardStock,
         overview: clientOverview ?? deriveInventoryOverviewFromRows([], []),
         printers: clientPrinterRows ?? [],
         spoolRows: normalizedClientSpoolRows ?? [],

@@ -118,7 +118,6 @@ test("dashboard actions group unresolved low stock by master", () => {
   assert.equal(actions.length, 1);
   const lowStock = actions.find((item) => item.kind === "LOW_STOCK");
   assert.ok(lowStock && lowStock.kind === "LOW_STOCK");
-  assert.deepEqual(lowStock.spoolIds, ["spool-a", "spool-b"]);
   assert.equal(lowStock.spoolCount, 2);
   assert.equal(lowStock.lowestRemainingG, 80);
   assert.equal(lowStock.thresholdG, 200);
@@ -154,7 +153,7 @@ test("low-stock product identity stays stable across weight and spool membership
 
   assert.equal(after.candidate.productKey, before.candidate.productKey);
   assert.equal(after.id, before.id);
-  assert.notDeepEqual(after.spoolIds, before.spoolIds);
+  assert.notEqual(after.spoolCount, before.spoolCount);
   assert.notEqual(after.lowestRemainingG, before.lowestRemainingG);
 });
 

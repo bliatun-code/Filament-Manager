@@ -306,7 +306,7 @@ test("an acknowledged purchase survives stale reads until a fresh wishlist can p
   const action: DashboardLowStockAction = {
     age: { basis: "DETECTED_NOW", elapsedDays: null, value: null }, kind: "LOW_STOCK", id: "low-stock:product",
     candidate: { productKey: "product", colorName: "Red", filamentName: "Basic", masterId: null, material: "PLA", vendor: "" },
-    duplicate: null, lowestRemainingG: 20, spoolCount: 1, spoolIds: ["roll"], thresholdG: 200, purchaseTarget: target,
+    duplicate: null, lowestRemainingG: 20, spoolCount: 1, thresholdG: 200, purchaseTarget: target,
   };
   const snapshot = populatedSnapshot();
   snapshot.actionItems!.push(action);

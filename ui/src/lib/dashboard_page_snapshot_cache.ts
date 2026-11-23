@@ -112,7 +112,6 @@ function cloneDashboardActionItem(item: DashboardActionItem): DashboardActionIte
       candidate: { ...item.candidate },
       purchaseTarget: item.purchaseTarget && { ...item.purchaseTarget },
       duplicate: item.duplicate ? { ...item.duplicate } : null,
-      spoolIds: [...item.spoolIds],
     };
   }
   if (item.kind === "OVERDUE_LOAN") {

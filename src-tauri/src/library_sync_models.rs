@@ -365,6 +365,7 @@ pub(crate) struct LibrarySyncHostValidationResult {
 
 #[derive(Deserialize)]
 pub(crate) struct LibrarySyncSnapshotResponse {
+    pub(crate) dashboard_stock: Option<crate::backend::dashboard_stock::DashboardStock>,
     pub(crate) ok: bool,
     #[serde(default)]
     pub(crate) app_version: Option<String>,
@@ -382,22 +383,6 @@ pub(crate) struct LibrarySyncCreateSpoolResponse {
     pub(crate) ok: bool,
     pub(crate) message: String,
     pub(crate) spool_id: String,
-}
-
-#[derive(Serialize, Deserialize, Clone)]
-pub(crate) struct LibrarySyncRemoteSnapshot {
-    pub(crate) captured_at: String,
-    #[serde(default)]
-    pub(crate) app_version: Option<String>,
-    pub(crate) library_id: String,
-    pub(crate) device_name: String,
-    pub(crate) sync_mode: String,
-    pub(crate) inventory: InventoryOverview,
-    pub(crate) total_spools: i64,
-    pub(crate) in_use: i64,
-    pub(crate) low_stock: i64,
-    pub(crate) active_loans: i64,
-    pub(crate) printers: i64,
 }
 
 #[derive(Serialize)]

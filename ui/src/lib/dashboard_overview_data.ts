@@ -1,18 +1,10 @@
+import type { DashboardStockPreviewRow } from "./tauri_library_sync_client";
 import { isSpoolLowStock, resolveSpoolStockGrams } from "./inventory_domain";
 import { resolveSpoolLowStockThreshold } from "./low_stock_policy";
 import type { NormalizedSpoolWithMasterRow } from "./spool_row_normalization";
 import type { BambuLiveIntegrationEntry } from "./tauri_client";
 
-export type DashboardStockPreviewRow = {
-  spoolId: string;
-  vendor: string;
-  material: string;
-  filamentName: string;
-  colorName: string;
-  hexColor: string | null;
-  remainingG: number;
-  locationLabel: string | null;
-};
+export type { DashboardStockPreviewRow } from "./tauri_library_sync_client";
 
 export function buildDashboardLowStockPreview(
   rows: NormalizedSpoolWithMasterRow[],
@@ -38,7 +30,7 @@ export function buildDashboardLowStockPreview(
       remainingG,
       locationLabel: row.location_name?.trim() || null,
     }];
-  }).sort((left, right) => left.remainingG - right.remainingG || left.spoolId.localeCompare(right.spoolId))
+  }).sort((left, right) => left.remainingG - right.remainingG || (left.spoolId < right.spoolId ? -1 : left.spoolId > right.spoolId ? 1 : 0))
     .slice(0, 4);
 }
 

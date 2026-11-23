@@ -2301,6 +2301,24 @@ async fn companion_api_library_snapshot_exposes_host_summary() {
         let snapshot_json: serde_json::Value =
             serde_json::from_str(&snapshot_text).map_err(|error| error.to_string())?;
         assert_eq!(snapshot_json["app_version"], env!("CARGO_PKG_VERSION"));
+        assert!(snapshot_json.get("dashboard_stock").is_none());
+        let response = router.clone().oneshot(Request::builder()
+            .uri("/api/v1/library/snapshot?dashboard=true")
+            .header("host", "127.0.0.1:4278")
+            .header("cookie", format!("bfm_companion_session={session_cookie}"))
+            .body(Body::empty()).unwrap()).await.unwrap();
+        assert_eq!(response.status(), StatusCode::OK);
+        let compact: serde_json::Value = serde_json::from_slice(&to_bytes(response.into_body(), usize::MAX).await.unwrap()).unwrap();
+        assert_eq!(compact["inventory"], snapshot_json["inventory"]);
+        let stock = &compact["dashboard_stock"];
+        assert_eq!(stock["metrics"]["thresholds"], serde_json::json!([300]));
+        assert_eq!(stock["metrics"]["onHandOwned"], 2);
+        assert_eq!(stock["metrics"]["healthySpools"], 1);
+        assert_eq!(stock["preview"][0]["spoolId"], "spool_1");
+        assert_eq!(stock["groups"][0]["thresholdG"], 300);
+        assert_eq!(stock["groups"][0]["lowestRemainingG"], 300);
+        assert_eq!(stock["groups"][0]["spoolCount"], 1);
+
 
         assert_eq!(
             snapshot_json.get("ok").and_then(|value| value.as_bool()),

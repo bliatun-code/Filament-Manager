@@ -185,7 +185,15 @@ impl FilamentDatabase {
         &self,
         snapshot: &LibrarySyncCachedSnapshotRow,
     ) -> InventoryResult<()> {
-        save_library_sync_cached_snapshot_row(self.connection(), snapshot)
+        self.save_library_sync_host_snapshot(snapshot.clone(), false)
+    }
+
+    pub fn save_library_sync_host_snapshot(
+        &self,
+        snapshot: LibrarySyncCachedSnapshotRow,
+        dashboard: bool,
+    ) -> InventoryResult<()> {
+        save_library_sync_cached_snapshot_row(self.connection(), snapshot, dashboard)
     }
 
     pub fn save_library_sync_cached_spools(

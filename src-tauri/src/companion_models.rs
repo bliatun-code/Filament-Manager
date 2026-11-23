@@ -280,6 +280,8 @@ pub(crate) const CATALOG_REFRESH_JOBS_CAPABILITY: &str = "catalog-refresh-jobs-v
 
 #[derive(Serialize)]
 pub(crate) struct CompanionLibrarySnapshotResponse {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub(crate) dashboard_stock: Option<crate::backend::dashboard_stock::DashboardStock>,
     pub(crate) ok: bool,
     pub(crate) app_version: &'static str,
     pub(crate) captured_at: String,
