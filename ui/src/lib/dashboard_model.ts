@@ -13,6 +13,7 @@ import type { NormalizedLoanDetailsRow } from "./loan_row_normalization";
 import { isActiveOutboundLoan } from "./loan_state";
 import { summarizeEffectivePrinterSlots } from "./printer_profiles";
 import type {
+  DashboardStock,
   InventoryOverview,
   PrinterOverviewRow,
   WishlistItemRow,
@@ -165,40 +166,7 @@ export function buildDashboardCompanionPresentation(params: {
   };
 }
 
-export function buildDashboardDerivedState(params: {
-  overview: InventoryOverview;
-  printers: PrinterOverviewRow[];
-  spoolRows: NormalizedSpoolWithMasterRow[];
-  loans: NormalizedLoanDetailsRow[];
-  wishlist: WishlistItemRow[];
-  locale?: NumberDisplayLocale;
-  now?: Date;
-  t: TranslateFn;
-}): DashboardDerivedState {
-  const {
-    overview,
-    printers,
-    spoolRows,
-    loans,
-    wishlist,
-    locale = "en",
-    now = new Date(),
-    t,
-  } = params;
-  const activeLoans = loans.filter(isActiveOutboundLoan);
-  const effectiveSlotTotals = printers.reduce(
-    (sum, printer) => {
-      const summary = summarizeEffectivePrinterSlots(printer.slots);
-      return {
-        loadedSlots: sum.loadedSlots + summary.loadedSlots,
-        totalSlots: sum.totalSlots + summary.totalSlots,
-      };
-    },
-    { loadedSlots: 0, totalSlots: 0 },
-  );
-  const onOrderCount = wishlist
-    .filter((item) => item.status === "ON_ORDER")
-    .reduce((sum, item) => sum + Math.max(1, item.quantity || 1), 0);
+function stockMetricsFromRows(spoolRows: NormalizedSpoolWithMasterRow[], overview: InventoryOverview) {
   const onHandRows = spoolRows.filter((row) => isSpoolStatusOnHand(row.spool.normalized_status));
   const onHandTotal = onHandRows.length;
   const onHandOwned = onHandRows.filter(
@@ -237,15 +205,71 @@ export function buildDashboardDerivedState(params: {
       healthySpools++;
     }
   }
+  const activeSpoolRows = spoolRows.filter((row) => {
+    return !isSpoolStatusEmptyOrLost(row.spool.normalized_status);
+  });
+  return {
+    totalSpools: spoolRows.length, activeSpools: activeSpoolRows.length,
+    placedActiveSpools: activeSpoolRows.filter(row => Boolean(row.spool.location_id?.trim())).length,
+    onHandOwned, onHandBorrowedIn, onHandInUse, healthySpools,
+    ownedLowStock: ownedLowStockCount, borrowedInLowStock: borrowedInLowStockCount,
+    thresholds: [...thresholdValues], usesLegacyThresholdFallback, lowestRemaining,
+  };
+}
+
+export function buildDashboardDerivedState(params: {
+  dashboardStock?: DashboardStock | null;
+  overview: InventoryOverview;
+  printers: PrinterOverviewRow[];
+  spoolRows: NormalizedSpoolWithMasterRow[];
+  loans: NormalizedLoanDetailsRow[];
+  wishlist: WishlistItemRow[];
+  locale?: NumberDisplayLocale;
+  now?: Date;
+  t: TranslateFn;
+}): DashboardDerivedState {
+  const {
+    overview,
+    printers,
+    spoolRows,
+    loans,
+    wishlist,
+    locale = "en",
+    now = new Date(),
+    t,
+  } = params;
+  const activeLoans = loans.filter(isActiveOutboundLoan);
+  const effectiveSlotTotals = printers.reduce(
+    (sum, printer) => {
+      const summary = summarizeEffectivePrinterSlots(printer.slots);
+      return {
+        loadedSlots: sum.loadedSlots + summary.loadedSlots,
+        totalSlots: sum.totalSlots + summary.totalSlots,
+      };
+    },
+    { loadedSlots: 0, totalSlots: 0 },
+  );
+  const onOrderCount = wishlist
+    .filter((item) => item.status === "ON_ORDER")
+    .reduce((sum, item) => sum + Math.max(1, item.quantity || 1), 0);
+  const stock = params.dashboardStock;
+  const metrics = stock ? {
+    ...stock.metrics, usesLegacyThresholdFallback: false,
+    lowestRemaining: stock.preview[0]?.remainingG ?? null,
+  } : stockMetricsFromRows(spoolRows, overview);
+  const { onHandOwned, onHandBorrowedIn, onHandInUse, healthySpools, usesLegacyThresholdFallback,
+    lowestRemaining, ownedLowStock: ownedLowStockCount, borrowedInLowStock: borrowedInLowStockCount } = metrics;
+  const onHandTotal = onHandOwned + onHandBorrowedIn;
+  const hasStockCounts = stock != null || spoolRows.length > 0;
   const lowStockCount = ownedLowStockCount + borrowedInLowStockCount;
   const fallbackThreshold = overview.low_stock_policy?.default_threshold_g ?? 200;
-  const onlyThreshold = thresholdValues.values().next().value ?? fallbackThreshold;
+  const onlyThreshold = metrics.thresholds[0] ?? fallbackThreshold;
   const lowStockSubtitle = usesLegacyThresholdFallback
     ? t(
         "dashboard.legacyLowStockFallback",
         "200 g fallback for older Host",
       )
-    : thresholdValues.size <= 1
+    : metrics.thresholds.length <= 1
       ? t("dashboard.atOrBelowThreshold", "At or below {count, number} g", {
           count: onlyThreshold,
         })
@@ -310,14 +334,11 @@ export function buildDashboardDerivedState(params: {
     0,
   );
 
-  const activeSpoolRows = spoolRows.filter((row) => {
-    return !isSpoolStatusEmptyOrLost(row.spool.normalized_status);
-  });
   const goalMetrics: DashboardGoalMetrics = {
-    totalSpools: Math.max(spoolRows.length, overview.total_spools),
+    totalSpools: Math.max(metrics.totalSpools, overview.total_spools),
     configuredPrinters: printers.length,
-    activeSpools: activeSpoolRows.length,
-    placedActiveSpools: activeSpoolRows.filter((row) => Boolean((row.spool.location_id ?? "").trim())).length,
+    activeSpools: metrics.activeSpools,
+    placedActiveSpools: metrics.placedActiveSpools,
     totalJobs: printers.reduce((sum, printer) => sum + Math.max(0, printer.usage.total_jobs), 0),
     totalSlots: effectiveSlotTotals.totalSlots,
     loadedSlots: effectiveSlotTotals.loadedSlots,
@@ -392,15 +413,15 @@ export function buildDashboardDerivedState(params: {
     usageTotal12m,
     usageAvailable,
     ownershipLowStock: {
-      owned: spoolRows.length > 0 ? ownedLowStockCount : overview.owned_low_stock,
+      owned: hasStockCounts ? ownedLowStockCount : overview.owned_low_stock,
       borrowedIn:
-        spoolRows.length > 0 ? borrowedInLowStockCount : overview.borrowed_in_low_stock,
+        hasStockCounts ? borrowedInLowStockCount : overview.borrowed_in_low_stock,
     },
     ownershipOnHand: {
-      total: spoolRows.length > 0 ? onHandTotal : overview.total_spools,
-      owned: spoolRows.length > 0 ? onHandOwned : overview.total_owned_spools,
+      total: hasStockCounts ? onHandTotal : overview.total_spools,
+      owned: hasStockCounts ? onHandOwned : overview.total_owned_spools,
       borrowedIn:
-        spoolRows.length > 0 ? onHandBorrowedIn : overview.total_borrowed_in_spools,
+        hasStockCounts ? onHandBorrowedIn : overview.total_borrowed_in_spools,
       inUse: onHandInUse,
     },
     goalMetrics,

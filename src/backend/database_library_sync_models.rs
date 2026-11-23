@@ -15,6 +15,7 @@ pub(crate) type LibrarySyncClientAuthState = (String, String, String, Option<Str
 #[serde(rename_all = "snake_case")]
 pub enum LibrarySyncCacheDomain {
     Snapshot,
+    DashboardStock,
     Spools,
     Printers,
     ActiveLoans,
@@ -60,6 +61,8 @@ pub struct LibrarySyncSettingsRow {
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
 pub struct LibrarySyncCachedSnapshotRow {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub dashboard_stock: Option<super::dashboard_stock::DashboardStock>,
     pub captured_at: String,
     #[serde(default)]
     pub app_version: Option<String>,

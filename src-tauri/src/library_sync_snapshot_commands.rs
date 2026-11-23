@@ -1,12 +1,10 @@
 use crate::backend::database_library_sync_models::LibrarySyncCachedSnapshotRow;
 use crate::library_sync_blocking_executor::run_library_sync_blocking;
 use crate::library_sync_command_support::{
-    prepare_library_sync_host_checked, save_library_sync_success,
+    prepare_library_sync_host_write_for_generation, save_library_sync_success,
 };
 use crate::library_sync_host_client::get_library_sync_host_json_authenticated_for_target;
-use crate::library_sync_models::{
-    LibrarySyncRemoteSnapshot, LibrarySyncSnapshotResponse, ValidateLibrarySyncHostInput,
-};
+use crate::library_sync_models::{LibrarySyncSnapshotResponse, ValidateLibrarySyncHostInput};
 use crate::library_sync_target_guard::with_current_library_sync_target;
 use crate::state::AppState;
 
@@ -14,19 +12,36 @@ use crate::state::AppState;
 pub(crate) async fn fetch_library_sync_snapshot(
     state: tauri::State<'_, AppState>,
     input: ValidateLibrarySyncHostInput,
-) -> Result<LibrarySyncRemoteSnapshot, String> {
+    dashboard: Option<bool>,
+    expected_generation: Option<u64>,
+) -> Result<LibrarySyncCachedSnapshotRow, String> {
     let state = state.inner().clone();
-    run_library_sync_blocking(move || fetch_library_sync_snapshot_blocking(&state, input)).await
+    run_library_sync_blocking(move || {
+        fetch_library_sync_snapshot_blocking(
+            &state,
+            input,
+            dashboard.unwrap_or(false),
+            expected_generation,
+        )
+    })
+    .await
 }
 
 fn fetch_library_sync_snapshot_blocking(
     state: &AppState,
     input: ValidateLibrarySyncHostInput,
-) -> Result<LibrarySyncRemoteSnapshot, String> {
-    let (_, _, target) = prepare_library_sync_host_checked(state, &input)?;
+    dashboard: bool,
+    expected_generation: Option<u64>,
+) -> Result<LibrarySyncCachedSnapshotRow, String> {
+    let (_, _, target) =
+        prepare_library_sync_host_write_for_generation(state, &input, expected_generation)?;
     let parsed: LibrarySyncSnapshotResponse = get_library_sync_host_json_authenticated_for_target(
         state,
-        "/api/v1/library/snapshot",
+        if dashboard {
+            "/api/v1/library/snapshot?dashboard=true"
+        } else {
+            "/api/v1/library/snapshot"
+        },
         &target,
     )?;
 
@@ -41,7 +56,8 @@ fn fetch_library_sync_snapshot_blocking(
         ));
     }
 
-    let snapshot = LibrarySyncRemoteSnapshot {
+    let snapshot = LibrarySyncCachedSnapshotRow {
+        dashboard_stock: parsed.dashboard_stock,
         captured_at: parsed.captured_at,
         app_version: parsed.app_version,
         library_id: parsed.library_id,
@@ -56,19 +72,7 @@ fn fetch_library_sync_snapshot_blocking(
     };
 
     with_current_library_sync_target(state, &target, |engine| {
-        engine.save_library_sync_cached_snapshot(&LibrarySyncCachedSnapshotRow {
-            captured_at: snapshot.captured_at.clone(),
-            app_version: snapshot.app_version.clone(),
-            library_id: snapshot.library_id.clone(),
-            device_name: snapshot.device_name.clone(),
-            sync_mode: snapshot.sync_mode.clone(),
-            inventory: snapshot.inventory.clone(),
-            total_spools: snapshot.total_spools,
-            in_use: snapshot.in_use,
-            low_stock: snapshot.low_stock,
-            active_loans: snapshot.active_loans,
-            printers: snapshot.printers,
-        })?;
+        engine.save_library_sync_host_snapshot(snapshot.clone(), dashboard)?;
         Ok(())
     })?;
     save_library_sync_success(

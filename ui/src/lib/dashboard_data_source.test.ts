@@ -1401,7 +1401,7 @@ test("dashboard paints offline rows first, then reuses just the failed loan slic
       if (domains?.length) domainReads.push([...domains]);
       return {
         ...target,
-        cached_spools: domains?.includes("spools")
+        cached_spools: domains?.includes("dashboard_stock")
           ? { captured_at: "spools-time", rows: [spoolWithMasterRow("cached-spool")] } : null,
         cached_active_loans: domains?.includes("active_loans")
           ? { captured_at: "loans-time", rows: [activeLoan("cached-loan", "2026-08-01")] } : null,
@@ -1424,7 +1424,7 @@ test("dashboard paints offline rows first, then reuses just the failed loan slic
   assert.equal(first.derived.ownershipOnHand.total, 1);
   assert.equal(first.syncSource, "client-cached");
   assert.equal(hostCalls, 0);
-  assert.deepEqual(domainReads, [["snapshot", "spools", "printers", "active_loans", "wishlist"]]);
+  assert.deepEqual(domainReads, [["dashboard_stock", "printers", "active_loans", "wishlist"]]);
   domainReads.length = 0;
 
   const partial = await loadDashboardData(params, dependencies);
@@ -1450,25 +1450,36 @@ for (const [change, newUrl, newLibrary] of [
   ["different library on the same Host", "http://host", "library-2"],
   ["same Host and library after switching away and back", "http://host", "library-1"],
 ]) {
-  test(`dashboard discards an in-flight reply for a ${change}`, async () => {
+  for (const modern of [false, true]) test(`dashboard discards an in-flight ${modern ? "compact" : "legacy"} reply for a ${change}`, async () => {
+    const emptyStock = {
+      metrics: { totalSpools: 0, activeSpools: 0, placedActiveSpools: 0, onHandOwned: 0,
+        onHandBorrowedIn: 0, onHandInUse: 0, ownedLowStock: 0, borrowedInLowStock: 0,
+        healthySpools: 0, thresholds: [] }, groups: [], preview: [],
+    };
+    let fullReads = 0;
     const original = syncSettings({ mode: "CLIENT", host_base_url: "http://host", target_generation: 3 });
     let target = original;
     const params = { bootstrapCache: { current: null }, previousClientHostNeedsRepair: false, t };
     const dependencies = {
       loadSyncSettings: async (domains?: readonly LibrarySyncCacheDomain[]) => ({
         ...target,
+        cached_snapshot: modern && domains?.includes("dashboard_stock") ? snapshot("Current host", {
+          library_id: target.library_id, dashboard_stock: emptyStock,
+        }) : null,
         cached_printers: domains?.includes("printers") ? {
           captured_at: "printer-cache",
           rows: [printerOverviewRow(target === original ? "original-printer" : "new-printer")],
         } : null,
       }),
       loadTrustedLanStatus: async () => null,
-      fetchHostSnapshot: async () => snapshot("Old host"),
+      fetchHostSnapshot: async () => snapshot("Old host", modern ? {
+        dashboard_stock: { ...emptyStock, metrics: { ...emptyStock.metrics, onHandOwned: 87 } },
+      } : {}),
       fetchHostPrinterOverview: async () => {
         target = { ...original, host_base_url: newUrl, library_id: newLibrary, target_generation: 5 };
         return [printerOverviewRow("late-old-printer")];
       },
-      loadSpoolRows: async () => [spoolWithMasterRow("late-old-spool")],
+      loadSpoolRows: async () => { fullReads++; return [spoolWithMasterRow("late-old-spool")]; },
       fetchHostActiveLoans: async () => [],
       fetchHostWishlist: async () => [],
       fetchHostPrinterSettings: async () => printerSettingsSnapshot(),
@@ -1477,6 +1488,7 @@ for (const [change, newUrl, newLibrary] of [
     const switched = await loadDashboardData(params, dependencies);
     assert.deepEqual(switched.printerOverview, [printerOverviewRow("new-printer")]);
     assert.equal(switched.derived.ownershipOnHand.total, 0);
+    assert.equal(fullReads, modern ? 0 : 1);
     assert.equal(switched.libraryId, newLibrary);
     assert.equal(switched.syncSource, "client-cached");
   });
@@ -1489,7 +1501,7 @@ test("a switch during disk fallback discards the old Host's successful domains",
       if (domains?.length === 1 && domains[0] === "active_loans") {
         target = syncSettings({ mode: "CLIENT", host_base_url: "http://new", library_id: "new-library", target_generation: 2 });
       }
-      return { ...target, cached_spools: domains?.includes("spools") ? { captured_at: "new-cache", rows: [] } : null };
+      return { ...target, cached_spools: domains?.includes("dashboard_stock") ? { captured_at: "new-cache", rows: [] } : null };
     },
     loadTrustedLanStatus: async () => null,
     fetchHostSnapshot: async () => snapshot("Old host"),
@@ -1504,4 +1516,65 @@ test("a switch during disk fallback discards the old Host's successful domains",
   assert.equal(result.derived.ownershipOnHand.total, 0);
   assert.deepEqual(result.printerOverview, []);
   assert.equal(result.syncSource, "client-cached");
+});
+
+
+test("compact Host stock matches legacy rows and keeps its own offline and partial results", async () => {
+  const target = syncSettings({ mode: "CLIENT", host_base_url: "http://host", target_generation: 7 });
+  const options = { previousClientHostNeedsRepair: false, t, now: dashboardTestNow };
+  const product = { masterId: "master-1", material: "PLA", filamentName: "Basic", colorName: "Gray", vendor: "Bambu" };
+  const stock = {
+    metrics: { totalSpools: 5, activeSpools: 4, placedActiveSpools: 4, onHandOwned: 2,
+      onHandBorrowedIn: 1, onHandInUse: 1, ownedLowStock: 1, borrowedInLowStock: 1,
+      healthySpools: 1, thresholds: [300] },
+    preview: ["a", "b"].map((spoolId, i) => ({ spoolId, vendor: product.vendor, filamentName: product.filamentName,
+      material: product.material, colorName: product.colorName, hexColor: "#808080", remainingG: i ? 300 : 25, locationLabel: null })),
+    groups: [{ ...product, lowestRemainingG: 25, thresholdG: 300, spoolCount: 2 }],
+  };
+  const rows = [
+    spoolWithMasterRow("a", { remaining_g: 25 }), spoolWithMasterRow("b", { status: "IN_USE", ownership_type: "BORROWED_IN", remaining_g: 300 }),
+    spoolWithMasterRow("c"), spoolWithMasterRow("d", { status: "EMPTY" }), spoolWithMasterRow("e", { status: "BORROWED" }),
+  ].map(row => ({ ...row, low_stock_threshold_g: 300 }));
+  const summary = snapshot("Host", { inventory: overview({ total_spools: 5, total_consumption_30d: 123 }) });
+  const compact = { ...summary, dashboard_stock: stock };
+  let legacy = true, offline = false, printerFailure = false, ordered = false, fullReads = 0;
+  const cacheReads: string[][] = [];
+  const host = <T,>(result: T) => { if (offline) throw Error("disconnected"); return result; };
+  const deps = {
+    loadSyncSettings: async (domains?: readonly LibrarySyncCacheDomain[]) => {
+      if (domains?.length) cacheReads.push([...domains]);
+      return { ...target, cached_snapshot: domains?.includes("dashboard_stock") ? compact : null };
+    },
+    loadTrustedLanStatus: async () => null,
+    fetchHostSnapshot: async (_url: string, _id?: string | null, request?: { dashboard: boolean; expectedGeneration?: number | null }) => {
+      assert.deepEqual(request, { dashboard: true, expectedGeneration: 7 });
+      return host(legacy ? summary : compact);
+    },
+    loadSpoolRows: async () => { fullReads++; return host(rows); },
+    fetchHostActiveLoans: async () => host([]),
+    fetchHostPrinterOverview: async () => { if (printerFailure) throw Error("printer endpoint"); return host([]); },
+    fetchHostPrinterSettings: async () => host(printerSettingsSnapshot()),
+    fetchHostWishlist: async () => host(ordered ? [wishlistItem("order", {status: "ON_ORDER"})] : []),
+    onLoadError: () => {},
+  };
+  const before = await loadDashboardData(options, deps);
+  legacy = false;
+  const after = await loadDashboardData(options, deps);
+  assert.deepEqual(after.derived, before.derived);
+  assert.deepEqual(after.actionItems, before.actionItems);
+  assert.deepEqual(after.lowStockPreview, before.lowStockPreview);
+  ordered = true;
+  assert.ok(!(await loadDashboardData(options, deps)).actionItems.some(item => item.kind === "LOW_STOCK"));
+  printerFailure = true;
+  const partial = await loadDashboardData(options, deps);
+  assert.equal(partial.syncSource, "client-cached");
+  assert.deepEqual(partial.lowStockPreview, stock.preview);
+  assert.deepEqual(cacheReads, [["printers"]]);
+  offline = true;
+  const cached = await loadDashboardData(options, deps);
+  assert.equal(cached.syncSource, "client-cached");
+  assert.deepEqual(cached.derived.ownershipOnHand, before.derived.ownershipOnHand);
+  assert.deepEqual(cached.actionItems, before.actionItems);
+  assert.deepEqual(cached.lowStockPreview, stock.preview);
+  assert.equal(fullReads, 1, "only the older Host needed a spool list");
 });

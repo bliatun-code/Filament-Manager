@@ -62,6 +62,7 @@ pub struct CompanionSpoolDetail {
 
 #[derive(Clone, Debug)]
 pub struct CompanionLibrarySnapshot {
+    pub dashboard_stock: Option<crate::backend::dashboard_stock::DashboardStock>,
     pub sync_settings: crate::backend::filament_database::LibrarySyncSettingsRow,
     pub inventory: InventoryOverview,
     pub active_loans: i64,
@@ -212,15 +213,20 @@ impl CompanionService {
         Ok(rows)
     }
 
-    pub fn library_snapshot(&self) -> InventoryResult<CompanionLibrarySnapshot> {
+    pub fn library_snapshot(&self, dashboard: bool) -> InventoryResult<CompanionLibrarySnapshot> {
         let db = FilamentDatabase::open(&self.db_path)?;
         // The legacy settings getter initializes a missing library ID. Do that
         // before opening the read snapshot so the callback remains read-only.
         db.get_library_sync_library_id()?;
         db.with_read_transaction(|snapshot| {
+            let inventory = snapshot.inventory_overview()?;
+            let dashboard_stock = dashboard
+                .then(|| snapshot.dashboard_stock(&inventory.low_stock_policy))
+                .transpose()?;
             Ok(CompanionLibrarySnapshot {
+                dashboard_stock,
                 sync_settings: snapshot.get_library_sync_settings()?,
-                inventory: snapshot.inventory_overview()?,
+                inventory,
                 active_loans: snapshot.list_active_spool_loans()?.len() as i64,
                 printers: snapshot.list_printer_overview()?.len() as i64,
                 captured_at: snapshot.sqlite_now()?,

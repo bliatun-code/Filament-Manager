@@ -15,7 +15,7 @@ bundle sizes.
 | Cold startup | Every top-level page remains a lazy chunk. The production entry chunk stays at or below 300,000 bytes when the built-bundle contract runs. |
 | Page navigation | Navigation uses a React transition, each page chunk has a size budget, and a previously loaded dashboard restores its last-good snapshot before background I/O. |
 | Dashboard startup | Sync settings and Companion status start together. Once the role is known, a local library loads its overview, spools, printers, active loans, wishlist and printer settings concurrently. |
-| Slow Host | A Client requests the snapshot, spools, printer overview, active loans, wishlist and printer settings from the Host in one wave. Normal reads have a 2.5-second timeout. Explicit Host validation has a 0.9-second timeout. |
+| Slow Host | A Client requests the compact Dashboard snapshot, printer overview, active loans, wishlist and printer settings concurrently. A legacy snapshot triggers a separate spool read. Normal reads have a 2.5-second timeout. Explicit Host validation has a 0.9-second timeout. |
 | Interrupted Host | A failed read wave uses available Host cache data. The connection indicator gives a previously reachable Host one failed core-read wave before marking it unavailable. |
 | Client blocking work | The executor admits up to 32 operations and runs up to eight at once. Network, credential-store and database work stays off the UI invoke path. See the [Host/Client gates](QUALITY_GATES.md#hostclient-resilience-authority) for write timeouts and catalog-job recovery. |
 | 10,000 spools | A real 10,000-row fixture passes through normalization, inventory mapping, options, filtering, grouping, bounded render-window selection, overview calculation, and dashboard derivation without truncation. |
@@ -67,12 +67,20 @@ later partial failure, the dashboard requests only the failed domains, including
 loan history when an older client lacks an active-loans cache. A target change
 during a refresh discards the old replies and restarts from the new cache.
 
+Dashboard requests `/library/snapshot?dashboard=true`. Its authenticated Host
+response includes inventory figures, up to four low-stock preview rows and one
+purchase candidate per low-stock product in the same SQLite read transaction.
+The Client filters candidates against its live or cached purchase queue. It
+keeps the compact Dashboard snapshot alongside the ordinary summary so reads by
+other pages preserve its offline view. Older Hosts and existing offline copies
+continue to use the spool-list calculations until a compact snapshot is available.
+
 A low-stock purchase suggestion carries the mode, Host address, library ID and
 target generation of the dashboard that displayed it. Clicking it checks compact
 status before and after checking the live purchase queue. Native writes verify
 the reviewed target again. Overlapping clicks share a request only for the same
-product and target. A completed purchase refreshes the dashboard before opening
-Purchases for that library.
+product and target. A completed purchase opens Purchases directly for that library.
+Opening and refreshing Purchases reads the queue independently of stock.
 
 The source contract rejects artificial waits in the dashboard load path. A
 three-second `sleep`, delay promise, or timer cannot be added to the initial

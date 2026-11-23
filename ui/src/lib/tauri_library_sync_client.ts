@@ -107,7 +107,49 @@ export type LibrarySyncHostValidationResult = {
   message: string;
 };
 
+export type DashboardStockPreviewRow = {
+  spoolId: string;
+  vendor: string;
+  material: string;
+  filamentName: string;
+  colorName: string;
+  hexColor: string | null;
+  remainingG: number;
+  locationLabel: string | null;
+};
+
+export type DashboardStockMetrics = {
+  totalSpools: number;
+  activeSpools: number;
+  placedActiveSpools: number;
+  onHandOwned: number;
+  onHandBorrowedIn: number;
+  onHandInUse: number;
+  ownedLowStock: number;
+  borrowedInLowStock: number;
+  healthySpools: number;
+  thresholds: number[];
+};
+
+export type DashboardStockGroup = {
+  masterId: string;
+  vendor: string;
+  material: string;
+  filamentName: string;
+  colorName: string;
+  lowestRemainingG: number;
+  thresholdG: number;
+  spoolCount: number;
+};
+
+export type DashboardStock = {
+  metrics: DashboardStockMetrics;
+  preview: DashboardStockPreviewRow[];
+  groups: DashboardStockGroup[];
+};
+
 export type LibrarySyncRemoteSnapshot = {
+  dashboard_stock?: DashboardStock | null;
   captured_at: string;
   /** Missing on older Hosts and their cached snapshots. */
   app_version?: string | null;
@@ -169,7 +211,7 @@ export async function getLibrarySyncPageStatus() {
   return invoke<LibrarySyncPageStatus>("get_library_sync_page_status");
 }
 
-export type LibrarySyncCacheDomain = "snapshot" | "spools" | "printers" | "active_loans" | "loan_history" | "wishlist";
+export type LibrarySyncCacheDomain = "snapshot" | "dashboard_stock" | "spools" | "printers" | "active_loans" | "loan_history" | "wishlist";
 
 export async function getLibrarySyncSettings(
   cacheDomains?: readonly LibrarySyncCacheDomain[],
@@ -214,8 +256,10 @@ export async function validateLibrarySyncHost(
 export async function fetchLibrarySyncSnapshot(
   baseUrl: string,
   expectedLibraryId?: string | null,
+  options?: { dashboard: boolean; expectedGeneration?: number | null },
 ) {
   return invoke<LibrarySyncRemoteSnapshot>("fetch_library_sync_snapshot", {
+    ...options,
     input: {
       base_url: baseUrl,
       expected_library_id: expectedLibraryId ?? null,

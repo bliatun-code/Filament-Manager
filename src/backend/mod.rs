@@ -3,6 +3,7 @@ pub mod bambu_live_settings;
 pub mod bambu_lookup;
 pub mod catalog_refresh_jobs;
 pub mod catalog_spool_batches;
+pub mod dashboard_stock;
 pub mod database_backup;
 pub mod database_backup_facade;
 pub mod database_backup_import;

@@ -8,7 +8,7 @@ import {
 import type { NormalizedLoanDetailsRow } from "./loan_row_normalization";
 import { resolveSpoolLowStockThreshold } from "./low_stock_policy";
 import type { NormalizedSpoolWithMasterRow } from "./spool_row_normalization";
-import type { WishlistItemRow, WishlistPurchaseTarget } from "./tauri_client";
+import type { DashboardStockGroup, WishlistItemRow, WishlistPurchaseTarget } from "./tauri_client";
 
 const DAY_MS = 24 * 60 * 60 * 1_000;
 
@@ -59,7 +59,6 @@ export type DashboardLowStockAction = {
   kind: "LOW_STOCK";
   lowestRemainingG: number;
   spoolCount: number;
-  spoolIds: string[];
   thresholdG: number;
 };
 
@@ -231,16 +230,11 @@ function timestampAge(
 type LowStockGroup = {
   candidate: DashboardPurchaseCandidate;
   lowestRemainingG: number;
-  spoolIds: string[];
+  spoolCount: number;
   thresholdG: number;
 };
 
-function buildLowStockActions(
-  spoolRows: NormalizedSpoolWithMasterRow[],
-  wishlist: WishlistItemRow[],
-  purchaseTarget?: WishlistPurchaseTarget,
-): DashboardLowStockAction[] {
-  const groups = new Map<string, LowStockGroup>();
+function* lowStockRolls(spoolRows: NormalizedSpoolWithMasterRow[]): Iterable<DashboardStockGroup> {
   for (const row of spoolRows) {
     const thresholdG = resolveSpoolLowStockThreshold(row).thresholdGrams;
     const remainingG = resolveSpoolStockGrams({
@@ -257,38 +251,44 @@ function buildLowStockActions(
     ) {
       continue;
     }
-    const candidate: DashboardPurchaseCandidate = {
-      colorName: row.master.color_name,
-      filamentName: row.master.filament_name,
-      masterId: normalizedMasterId(row.spool.master_id || row.master.id),
-      material: row.master.material,
-      productKey: "",
+    yield {
+      masterId: row.spool.master_id || row.master.id,
       vendor: row.master.vendor,
-    };
-    candidate.productKey = dashboardPurchaseCandidateKey(candidate);
-    const existing = groups.get(candidate.productKey);
-    if (existing) {
-      existing.lowestRemainingG = Math.min(existing.lowestRemainingG, remainingG);
-      existing.spoolIds.push(row.spool.id);
-      existing.thresholdG = Math.max(existing.thresholdG, thresholdG);
-      continue;
-    }
-    groups.set(candidate.productKey, {
-      candidate,
+      material: row.master.material,
+      filamentName: row.master.filament_name,
+      colorName: row.master.color_name,
       lowestRemainingG: remainingG,
-      spoolIds: [row.spool.id],
+      spoolCount: 1,
       thresholdG,
-    });
+    };
   }
+}
 
-  if (groups.size === 0) return [];
+function buildLowStockActions(
+  stock: Iterable<DashboardStockGroup>,
+  wishlist: WishlistItemRow[],
+  purchaseTarget?: WishlistPurchaseTarget,
+): DashboardLowStockAction[] {
+  const groups = new Map<string, LowStockGroup>();
+  for (const { masterId, vendor, material, filamentName, colorName, lowestRemainingG, spoolCount, thresholdG } of stock) {
+    const product = { masterId: normalizedMasterId(masterId), vendor, material, filamentName, colorName };
+    const productKey = dashboardPurchaseCandidateKey(product);
+    const existing = groups.get(productKey);
+    if (existing) {
+      existing.lowestRemainingG = Math.min(existing.lowestRemainingG, lowestRemainingG);
+      existing.spoolCount += spoolCount;
+      existing.thresholdG = Math.max(existing.thresholdG, thresholdG);
+    } else {
+      groups.set(productKey, { candidate: { ...product, productKey }, lowestRemainingG, spoolCount, thresholdG });
+    }
+  }
+  if (!groups.size) return [];
   const findDuplicate = indexOpenPurchases(wishlist);
   return [...groups.values()]
     .flatMap((group): DashboardLowStockAction[] => {
       if (findDuplicate(group.candidate)) {
         return [];
       }
-      const spoolIds = group.spoolIds.sort();
       return [{
         age: { basis: "DETECTED_NOW", elapsedDays: null, value: null },
         candidate: group.candidate,
@@ -297,8 +297,7 @@ function buildLowStockActions(
         id: `low-stock:${group.candidate.productKey}`,
         kind: "LOW_STOCK",
         lowestRemainingG: group.lowestRemainingG,
-        spoolCount: spoolIds.length,
-        spoolIds,
+        spoolCount: group.spoolCount,
         thresholdG: group.thresholdG,
       }];
     })
@@ -391,6 +390,7 @@ function buildBambuTrustActions(
 }
 
 export function buildDashboardActionItems(params: {
+  stockGroups?: DashboardStockGroup[];
   purchaseTarget?: WishlistPurchaseTarget;
   bambuLiveAttention: DashboardBambuLiveAttention[];
   loans: NormalizedLoanDetailsRow[];
@@ -401,7 +401,7 @@ export function buildDashboardActionItems(params: {
 }): DashboardActionItem[] {
   return [
     ...buildOverdueLoanActions(params.loans, params.today),
-    ...buildLowStockActions(params.spoolRows, params.wishlist, params.purchaseTarget),
+    ...buildLowStockActions(params.stockGroups ?? lowStockRolls(params.spoolRows), params.wishlist, params.purchaseTarget),
     ...buildOnOrderActions(params.wishlist, params.now),
     ...buildBambuTrustActions(params.bambuLiveAttention),
   ];

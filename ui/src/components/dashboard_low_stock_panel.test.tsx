@@ -45,7 +45,6 @@ function lowStockItem({
     kind: "LOW_STOCK",
     lowestRemainingG,
     spoolCount: 1,
-    spoolIds: [`spool-${id}`],
     thresholdG: 200,
   };
 }

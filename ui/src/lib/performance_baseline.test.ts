@@ -245,7 +245,6 @@ for (const scenario of [
     const started: string[] = [];
     const requests = {
       snapshot: deferred<LibrarySyncRemoteSnapshot>(),
-      spools: deferred<SpoolWithMasterRow[]>(),
       printers: deferred<PrinterOverviewRow[]>(),
       printerSettings: deferred<PrinterSettingsSnapshot>(),
       loans: deferred<SpoolLoanDetailsRow[]>(),
@@ -276,9 +275,9 @@ for (const scenario of [
           started.push("snapshot");
           return requests.snapshot.promise;
         },
-        loadSpoolRows: () => {
+        loadSpoolRows: async () => {
           started.push("spools");
-          return requests.spools.promise;
+          throw Error("a compact snapshot must cover stock");
         },
         fetchHostPrinterSettings: () => {
           started.push("printer-settings");
@@ -314,7 +313,6 @@ for (const scenario of [
       "printer-settings",
       "printers",
       "snapshot",
-      "spools",
       "wishlist",
     ]);
 
@@ -325,11 +323,11 @@ for (const scenario of [
       const result = await resultPromise;
       assert.equal(result.syncSource, "client-cached");
       assert.equal(result.revisionPollComplete, false);
-      assert.equal(errors.length, 6);
+      assert.equal(errors.length, 5);
+      assert.ok(!started.includes("spools"));
       return;
     }
 
-    requests.spools.resolve([]);
     requests.printers.resolve([]);
     requests.printerSettings.resolve({ active_printer_id: null, printers: [], printer_models: [], bambu_live_integrations: [] });
     requests.loans.resolve([]);
@@ -337,9 +335,17 @@ for (const scenario of [
     await flushPromiseContinuations();
     assert.equal(settled, false, "the deliberately slow request must still be pending");
 
-    requests.snapshot.resolve(hostSnapshot());
+    requests.snapshot.resolve({
+      ...hostSnapshot(),
+      dashboard_stock: {
+        metrics: { totalSpools: 0, activeSpools: 0, placedActiveSpools: 0, onHandOwned: 0, onHandBorrowedIn: 0,
+          onHandInUse: 0, ownedLowStock: 0, borrowedInLowStock: 0, healthySpools: 0, thresholds: [] },
+        groups: [], preview: [],
+      },
+    });
     const result = await resultPromise;
     assert.equal(result.syncSource, "client-live");
+    assert.ok(!started.includes("spools"));
     assert.equal(result.revisionPollComplete, true);
   });
 }

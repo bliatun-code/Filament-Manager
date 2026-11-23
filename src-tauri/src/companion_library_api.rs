@@ -82,7 +82,14 @@ pub(super) async fn handle_library_filament_standards(
     Ok(Json(snapshot))
 }
 
+#[derive(serde::Deserialize)]
+pub(super) struct SnapshotQuery {
+    #[serde(default)]
+    dashboard: bool,
+}
+
 pub(super) async fn handle_library_snapshot(
+    Query(query): Query<SnapshotQuery>,
     State(state): State<CompanionApiState>,
     headers: HeaderMap,
 ) -> Result<Json<CompanionLibrarySnapshotResponse>, CompanionApiError> {
@@ -91,10 +98,11 @@ pub(super) async fn handle_library_snapshot(
             require_allowed_host(&headers, &state.runtime)?;
             let snapshot = state
                 .service
-                .library_snapshot()
+                .library_snapshot(query.dashboard)
                 .map_err(CompanionApiError::from)?;
 
             Ok(Json(CompanionLibrarySnapshotResponse {
+                dashboard_stock: snapshot.dashboard_stock,
                 ok: true,
                 app_version: env!("CARGO_PKG_VERSION"),
                 captured_at: snapshot.captured_at,

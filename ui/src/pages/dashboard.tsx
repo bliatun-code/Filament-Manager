@@ -3,7 +3,6 @@ import { OwnershipSnapshotPanel } from "./dashboard_panels";
 import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { DashboardOnboardingChecklist } from "../components/dashboard_onboarding_checklist";
 import { DashboardActionPanel } from "../components/dashboard_action_panel";
-import { DashboardLowStockPanel } from "../components/dashboard_low_stock_panel";
 import { DashboardPrinterOverview } from "../components/dashboard_printer_overview";
 import { DashboardStockOverview } from "../components/dashboard_stock_overview";
 import { PageHeaderButton } from "../components/page_header_button";
@@ -51,6 +50,7 @@ import { readLatestFullBackupExport } from "./settings_full_backup_activity";
 import { dashboardPurchaseNotice, type PageKey } from "../lib/app_navigation_model";
 import { useResolvedTheme } from "../lib/theme_mode";
 
+const DashboardLowStockPanel = lazy(() => import("../components/dashboard_low_stock_panel").then(module => ({ default: module.DashboardLowStockPanel })));
 const ActivityTimeline = lazy(() => import("../components/dashboard_activity_timeline").then((module) => ({ default: module.ActivityTimeline })));
 const DashboardConsumptionPanel = lazy(() => import("./dashboard_consumption_panel"));
 
@@ -554,18 +554,20 @@ function DashboardContent({
         </section>
         <DashboardStockOverview items={lowStockPreview} available={lowStockPreviewAvailable} onOpenLowStock={onOpenLowStock}>
           {lowStockActionItems.length > 0 || actionError || actionMessage ? (
-            <DashboardLowStockPanel
-              embedded
-              busyIds={actionBusyIds}
-              error={actionError}
-              hiddenProductKeys={hiddenLowStockProductKeys}
-              items={lowStockActionItems}
-              message={actionMessage}
-              onHideLowStock={handleHideLowStock}
-              onOpenLowStock={() => onOpenLowStock?.()}
-              onQueueLowStock={(item) => void handleQueueLowStock(item)}
-              onRestoreLowStock={handleRestoreLowStock}
-            />
+            <Suspense fallback={null}>
+              <DashboardLowStockPanel
+                embedded
+                busyIds={actionBusyIds}
+                error={actionError}
+                hiddenProductKeys={hiddenLowStockProductKeys}
+                items={lowStockActionItems}
+                message={actionMessage}
+                onHideLowStock={handleHideLowStock}
+                onOpenLowStock={() => onOpenLowStock?.()}
+                onQueueLowStock={(item) => void handleQueueLowStock(item)}
+                onRestoreLowStock={handleRestoreLowStock}
+              />
+            </Suspense>
           ) : null}
         </DashboardStockOverview>
       </div>

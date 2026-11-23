@@ -414,6 +414,14 @@ impl InventoryEngine {
         self.db.save_library_sync_cached_snapshot(snapshot)
     }
 
+    pub fn save_library_sync_host_snapshot(
+        &self,
+        snapshot: LibrarySyncCachedSnapshotRow,
+        dashboard: bool,
+    ) -> InventoryResult<()> {
+        self.db.save_library_sync_host_snapshot(snapshot, dashboard)
+    }
+
     pub fn save_library_sync_cached_spools(
         &self,
         rows: &[SpoolWithMasterRow],
