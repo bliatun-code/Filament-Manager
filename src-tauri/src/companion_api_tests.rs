@@ -2134,6 +2134,17 @@ async fn companion_api_statistics_period_report_validates_and_echoes_half_open_c
         assert!(value_cost["inventory_trace"].is_array());
         assert!(value_cost["material_cost_trace"].is_array());
 
+        let compact = router.clone().oneshot(Request::builder()
+            .uri("/api/v1/library/statistics/period-report?start_at_utc=2026-08-01T00%3A00%3A00Z&end_at_utc=2026-08-02T00%3A00%3A00Z&trace=summary")
+            .header("host", "127.0.0.1:4278")
+            .header("cookie", format!("bfm_companion_session={session_cookie}"))
+            .body(Body::empty()).unwrap()).await.unwrap();
+        assert_eq!(compact.status(), StatusCode::OK);
+        let compact: serde_json::Value = serde_json::from_slice(&to_bytes(compact.into_body(), usize::MAX).await.unwrap()).unwrap();
+        assert_eq!(compact["value_cost"]["trace"], "summary");
+        assert_eq!(compact["value_cost"]["inventory_trace"], serde_json::json!([]));
+        assert_eq!(compact["value_cost"]["inventory_value"]["totals"], value_cost["inventory_value"]["totals"]);
+
         let reversed = router
             .oneshot(
                 Request::builder()

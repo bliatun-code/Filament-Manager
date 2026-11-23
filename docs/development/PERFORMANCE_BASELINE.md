@@ -52,6 +52,12 @@ generation. Older copies can still use scoped spool rows. Printers and loan
 history each read their own cache only on failure. Period reports have no offline
 fallback.
 
+Current Statistics clients request currency totals and coverage on opening and
+period changes. They fetch the selected inventory or material-cost trace when
+its detail panel opens. The request and its result must match the displayed
+period and original library, Host and target generation. Older Hosts return both
+trace lists inline. Requests without a trace selector retain that contract.
+
 A period change reuses a complete live overview, printers and loans for the same
 day, library, Host and target generation if inventory, catalog, printer, job and
 loan revisions match before and after the new report. Missing or changed

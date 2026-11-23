@@ -131,6 +131,9 @@ test("actual StatisticsPage keeps its range, keyboard navigation, filters and de
     const lateStatusChecked = Promise.withResolvers<void>();
     let lateReturning = false;
     let raceReport = 0;
+    let holdTrace = false;
+    const traceStarted = Promise.withResolvers<void>();
+    const releaseTrace = Promise.withResolvers<void>();
     const calls: { command: string; payload: Record<string, unknown> }[] = [];
     page.on("pageerror", (error) => errors.push(error.message));
     page.on("console", (message) => {
@@ -158,6 +161,19 @@ test("actual StatisticsPage keeps its range, keyboard navigation, filters and de
         case "list_loan_usage_by_person": return [];
         case "statistics_period_report": {
           const report = periodResponse(payload.period as StatisticsPeriod);
+          if (payload.trace === "summary") {
+            report.value_cost!.trace = "summary";
+            report.value_cost!.inventory_trace = [];
+            report.value_cost!.inventory_value.coverage.trace_returned_rows = 0;
+          } else {
+            assert.equal(payload.trace, "inventory");
+            report.value_cost!.trace = "inventory";
+            if (holdTrace) {
+              traceStarted.resolve();
+              await releaseTrace.promise;
+              report.value_cost!.inventory_trace[0].filament_name = "Obsolete detail";
+            }
+          }
           if (raceReport === 1) {
             raceReport++;
             slowStarted.resolve();
@@ -231,6 +247,7 @@ test("actual StatisticsPage keeps its range, keyboard navigation, filters and de
     await valuePanel.getByRole("button", { name: "Purchase price is missing. Open filament defaults", exact: true }).click();
     assert.deepEqual(await page.evaluate("statisticsLifecycle.targets()"), ["GROUP_PRICING"]);
     const trace = valuePanel.getByRole("button", { name: "Trace inventory value", exact: true });
+    assert.equal(periodCalls().filter(call => call.payload.trace === "inventory").length, 0);
     await trace.click();
     await valuePanel.getByText("Showing 2 of 2 available trace rows (2 total).", { exact: true }).waitFor();
     await tabs.getByRole("tab", { name: "Printers", exact: true }).click();
@@ -246,7 +263,8 @@ test("actual StatisticsPage keeps its range, keyboard navigation, filters and de
     assert.equal(await page.getByLabel("End date", { exact: true }).inputValue(), "2026-09-30");
     assert.equal(await page.getByRole("button", { name: "Custom range", exact: true }).getAttribute("aria-pressed"), "true");
     assert.equal(await page.getByRole("group", { name: "Reporting period", exact: true }).locator("..").locator('[aria-live="polite"]').textContent(), appliedRange);
-    assert.equal(periodCalls().length, appliedCallCount, "applied reporting period survives analysis navigation without a refetch");
+    assert.equal(periodCalls().filter(call => call.payload.trace === "summary").length, appliedCallCount);
+    assert.equal(periodCalls().filter(call => call.payload.trace === "inventory").length, 1);
 
     await tabs.getByRole("tab", { name: "Consumption", exact: true }).click();
     await openConsumption.click();
@@ -261,6 +279,12 @@ test("actual StatisticsPage keeps its range, keyboard navigation, filters and de
       await page.getByRole("dialog", { name: heading, exact: true }).waitFor();
       await closeDialog(page);
     }
+    await tabs.getByRole("tab", { name: "Inventory value", exact: true }).click();
+    await trace.click(); // Close the already loaded trace.
+    holdTrace = true;
+    await trace.click();
+    await traceStarted.promise;
+    await tabs.getByRole("tab", { name: "Consumption", exact: true }).click();
     raceReport = 1;
     assert.equal(calls.filter(call => call.command === "list_spools").length, 0, "opening Statistics needs no local spool list");
     const raceStart = calls.length;
@@ -268,10 +292,15 @@ test("actual StatisticsPage keeps its range, keyboard navigation, filters and de
     await slowStarted.promise;
     await page.getByRole("button", { name: "Last 12 months", exact: true }).click();
     await page.getByText("8.23 kg", { exact: true }).first().waitFor();
+    releaseTrace.resolve();
     releaseSlow.resolve();
     // Wait for the late request's final target check and the following React render.
     await lateStatusChecked.promise;
     await page.evaluate(() => new Promise<void>(resolve => requestAnimationFrame(() => requestAnimationFrame(() => resolve()))));
+    await tabs.getByRole("tab", { name: "Inventory value", exact: true }).click();
+    assert.equal(await trace.getAttribute("aria-expanded"), "false");
+    assert.equal(await page.getByText(/Obsolete detail/).count(), 0);
+    await tabs.getByRole("tab", { name: "Consumption", exact: true }).click();
     assert.equal(await page.getByText("7.12 kg", { exact: true }).count(), 0);
     assert.equal(await page.getByText("8.23 kg", { exact: true }).first().isVisible(), true);
     assert.equal(calls.slice(raceStart).filter(call => call.command === "list_spools").length, 0);
@@ -363,6 +392,16 @@ test("Statistics keeps its layout and last report visible while changing periods
           const panel = page.getByRole("tabpanel", { name: scenario.tab });
           const total = panel.getByText(scenario.total, { exact: true });
           await total.waitFor();
+          if (scenario.mode === "CLIENT") {
+            await tabs.getByRole("tab", { name: "Inventory value", exact: true }).click();
+            const legacyPanel = page.getByRole("tabpanel", { name: "Inventory value", exact: true });
+            const traceButton = legacyPanel.getByRole("button", { name: "Trace inventory value", exact: true });
+            await traceButton.click();
+            await legacyPanel.getByText("Showing 2 of 2 available trace rows (2 total).", { exact: true }).waitFor();
+            assert.equal(reportCalls, 1, "a legacy Host already supplied the rows");
+            await traceButton.click();
+            await tabs.getByRole("tab", { name: scenario.tab }).click();
+          }
           await page.evaluate(async () => { await document.fonts.ready; });
 
           const selectedRange = page.getByText(/^Selected: /);

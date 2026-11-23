@@ -2,7 +2,9 @@ use crate::backend::filament_database::{
     FilamentDatabase, FilamentMasterCatalogRow, FilamentStandardsSnapshot, LibrarySyncSettingsRow,
     PrinterOverviewRow, SpoolLoanDetailsRow, SpoolWithMasterRow, WishlistItemRow,
 };
-use crate::backend::statistics::{FilamentConsumptionRow, StatisticsEngine, StatisticsPeriod};
+use crate::backend::statistics::{
+    FilamentConsumptionRow, StatisticsEngine, StatisticsPeriod, StatisticsTrace,
+};
 use crate::companion_error::CompanionApiError;
 use crate::companion_http::require_allowed_host;
 use crate::companion_models::{
@@ -281,24 +283,33 @@ pub(super) async fn handle_library_filament_consumption(
     Ok(Json(rows))
 }
 
+#[derive(serde::Deserialize)]
+pub(super) struct PeriodReportQuery {
+    #[serde(flatten)]
+    period: StatisticsPeriod,
+    trace: Option<StatisticsTrace>,
+}
+
 pub(super) async fn handle_library_statistics_period_report(
     State(state): State<CompanionApiState>,
     headers: HeaderMap,
-    Query(period): Query<StatisticsPeriod>,
+    Query(query): Query<PeriodReportQuery>,
 ) -> Result<Json<crate::backend::statistics::StatisticsPeriodReport>, CompanionApiError> {
     require_allowed_host(&headers, &state.runtime)?;
     let report = state
         .run_blocking("library statistics period report", move |state| {
             let stats = StatisticsEngine::open(&state.db_path)
                 .map_err(|error| CompanionApiError::Internal(error.to_string()))?;
-            stats.period_report(&period).map_err(|error| match error {
-                crate::backend::statistics::StatisticsPeriodError::InvalidPeriod(message) => {
-                    CompanionApiError::BadRequest(message)
-                }
-                crate::backend::statistics::StatisticsPeriodError::Database(error) => {
-                    CompanionApiError::Internal(error.to_string())
-                }
-            })
+            stats
+                .period_report_with_trace(&query.period, query.trace)
+                .map_err(|error| match error {
+                    crate::backend::statistics::StatisticsPeriodError::InvalidPeriod(message) => {
+                        CompanionApiError::BadRequest(message)
+                    }
+                    crate::backend::statistics::StatisticsPeriodError::Database(error) => {
+                        CompanionApiError::Internal(error.to_string())
+                    }
+                })
         })
         .await?;
     Ok(Json(report))

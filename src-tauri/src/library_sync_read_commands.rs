@@ -4,7 +4,7 @@ use crate::backend::filament_database::{
     SpoolWithMasterRow, WishlistItemRow,
 };
 use crate::backend::statistics::{
-    FilamentConsumptionRow, StatisticsPeriod, StatisticsPeriodReport,
+    FilamentConsumptionRow, StatisticsPeriod, StatisticsPeriodReport, StatisticsTrace,
 };
 use crate::library_sync_blocking_executor::run_library_sync_blocking;
 use crate::library_sync_cache_refresh::{
@@ -357,8 +357,12 @@ fn fetch_library_sync_statistics_period_report_blocking(
     input: LibrarySyncStatisticsPeriodInput,
 ) -> Result<Option<StatisticsPeriodReport>, String> {
     let host_input = library_sync_host_input(&input.base_url, input.expected_library_id.as_deref());
-    let (_, health, target) = prepare_library_sync_host_read(state, &host_input)?;
-    let path = library_sync_statistics_period_path(&input.period);
+    let (_, health, target) = prepare_library_sync_host_write_for_generation(
+        state,
+        &host_input,
+        input.expected_generation,
+    )?;
+    let path = library_sync_statistics_period_path(&input.period, input.trace);
     // The period report predates value/cost reporting, so this read must not be
     // capability-gated. Serde maps a legacy Host's missing `value_cost` field to
     // `None`, preserving the rest of the report without a fabricated fallback.
@@ -377,10 +381,21 @@ fn fetch_library_sync_statistics_period_report_blocking(
     Ok(report)
 }
 
-fn library_sync_statistics_period_path(period: &StatisticsPeriod) -> String {
+fn library_sync_statistics_period_path(
+    period: &StatisticsPeriod,
+    trace: Option<StatisticsTrace>,
+) -> String {
     let mut query = url::form_urlencoded::Serializer::new(String::new());
     query.append_pair("start_at_utc", period.start_at_utc.trim());
     query.append_pair("end_at_utc", period.end_at_utc.trim());
+    if let Some(trace) = trace {
+        let name = match trace {
+            StatisticsTrace::Summary => "summary",
+            StatisticsTrace::Inventory => "inventory",
+            StatisticsTrace::Material => "material",
+        };
+        query.append_pair("trace", name);
+    }
     format!(
         "/api/v1/library/statistics/period-report?{}",
         query.finish()
@@ -721,6 +736,8 @@ mod tests {
         let period = fetch_library_sync_statistics_period_report_blocking(
             &state,
             LibrarySyncStatisticsPeriodInput {
+                trace: None,
+                expected_generation: None,
                 base_url: base_url.clone(),
                 expected_library_id: expected_library_id.clone(),
                 period: StatisticsPeriod {
@@ -766,7 +783,7 @@ mod tests {
             library_sync_statistics_period_path(&StatisticsPeriod {
                 start_at_utc: " 2026-08-01T00:00:00Z ".to_string(),
                 end_at_utc: "2026-09-01T00:00:00Z".to_string(),
-            }),
+            }, None),
             "/api/v1/library/statistics/period-report?start_at_utc=2026-08-01T00%3A00%3A00Z&end_at_utc=2026-09-01T00%3A00%3A00Z"
         );
     }

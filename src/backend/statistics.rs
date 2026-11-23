@@ -78,6 +78,15 @@ pub struct StatisticsPeriod {
     pub end_at_utc: String,
 }
 
+/// Omitting this option retains the complete report used by earlier Clients.
+#[derive(Clone, Copy, Debug, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "lowercase")]
+pub enum StatisticsTrace {
+    Summary,
+    Inventory,
+    Material,
+}
+
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
 pub struct StatisticsPeriodPrinterUsageRow {
     pub printer_id: String,
@@ -230,12 +239,21 @@ impl StatisticsEngine {
         &self,
         period: &StatisticsPeriod,
     ) -> Result<StatisticsPeriodReport, StatisticsPeriodError> {
-        self.period_report_with_hook(period, || Ok(()))
+        self.period_report_with_trace(period, None)
+    }
+
+    pub fn period_report_with_trace(
+        &self,
+        period: &StatisticsPeriod,
+        trace: Option<StatisticsTrace>,
+    ) -> Result<StatisticsPeriodReport, StatisticsPeriodError> {
+        self.period_report_with_hook(period, trace, || Ok(()))
     }
 
     fn period_report_with_hook(
         &self,
         period: &StatisticsPeriod,
+        trace: Option<StatisticsTrace>,
         after_snapshot_started: impl FnOnce() -> Result<(), StatisticsPeriodError>,
     ) -> Result<StatisticsPeriodReport, StatisticsPeriodError> {
         let bounds = validate_statistics_period(period)?;
@@ -244,6 +262,7 @@ impl StatisticsEngine {
             &transaction,
             period,
             bounds,
+            trace,
             after_snapshot_started,
         )?;
         transaction.commit()?;
@@ -254,6 +273,7 @@ impl StatisticsEngine {
         connection: &Connection,
         period: &StatisticsPeriod,
         bounds: ValidatedStatisticsPeriod,
+        trace: Option<StatisticsTrace>,
         after_snapshot_started: impl FnOnce() -> Result<(), StatisticsPeriodError>,
     ) -> Result<StatisticsPeriodReport, StatisticsPeriodError> {
         let (
@@ -370,7 +390,9 @@ impl StatisticsEngine {
             .collect::<Result<Vec<_>, _>>()?;
         let filament_consumption =
             Self::filament_consumption_with_bounds(connection, 2_000, None, Some(bounds))?;
-        let value_cost = Some(value_cost_report_from_connection(connection, bounds)?);
+        let value_cost = Some(value_cost_report_from_connection(
+            connection, bounds, trace,
+        )?);
 
         Ok(StatisticsPeriodReport {
             period: StatisticsPeriod {
@@ -752,7 +774,7 @@ mod tests {
                 end_at_utc: "2026-08-02T00:00:00Z".to_string(),
             };
             let report = stats
-                .period_report_with_hook(&period, || {
+                .period_report_with_hook(&period, None, || {
                     writer.execute(
                         "UPDATE filament_spools SET purchase_price = 200 WHERE id = 'snapshot-spool'",
                         [],

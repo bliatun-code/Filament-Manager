@@ -2,7 +2,7 @@ use crate::backend::dashboard_stock::LocalDashboardSnapshot;
 use crate::backend::filament_database::FilamentDatabase;
 use crate::backend::statistics::{
     FilamentConsumptionRow, InventoryOverview, MaterialUsageRow, StatisticsEngine,
-    StatisticsPeriod, StatisticsPeriodReport,
+    StatisticsPeriod, StatisticsPeriodReport, StatisticsTrace,
 };
 use crate::state::AppState;
 use crate::with_stats;
@@ -50,10 +50,11 @@ pub(crate) fn list_filament_consumption(
 pub(crate) fn statistics_period_report(
     state: tauri::State<'_, AppState>,
     period: StatisticsPeriod,
+    trace: Option<StatisticsTrace>,
 ) -> Result<StatisticsPeriodReport, String> {
     let stats = StatisticsEngine::open(&state.db_path)
         .map_err(|error| format!("Open statistics database: {error}"))?;
     stats
-        .period_report(&period)
+        .period_report_with_trace(&period, trace)
         .map_err(|error| format!("Statistics period query: {error}"))
 }

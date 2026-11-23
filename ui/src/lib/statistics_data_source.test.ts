@@ -5,6 +5,7 @@ import {
   loadLoanBreakdownRows,
   loadStatisticsData,
   loadStatisticsPageData,
+  loadStatisticsValueTrace,
 } from "./statistics_data_source";
 import type {
   FilamentConsumptionRow,
@@ -1099,4 +1100,44 @@ test("Statistics opens offline from the paired summary and rejects other librari
     assert.equal(unavailable.source, "OFFLINE");
     assert.equal(unavailable.overview, null);
   }
+});
+
+test("Statistics detail reads stay on the displayed Host, library, generation and period", async () => {
+  const original = syncSettings({ mode: "CLIENT", host_base_url: "http://a", target_generation: 1, client_auth_paired: true });
+  const other = { ...original, host_base_url: "http://b", library_id: "library-2", target_generation: 2 };
+  let current = original;
+  const started = Promise.withResolvers<void>();
+  const release = Promise.withResolvers<void>();
+  const summary = { totals: [], coverage: { total_rows: 0, valued_rows: 0, unvalued_rows: 0, covered_grams: 0,
+    uncovered_grams: 0, missing_reasons: [], trace_total_rows: 0, trace_returned_rows: 0, trace_truncated: false } };
+  const value = { trace: "material" as const, inventory_value: summary, material_cost: summary, inventory_trace: [], material_cost_trace: [] };
+  const response = periodReport({ value_cost: value });
+  const deps = {
+    loadSyncStatus: async () => current,
+    fetchHostPeriodReport: async (...args: unknown[]) => {
+      assert.deepEqual(args, ["http://a", "library-1", reportingPeriod, "material", 1]);
+      started.resolve();
+      await release.promise;
+      return response;
+    },
+  };
+  const pending = loadStatisticsValueTrace(original, reportingPeriod, "material", deps);
+  await started.promise;
+  current = other;
+  assert.equal(await loadStatisticsValueTrace(original, reportingPeriod, "material", {
+    ...deps, fetchHostPeriodReport: async () => assert.fail("the target changed before clicking"),
+  }), null);
+  current = { ...original, target_generation: 3 };
+  release.resolve();
+  assert.equal(await pending, null);
+
+  current = original;
+  assert.deepEqual(await loadStatisticsValueTrace(original, reportingPeriod, "material", deps), value);
+  const differentPeriod = periodReport({ ...response, period: { ...reportingPeriod, end_at_utc: "2026-11-01T00:00:00Z" } });
+  assert.equal(await loadStatisticsValueTrace(original, reportingPeriod, "material", {
+    ...deps, fetchHostPeriodReport: async () => differentPeriod,
+  }), null);
+  assert.equal(await loadStatisticsValueTrace(original, reportingPeriod, "inventory", {
+    ...deps, fetchHostPeriodReport: async () => response,
+  }), null);
 });
