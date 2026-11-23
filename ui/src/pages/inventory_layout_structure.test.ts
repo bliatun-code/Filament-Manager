@@ -185,7 +185,7 @@ test("inventory exposes managed location objects and autocomplete in one click",
     inventoryPageSource,
     /showLocationSpools\(location\);\s*setActiveWorkspaceView\("STOCK"\)/,
   );
-  assert.match(inventoryPageSource, /totalLocationCount=\{selectableInventoryLocations/);
+  assert.match(inventoryPageSource, /totalLocationCount=\{hasCount\(domainSources\.locations\) \? selectableInventoryLocations/);
 });
 
 test("inventory search and filter controls expose accessible names and state", () => {
@@ -270,7 +270,7 @@ test("inventory refreshes page data without eagerly loading the add-flow catalog
   assert.match(refreshSource, /const expectedDomains: InventoryDataRequestDomain\[\]/);
   assert.match(refreshSource, /expectedDomains\.push\("detail"\)/);
   assert.match(refreshSource, /const missingDomains = expectedDomains\.filter/);
-  assert.match(refreshSource, /resolution === "SUPERSEDED"/);
+  assert.match(refreshSource, /resolution !== "SUPERSEDED"/);
   assert.match(refreshSource, /completeRefresh\(\)/);
   assert.match(refreshSource, /failRefresh\(/);
 });
@@ -295,19 +295,19 @@ test("catalog-backed create actions wait for the current catalog request", () =>
 });
 
 test("inventory Host feedback waits for a settled role and initial load", () => {
-  assert.match(inventoryPageDataSource, /useState<ClientSnapshotSource>\("UNRESOLVED"\)/);
-  assert.match(inventoryPageDataSource, /setClientInventorySource\("UNRESOLVED"\)/);
+  assert.match(inventoryPageDataSource, /useRef<ClientSnapshotSource>\("UNRESOLVED"\)/);
+  assert.match(inventoryPageDataSource, /recordClientInventoryDomainSource\("spools", "UNRESOLVED"\)/);
   assert.match(
     inventoryPageWorkspaceSource,
     /resolveClientPageFeedbackState\(\{[\s\S]*clientReadOnly,[\s\S]*initialLoadSettled: librarySyncReady && !loading/,
   );
   assert.match(inventoryPageDataSource, /isClientCompositeSnapshotPartial/);
-  assert.match(inventoryPageDataSource, /clientInventoryDomainSourcesRef/);
+  assert.match(inventoryPageDataSource, /const \[domainSources, setDomainSources\]/);
   assert.match(inventoryPageDataSource, /recordClientInventoryDomainSource/);
   assert.match(inventoryPageDataSource, /new Map<InventoryDataRequestDomain, InventoryReloadResolution>/);
   assert.match(
     inventoryPageDataSource,
-    /setClientInventoryPartial\([\s\S]*primarySource: clientInventorySourceRef\.current,[\s\S]*secondarySources/,
+    /isClientCompositeSnapshotPartial\(\{[\s\S]*primarySource: clientInventorySource,[\s\S]*secondarySources:/,
   );
   assert.match(
     inventoryPageDataSource,

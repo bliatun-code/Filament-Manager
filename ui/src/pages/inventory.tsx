@@ -51,6 +51,7 @@ import { useInventoryHistoryFormatters } from "../lib/use_inventory_history_form
 import { useInventoryLoanTrackingModal } from "../lib/use_inventory_loan_tracking_modal";
 import { useInventoryLabelSheetAction } from "../lib/use_inventory_label_sheet_action";
 import { useInventoryLoadSpoolAction } from "../lib/use_inventory_load_spool_action";
+import type { ClientSnapshotSource } from "../lib/page_refresh_state";
 import { useInventoryPageData } from "../lib/use_inventory_page_data";
 import { useInventoryPrinterSlots } from "../lib/use_inventory_printer_slots";
 import { useInventoryRfidCaptureRefresh } from "../lib/use_inventory_rfid_capture_refresh";
@@ -96,6 +97,10 @@ type InventoryPageProps = {
   onNavigationGuardChange?: (guard: InventoryNavigationGuard | null) => void;
 };
 
+function hasCount(source: ClientSnapshotSource): boolean {
+  return source === "LIVE" || source === "CACHED";
+}
+
 export default function InventoryPage({
   onOpenPrinters,
   initialWorkspaceView = "STOCK",
@@ -114,6 +119,7 @@ export default function InventoryPage({
   const [error, setError] = useState<string | null>(null);
   const [activeWorkspaceView, setActiveWorkspaceView] =
     useState<InventoryWorkspaceView>(initialWorkspaceView);
+  const purchasesOnly = activeWorkspaceView === "PURCHASES";
   const [rfidCaptureFieldsBySlotId, setRfidCaptureFieldsBySlotId] = useState<
     Record<string, RfidCaptureField[]>
   >({});
@@ -129,6 +135,7 @@ export default function InventoryPage({
     clientLibraryId,
     clientReadOnly,
     clientTargetGeneration,
+    domainSources,
     completeDataLoad,
     detailUnavailable,
     historyLoading,
@@ -321,7 +328,7 @@ export default function InventoryPage({
     tauriAvailable: tauri,
     t,
     wishlistItems,
-    wishlistLoading,
+    wishlistLoading: wishlistLoading || (tauri && purchasesOnly && domainSources.wishlist === "UNRESOLVED" && !loadError),
   });
   const { onBambuBatchInputChange, onCatalogQueryChange, onCreateModeChange } = addModalProps;
   const inventoryAddModalProps = {
@@ -329,18 +336,18 @@ export default function InventoryPage({
     autoOpenBambuBatch: desktopVisualQaScenario === "bambu-batch-add",
   };
 
+  const pendingPurchaseNavigation = navigationIntent?.kind === "PURCHASES" && !purchasesOnly;
   useEffect(() => {
-    if (!tauri || !librarySyncReady) {
-      return;
-    }
-    void refreshInventoryData();
-  }, [librarySyncReady, refreshInventoryData, tauri]);
+    if (!tauri || !librarySyncReady || pendingPurchaseNavigation) return;
+    void refreshInventoryData({ purchasesOnly });
+  }, [librarySyncReady, pendingPurchaseNavigation, purchasesOnly, refreshInventoryData, tauri]);
 
   const refreshInventoryPage = useCallback(() => {
     void refreshInventoryData({
+      purchasesOnly,
       selectedSpoolId: showRollModal ? selectedSpoolId : null,
     });
-  }, [refreshInventoryData, selectedSpoolId, showRollModal]);
+  }, [purchasesOnly, refreshInventoryData, selectedSpoolId, showRollModal]);
 
   const retryInventoryPageLoad = useCallback(() => {
     if (!librarySyncReady) {
@@ -1421,7 +1428,8 @@ export default function InventoryPage({
 
       <InventoryPageWorkspace
         activeView={activeWorkspaceView}
-        totalLoanCount={activeLoans.length + spools.filter(spool => spool.ownershipType === "BORROWED_IN").length}
+        totalLoanCount={hasCount(domainSources.loans) && hasCount(domainSources.spools)
+          ? activeLoans.length + spools.filter(spool => spool.ownershipType === "BORROWED_IN").length : null}
         loansPanel={<Suspense fallback={<div role="status">{t("loans.loading", "Loading loans...")}</div>}>
           <LoansPage embedded onDataChanged={() => { void refreshInventoryData({}); }}
             onOpenSpool={selectRollForManage} />
@@ -1432,9 +1440,9 @@ export default function InventoryPage({
         bulkSelectionTriggerProps={inventoryBulkSelectionTriggerProps}
         clientHostDeviceName={clientHostDeviceName}
         clientHostWritePaired={clientHostWritePaired}
-        clientInventoryPartial={clientInventoryPartial}
-        clientInventorySource={clientInventorySource}
-        clientInventoryUpdatedAt={clientInventoryUpdatedAt}
+        clientInventoryPartial={!purchasesOnly && clientInventoryPartial}
+        clientInventorySource={purchasesOnly ? domainSources.wishlist : clientInventorySource}
+        clientInventoryUpdatedAt={purchasesOnly ? null : clientInventoryUpdatedAt}
         clientReadOnly={clientReadOnly}
         librarySyncReady={librarySyncReady}
         loading={loading}
@@ -1513,9 +1521,9 @@ export default function InventoryPage({
         }}
         infoMessage={activeWorkspaceView === "LOCATIONS" ? locationInfo ?? infoMessage : activeWorkspaceView === "STOCK" ? bulkInfo ?? infoMessage : infoMessage}
         showRollModal={showRollModal}
-        totalInventoryCount={spools.length}
-        totalLocationCount={selectableInventoryLocations(locations).length}
-        totalPurchaseCount={wishlistItems.length}
+        totalInventoryCount={hasCount(domainSources.spools) || detailVisualFixture ? spools.length : null}
+        totalLocationCount={hasCount(domainSources.locations) ? selectableInventoryLocations(locations).length : null}
+        totalPurchaseCount={hasCount(domainSources.wishlist) ? wishlistItems.length : null}
       />
     </div>
   );

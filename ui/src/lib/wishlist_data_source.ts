@@ -282,7 +282,7 @@ async function loadWishlistItemsInternal(
     try {
       return {
         result: {
-          rows: await fetchHostWishlist(hostTarget.baseUrl, hostTarget.libraryId, limit),
+          rows: await fetchHostWishlist(hostTarget.baseUrl, hostTarget.libraryId, limit, options.clientTargetGeneration),
           source: "LIVE",
         },
         loadError: null,
