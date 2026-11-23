@@ -3,7 +3,7 @@ use crate::backend::filament_database::{
     SpoolWithMasterRow, WishlistItemRow,
 };
 use crate::backend::purchase_receipt_metadata::PurchaseReceiptMetadata;
-use crate::backend::statistics::{InventoryOverview, StatisticsPeriod};
+use crate::backend::statistics::{InventoryOverview, StatisticsPeriod, StatisticsTrace};
 use crate::optional_update::OptionalUpdate;
 use serde::{Deserialize, Serialize};
 
@@ -60,6 +60,8 @@ pub(crate) struct LibrarySyncStatisticsPeriodInput {
     pub(crate) base_url: String,
     pub(crate) expected_library_id: Option<String>,
     pub(crate) period: StatisticsPeriod,
+    pub(crate) trace: Option<StatisticsTrace>,
+    pub(crate) expected_generation: Option<u64>,
 }
 
 #[derive(Deserialize)]

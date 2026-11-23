@@ -27,11 +27,14 @@ import type {
   StatisticsMaterialCostTraceRow,
   StatisticsMonetarySummary,
   StatisticsValueCostReport,
+  StatisticsTraceKind,
 } from "../lib/tauri_client";
 import type { TranslateFn } from "../lib/statistics_model";
 import { statisticsFilterButtonClass } from "./statistics_view_helpers";
 
 const TRACE_PAGE_SIZE = 40;
+
+type TraceLoader = (kind: StatisticsTraceKind) => Promise<StatisticsValueCostReport | null>;
 
 type ValueCostMetricKind = "INVENTORY_VALUE" | "MATERIAL_COST";
 
@@ -534,15 +537,21 @@ function CurrencyTotals({
 function StatisticsValueCostMetric({
   filamentDefaultsManagedOnHost,
   inventoryRows,
+  deferred,
+  loadTrace,
+  traceScope,
   kind,
   locale,
   materialRows,
   onOpenFilamentDefaults,
   periodLabel,
-  summary,
+  summary: initialSummary,
   t,
 }: {
   filamentDefaultsManagedOnHost?: boolean;
+  deferred: boolean;
+  traceScope: number | null;
+  loadTrace?: TraceLoader;
   inventoryRows?: StatisticsInventoryValueTraceRow[];
   kind: ValueCostMetricKind;
   locale: Locale;
@@ -552,16 +561,28 @@ function StatisticsValueCostMetric({
   summary: StatisticsMonetarySummary;
   t: TranslateFn;
 }) {
-  const [traceOpen, setTraceOpen] = useState(false);
+  const [openScope, setOpenScope] = useState<number | null>(null);
+  const traceOpen = traceScope !== null && openScope === traceScope;
   const [visibleTraceRows, setVisibleTraceRows] = useState(TRACE_PAGE_SIZE);
   const traceId = useId();
-  const traceRows = useMemo(
-    () =>
-      kind === "INVENTORY_VALUE"
-        ? (inventoryRows ?? [])
-        : (materialRows ?? []),
-    [inventoryRows, kind, materialRows],
-  );
+  const [detail, setDetail] = useState<StatisticsValueCostReport | null>();
+  const inventory = kind === "INVENTORY_VALUE";
+  const needsRead = deferred && initialSummary.coverage.trace_total_rows > 0;
+
+  useEffect(() => {
+    if (!traceOpen || !needsRead || !loadTrace) return;
+    let current = true;
+    void loadTrace(inventory ? "inventory" : "material").catch(() => null).then((result) => {
+      if (current) setDetail(result);
+    });
+    return () => { current = false; };
+  }, [inventory, loadTrace, needsRead, traceOpen]);
+
+  const summary = traceOpen && detail
+    ? (inventory ? detail.inventory_value : detail.material_cost)
+    : initialSummary;
+  const traceRows = inventory ? detail?.inventory_trace ?? inventoryRows ?? []
+    : detail?.material_cost_trace ?? materialRows ?? [];
   const visibleRows = traceRows.slice(0, visibleTraceRows);
   const title =
     kind === "INVENTORY_VALUE"
@@ -577,11 +598,6 @@ function StatisticsValueCostMetric({
           "statistics.materialCostHint",
           "Cost of recorded material use within the selected reporting period.",
         );
-
-  useEffect(() => {
-    setTraceOpen(false);
-    setVisibleTraceRows(TRACE_PAGE_SIZE);
-  }, [traceRows]);
 
   return (
     <article className="surface-card min-w-0">
@@ -628,7 +644,12 @@ function StatisticsValueCostMetric({
           aria-controls={traceId}
           aria-expanded={traceOpen}
           className={`${statisticsFilterButtonClass} flex w-full items-center justify-between gap-3 text-left`}
-          onClick={() => setTraceOpen((current) => !current)}
+          disabled={traceScope === null || (needsRead && !loadTrace)}
+          onClick={() => {
+            setDetail(undefined);
+            setVisibleTraceRows(TRACE_PAGE_SIZE);
+            setOpenScope(traceOpen ? null : traceScope);
+          }}
         >
           <span>
             {kind === "INVENTORY_VALUE"
@@ -638,7 +659,13 @@ function StatisticsValueCostMetric({
           <span aria-hidden="true">{traceOpen ? "−" : "+"}</span>
         </button>
 
-        {traceOpen ? (
+        {traceOpen && needsRead && !detail ? (
+          <p id={traceId} role="status" className="mt-3 text-sm">
+            {detail === null
+              ? t("statistics.valueCostUnavailable", "Value and cost data is unavailable for this reporting period.")
+              : t("statistics.valueCostLoading", "Loading value and cost data...")}
+          </p>
+        ) : traceOpen ? (
           <div id={traceId} className="mt-3">
             <p className="text-xs leading-5 text-slate-600 dark:text-slate-300">
               {interpolateCount(
@@ -710,6 +737,8 @@ function StatisticsValueCostMetric({
 export function StatisticsValueCostPanel({
   filamentDefaultsManagedOnHost = false,
   hostUpgradeRequired,
+  loadTrace,
+  traceScope = 0,
   loading,
   locale,
   onOpenFilamentDefaults,
@@ -719,6 +748,8 @@ export function StatisticsValueCostPanel({
 }: {
   filamentDefaultsManagedOnHost?: boolean;
   hostUpgradeRequired: boolean;
+  traceScope?: number | null;
+  loadTrace?: TraceLoader;
   loading: boolean;
   locale: Locale;
   onOpenFilamentDefaults?: (target: StatisticsFilamentDefaultsTarget) => void;
@@ -770,6 +801,9 @@ export function StatisticsValueCostPanel({
         <div className="mt-3 space-y-4">
           <StatisticsValueCostMetric
             filamentDefaultsManagedOnHost={filamentDefaultsManagedOnHost}
+            deferred={report.trace === "summary"}
+            loadTrace={loadTrace}
+            traceScope={traceScope}
             inventoryRows={report.inventory_trace}
             kind="INVENTORY_VALUE"
             locale={locale}
@@ -789,6 +823,9 @@ export function StatisticsValueCostPanel({
                 filamentDefaultsManagedOnHost={filamentDefaultsManagedOnHost}
                 kind="MATERIAL_COST"
                 locale={locale}
+                deferred={report.trace === "summary"}
+                loadTrace={loadTrace}
+                traceScope={traceScope}
                 materialRows={report.material_cost_trace}
                 onOpenFilamentDefaults={
                   filamentDefaultsManagedOnHost ? undefined : onOpenFilamentDefaults

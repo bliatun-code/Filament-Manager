@@ -105,6 +105,8 @@ export default function StatisticsPage({ onOpenFilamentDefaults }: StatisticsPag
     loading,
     loanDetails,
     loanUsage,
+    loadTrace,
+    traceScope,
     overview,
     periodReport,
     periodStatus,
@@ -594,6 +596,8 @@ export default function StatisticsPage({ onOpenFilamentDefaults }: StatisticsPag
 
       <StatisticsAnalysisPanel activeView={analysisView} view="VALUE">
         <StatisticsValueCostPanel
+          traceScope={traceScope}
+          loadTrace={loadTrace}
           filamentDefaultsManagedOnHost={clientReadOnly}
           hostUpgradeRequired={
             clientReadOnly &&

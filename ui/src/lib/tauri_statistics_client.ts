@@ -102,7 +102,12 @@ export type StatisticsMaterialCostTraceRow = {
   missing_reasons: string[];
 };
 
+export type StatisticsTraceKind = "inventory" | "material";
+export type StatisticsTrace = "summary" | StatisticsTraceKind;
+
 export type StatisticsValueCostReport = {
+  /** Legacy reports include both trace lists. */
+  trace?: StatisticsTrace;
   inventory_value: StatisticsMonetarySummary;
   material_cost: StatisticsMonetarySummary;
   inventory_trace: StatisticsInventoryValueTraceRow[];
@@ -151,14 +156,16 @@ export async function fetchLibrarySyncFilamentConsumption(
   });
 }
 
-export async function statisticsPeriodReport(period: StatisticsPeriod) {
-  return invoke<StatisticsPeriodReport>("statistics_period_report", { period });
+export async function statisticsPeriodReport(period: StatisticsPeriod, trace?: StatisticsTrace) {
+  return invoke<StatisticsPeriodReport>("statistics_period_report", { period, trace });
 }
 
 export async function fetchLibrarySyncStatisticsPeriodReport(
   baseUrl: string,
   expectedLibraryId: string | null | undefined,
   period: StatisticsPeriod,
+  trace?: StatisticsTrace,
+  expectedGeneration?: number,
 ) {
   return invoke<StatisticsPeriodReport | null>(
     "fetch_library_sync_statistics_period_report",
@@ -167,6 +174,8 @@ export async function fetchLibrarySyncStatisticsPeriodReport(
         base_url: baseUrl,
         expected_library_id: expectedLibraryId ?? null,
         period,
+        trace,
+        expected_generation: expectedGeneration,
       },
     },
   );

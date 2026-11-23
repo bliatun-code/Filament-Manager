@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 
 use super::inventory_domain::OwnershipType;
 use super::spool_defaults::normalize_spool_status;
-use super::statistics::ValidatedStatisticsPeriod;
+use super::statistics::{StatisticsTrace, ValidatedStatisticsPeriod};
 
 /// Trace payloads are intentionally bounded independently of the calculations.
 /// Totals and coverage stream every matching database row, while the API returns
@@ -27,6 +27,8 @@ const REASON_CALCULATION_INVALID: &str = "calculation_invalid";
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 pub struct StatisticsValueCostReport {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub trace: Option<StatisticsTrace>,
     pub inventory_value: StatisticsMonetarySummary,
     pub material_cost: StatisticsMonetarySummary,
     pub inventory_trace: Vec<StatisticsInventoryValueTraceRow>,
@@ -181,7 +183,7 @@ impl MonetaryAccumulator {
         }
     }
 
-    fn finish(self, returned_trace_rows: usize) -> StatisticsMonetarySummary {
+    fn finish(self, returned_trace_rows: usize, include_trace: bool) -> StatisticsMonetarySummary {
         let trace_total_rows = self.total_rows;
         let trace_returned_rows = i64::try_from(returned_trace_rows).unwrap_or(i64::MAX);
         StatisticsMonetarySummary {
@@ -215,7 +217,7 @@ impl MonetaryAccumulator {
                     .collect(),
                 trace_total_rows,
                 trace_returned_rows,
-                trace_truncated: trace_returned_rows < trace_total_rows,
+                trace_truncated: include_trace && trace_returned_rows < trace_total_rows,
             },
         }
     }
@@ -224,10 +226,16 @@ impl MonetaryAccumulator {
 pub(super) fn value_cost_report_from_connection(
     connection: &Connection,
     period: ValidatedStatisticsPeriod,
+    trace: Option<StatisticsTrace>,
 ) -> Result<StatisticsValueCostReport, rusqlite::Error> {
-    let (inventory_value, inventory_trace) = inventory_value_from_connection(connection)?;
-    let (material_cost, material_cost_trace) = material_cost_from_connection(connection, period)?;
+    let include_inventory = matches!(trace, None | Some(StatisticsTrace::Inventory));
+    let include_material = matches!(trace, None | Some(StatisticsTrace::Material));
+    let (inventory_value, inventory_trace) =
+        inventory_value_from_connection(connection, include_inventory)?;
+    let (material_cost, material_cost_trace) =
+        material_cost_from_connection(connection, period, include_material)?;
     Ok(StatisticsValueCostReport {
+        trace,
         inventory_value,
         material_cost,
         inventory_trace,
@@ -237,6 +245,7 @@ pub(super) fn value_cost_report_from_connection(
 
 fn inventory_value_from_connection(
     connection: &Connection,
+    include_trace: bool,
 ) -> Result<
     (
         StatisticsMonetarySummary,
@@ -287,7 +296,7 @@ fn inventory_value_from_connection(
             .to_string();
         accumulator.record(Some(&ownership_type), &mut valuation);
 
-        if trace.len() < VALUE_COST_TRACE_LIMIT {
+        if include_trace && trace.len() < VALUE_COST_TRACE_LIMIT {
             let raw_status: String = row.get(5)?;
             trace.push(StatisticsInventoryValueTraceRow {
                 spool_id: row.get(0)?,
@@ -311,12 +320,13 @@ fn inventory_value_from_connection(
         }
     }
 
-    Ok((accumulator.finish(trace.len()), trace))
+    Ok((accumulator.finish(trace.len(), include_trace), trace))
 }
 
 fn material_cost_from_connection(
     connection: &Connection,
     period: ValidatedStatisticsPeriod,
+    include_trace: bool,
 ) -> Result<
     (
         StatisticsMonetarySummary,
@@ -406,7 +416,7 @@ fn material_cost_from_connection(
         };
         accumulator.record(ownership_type.as_deref(), &mut valuation);
 
-        if trace.len() < VALUE_COST_TRACE_LIMIT {
+        if include_trace && trace.len() < VALUE_COST_TRACE_LIMIT {
             trace.push(StatisticsMaterialCostTraceRow {
                 usage_id: row.get(0)?,
                 source: row.get(1)?,
@@ -434,7 +444,7 @@ fn material_cost_from_connection(
         }
     }
 
-    Ok((accumulator.finish(trace.len()), trace))
+    Ok((accumulator.finish(trace.len(), include_trace), trace))
 }
 
 fn value_for_weights(
@@ -873,6 +883,27 @@ mod tests {
             let report = report(&path)?;
             assert_eq!(report.total_used_g, 525);
             let value_cost = report.value_cost.expect("value/cost report");
+            use super::StatisticsTrace::{Inventory, Material, Summary};
+            let stats = StatisticsEngine::open(&path).map_err(|error| error.to_string())?;
+            for selection in [Summary, Inventory, Material] {
+                let selected = stats
+                    .period_report_with_trace(&report.period, Some(selection))
+                    .map_err(|error| error.to_string())?;
+                assert_eq!(selected.total_used_g, report.total_used_g);
+                let mut expected = value_cost.clone();
+                expected.trace = Some(selection);
+                if selection != Inventory {
+                    expected.inventory_trace.clear();
+                    expected.inventory_value.coverage.trace_returned_rows = 0;
+                    expected.inventory_value.coverage.trace_truncated = false;
+                }
+                if selection != Material {
+                    expected.material_cost_trace.clear();
+                    expected.material_cost.coverage.trace_returned_rows = 0;
+                    expected.material_cost.coverage.trace_truncated = false;
+                }
+                assert_eq!(selected.value_cost.as_ref(), Some(&expected));
+            }
             let cost = &value_cost.material_cost;
             assert_approx_eq(amount(cost, "NOK", "OWNED"), 55.0);
             assert_approx_eq(amount(cost, "USD", "BORROWED_IN"), 5.0);

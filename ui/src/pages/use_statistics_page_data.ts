@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { I18nContextValue } from "../lib/i18n";
 import { usePageRefreshState } from "../lib/page_refresh_state";
-import { loadStatisticsPageData } from "../lib/statistics_data_source";
+import { loadStatisticsPageData, loadStatisticsValueTrace } from "../lib/statistics_data_source";
 import type { ResolvedStatisticsPeriod } from "../lib/statistics_period_model";
 import type {
   FilamentConsumptionRow,
@@ -9,6 +9,8 @@ import type {
   LoanUsageByPersonRow,
   PrinterOverviewRow,
   StatisticsPeriodReport,
+  StatisticsTraceKind,
+  LibrarySyncPageStatus,
 } from "../lib/tauri_client";
 import type {
   NormalizedLoanDetailsRow,
@@ -51,6 +53,7 @@ export function useStatisticsPageData({
   } = usePageRefreshState(tauri);
   const lastComplete = useRef<StatisticsPageDataLoadResult | null>(null);
   const loadRequestRef = useRef(0);
+  const [activeRequest, setActiveRequest] = useState(0);
   const [clientReadOnly, setClientReadOnly] = useState(false);
   const [clientHostDeviceName, setClientHostDeviceName] = useState<string | null>(null);
   const [clientHostBaseUrl, setClientHostBaseUrl] = useState<string | null>(null);
@@ -59,6 +62,8 @@ export function useStatisticsPageData({
     useState<StatisticsSnapshotSource>("OFFLINE");
   const [clientStatisticsUpdatedAt, setClientStatisticsUpdatedAt] = useState<string | null>(null);
   const [periodResult, setPeriodResult] = useState<{
+    requestId: number;
+    target: LibrarySyncPageStatus;
     range: Pick<ResolvedStatisticsPeriod, "startDate" | "endDate">;
     report: StatisticsPeriodReport | null;
     status: StatisticsPeriodDataStatus;
@@ -71,6 +76,7 @@ export function useStatisticsPageData({
       }
       const requestId = loadRequestRef.current + 1;
       loadRequestRef.current = requestId;
+      setActiveRequest(requestId);
       beginRefresh();
       try {
         const result = await loadStatisticsPageData({ start_at_utc, end_at_utc }, {
@@ -94,6 +100,8 @@ export function useStatisticsPageData({
         setLoanUsage(result.loanUsage);
         setInboundLoanUsage(result.inboundLoanUsage);
         setPeriodResult({
+          requestId,
+          target: result.target,
           range: { startDate, endDate },
           report: result.periodReport,
           status: result.periodStatus,
@@ -126,7 +134,17 @@ export function useStatisticsPageData({
     void loadStatistics(true);
   }, [loadStatistics]);
 
+  const loadTrace = useCallback(async (kind: StatisticsTraceKind) => {
+    if (!periodResult?.report || periodResult.requestId !== loadRequestRef.current) return null;
+    const detail = await loadStatisticsValueTrace(periodResult.target, periodResult.report.period, kind);
+    return periodResult.requestId === loadRequestRef.current ? detail : null;
+  }, [periodResult]);
+
+  const currentPeriod = periodResult?.requestId === activeRequest &&
+    periodResult.range.startDate === startDate && periodResult.range.endDate === endDate;
   return {
+    traceScope: currentPeriod ? activeRequest : null,
+    loadTrace: currentPeriod ? loadTrace : undefined,
     clientHostBaseUrl,
     clientHostDeviceName,
     clientLibraryId,

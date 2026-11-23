@@ -21,6 +21,7 @@ import {
   type FilamentConsumptionRow,
   type StatisticsPeriod,
   type StatisticsPeriodReport,
+  type StatisticsTraceKind,
   type SpoolLoanDetailsRow,
 } from "./tauri_client";
 import { loadAllSpoolRows } from "./spool_data_source";
@@ -65,6 +66,7 @@ export type StatisticsDataLoadResult = {
 };
 
 export type StatisticsPageDataLoadResult = StatisticsDataLoadResult & {
+  target: LibrarySyncPageStatus;
   syncState: StatisticsLibrarySyncState;
   baseline: { target: LibrarySyncPageStatus; revisions: LibraryDomainRevisions; day: string } | null;
 };
@@ -213,12 +215,12 @@ async function statisticsForTarget(
       sameStatisticsRevisions(base.revisions, revisions)) {
     const report = source.kind === "host"
       ? await (options.fetchHostPeriodReport ?? fetchLibrarySyncStatisticsPeriodReport)(
-          source.baseUrl, source.libraryId, period,
+          source.baseUrl, source.libraryId, period, "summary", target.target_generation,
         ).catch((error) => {
           console.error(error);
           return undefined;
         })
-      : await (options.loadLocalPeriodReport ?? statisticsPeriodReport)(period);
+      : await (options.loadLocalPeriodReport ?? statisticsPeriodReport)(period, "summary");
     // The report can overlap a stock change or a disconnect. Recover through the ordinary full read.
     revisions = await statisticsRevisions(source, options.readRevisions);
     if (sameStatisticsRevisions(base.revisions, revisions) && localCalendarDate() === day) {
@@ -257,11 +259,34 @@ export async function loadStatisticsPageData(
     }
     const current = await loadStatus();
     if (sameStatisticsTarget(target, current)) {
-      return { ...data, syncState: deriveStatisticsLibrarySyncState(current) };
+      return { ...data, target, syncState: deriveStatisticsLibrarySyncState(current) };
     }
     target = current;
   }
-  return { ...emptyStatisticsData(), syncState: deriveStatisticsLibrarySyncState(target), baseline: null };
+  return { ...emptyStatisticsData(), target, syncState: deriveStatisticsLibrarySyncState(target), baseline: null };
+}
+
+export async function loadStatisticsValueTrace(
+  target: LibrarySyncPageStatus,
+  period: StatisticsPeriod,
+  kind: StatisticsTraceKind,
+  dependencies: Pick<StatisticsPageDataDependencies, "loadSyncStatus" | "fetchHostPeriodReport" | "loadLocalPeriodReport"> = {},
+) {
+  const status = dependencies.loadSyncStatus ?? getLibrarySyncPageStatus;
+  if (!sameStatisticsTarget(target, await status())) return null;
+  const source = statisticsRevisionSource(target);
+  if (!source) return null;
+  const report = source.kind === "host"
+    ? await (dependencies.fetchHostPeriodReport ?? fetchLibrarySyncStatisticsPeriodReport)(
+        source.baseUrl, source.libraryId, period, kind, target.target_generation,
+      )
+    : await (dependencies.loadLocalPeriodReport ?? statisticsPeriodReport)(period, kind);
+  if (!sameStatisticsTarget(target, await status()) ||
+      report?.period.start_at_utc !== period.start_at_utc || report.period.end_at_utc !== period.end_at_utc) {
+    return null;
+  }
+  const value = report.value_cost;
+  return value && (value.trace == null || value.trace === kind) ? value : null;
 }
 
 export async function loadLoanBreakdownRows(
@@ -359,7 +384,7 @@ export async function loadStatisticsData(
       Promise.allSettled([
         fetchHostPrinterOverview(baseUrl, libraryId),
         fetchHostLoans(baseUrl, libraryId),
-        fetchHostPeriodReport(baseUrl, libraryId, period),
+        fetchHostPeriodReport(baseUrl, libraryId, period, "summary", syncSettings.target_generation),
       ]),
     ]);
 
@@ -458,7 +483,7 @@ export async function loadStatisticsData(
     inboundLoanRows,
   ] = await Promise.all([
     loadLocalOverview(),
-    loadLocalPeriodReport(period),
+    loadLocalPeriodReport(period, "summary"),
     listLocalPrinterOverview(),
     listLocalLoanUsageByPerson(30, "OUTBOUND"),
     listLocalLoanUsageByPerson(30, "INBOUND"),
