@@ -5,6 +5,7 @@ import { performance } from "node:perf_hooks";
 import { resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 
+import { require as requireTs } from "tsx/cjs/api";
 import Database from "better-sqlite3";
 import { chromium } from "playwright";
 
@@ -13,6 +14,8 @@ import {
   cleanupVisualQaDatabase,
   prepareVisualQaDatabase,
 } from "./visual-qa-db.mjs";
+
+const { localDashboardFixture } = requireTs("../ui/test-fixtures/local_dashboard_snapshot.ts", import.meta.url);
 
 const DEFAULT_SAMPLES = 3;
 const DEFAULT_WARMUP_RUNS = 1;
@@ -38,7 +41,7 @@ const PERFORMANCE_PAGE_SPECS = Object.freeze([
     label: "Printers",
   }),
   Object.freeze({
-    criticalCommand: "inventory_overview",
+    criticalCommand: "local_dashboard_snapshot",
     heading: "Dashboard",
     key: "dashboard",
     label: "Dashboard",
@@ -576,11 +579,14 @@ export function buildUiBrowserPerformanceFixture(dbPath) {
         mode: "STANDALONE",
         device_name: "Visual QA performance fixture",
         library_id: String(libraryId),
+        host_base_url: null,
+        target_generation: 0,
         client_auth_paired: false,
       },
       loanRows,
       loanUsage,
       overview,
+      localDashboard: localDashboardFixture(overview, spoolRows),
       printerRows,
       printerSettings,
       revisions: {
@@ -665,6 +671,8 @@ export function resolveUiBrowserPerformanceInvoke(
       return null;
     case "get_filament_standards":
       return fixture.filamentStandards;
+    case "local_dashboard_snapshot":
+      return fixture.localDashboard;
     case "inventory_overview":
       return fixture.overview;
     case "list_inventory_locations":

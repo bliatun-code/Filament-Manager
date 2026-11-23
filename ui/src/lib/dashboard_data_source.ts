@@ -8,7 +8,7 @@ import {
   getLibrarySyncSettings,
   getPrinterSettings,
   getTrustedLanCompanionStatus,
-  inventoryOverview,
+  localDashboardSnapshot,
   listActiveSpoolLoans,
   listPrinterOverview,
   listWishlistItems,
@@ -103,7 +103,7 @@ type DashboardDataDependencies = {
   fetchHostActiveLoans?: typeof fetchLibrarySyncActiveLoans;
   fetchHostWishlist?: typeof fetchLibrarySyncWishlistItems;
   loadSpoolRows?: typeof loadAllSpoolRows;
-  loadInventoryOverview?: typeof inventoryOverview;
+  loadLocalDashboardSnapshot?: typeof localDashboardSnapshot;
   loadPrinterSettings?: typeof getPrinterSettings;
   listLocalPrinters?: typeof listPrinterOverview;
   listLocalLoans?: typeof listActiveSpoolLoans;
@@ -242,8 +242,7 @@ async function readDashboardData(
   const fetchHostWishlist =
     dependencies.fetchHostWishlist ?? fetchLibrarySyncWishlistItems;
   const loadSpoolRows = dependencies.loadSpoolRows ?? loadAllSpoolRows;
-  const loadInventoryOverview =
-    dependencies.loadInventoryOverview ?? inventoryOverview;
+  const loadLocalDashboardSnapshot = dependencies.loadLocalDashboardSnapshot ?? localDashboardSnapshot;
   const loadPrinterSettings =
     dependencies.loadPrinterSettings ?? getPrinterSettings;
   const listLocalPrinters =
@@ -578,24 +577,19 @@ async function readDashboardData(
     };
   }
 
-  const [overview, printers, spoolRowsRaw, loans, wishlist, printerSettings] =
+  const [{ overview, stock }, printers, loans, wishlist, printerSettings] =
     await Promise.all([
-      loadInventoryOverview(),
+      loadLocalDashboardSnapshot(),
       listLocalPrinters(),
-      loadSpoolRows({
-        clientReadOnly: false,
-        clientHostBaseUrl: null,
-        clientLibraryId: null,
-        clientTargetGeneration: null,
-      }),
       listLocalLoans(),
       listLocalWishlist(500),
       loadPrinterSettings().catch((error) => {
         onLoadError(error);
         return null;
       }),
-    ]);
-  const spoolRows = normalizeSpoolWithMasterRows(spoolRowsRaw);
+    ]).finally(async () => {
+      assertDashboardTarget(syncSettings, await loadSyncSettings());
+    });
   const normalizedLoans = loans.map(normalizeActiveLoanRow);
   const bambuLiveAttention = buildDashboardBambuLiveAttention(printerSettings);
 
@@ -603,7 +597,7 @@ async function readDashboardData(
     printerOverview: printers,
     printerOverviewAvailable: true,
     bambuLiveIntegrations: sanitizeDashboardBambuLiveIntegrations(printerSettings?.bambu_live_integrations ?? []),
-    lowStockPreview: buildDashboardLowStockPreview(spoolRows),
+    lowStockPreview: stock.preview,
     lowStockPreviewAvailable: true,
     libraryTarget: purchaseTarget,
     wishlistFresh: true,
@@ -612,7 +606,8 @@ async function readDashboardData(
       bambuLiveAttention,
       loans: normalizedLoans,
       now: actionNow,
-      spoolRows,
+      spoolRows: [],
+      stockGroups: stock.groups,
       today: actionToday,
       wishlist,
     }),
@@ -620,7 +615,8 @@ async function readDashboardData(
     derived: buildDashboardDerivedState({
       overview,
       printers,
-      spoolRows,
+      spoolRows: [],
+      dashboardStock: stock,
       loans: normalizedLoans,
       wishlist,
       locale: params.locale,

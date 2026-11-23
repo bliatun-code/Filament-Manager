@@ -1,3 +1,4 @@
+import type { DashboardStock } from "./tauri_library_sync_client";
 import { invoke } from "./tauri_invoke";
 import type { LowStockPolicy } from "./shared_contracts.generated";
 import type { ActiveSpoolLoanRow } from "./tauri_loan_client";
@@ -537,6 +538,10 @@ export async function exportInventoryLabelSheetPdf(pdfBase64: string, filenameSt
     filenameStem,
     filename_stem: filenameStem,
   });
+}
+
+export function localDashboardSnapshot() {
+  return invoke<{ overview: InventoryOverview; stock: DashboardStock }>("local_dashboard_snapshot");
 }
 
 export async function inventoryOverview() {

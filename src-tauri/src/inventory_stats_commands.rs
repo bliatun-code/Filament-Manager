@@ -1,9 +1,23 @@
+use crate::backend::dashboard_stock::LocalDashboardSnapshot;
+use crate::backend::filament_database::FilamentDatabase;
 use crate::backend::statistics::{
     FilamentConsumptionRow, InventoryOverview, MaterialUsageRow, StatisticsEngine,
     StatisticsPeriod, StatisticsPeriodReport,
 };
 use crate::state::AppState;
 use crate::with_stats;
+
+#[tauri::command]
+pub(crate) async fn local_dashboard_snapshot(
+    state: tauri::State<'_, AppState>,
+) -> Result<LocalDashboardSnapshot, String> {
+    let state = state.inner().clone();
+    tauri::async_runtime::spawn_blocking(move || {
+        crate::with_db(&state, FilamentDatabase::local_dashboard_snapshot)
+    })
+    .await
+    .map_err(|error| crate::app_error::internal_command_error("Local dashboard", error))?
+}
 
 #[tauri::command]
 pub(crate) fn inventory_overview(

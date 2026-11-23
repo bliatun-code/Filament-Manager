@@ -14,7 +14,7 @@ bundle sizes.
 | --- | --- |
 | Cold startup | Every top-level page remains a lazy chunk. The production entry chunk stays at or below 300,000 bytes when the built-bundle contract runs. |
 | Page navigation | Navigation uses a React transition, each page chunk has a size budget, and a previously loaded dashboard restores its last-good snapshot before background I/O. |
-| Dashboard startup | Sync settings and Companion status start together. Once the role is known, a local library loads its overview, spools, printers, active loans, wishlist and printer settings concurrently. |
+| Dashboard startup | Sync settings and Companion status start together. Once the role is known, Host and standalone libraries read the overview and compact stock summary in one SQLite transaction, alongside concurrent printer, active loan, wishlist and printer settings reads. A final status check discards results if the library target changed. |
 | Slow Host | A Client requests the compact Dashboard snapshot, printer overview, active loans, wishlist and printer settings concurrently. A legacy snapshot triggers a separate spool read. Normal reads have a 2.5-second timeout. Explicit Host validation has a 0.9-second timeout. |
 | Interrupted Host | A failed read wave uses available Host cache data. The connection indicator gives a previously reachable Host one failed core-read wave before marking it unavailable. |
 | Client blocking work | The executor admits up to 32 operations and runs up to eight at once. Network, credential-store and database work stays off the UI invoke path. See the [Host/Client gates](QUALITY_GATES.md#hostclient-resilience-authority) for write timeouts and catalog-job recovery. |

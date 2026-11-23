@@ -124,7 +124,7 @@ test("dashboard startup has no artificial wait and keeps independent reads concu
   assert.doesNotMatch(loader, /\bvalidateHost\(/);
   assert.match(
     loader,
-    /const \[overview, printers, spoolRowsRaw, loans, wishlist, printerSettings\] =\s*await Promise\.all\(\[/,
+    /const \[\{ overview, stock \}, printers, loans, wishlist, printerSettings\] =\s*await Promise\.all\(\[/,
   );
   assert.ok(
     loader.indexOf("if (clientMode)") < loader.indexOf("loadPrinterSettings().catch"),
