@@ -18,7 +18,7 @@
     "@tauri-apps/api": "^2.12.5",
     "@zxing/browser": "^0.2.1",
     "@zxing/library": "^0.23.0",
-    "lucide-react": "^1.75.0",
+    "lucide-react": "^1.76.0",
     "pdf-lib": "^1.17.1",
     "qrcode": "^1.5.4",
     "react": "^19.3.1",
