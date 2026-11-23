@@ -10,6 +10,7 @@ const customPeriod: StatisticsPeriod = {
   end_at_utc: "2026-10-01T00:00:00Z",
 };
 const inventoryOverview = {
+  owned_on_hand_grams: 1700,
   total_spools: 2, total_owned_spools: 1, total_borrowed_in_spools: 1,
   in_use: 2, owned_in_use: 1, borrowed_in_in_use: 1,
   low_stock: 0, owned_low_stock: 0, borrowed_in_low_stock: 0,
@@ -152,7 +153,6 @@ test("actual StatisticsPage keeps its range, keyboard navigation, filters and de
             library_id: "test-library", target_generation: 1, client_auth_paired: false,
           };
         case "get_library_domain_revisions": return revisions;
-        case "list_spools": return [];
         case "inventory_overview": return inventoryOverview;
         case "list_printer_overview": return printers;
         case "list_loan_usage_by_person": return [];
@@ -262,6 +262,7 @@ test("actual StatisticsPage keeps its range, keyboard navigation, filters and de
       await closeDialog(page);
     }
     raceReport = 1;
+    assert.equal(calls.filter(call => call.command === "list_spools").length, 0, "opening Statistics needs no local spool list");
     const raceStart = calls.length;
     await page.getByRole("button", { name: "90 d", exact: true }).click();
     await slowStarted.promise;
@@ -316,8 +317,10 @@ test("Statistics keeps its layout and last report visible while changing periods
                 };
               case "get_library_domain_revisions":
               case "fetch_library_sync_domain_revisions": return revisions;
+              case "list_spools":
               case "fetch_library_sync_spool_snapshot":
-                return { rows: [], captured_at: "2026-09-15T00:00:00Z" };
+                cacheReads.push(command);
+                throw new Error("Current libraries supply forecast stock in the overview");
               case "fetch_cached_library_sync_spools":
               case "fetch_cached_library_sync_printer_overview":
               case "fetch_cached_library_sync_loans":
@@ -330,7 +333,6 @@ test("Statistics keeps its layout and last report visible while changing periods
               case "list_printer_overview":
               case "fetch_library_sync_printer_overview":
                 return printers;
-              case "list_spools":
               case "list_loan_usage_by_person":
               case "fetch_library_sync_loans":
                 return [];

@@ -225,7 +225,7 @@ impl CompanionService {
                 .transpose()?;
             Ok(CompanionLibrarySnapshot {
                 dashboard_stock,
-                sync_settings: snapshot.get_library_sync_settings()?,
+                sync_settings: snapshot.get_library_sync_settings_for_domains(&[])?,
                 inventory,
                 active_loans: snapshot.list_active_spool_loans()?.len() as i64,
                 printers: snapshot.list_printer_overview()?.len() as i64,
@@ -540,7 +540,7 @@ impl CompanionService {
 fn capture_companion_authority_identity(
     db: &FilamentDatabase,
 ) -> InventoryResult<CompanionAuthorityIdentity> {
-    let settings = db.get_library_sync_settings()?;
+    let settings = db.get_library_sync_page_status()?;
     require_authoritative_local_mode(&settings.mode).map_err(authority_error)?;
     Ok(CompanionAuthorityIdentity {
         library_id: settings.library_id.trim().to_string(),

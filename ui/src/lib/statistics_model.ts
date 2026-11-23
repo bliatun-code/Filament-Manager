@@ -9,6 +9,7 @@ import {
   isInboundLoanDirection,
   isLoanDirection,
   isSpoolLowStock,
+  resolveSpoolStockGrams,
   isSpoolStatusAssigned,
   isSpoolStatusOnHand,
   normalizeOwnershipType,
@@ -264,20 +265,8 @@ export function applyStatisticsPeriodReportToOverview(
 export function deriveInventoryOverviewFromRows(
   spools: NormalizedSpoolWithMasterRow[],
   consumptionRows: FilamentConsumptionRow[],
-): {
-  total_spools: number;
-  total_owned_spools: number;
-  total_borrowed_in_spools: number;
-  in_use: number;
-  owned_in_use: number;
-  borrowed_in_in_use: number;
-  low_stock: number;
-  owned_low_stock: number;
-  borrowed_in_low_stock: number;
-  total_consumption_30d: number;
-  owned_consumption_30d: number;
-  borrowed_in_consumption_30d: number;
-} {
+): InventoryOverview {
+  let ownedGrams = 0;
   let totalOwnedSpools = 0;
   let totalBorrowedInSpools = 0;
   let inUse = 0;
@@ -292,11 +281,19 @@ export function deriveInventoryOverviewFromRows(
     const isAssigned = isSpoolStatusAssigned(row.spool.normalized_status);
     const borrowedIn = isBorrowedInOwnership(row.spool.ownership_type);
 
+    const stock = {
+      status: row.spool.normalized_status,
+      remainingGrams: row.spool.remaining_g,
+      currentWeightGrams: row.spool.current_weight_g,
+      initialWeightGrams: row.spool.initial_weight_g,
+    };
+
     if (isOnHand) {
       if (borrowedIn) {
         totalBorrowedInSpools += 1;
       } else {
         totalOwnedSpools += 1;
+        ownedGrams += resolveSpoolStockGrams(stock);
       }
     }
 
@@ -310,12 +307,7 @@ export function deriveInventoryOverviewFromRows(
     }
 
     const lowStockThreshold = resolveSpoolLowStockThreshold(row).thresholdGrams;
-    if (isSpoolLowStock({
-      status: row.spool.normalized_status,
-      remainingGrams: row.spool.remaining_g,
-      currentWeightGrams: row.spool.current_weight_g,
-      initialWeightGrams: row.spool.initial_weight_g,
-    }, lowStockThreshold)) {
+    if (isSpoolLowStock(stock, lowStockThreshold)) {
       lowStock += 1;
       if (borrowedIn) {
         borrowedInLowStock += 1;
@@ -341,6 +333,7 @@ export function deriveInventoryOverviewFromRows(
   return {
     total_spools: spools.length,
     total_owned_spools: totalOwnedSpools,
+    owned_on_hand_grams: ownedGrams,
     total_borrowed_in_spools: totalBorrowedInSpools,
     in_use: inUse,
     owned_in_use: ownedInUse,

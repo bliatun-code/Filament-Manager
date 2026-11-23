@@ -7,6 +7,7 @@ import {
   fetchLibrarySyncSnapshot,
   fetchLibrarySyncStatisticsPeriodReport,
   getLibrarySyncPageStatus,
+  getLibrarySyncSettings,
   inventoryOverview,
   listLoanUsageByPerson,
   listPrinterOverview,
@@ -30,10 +31,7 @@ import {
   normalizeLoanDetailsRow,
   type NormalizedLoanDetailsRow,
 } from "./loan_row_normalization";
-import {
-  normalizeSpoolWithMasterRows,
-  type NormalizedSpoolWithMasterRow,
-} from "./spool_row_normalization";
+import { normalizeSpoolWithMasterRows } from "./spool_row_normalization";
 import {
   deriveLibrarySyncPageState,
   type LibrarySyncPageState,
@@ -41,6 +39,8 @@ import {
 import {
   resolveClientHostCacheTarget,
   resolveClientHostTarget,
+  type ClientHostWriteTarget,
+  type ClientHostCacheTarget,
 } from "./host_write_target";
 import { fetchLibraryDomainRevisionsForSource, resolveLibraryRevisionSource, type LibraryRevisionSource } from "./library_domain_revisions";
 import { localCalendarDate } from "./loan_due_state";
@@ -50,12 +50,10 @@ export type StatisticsSnapshotSource = "LIVE" | "CACHED" | "PARTIAL" | "OFFLINE"
 export type StatisticsPeriodDataStatus = "AVAILABLE" | "LEGACY_HOST" | "UNAVAILABLE";
 export type StatisticsLibrarySyncState = LibrarySyncPageState;
 export type { NormalizedLoanDetailsRow } from "./loan_row_normalization";
-export type { NormalizedSpoolWithMasterRow } from "./spool_row_normalization";
 
 export type StatisticsDataLoadResult = {
   overview: InventoryOverview | null;
   printers: PrinterOverviewRow[];
-  spoolRows: NormalizedSpoolWithMasterRow[];
   consumptionRows: FilamentConsumptionRow[];
   loanDetails: NormalizedLoanDetailsRow[];
   loanUsage: LoanUsageByPersonRow[];
@@ -100,7 +98,7 @@ type StatisticsDataDependencies = {
   fetchCachedLoans?: typeof fetchCachedLibrarySyncLoans;
   fetchCachedSpools?: typeof fetchCachedLibrarySyncSpools;
   loadHostSpools?: typeof loadAllSpoolRows;
-  loadLocalSpools?: typeof loadAllSpoolRows;
+  loadCacheSettings?: typeof getLibrarySyncSettings;
   loadLocalOverview?: typeof inventoryOverview;
   listLocalLoanUsageByPerson?: typeof listLoanUsageByPerson;
   listLocalPrinterOverview?: typeof listPrinterOverview;
@@ -160,7 +158,6 @@ function emptyStatisticsData(): StatisticsDataLoadResult {
   return {
     overview: null,
     printers: [],
-    spoolRows: [],
     consumptionRows: [],
     loanDetails: [],
     loanUsage: [],
@@ -237,8 +234,6 @@ async function statisticsForTarget(
   }
 
   const data = await (options.loadData ?? loadStatisticsData)(target, period);
-  // A Client can derive an overview from live rows when the Host summary fails.
-  // Its missing capture time distinguishes that fallback from a complete base.
   const complete = data.source === "LIVE" && data.periodReport !== null &&
     (target.mode !== "CLIENT" || data.updatedAt !== null);
   return { ...data, baseline: complete && revisions ? { target, revisions, day } : null };
@@ -283,6 +278,61 @@ export async function loadLoanBreakdownRows(
   );
 }
 
+async function loadStatisticsHostStock(
+  status: LibrarySyncPageStatus,
+  { baseUrl, libraryId }: ClientHostWriteTarget,
+  cacheTarget: ClientHostCacheTarget | null,
+  dependencies: StatisticsDataDependencies,
+): Promise<{ overview: InventoryOverview | null; source: StatisticsSnapshotSource; liveAt?: string; cachedAt?: string }> {
+  const fetchSnapshot = dependencies.fetchHostSnapshot ?? fetchLibrarySyncSnapshot;
+  const live = await fetchSnapshot(baseUrl, libraryId, {
+    dashboard: false,
+    expectedGeneration: status.target_generation,
+  }).catch(error => { console.error(error); return null; });
+  let snapshot = live;
+  if (!live && cacheTarget) {
+    const readCache = dependencies.loadCacheSettings ?? getLibrarySyncSettings;
+    const cache = await readCache(["snapshot"], cacheTarget.targetGeneration).catch(() => null);
+    if (cache && sameStatisticsTarget(status, cache) && cache.cached_snapshot?.library_id === libraryId) {
+      snapshot = cache.cached_snapshot;
+    }
+  }
+  if (snapshot?.inventory.owned_on_hand_grams != null) {
+    return live
+      ? { overview: live.inventory, liveAt: live.captured_at, source: "LIVE" }
+      : { overview: snapshot.inventory, cachedAt: snapshot.captured_at, source: "CACHED" };
+  }
+
+  // Older Hosts and offline copies lack the weight. Keep the row-based calculation for them.
+  const loadSpools = dependencies.loadHostSpools ?? loadAllSpoolRows;
+  const rows = await loadSpools({
+    clientReadOnly: true,
+    clientHostBaseUrl: baseUrl,
+    clientLibraryId: libraryId,
+    clientTargetGeneration: status.target_generation ?? null,
+  }).catch(error => { console.error(error); return null; });
+  const readCachedSpools = dependencies.fetchCachedSpools ?? fetchCachedLibrarySyncSpools;
+  const cached = rows === null && cacheTarget
+    ? await readCachedSpools(baseUrl, libraryId, cacheTarget.targetGeneration).catch(() => null)
+    : null;
+  const availableRows = rows ?? cached?.rows;
+  let overview = snapshot?.inventory ?? null;
+  if (availableRows?.length) {
+    const stock = deriveInventoryOverviewFromRows(normalizeSpoolWithMasterRows(availableRows), []);
+    overview = {
+      ...overview, ...stock,
+      total_consumption_30d: overview?.total_consumption_30d ?? 0,
+      owned_consumption_30d: overview?.owned_consumption_30d ?? 0,
+      borrowed_in_consumption_30d: overview?.borrowed_in_consumption_30d ?? 0,
+    };
+  }
+  const cachedAt = cached?.captured_at ?? (live ? undefined : snapshot?.captured_at);
+  if (live || rows) {
+    return { overview, liveAt: live?.captured_at, cachedAt, source: live && rows ? "LIVE" : "PARTIAL" };
+  }
+  return { overview, cachedAt, source: snapshot || cached ? "CACHED" : "OFFLINE" };
+}
+
 export async function loadStatisticsData(
   syncSettings: LibrarySyncPageStatus,
   period: StatisticsPeriod,
@@ -295,7 +345,6 @@ export async function loadStatisticsData(
     : null;
 
   if (hostTarget) {
-    const fetchHostSnapshot = dependencies.fetchHostSnapshot ?? fetchLibrarySyncSnapshot;
     const fetchHostPrinterOverview =
       dependencies.fetchHostPrinterOverview ?? fetchLibrarySyncPrinterOverview;
     const fetchHostLoans = dependencies.fetchHostLoans ?? fetchLibrarySyncLoans;
@@ -304,25 +353,18 @@ export async function loadStatisticsData(
     const fetchCachedPrinterOverview =
       dependencies.fetchCachedPrinterOverview ?? fetchCachedLibrarySyncPrinterOverview;
     const fetchCachedLoans = dependencies.fetchCachedLoans ?? fetchCachedLibrarySyncLoans;
-    const fetchCachedSpools = dependencies.fetchCachedSpools ?? fetchCachedLibrarySyncSpools;
-    const loadHostSpools = dependencies.loadHostSpools ?? loadAllSpoolRows;
     const { baseUrl, libraryId } = hostTarget;
-    const [snapshotResult, printersResult, loansResult, spoolsResult, periodReportResult] =
-      await Promise.allSettled([
-        fetchHostSnapshot(baseUrl, libraryId),
+    const [stock, [printersResult, loansResult, periodReportResult]] = await Promise.all([
+      loadStatisticsHostStock(syncSettings, hostTarget, cacheTarget, dependencies),
+      Promise.allSettled([
         fetchHostPrinterOverview(baseUrl, libraryId),
         fetchHostLoans(baseUrl, libraryId),
-        loadHostSpools({
-          clientReadOnly: true,
-          clientHostBaseUrl: baseUrl,
-          clientLibraryId: libraryId,
-          clientTargetGeneration: syncSettings.target_generation ?? null,
-        }),
         fetchHostPeriodReport(baseUrl, libraryId, period),
-      ]);
+      ]),
+    ]);
 
     // Each fallback is scoped to the target captured before the Host requests.
-    const [cachedPrinters, cachedLoans, cachedSpools] = await Promise.all([
+    const [cachedPrinters, cachedLoans] = await Promise.all([
       printersResult.status === "rejected" && cacheTarget
         ? fetchCachedPrinterOverview(
             cacheTarget.baseUrl, cacheTarget.libraryId, cacheTarget.targetGeneration,
@@ -333,18 +375,12 @@ export async function loadStatisticsData(
             cacheTarget.baseUrl, cacheTarget.libraryId, cacheTarget.targetGeneration,
           ).catch(() => null)
         : null,
-      spoolsResult.status === "rejected" && cacheTarget
-        ? fetchCachedSpools(
-            cacheTarget.baseUrl, cacheTarget.libraryId, cacheTarget.targetGeneration,
-          ).catch(() => null)
-        : null,
     ]);
 
-    for (const result of [snapshotResult, printersResult, loansResult, spoolsResult, periodReportResult]) {
+    for (const result of [printersResult, loansResult, periodReportResult]) {
       if (result.status === "rejected") console.error(result.reason);
     }
 
-    const resolvedSnapshot = snapshotResult.status === "fulfilled" ? snapshotResult.value : null;
     const resolvedPrinters = printersResult.status === "fulfilled"
       ? printersResult.value
       : cachedPrinters?.rows ?? [];
@@ -352,46 +388,18 @@ export async function loadStatisticsData(
       ? loansResult.value
       : cachedLoans?.rows ?? [];
     const resolvedLoans = normalizeLoanDetailsRows(resolvedLoanRows);
-    const resolvedSpoolRowsRaw = spoolsResult.status === "fulfilled"
-      ? spoolsResult.value
-      : cachedSpools?.rows ?? [];
-    const resolvedSpoolRows = normalizeSpoolWithMasterRows(resolvedSpoolRowsRaw);
     const resolvedPeriodReport = periodReportResult.status === "fulfilled" ? periodReportResult.value : null;
     const resolvedConsumptionRows = resolvedPeriodReport?.filament_consumption ?? [];
-    const derivedOverview =
-      resolvedSpoolRows.length > 0
-        ? deriveInventoryOverviewFromRows(resolvedSpoolRows, [])
-        : null;
-    const resolvedOverview = derivedOverview
-      ? {
-          ...(resolvedSnapshot?.inventory ?? derivedOverview),
-          ...derivedOverview,
-          total_consumption_30d:
-            resolvedSnapshot?.inventory.total_consumption_30d ?? 0,
-          owned_consumption_30d:
-            resolvedSnapshot?.inventory.owned_consumption_30d ?? 0,
-          borrowed_in_consumption_30d:
-            resolvedSnapshot?.inventory.borrowed_in_consumption_30d ?? 0,
-        }
-      : resolvedSnapshot?.inventory ?? null;
-    const hasLiveOverview =
-      snapshotResult.status === "fulfilled" ||
-      (spoolsResult.status === "fulfilled" && derivedOverview != null);
     const allHostSlicesLoaded =
-      hasLiveOverview &&
+      stock.source === "LIVE" &&
       printersResult.status === "fulfilled" &&
       loansResult.status === "fulfilled" &&
-      spoolsResult.status === "fulfilled" &&
       periodReportResult.status === "fulfilled";
     const anyHostSliceLoaded =
-      snapshotResult.status === "fulfilled" ||
-      printersResult.status === "fulfilled" ||
-      loansResult.status === "fulfilled" ||
-      spoolsResult.status === "fulfilled" ||
+      stock.source === "LIVE" || stock.source === "PARTIAL" ||
+      printersResult.status === "fulfilled" || loansResult.status === "fulfilled" ||
       periodReportResult.status === "fulfilled";
-    const anyCachedSliceAvailable = Boolean(
-      cachedPrinters || cachedLoans || cachedSpools,
-    );
+    const anyCachedSliceAvailable = stock.source === "CACHED" || cachedPrinters || cachedLoans;
 
     // Empty arrays and a period-only report are still successful snapshots.
     // Availability must be based on the request outcome, not row counts, or a
@@ -407,15 +415,14 @@ export async function loadStatisticsData(
           : "CACHED";
       // Only failed reads have a fallback. Prefer its timestamp for partial data.
       const updatedAt = firstDefinedTimestamp(
-        cachedSpools?.captured_at,
+        stock.cachedAt,
         cachedPrinters?.captured_at,
         cachedLoans?.captured_at,
-        resolvedSnapshot?.captured_at,
+        stock.liveAt,
       );
       return {
-        overview: resolvedOverview,
+        overview: stock.overview,
         printers: resolvedPrinters,
-        spoolRows: resolvedSpoolRows,
         consumptionRows: resolvedConsumptionRows,
         loanDetails: resolvedLoans,
         loanUsage: groupLoanUsageByPerson(resolvedLoans, "OUTBOUND"),
@@ -438,37 +445,28 @@ export async function loadStatisticsData(
     return emptyStatisticsData();
   }
 
-  const loadLocalSpools = dependencies.loadLocalSpools ?? loadAllSpoolRows;
   const loadLocalOverview = dependencies.loadLocalOverview ?? inventoryOverview;
   const loadLocalPeriodReport = dependencies.loadLocalPeriodReport ?? statisticsPeriodReport;
   const listLocalPrinterOverview = dependencies.listLocalPrinterOverview ?? listPrinterOverview;
   const listLocalLoanUsageByPerson =
     dependencies.listLocalLoanUsageByPerson ?? listLoanUsageByPerson;
   const [
-    spoolRowsRaw,
     localOverview,
     localPeriodReport,
     printerRows,
     loanRows,
     inboundLoanRows,
   ] = await Promise.all([
-    loadLocalSpools({
-      clientReadOnly: false,
-      clientHostBaseUrl: null,
-      clientLibraryId: null,
-    }),
     loadLocalOverview(),
     loadLocalPeriodReport(period),
     listLocalPrinterOverview(),
     listLocalLoanUsageByPerson(30, "OUTBOUND"),
     listLocalLoanUsageByPerson(30, "INBOUND"),
   ]);
-  const spoolRows = normalizeSpoolWithMasterRows(spoolRowsRaw);
 
   return {
     overview: localOverview,
     printers: printerRows,
-    spoolRows,
     consumptionRows: localPeriodReport.filament_consumption,
     loanDetails: [],
     loanUsage: loanRows,

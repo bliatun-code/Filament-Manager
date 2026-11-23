@@ -45,6 +45,7 @@ fn seed_all_library_sync_host_caches(
             device_name: "Cached Host".to_string(),
             sync_mode: "HOST".to_string(),
             inventory: InventoryOverview {
+                owned_on_hand_grams: None,
                 total_spools: 0,
                 total_owned_spools: 0,
                 total_borrowed_in_spools: 0,
@@ -4175,6 +4176,7 @@ fn library_sync_settings_default_and_persist_cleanly() {
                     device_name: "Main Host".to_string(),
                     sync_mode: "HOST".to_string(),
                     inventory: InventoryOverview {
+                        owned_on_hand_grams: None,
                         total_spools: 42,
                         total_owned_spools: 40,
                         total_borrowed_in_spools: 2,

@@ -1,8 +1,4 @@
-import {
-  isBorrowedInOwnership,
-  isSpoolStatusOnHand,
-} from "./inventory_domain";
-import type { NormalizedSpoolWithMasterRow } from "./spool_row_normalization";
+import type { InventoryOverview } from "./tauri_client";
 
 export const CONSUMPTION_FORECAST_BASIS_DAYS = 30;
 export const CONSUMPTION_FORECAST_HORIZON_DAYS = 30;
@@ -24,21 +20,11 @@ export type ConsumptionForecast = {
 
 export type ConsumptionForecastInput = {
   asOfDate: string;
-  ownedConsumption30d: number;
-  spools: NormalizedSpoolWithMasterRow[];
+  overview: Pick<InventoryOverview, "owned_consumption_30d" | "owned_on_hand_grams" | "total_owned_spools"> | null;
 };
 
 function finiteNonNegative(value?: number | null): number {
   return Number.isFinite(value) ? Math.max(0, value ?? 0) : 0;
-}
-
-function remainingStockGrams(row: NormalizedSpoolWithMasterRow): number {
-  return finiteNonNegative(
-    row.spool.remaining_g ??
-      row.spool.current_weight_g ??
-      row.spool.initial_weight_g ??
-      0,
-  );
 }
 
 function parseIsoCalendarDate(value: string): Date | null {
@@ -96,24 +82,11 @@ export function formatForecastDate(value: string, locale = "en"): string {
 
 export function buildConsumptionForecast({
   asOfDate,
-  ownedConsumption30d,
-  spools,
+  overview,
 }: ConsumptionForecastInput): ConsumptionForecast {
-  let ownedOnHandGrams = 0;
-  let ownedOnHandSpoolCount = 0;
-
-  for (const row of spools) {
-    if (
-      !isSpoolStatusOnHand(row.spool.normalized_status) ||
-      isBorrowedInOwnership(row.spool.ownership_type)
-    ) {
-      continue;
-    }
-    ownedOnHandSpoolCount += 1;
-    ownedOnHandGrams += remainingStockGrams(row);
-  }
-
-  const usageBasisGrams = finiteNonNegative(ownedConsumption30d);
+  const ownedOnHandGrams = finiteNonNegative(overview?.owned_on_hand_grams);
+  const ownedOnHandSpoolCount = overview?.owned_on_hand_grams == null ? 0 : overview.total_owned_spools;
+  const usageBasisGrams = finiteNonNegative(overview?.owned_consumption_30d);
   const hasUsageBasis = usageBasisGrams > 0;
   const averageDailyUsageGrams = hasUsageBasis
     ? usageBasisGrams / CONSUMPTION_FORECAST_BASIS_DAYS

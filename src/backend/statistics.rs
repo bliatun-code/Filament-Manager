@@ -5,12 +5,9 @@ use serde::{Deserialize, Serialize};
 use time::{format_description::well_known::Rfc3339, OffsetDateTime, UtcOffset};
 
 use super::database_low_stock_policy::load_low_stock_policy;
-use super::inventory_domain::{OwnershipType, SpoolStatus};
+use super::inventory_domain::OwnershipType;
 use super::low_stock_policy::LowStockPolicy;
-use super::spool_defaults::{
-    SPOOL_OWNERSHIP_SELECT_SQL, SPOOL_OWNERSHIP_SELECT_SQL_S, SPOOL_STATUS_ASSIGNED_PREDICATE_SQL,
-    SPOOL_STATUS_ON_HAND_PREDICATE_SQL,
-};
+use super::spool_defaults::{normalize_spool_status, SPOOL_OWNERSHIP_SELECT_SQL_S};
 use super::statistics_value_cost::value_cost_report_from_connection;
 pub use super::statistics_value_cost::{
     StatisticsCurrencyOwnershipAmount, StatisticsInventoryValueTraceRow,
@@ -19,11 +16,14 @@ pub use super::statistics_value_cost::{
 };
 use super::{database_result::InventoryResult, filament_database::FilamentDatabase};
 
-#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Clone, Debug, Default, Serialize, Deserialize, PartialEq, Eq)]
 pub struct InventoryOverview {
     pub total_spools: i64,
     pub total_owned_spools: i64,
     pub total_borrowed_in_spools: i64,
+    /// Older Hosts and their offline snapshots omit the forecast weight.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub owned_on_hand_grams: Option<i64>,
     pub in_use: i64,
     pub owned_in_use: i64,
     pub borrowed_in_in_use: i64,
@@ -496,56 +496,7 @@ impl FilamentDatabase {
 fn inventory_overview_from_connection(
     connection: &Connection,
 ) -> Result<InventoryOverview, rusqlite::Error> {
-    let (
-        total_spools,
-        total_owned_spools,
-        total_borrowed_in_spools,
-        in_use,
-        owned_in_use,
-        borrowed_in_in_use,
-    ): (i64, i64, i64, i64, i64, i64) = connection.query_row(
-            &format!(
-                "SELECT
-                COUNT(*) AS total_spools,
-                COALESCE(SUM(CASE
-                    WHEN {SPOOL_OWNERSHIP_SELECT_SQL} = 'OWNED'
-                     AND {SPOOL_STATUS_ON_HAND_PREDICATE_SQL}
-                    THEN 1 ELSE 0
-                END), 0) AS total_owned_spools,
-                COALESCE(SUM(CASE
-                    WHEN {SPOOL_OWNERSHIP_SELECT_SQL} = 'BORROWED_IN'
-                     AND {SPOOL_STATUS_ON_HAND_PREDICATE_SQL}
-                    THEN 1 ELSE 0
-                END), 0) AS total_borrowed_in_spools,
-                COALESCE(SUM(CASE WHEN {SPOOL_STATUS_ASSIGNED_PREDICATE_SQL} THEN 1 ELSE 0 END), 0) AS in_use,
-                COALESCE(SUM(CASE
-                    WHEN {SPOOL_STATUS_ASSIGNED_PREDICATE_SQL}
-                     AND {SPOOL_OWNERSHIP_SELECT_SQL} = 'OWNED'
-                    THEN 1 ELSE 0
-                END), 0) AS owned_in_use,
-                COALESCE(SUM(CASE
-                    WHEN {SPOOL_STATUS_ASSIGNED_PREDICATE_SQL}
-                     AND {SPOOL_OWNERSHIP_SELECT_SQL} = 'BORROWED_IN'
-                    THEN 1 ELSE 0
-                END), 0) AS borrowed_in_in_use
-             FROM filament_spools
-             WHERE deleted_at IS NULL"
-            ),
-            [],
-            |row| {
-                Ok((
-                    row.get(0)?,
-                    row.get(1)?,
-                    row.get(2)?,
-                    row.get(3)?,
-                    row.get(4)?,
-                    row.get(5)?,
-                ))
-            },
-        )?;
-    let low_stock_policy = load_low_stock_policy(connection)?;
-    let (low_stock, owned_low_stock, borrowed_in_low_stock) =
-        low_stock_counts_from_connection(connection, &low_stock_policy)?;
+    let stock = inventory_stock_from_connection(connection)?;
     let (total_consumption_30d, owned_consumption_30d, borrowed_in_consumption_30d): (
         i64,
         i64,
@@ -585,29 +536,21 @@ fn inventory_overview_from_connection(
     let total_consumption_12m = consumption_12m.iter().map(|point| point.used_grams).sum();
 
     Ok(InventoryOverview {
-        total_spools,
-        total_owned_spools,
-        total_borrowed_in_spools,
-        in_use,
-        owned_in_use,
-        borrowed_in_in_use,
-        low_stock,
-        owned_low_stock,
-        borrowed_in_low_stock,
-        low_stock_policy,
         total_consumption_30d,
         owned_consumption_30d,
         borrowed_in_consumption_30d,
         consumption_12m_available: true,
         total_consumption_12m,
         consumption_12m,
+        ..stock
     })
 }
 
-fn low_stock_counts_from_connection(
-    connection: &Connection,
-    policy: &LowStockPolicy,
-) -> Result<(i64, i64, i64), rusqlite::Error> {
+fn inventory_stock_from_connection(connection: &Connection) -> rusqlite::Result<InventoryOverview> {
+    let mut overview = InventoryOverview {
+        low_stock_policy: load_low_stock_policy(connection)?,
+        ..Default::default()
+    };
     let mut statement = connection.prepare(
         "SELECT COALESCE(s.remaining_g, s.current_weight_g, s.initial_weight_g, 0),
                 s.status, s.ownership_type, m.material
@@ -615,33 +558,36 @@ fn low_stock_counts_from_connection(
          JOIN filament_master_list m ON m.id = s.master_id
          WHERE s.deleted_at IS NULL",
     )?;
-    let rows = statement.query_map([], |row| {
-        Ok((
-            row.get::<_, i64>(0)?,
-            row.get::<_, Option<String>>(1)?,
-            row.get::<_, Option<String>>(2)?,
-            row.get::<_, String>(3)?,
-        ))
-    })?;
-
-    let mut total = 0;
-    let mut owned = 0;
-    let mut borrowed_in = 0;
-    for row in rows {
-        let (remaining_g, status, ownership, material) = row?;
-        let status = SpoolStatus::from_raw(status.as_deref());
-        let on_hand = matches!(status, SpoolStatus::InStock | SpoolStatus::Assigned);
-        if !on_hand || remaining_g <= 0 || remaining_g > policy.threshold_for_material(&material) {
+    let mut rows = statement.query([])?;
+    let mut owned_grams = 0_i64;
+    while let Some(row) = rows.next()? {
+        overview.total_spools += 1;
+        // Use the same status aliases and ownership rules as the full spool list.
+        let status = normalize_spool_status(row.get::<_, Option<String>>(1)?.as_deref());
+        if status != "IN_STOCK" && status != "ASSIGNED" {
             continue;
         }
-        total += 1;
-        if OwnershipType::from_raw(ownership.as_deref()).is_borrowed_in() {
-            borrowed_in += 1;
+        let borrowed =
+            OwnershipType::from_raw(row.get::<_, Option<String>>(2)?.as_deref()).is_borrowed_in();
+        let grams: i64 = row.get(0)?;
+        let assigned = status == "ASSIGNED";
+        let material: String = row.get(3)?;
+        let low = grams > 0 && grams <= overview.low_stock_policy.threshold_for_material(&material);
+        overview.in_use += i64::from(assigned);
+        overview.low_stock += i64::from(low);
+        if borrowed {
+            overview.total_borrowed_in_spools += 1;
+            overview.borrowed_in_in_use += i64::from(assigned);
+            overview.borrowed_in_low_stock += i64::from(low);
         } else {
-            owned += 1;
+            overview.total_owned_spools += 1;
+            overview.owned_in_use += i64::from(assigned);
+            overview.owned_low_stock += i64::from(low);
+            owned_grams = owned_grams.saturating_add(grams.max(0));
         }
     }
-    Ok((total, owned, borrowed_in))
+    overview.owned_on_hand_grams = Some(owned_grams);
+    Ok(overview)
 }
 
 fn monthly_consumption_12m_from_connection(
@@ -736,6 +682,7 @@ mod tests {
         }))
         .expect("legacy inventory overview should deserialize");
 
+        assert_eq!(overview.owned_on_hand_grams, None);
         assert_eq!(overview.total_consumption_12m, 0);
         assert!(overview.consumption_12m.is_empty());
         assert!(!overview.consumption_12m_available);
@@ -1053,6 +1000,7 @@ mod tests {
                 .inventory_overview()
                 .map_err(|error| error.to_string())?;
 
+            assert_eq!(overview.owned_on_hand_grams, Some(650 + 180));
             assert_eq!(overview.total_spools, 6);
             assert_eq!(overview.total_owned_spools, 2);
             assert_eq!(overview.total_borrowed_in_spools, 1);
@@ -1065,6 +1013,24 @@ mod tests {
             assert_eq!(overview.total_consumption_30d, 180);
             assert_eq!(overview.owned_consumption_30d, 125);
             assert_eq!(overview.borrowed_in_consumption_30d, 55);
+
+            // A missing measurement falls back to current, then initial weight. A
+            // recorded zero takes precedence, and a deleted roll leaves the stock.
+            db.connection().execute_batch(
+                "UPDATE filament_spools SET remaining_g = NULL WHERE id IN ('owned_1', 'owned_2');
+                 UPDATE filament_spools SET current_weight_g = NULL WHERE id = 'owned_2';",
+            ).unwrap();
+            let stock = stats.inventory_overview().unwrap();
+            assert_eq!(stock.owned_on_hand_grams, Some(650 + 1000));
+            db.connection()
+                .execute_batch(
+                    "UPDATE filament_spools SET remaining_g = 0 WHERE id = 'owned_1';
+                 UPDATE filament_spools SET deleted_at = CURRENT_TIMESTAMP WHERE id = 'owned_2';",
+                )
+                .unwrap();
+            let stock = stats.inventory_overview().unwrap();
+            assert_eq!(stock.total_owned_spools, 1);
+            assert_eq!(stock.owned_on_hand_grams, Some(0));
 
             Ok(())
         })();

@@ -76,6 +76,22 @@ fn companion_service_rejects_local_library_mutations_in_client_mode() {
 }
 
 #[test]
+fn library_snapshot_reads_its_forecast_without_opening_spool_cache() {
+    let path = temp_db_path("stock-summary");
+    let db = FilamentDatabase::open(&path).unwrap();
+    db.apply_schema().unwrap();
+    db.set_setting("library_sync_cached_spools_json", "invalid cached list")
+        .unwrap();
+    let service = CompanionService::new(path.to_string_lossy().into_owned());
+    service.require_bound_authority().unwrap();
+    let snapshot = service.library_snapshot(false).unwrap();
+    assert_eq!(snapshot.inventory.owned_on_hand_grams, Some(0));
+    assert!(snapshot.sync_settings.cached_spools.is_none());
+    drop(db);
+    std::fs::remove_file(path).unwrap();
+}
+
+#[test]
 fn compound_companion_reads_keep_one_database_snapshot() {
     let source = include_str!("app_services.rs");
     for signature in [

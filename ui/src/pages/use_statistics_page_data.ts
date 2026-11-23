@@ -12,7 +12,6 @@ import type {
 } from "../lib/tauri_client";
 import type {
   NormalizedLoanDetailsRow,
-  NormalizedSpoolWithMasterRow,
   StatisticsPageDataLoadResult,
   StatisticsPeriodDataStatus,
   StatisticsSnapshotSource,
@@ -36,7 +35,6 @@ export function useStatisticsPageData({
   } = range;
   const [overview, setOverview] = useState<InventoryOverview | null>(null);
   const [printers, setPrinters] = useState<PrinterOverviewRow[]>([]);
-  const [spoolRows, setSpoolRows] = useState<NormalizedSpoolWithMasterRow[]>([]);
   const [overviewConsumptionRows, setOverviewConsumptionRows] = useState<FilamentConsumptionRow[]>(
     [],
   );
@@ -91,7 +89,6 @@ export function useStatisticsPageData({
 
         setOverview(result.overview);
         setPrinters(result.printers);
-        setSpoolRows(result.spoolRows);
         setOverviewConsumptionRows(result.consumptionRows);
         setLoanDetails(result.loanDetails);
         setLoanUsage(result.loanUsage);
@@ -149,6 +146,5 @@ export function useStatisticsPageData({
     refreshing,
     renderedPeriodRange: periodResult?.range ?? null,
     reloadData: loadStatistics,
-    spoolRows,
   };
 }

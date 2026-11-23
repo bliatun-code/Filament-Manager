@@ -162,6 +162,8 @@ export type PurgeSpoolInput = {
 export type InventoryOverview = {
   total_spools: number;
   total_owned_spools: number;
+  /** Missing from pre-summary Hosts and older offline snapshots. */
+  owned_on_hand_grams?: number | null;
   total_borrowed_in_spools: number;
   in_use: number;
   owned_in_use: number;

@@ -403,6 +403,18 @@ mod tests {
                 None,
             )
         };
+        let stats = db
+            .get_library_sync_settings_at_generation(
+                &[LibrarySyncCacheDomain::Snapshot],
+                Some(generation),
+                None,
+            )
+            .unwrap();
+        assert!(stats.cached_spools.is_none());
+        assert_eq!(
+            stats.cached_snapshot.unwrap().inventory.owned_on_hand_grams,
+            Some(0)
+        );
         let cached = read().unwrap();
         assert!(cached.cached_spools.is_none());
         let compact = cached.cached_snapshot.unwrap();

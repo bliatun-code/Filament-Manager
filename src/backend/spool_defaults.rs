@@ -1,11 +1,7 @@
 use super::inventory_domain::SpoolStatus;
 
-pub(crate) const SPOOL_STATUS_ON_HAND_PREDICATE_SQL: &str =
-    "REPLACE(REPLACE(UPPER(TRIM(COALESCE(status, ''))), '-', '_'), ' ', '_') IN ('IN_STOCK', 'IN_USE', 'ASSIGNED')";
 pub(crate) const SPOOL_STATUS_ASSIGNED_PREDICATE_SQL: &str =
     "REPLACE(REPLACE(UPPER(TRIM(COALESCE(status, ''))), '-', '_'), ' ', '_') IN ('IN_USE', 'ASSIGNED')";
-pub(crate) const SPOOL_OWNERSHIP_SELECT_SQL: &str =
-    "CASE WHEN REPLACE(REPLACE(UPPER(TRIM(COALESCE(ownership_type, ''))), '-', '_'), ' ', '_') = 'BORROWED_IN' THEN 'BORROWED_IN' ELSE 'OWNED' END";
 pub(crate) const SPOOL_OWNERSHIP_SELECT_SQL_S: &str =
     "CASE WHEN REPLACE(REPLACE(UPPER(TRIM(COALESCE(s.ownership_type, ''))), '-', '_'), ' ', '_') = 'BORROWED_IN' THEN 'BORROWED_IN' ELSE 'OWNED' END";
 pub(crate) const SPOOL_OWNERSHIP_SELECT_SQL_SP: &str =
