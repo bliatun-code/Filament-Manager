@@ -265,9 +265,14 @@ jobs:
       - name: Run Rust verification
         run: npm run test:rust
 
+      - name: Build isolated Companion test app
+        env:
+          TAURI_CONFIG: '{"identifier":"no.bliatun.filamentmanager.visualqa"}'
+        run: cargo build --locked --package bambu-filament-manager --features tauri/custom-protocol
+
       - name: Run data-backed Companion E2E
         timeout-minutes: 10
-        run: npm run qa:visual:companion:data-e2e -- --startup-timeout-ms 120000
+        run: npm run qa:visual:companion:data-e2e -- --executable=target/debug/bambu-filament-manager --startup-timeout-ms 120000
 
       - name: Build database upgrade candidate
         run: cargo build --locked --package bambu-filament-manager

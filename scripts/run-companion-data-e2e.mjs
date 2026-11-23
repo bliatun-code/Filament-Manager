@@ -1249,6 +1249,7 @@ export async function runCompanionDataE2e(options = {}) {
     }
     const launchedResult = await runLaunchedCompanionScreenshotGate({
       profile: "base",
+      appExecutable: options.appExecutable,
       sourcePath,
       startupTimeoutMs: options.startupTimeoutMs,
       timeoutMs: options.timeoutMs,
@@ -1330,7 +1331,7 @@ export function formatCompanionDataE2eLaunchFailure(result) {
   return lines.join("\n");
 }
 
-function parsePositiveIntegerCliOption(args, optionName) {
+function readCliOption(args, optionName) {
   const optionIndex = args.indexOf(optionName);
   const inlinePrefix = `${optionName}=`;
   const inlineOption = args.find((argument) => argument.startsWith(inlinePrefix));
@@ -1341,7 +1342,16 @@ function parsePositiveIntegerCliOption(args, optionName) {
     optionIndex >= 0
       ? args[optionIndex + 1]
       : inlineOption?.slice(inlinePrefix.length);
-  if (typeof rawValue !== "string" || !/^\d+$/.test(rawValue)) {
+  if (!rawValue?.trim() || rawValue.startsWith("--")) {
+    throw new Error(`${optionName} requires a value.`);
+  }
+  return rawValue;
+}
+
+function parsePositiveIntegerCliOption(args, optionName) {
+  const rawValue = readCliOption(args, optionName);
+  if (rawValue === undefined) return undefined;
+  if (!/^\d+$/.test(rawValue)) {
     throw new Error(`${optionName} must be a positive integer.`);
   }
   const parsedValue = Number(rawValue);
@@ -1362,6 +1372,7 @@ export function parseCompanionDataE2eCliOptions(args) {
     );
   }
   return {
+    appExecutable: readCliOption(args, "--executable"),
     live: args.includes("--live"),
     startupTimeoutMs: parsePositiveIntegerCliOption(
       args,

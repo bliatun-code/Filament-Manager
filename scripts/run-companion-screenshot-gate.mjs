@@ -378,8 +378,10 @@ export function resolveCompanionScreenshotTauriLaunch({
   };
 }
 
-function spawnTauriDev(spawnFn, options, database) {
-  const launch = resolveCompanionScreenshotTauriLaunch();
+function spawnCompanionApp(spawnFn, options, database) {
+  const launch = options.appExecutable
+    ? { command: resolve(options.cwd ?? process.cwd(), options.appExecutable), args: [] }
+    : resolveCompanionScreenshotTauriLaunch();
   return spawnFn(launch.command, launch.args, {
     cwd: options.cwd ?? process.cwd(),
     detached: true,
@@ -1407,7 +1409,7 @@ export async function runLaunchedCompanionScreenshotGate(options = {}) {
   let childExit = null;
   let child;
   try {
-    child = spawnTauriDev(spawnFn, options, database);
+    child = spawnCompanionApp(spawnFn, options, database);
   } catch (error) {
     let cleanupFailed = false;
     const finalizationFailures = [];
@@ -1460,15 +1462,16 @@ export async function runLaunchedCompanionScreenshotGate(options = {}) {
   ) => {
     const stopped = launchStopped();
     keepApp = Boolean(options.keepAppOnFail && !stopped);
+    const app = options.appExecutable ? "Companion test app" : "Tauri dev";
     let suffix = "";
     if (childError) {
-      suffix = ` Tauri dev failed to start (${processTerminationErrorDetail(childError)}).`;
+      suffix = ` ${app} failed to start (${processTerminationErrorDetail(childError)}).`;
     } else if (childExit) {
-      suffix = ` Tauri dev exited early (${childExit.signal ?? childExit.code ?? "unknown"}).`;
+      suffix = ` ${app} exited early (${childExit.signal ?? childExit.code ?? "unknown"}).`;
     }
     const launchSummary = readiness.ready
-      ? `Companion server at ${baseUrl}/companion responded, but the launched Tauri dev process did not stay running.`
-      : `Companion server did not become reachable at ${baseUrl}/companion after launching Tauri dev.`;
+      ? `Companion server at ${baseUrl}/companion responded, but the launched ${app} process did not stay running.`
+      : `Companion server did not become reachable at ${baseUrl}/companion after launching ${app}.`;
     const reason = !readiness.ready && readiness.lastError?.message
       ? ` Last probe: ${readiness.lastError.message}.`
       : "";

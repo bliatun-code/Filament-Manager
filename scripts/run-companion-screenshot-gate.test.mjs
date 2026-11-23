@@ -943,10 +943,16 @@ test("launched companion gate cleans its generated database when spawn throws sy
 
   await assert.rejects(
     runLaunchedCompanionScreenshotGate({
+      appExecutable: "target/debug/test Companion",
+      cwd: testProjectDir,
       cleanupVisualQaDatabase: (path) => calls.cleanup.push(path),
       platform: "win32",
       prepareVisualQaDatabase: async () => createVisualQaDatabase(),
-      spawnFn: () => {
+      spawnFn: (command, args, options) => {
+        assert.equal(command, path.resolve(testProjectDir, "target/debug/test Companion"));
+        assert.deepEqual(args, []);
+        assert.equal(options.env.FILAMENT_MANAGER_DB_PATH, testVisualDatabasePath);
+        assert.equal(options.shell, false);
         calls.spawn += 1;
         throw spawnError;
       },

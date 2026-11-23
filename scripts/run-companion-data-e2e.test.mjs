@@ -59,6 +59,7 @@ test("Companion data E2E CLI refuses every explicit source form", () => {
     /refuses --source/,
   );
   assert.deepEqual(parseCompanionDataE2eCliOptions(["--timeout-ms", "25000"]), {
+    appExecutable: undefined,
     live: false,
     startupTimeoutMs: undefined,
     timeoutMs: 25_000,
@@ -68,8 +69,10 @@ test("Companion data E2E CLI refuses every explicit source form", () => {
       "--startup-timeout-ms",
       "120000",
       "--timeout-ms=30000",
+      "--executable=target/debug/bambu-filament-manager",
     ]),
     {
+      appExecutable: "target/debug/bambu-filament-manager",
       live: false,
       startupTimeoutMs: 120_000,
       timeoutMs: 30_000,
