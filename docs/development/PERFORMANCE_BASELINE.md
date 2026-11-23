@@ -43,7 +43,12 @@ one call. A failed overview or spool request reads only its matching offline
 copy. After loading the catalog, the page checks the current Host, library and
 generation before displaying results. A change restarts loading for the new target.
 
-Opening Statistics or changing the reporting period starts the Host reads
+Opening Statistics reads the current library revisions before starting the
+full load. A period change can reuse the last complete live overview, printers,
+spools and loans for the same day, library, Host and target generation. Inventory,
+catalog, printer, job and loan revisions must match before and after the new
+period report. A missing or changed revision falls back to the full load.
+Manual retries always reload all data. On a full load the Host reads start
 together. A healthy response reads no cache lists. A failed spool, printer or
 loan-history read uses only its own cache for the original Host, library and
 generation. The page checks the target again before displaying any results.
