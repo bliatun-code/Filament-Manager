@@ -96,7 +96,7 @@
   },
   "devDependencies": {
     "@axe-core/playwright": "^4.14.0",
-    "@tauri-apps/cli": "^2.12.5",
+    "@tauri-apps/cli": "^2.12.6",
     "playwright": "^1.65.1",
     "tsx": "^4.23.15"
   }
