@@ -1,3 +1,4 @@
+import { localDashboardFixture } from "../../test-fixtures/local_dashboard_snapshot";
 import assert from "node:assert/strict";
 import test from "node:test";
 
@@ -155,9 +156,8 @@ test("dashboard startup has two bounded concurrent dependency waves", async () =
   const localStarted: string[] = [];
   const sync = deferred<LibrarySyncSettings | null>();
   const trustedLan = deferred<TrustedLanCompanionStatus | null>();
-  const inventory = deferred<InventoryOverview>();
+  const inventory = deferred<ReturnType<typeof localDashboardFixture>>();
   const printers = deferred<PrinterOverviewRow[]>();
-  const spools = deferred<SpoolWithMasterRow[]>();
   const loans = deferred<SpoolLoanDetailsRow[]>();
   const wishlist = deferred<WishlistItemRow[]>();
   const printerSettings = deferred<PrinterSettingsSnapshot>();
@@ -177,7 +177,7 @@ test("dashboard startup has two bounded concurrent dependency waves", async () =
         bootstrapStarted.push("printer-settings");
         return printerSettings.promise;
       },
-      loadInventoryOverview: () => {
+      loadLocalDashboardSnapshot: () => {
         localStarted.push("overview");
         return inventory.promise;
       },
@@ -185,10 +185,7 @@ test("dashboard startup has two bounded concurrent dependency waves", async () =
         localStarted.push("printers");
         return printers.promise;
       },
-      loadSpoolRows: () => {
-        localStarted.push("spools");
-        return spools.promise;
-      },
+      loadSpoolRows: async () => assert.fail("local Dashboard paginated spools"),
       listLocalLoans: () => {
         localStarted.push("loans");
         return loans.promise;
@@ -222,13 +219,11 @@ test("dashboard startup has two bounded concurrent dependency waves", async () =
     "loans",
     "overview",
     "printers",
-    "spools",
     "wishlist",
   ]);
 
-  inventory.resolve(overview());
+  inventory.resolve(localDashboardFixture(overview()));
   printers.resolve([]);
-  spools.resolve([]);
   loans.resolve([]);
   wishlist.resolve([]);
 

@@ -1,3 +1,4 @@
+import { localDashboardFixture } from "../../test-fixtures/local_dashboard_snapshot";
 import assert from "node:assert/strict";
 import test from "node:test";
 
@@ -256,7 +257,7 @@ test("loadDashboardData fails closed when the library role cannot be resolved", 
         listLocalLoans: unexpectedRead,
         listLocalPrinters: unexpectedRead,
         listLocalWishlist: unexpectedRead,
-        loadInventoryOverview: unexpectedRead,
+        loadLocalDashboardSnapshot: unexpectedRead,
         loadPrinterSettings: unexpectedRead,
         loadSpoolRows: unexpectedRead,
         loadSyncSettings: async () => {
@@ -276,12 +277,12 @@ test("loadDashboardData loads local dashboard data outside client mode", async (
     {
       loadSyncSettings: async () => syncSettings(),
       loadTrustedLanStatus: async () => null,
-      loadInventoryOverview: async () =>
-        overview({
+      loadLocalDashboardSnapshot: async () =>
+        localDashboardFixture(overview({
           total_consumption_30d: 120,
           total_consumption_12m: 900,
           consumption_12m: [{ month: currentMonth, used_grams: 900 }],
-        }),
+        })),
       loadPrinterSettings: async () => ({
         active_printer_id: "printer-local",
         printers: [printerOverviewRow("printer-local").printer],
@@ -294,10 +295,7 @@ test("loadDashboardData loads local dashboard data outside client mode", async (
         ],
       }),
       listLocalPrinters: async () => [printerOverviewRow("printer-local")],
-      loadSpoolRows: async (options) => {
-        assert.equal(options.clientReadOnly, false);
-        return [];
-      },
+      loadSpoolRows: async () => assert.fail("local Dashboard requested spool rows"),
       listLocalLoans: async () => [],
       listLocalWishlist: async (limit) => {
         assert.equal(limit, 500);
@@ -359,15 +357,14 @@ test("loadDashboardData builds action items from the same local dashboard snapsh
           updated_at: "2026-08-20 12:00:00",
         }),
       ],
-      loadInventoryOverview: async () => overview(),
       loadPrinterSettings: async () => printerSettingsSnapshot(),
-      loadSpoolRows: async () => [
+      loadLocalDashboardSnapshot: async () => localDashboardFixture(overview(), [
         spoolWithMasterRow("low-a", {
           current_weight_g: 120,
           remaining_g: 120,
         }),
         spoolWithMasterRow("low-b", { current_weight_g: 80, remaining_g: 80 }),
-      ],
+      ]),
       loadSyncSettings: async () => syncSettings(),
       loadTrustedLanStatus: async () => null,
     },
@@ -397,11 +394,10 @@ test("loadDashboardData keeps unresolved low stock actionable until a purchase i
       listLocalLoans: async () => [],
       listLocalPrinters: async () => [],
       listLocalWishlist: async () => [],
-      loadInventoryOverview: async () => overview(),
       loadPrinterSettings: async () => printerSettingsSnapshot(),
-      loadSpoolRows: async () => [
+      loadLocalDashboardSnapshot: async () => localDashboardFixture(overview(), [
         spoolWithMasterRow("low-a", { current_weight_g: 90, remaining_g: 90 }),
-      ],
+      ]),
       loadSyncSettings: async () => syncSettings({ target_generation: 4 }),
       loadTrustedLanStatus: async () => null,
     },
@@ -650,7 +646,7 @@ test("loadDashboardData skips host calls for incomplete client targets and uses 
       fetchHostSnapshot: async () => {
         throw new Error("should not fetch without a complete target");
       },
-      loadInventoryOverview: async () => overview(),
+      loadLocalDashboardSnapshot: async () => localDashboardFixture(overview()),
       listLocalPrinters: async () => [],
       loadSpoolRows: async (options) => {
         assert.equal(options.clientReadOnly, false);
@@ -794,7 +790,7 @@ test("loadDashboardData uses cached client rows without a cached snapshot", asyn
       fetchHostSnapshot: async () => {
         throw new Error("should not fetch without a complete target");
       },
-      loadInventoryOverview: async () => {
+      loadLocalDashboardSnapshot: async () => {
         throw new Error("local overview should not load in client mode");
       },
       listLocalPrinters: async () => {
@@ -868,7 +864,7 @@ test("loadDashboardData prefers cached client spool rows over stale snapshot tot
       fetchHostSnapshot: async () => {
         throw new Error("should not fetch without a complete target");
       },
-      loadInventoryOverview: async () => {
+      loadLocalDashboardSnapshot: async () => {
         throw new Error("local overview should not load in client mode");
       },
       listLocalPrinters: async () => {
@@ -951,7 +947,7 @@ test("loadDashboardData renders paired-client cache without waiting for host rea
       fetchHostPrinterOverview: hostRead,
       fetchHostActiveLoans: hostRead,
       fetchHostWishlist: hostRead,
-      loadInventoryOverview: hostRead,
+      loadLocalDashboardSnapshot: hostRead,
       listLocalPrinters: hostRead,
       listLocalLoans: hostRead,
       listLocalWishlist: hostRead,
@@ -996,7 +992,7 @@ test("loadDashboardData stays client-offline without cache instead of loading lo
       fetchHostSnapshot: async () => {
         throw new Error("should not fetch without a complete target");
       },
-      loadInventoryOverview: async () => {
+      loadLocalDashboardSnapshot: async () => {
         throw new Error("local overview should not load in client mode");
       },
       listLocalPrinters: async () => {
@@ -1560,6 +1556,20 @@ test("compact Host stock matches legacy rows and keeps its own offline and parti
   const before = await loadDashboardData(options, deps);
   legacy = false;
   const after = await loadDashboardData(options, deps);
+  for (const mode of ["HOST", "STANDALONE"] as const) {
+    const local = await loadDashboardData(options, {
+      loadSyncSettings: async () => syncSettings({ mode, target_generation: 7 }),
+      loadTrustedLanStatus: async () => null,
+      loadLocalDashboardSnapshot: async () => ({ overview: summary.inventory, stock }),
+      loadSpoolRows: async () => assert.fail("local spool pagination"),
+      listLocalPrinters: async () => [], listLocalLoans: async () => [], listLocalWishlist: async () => [],
+      loadPrinterSettings: async () => printerSettingsSnapshot(),
+    });
+    assert.deepEqual(local.derived, before.derived);
+    assert.deepEqual(local.lowStockPreview, before.lowStockPreview);
+    assert.deepEqual(local.actionItems, before.actionItems.map(item => item.kind === "LOW_STOCK"
+      ? { ...item, purchaseTarget: { ...item.purchaseTarget, mode, host_base_url: null } } : item));
+  }
   assert.deepEqual(after.derived, before.derived);
   assert.deepEqual(after.actionItems, before.actionItems);
   assert.deepEqual(after.lowStockPreview, before.lowStockPreview);
@@ -1577,4 +1587,61 @@ test("compact Host stock matches legacy rows and keeps its own offline and parti
   assert.deepEqual(cached.actionItems, before.actionItems);
   assert.deepEqual(cached.lowStockPreview, stock.preview);
   assert.equal(fullReads, 1, "only the older Host needed a spool list");
+});
+
+for (const failed of [false, true]) {
+  test(`Host to Client switch discards a ${failed ? "failed" : "successful"} local read`, async () => {
+    const host = syncSettings({ mode: "HOST", target_generation: 4 });
+    const client = syncSettings({
+      mode: "CLIENT", host_base_url: "http://new-host", library_id: "replacement", target_generation: 5,
+      cached_spools: { captured_at: "new-cache", rows: [] },
+    });
+    const started = Promise.withResolvers<void>();
+    const finish = Promise.withResolvers<void>();
+    let target = host;
+    const load = loadDashboardData({ previousClientHostNeedsRepair: false, t }, {
+      loadSyncSettings: async () => target,
+      loadTrustedLanStatus: async () => null,
+      loadLocalDashboardSnapshot: async () => {
+        started.resolve();
+        await finish.promise;
+        if (failed) throw new Error("local read lost authority");
+        return localDashboardFixture(overview(), [spoolWithMasterRow("old-low", { remaining_g: 20 })]);
+      },
+      listLocalPrinters: async () => [printerOverviewRow("old-printer")],
+      listLocalLoans: async () => [], listLocalWishlist: async () => [],
+      loadPrinterSettings: async () => printerSettingsSnapshot(),
+      loadSpoolRows: async () => assert.fail("unexpected full read"),
+    });
+    await started.promise;
+    target = client;
+    finish.resolve();
+    const result = await load;
+    assert.equal(result.syncMode, "CLIENT");
+    assert.equal(result.libraryId, "replacement");
+    assert.equal(result.syncSource, "client-cached");
+    assert.deepEqual(result.printerOverview, []);
+    assert.deepEqual(result.lowStockPreview, []);
+    assert.deepEqual(result.actionItems, []);
+    assert.equal(result.derived.ownershipOnHand.total, 0);
+  });
+}
+
+test("returning to the same local library reloads its new generation", async () => {
+  let generation = 1;
+  let reads = 0;
+  const result = await loadDashboardData({ previousClientHostNeedsRepair: false, t }, {
+    loadSyncSettings: async () => syncSettings({ mode: "HOST", target_generation: generation }),
+    loadTrustedLanStatus: async () => null,
+    loadLocalDashboardSnapshot: async () => {
+      const spoolId = reads++ === 0 ? "old-roll" : "new-roll";
+      generation = 3;
+      return localDashboardFixture(overview(), [spoolWithMasterRow(spoolId, { remaining_g: 20 })]);
+    },
+    listLocalPrinters: async () => [], listLocalLoans: async () => [], listLocalWishlist: async () => [],
+    loadPrinterSettings: async () => printerSettingsSnapshot(),
+  });
+  assert.deepEqual(result.lowStockPreview.map(row => row.spoolId), ["new-roll"]);
+  assert.equal(result.libraryTarget?.target_generation, 3);
+  assert.equal(reads, 2);
 });

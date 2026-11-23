@@ -166,7 +166,7 @@ export function buildDashboardCompanionPresentation(params: {
   };
 }
 
-function stockMetricsFromRows(spoolRows: NormalizedSpoolWithMasterRow[], overview: InventoryOverview) {
+export function stockMetricsFromRows(spoolRows: NormalizedSpoolWithMasterRow[], overview: InventoryOverview) {
   const onHandRows = spoolRows.filter((row) => isSpoolStatusOnHand(row.spool.normalized_status));
   const onHandTotal = onHandRows.length;
   const onHandOwned = onHandRows.filter(
@@ -209,11 +209,15 @@ function stockMetricsFromRows(spoolRows: NormalizedSpoolWithMasterRow[], overvie
     return !isSpoolStatusEmptyOrLost(row.spool.normalized_status);
   });
   return {
-    totalSpools: spoolRows.length, activeSpools: activeSpoolRows.length,
-    placedActiveSpools: activeSpoolRows.filter(row => Boolean(row.spool.location_id?.trim())).length,
-    onHandOwned, onHandBorrowedIn, onHandInUse, healthySpools,
-    ownedLowStock: ownedLowStockCount, borrowedInLowStock: borrowedInLowStockCount,
-    thresholds: [...thresholdValues], usesLegacyThresholdFallback, lowestRemaining,
+    metrics: {
+      totalSpools: spoolRows.length, activeSpools: activeSpoolRows.length,
+      placedActiveSpools: activeSpoolRows.filter(row => Boolean(row.spool.location_id?.trim())).length,
+      onHandOwned, onHandBorrowedIn, onHandInUse, healthySpools,
+      ownedLowStock: ownedLowStockCount, borrowedInLowStock: borrowedInLowStockCount,
+      thresholds: [...thresholdValues],
+    },
+    usesLegacyThresholdFallback,
+    lowestRemaining,
   };
 }
 
@@ -253,12 +257,12 @@ export function buildDashboardDerivedState(params: {
     .filter((item) => item.status === "ON_ORDER")
     .reduce((sum, item) => sum + Math.max(1, item.quantity || 1), 0);
   const stock = params.dashboardStock;
-  const metrics = stock ? {
-    ...stock.metrics, usesLegacyThresholdFallback: false,
+  const { metrics, usesLegacyThresholdFallback, lowestRemaining } = stock ? {
+    metrics: stock.metrics, usesLegacyThresholdFallback: false,
     lowestRemaining: stock.preview[0]?.remainingG ?? null,
   } : stockMetricsFromRows(spoolRows, overview);
-  const { onHandOwned, onHandBorrowedIn, onHandInUse, healthySpools, usesLegacyThresholdFallback,
-    lowestRemaining, ownedLowStock: ownedLowStockCount, borrowedInLowStock: borrowedInLowStockCount } = metrics;
+  const { onHandOwned, onHandBorrowedIn, onHandInUse, healthySpools,
+    ownedLowStock: ownedLowStockCount, borrowedInLowStock: borrowedInLowStockCount } = metrics;
   const onHandTotal = onHandOwned + onHandBorrowedIn;
   const hasStockCounts = stock != null || spoolRows.length > 0;
   const lowStockCount = ownedLowStockCount + borrowedInLowStockCount;

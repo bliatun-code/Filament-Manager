@@ -130,8 +130,7 @@ mod trusted_lan_runtime_commands;
 mod trusted_lan_status_commands;
 
 pub(crate) use app_storage::{with_db, with_inventory, with_stats};
-use backend::filament_database::FilamentDatabase;
-use filament_manager_core::backend;
+use filament_manager_core::backend::{self, filament_database::FilamentDatabase};
 #[cfg(target_os = "macos")]
 use objc2::{AnyThread, MainThreadMarker};
 #[cfg(all(target_os = "macos", debug_assertions))]
@@ -535,6 +534,7 @@ fn main() {
             document_commands::import_data_file,
             document_commands::validate_full_backup_json,
             inventory_stats_commands::inventory_overview,
+            inventory_stats_commands::local_dashboard_snapshot,
             inventory_maintenance_commands::reset_app_data,
             inventory_maintenance_commands::reset_catalog_data,
             inventory_stats_commands::top_materials,

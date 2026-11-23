@@ -2,11 +2,12 @@ use std::collections::{BTreeMap, BTreeSet};
 
 use serde::{Deserialize, Serialize};
 
-use super::database_result::InventoryResult;
+use super::database_result::{InventoryError, InventoryResult};
 use super::filament_database::FilamentDatabase;
 use super::inventory_domain::OwnershipType;
 use super::low_stock_policy::LowStockPolicy;
 use super::spool_defaults::normalize_spool_status;
+use super::statistics::InventoryOverview;
 
 #[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -57,7 +58,29 @@ pub struct DashboardPurchaseGroup {
     pub threshold_g: i64,
 }
 
+#[derive(Debug, Serialize)]
+pub struct LocalDashboardSnapshot {
+    pub overview: InventoryOverview,
+    pub stock: DashboardStock,
+}
+
 impl FilamentDatabase {
+    pub fn local_dashboard_snapshot(&self) -> InventoryResult<LocalDashboardSnapshot> {
+        self.with_read_transaction(|db| {
+            let mode = db.get_setting("library_sync_mode")?;
+            let mode = mode.as_deref().unwrap_or("STANDALONE").trim();
+            if !mode.eq_ignore_ascii_case("HOST") && !mode.eq_ignore_ascii_case("STANDALONE") {
+                return Err(InventoryError::InvalidOperation {
+                    code: "common.forbidden",
+                    message: "Local dashboard requires a Host or standalone library".into(),
+                });
+            }
+            let overview = db.inventory_overview()?;
+            let stock = db.dashboard_stock(&overview.low_stock_policy)?;
+            Ok(LocalDashboardSnapshot { overview, stock })
+        })
+    }
+
     pub fn dashboard_stock(&self, policy: &LowStockPolicy) -> InventoryResult<DashboardStock> {
         let mut statement = self.connection().prepare(
             "SELECT s.id, s.status, s.ownership_type, s.location_id,
@@ -216,5 +239,22 @@ mod tests {
         assert_eq!(stock.metrics.on_hand_borrowed_in, 9996);
         assert_eq!(stock.metrics.healthy_spools, 1);
         assert_eq!(stock.groups[0].spool_count, 9994);
+
+        for mode in [None, Some("HOST"), Some("STANDALONE")] {
+            if let Some(mode) = mode {
+                db.set_setting("library_sync_mode", mode).unwrap();
+            }
+            let snapshot = db.local_dashboard_snapshot().unwrap();
+            assert_eq!(snapshot.overview, db.inventory_overview().unwrap());
+            assert_eq!(snapshot.stock, stock);
+        }
+        db.set_setting("library_sync_mode", "CLIENT").unwrap();
+        assert!(matches!(
+            db.local_dashboard_snapshot(),
+            Err(InventoryError::InvalidOperation {
+                code: "common.forbidden",
+                ..
+            })
+        ));
     }
 }
