@@ -1431,9 +1431,10 @@ test("CI executes real browser accessibility and sanitized Companion workflows",
     macosUiJob,
     /- name: Run Companion mobile WebKit smoke\s+timeout-minutes: 5\s+env:\s+COMPANION_QA_BROWSER: webkit\s+run: npm run qa:visual:companion:balanced -- --smoke/,
   );
+  assert.match(macosJob, /- name: Build isolated Companion test app\s+env:\s+TAURI_CONFIG: '\{"identifier":"no\.bliatun\.filamentmanager\.visualqa"\}'\s+run: cargo build --locked --package bambu-filament-manager --features tauri\/custom-protocol/);
   assert.match(
     macosJob,
-    /- name: Run data-backed Companion E2E\s+timeout-minutes: 10\s+run: npm run qa:visual:companion:data-e2e -- --startup-timeout-ms 120000[ \t]*(?:\r?\n|$)/,
+    /- name: Run data-backed Companion E2E\s+timeout-minutes: 10\s+run: npm run qa:visual:companion:data-e2e -- --executable=target\/debug\/bambu-filament-manager --startup-timeout-ms 120000[ \t]*(?:\r?\n|$)/,
   );
 });
 
@@ -1481,6 +1482,7 @@ test("macOS CI makes the sanitized database upgrade smoke a release gate", () =>
   );
   assertStepOrder(macosJob, [
     "Run Rust verification",
+    "Build isolated Companion test app",
     "Run data-backed Companion E2E",
     "Build database upgrade candidate",
     "Prepare sanitized historical database fixture",

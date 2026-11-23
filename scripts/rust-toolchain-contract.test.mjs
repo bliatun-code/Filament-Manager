@@ -349,6 +349,7 @@ test("cache hits cannot skip native verification or packaged application gates",
     "macos-smoke": [
       "Build production UI for native tests",
       "Run Rust verification",
+      "Build isolated Companion test app",
       "Run data-backed Companion E2E",
       "Build database upgrade candidate",
       "Prepare sanitized historical database fixture",
