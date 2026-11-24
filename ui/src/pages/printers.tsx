@@ -107,6 +107,8 @@ export default function PrintersPage() {
     printerModels,
     refreshing,
     reloadData,
+    requestPickerSpools,
+    spoolReadState,
   } = usePrinterPageData({
     tauri,
     librarySyncReady,
@@ -123,6 +125,11 @@ export default function PrintersPage() {
     onTargetChanged: retryLibrarySyncRole,
   });
   const { slotLabelById } = useInventoryPrinterSlots(printers, t);
+
+  const spoolPickerError = loadError ?? (spoolReadState === "unavailable"
+    ? t("errors.requestFailed", "The request could not be completed.") : null);
+  const spoolPickerNotice = spoolReadState === "available" ? null
+    : (!refreshing && spoolPickerError) || t("common.loading", "Loading...");
 
   const clientHostWarningVisible = shouldShowClientSnapshotWarning({
     clientReadOnly,
@@ -358,6 +365,10 @@ export default function PrintersPage() {
     ) {
       return;
     }
+    if (spoolReadState === "deferred" && printers.some(printer => printer.slots.length)) {
+      if (!loadError) requestPickerSpools();
+      return;
+    }
     for (const printer of printers) {
       const slot = printer.slots.find(
         (candidate) => allowedSpoolsForSlot(candidate.spool_id).length > 0,
@@ -370,6 +381,9 @@ export default function PrintersPage() {
     }
   }, [
     allowedSpoolsForSlot,
+    spoolReadState,
+    requestPickerSpools,
+    loadError,
     desktopVisualQaApplied,
     desktopVisualQaScenario,
     loading,
@@ -774,6 +788,8 @@ export default function PrintersPage() {
             bambuLiveIntegrations={bambuLiveIntegrations}
             catalogMasters={catalogMasters}
             openDropdownSlotId={openDropdownSlotId}
+            requestPickerSpools={requestPickerSpools}
+            spoolPickerNotice={spoolPickerNotice}
             setOpenDropdownSlotId={setOpenDropdownSlotId}
             spools={spools}
             slotLabelById={slotLabelById}

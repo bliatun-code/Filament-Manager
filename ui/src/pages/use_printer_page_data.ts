@@ -9,6 +9,7 @@ import {
 import {
   loadPrinterPageData,
   type PrinterSnapshotSource,
+  type PrinterDataLoadResult,
 } from "../lib/printer_data_source";
 import { loadLibrarySyncPageState } from "../lib/library_sync_state";
 import { loadCatalogMasters } from "../lib/catalog_data_source";
@@ -51,6 +52,8 @@ const PRINTER_REVISION_DOMAINS = [
 ] as const;
 
 export type UsePrinterPageDataResult = {
+  spoolReadState: PrinterDataLoadResult["spoolReadState"];
+  requestPickerSpools: () => void;
   loading: boolean;
   loadError: string | null;
   printers: PrinterOverviewRow[];
@@ -95,6 +98,9 @@ export function usePrinterPageData({
   const [clientPrinterUpdatedAt, setClientPrinterUpdatedAt] = useState<string | null>(null);
   const [printerModels, setPrinterModels] = useState<string[]>([]);
   const reloadRequestRef = useRef(0);
+  const [spoolReadState, setSpoolReadState] = useState<PrinterDataLoadResult["spoolReadState"]>("deferred");
+  const spoolsRequiredRef = useRef(false);
+  const pickerReadRef = useRef<Promise<unknown> | null>(null);
   const catalogLoadedRef = useRef(false);
   const revisionTrackerRef = useRef(createLibraryRevisionTracker());
   const dataSourceIdentity = [
@@ -134,6 +140,7 @@ export function usePrinterPageData({
         clientLibraryId,
         clientTargetGeneration,
         supportedPrinterModels,
+        deferUnusedSpools: !spoolsRequiredRef.current,
       });
       let catalogRefreshComplete = true;
       let loadedCatalogMasters: MasterCatalogRow[] | null = null;
@@ -177,6 +184,8 @@ export function usePrinterPageData({
         })),
       );
       setSpools(loaded.spools);
+      setSpoolReadState(loaded.spoolReadState);
+      if (loaded.spoolReadState === "available") spoolsRequiredRef.current = true;
       setBambuLiveIntegrations(loaded.bambuLiveIntegrations);
       setPrinterModels(loaded.printerModels);
       if (!options?.silent) {
@@ -209,6 +218,16 @@ export function usePrinterPageData({
     supportedPrinterModels,
     tauri,
   ]);
+
+  const requestPickerSpools = useCallback(() => {
+    spoolsRequiredRef.current = true;
+    if (spoolReadState === "available" || pickerReadRef.current) return;
+    const read = performReload({ silent: true });
+    pickerReadRef.current = read;
+    void read.finally(() => {
+      if (pickerReadRef.current === read) pickerReadRef.current = null;
+    });
+  }, [performReload, spoolReadState]);
 
   const reloadData = useCallback(async (options?: { silent?: boolean }) => {
     await performReload({
@@ -289,6 +308,9 @@ export function usePrinterPageData({
     catalogLoadedRef.current = false;
     setPrinters([]);
     setSpools([]);
+    setSpoolReadState("deferred");
+    spoolsRequiredRef.current = false;
+    pickerReadRef.current = null;
     setBambuLiveIntegrations({});
     setCatalogMasters([]);
     setClientPrinterSource("LIVE");
@@ -321,5 +343,7 @@ export function usePrinterPageData({
     printerModels,
     refreshing,
     reloadData,
+    spoolReadState,
+    requestPickerSpools,
   };
 }

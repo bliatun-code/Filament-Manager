@@ -61,6 +61,8 @@ type PrinterSlotPickerProps = {
   slotOptions: SpoolWithMasterRow[];
   slotLabelById?: ReadonlyMap<string, string>;
   draft: SlotSwapDraft;
+  requestPickerSpools: () => void;
+  spoolPickerNotice: string | null;
   setOpenDropdownSlotId: Dispatch<SetStateAction<string | null>>;
   setSlotDraft: (slotId: string, next: SlotSwapDraft) => void;
   openIncomingWeightDialog: (
@@ -86,6 +88,8 @@ export function PrinterSlotPicker({
   slotOptions,
   slotLabelById,
   draft,
+  requestPickerSpools,
+  spoolPickerNotice,
   setOpenDropdownSlotId,
   setSlotDraft,
   openIncomingWeightDialog,
@@ -211,6 +215,7 @@ export function PrinterSlotPicker({
         onMouseLeave={() => setSelectorHovered(false)}
         onClick={() => {
           if (!isDropdownOpen) {
+            requestPickerSpools();
             const selectorBounds = selectorButtonRef.current?.getBoundingClientRect();
             if (selectorBounds) {
               const spaceAbove = selectorBounds.top - 16;
@@ -277,7 +282,7 @@ export function PrinterSlotPicker({
                 className="text-[11px] font-medium text-slate-500 dark:text-slate-400"
                 aria-live="polite"
               >
-                {t(
+                {spoolPickerNotice ?? t(
                   "printers.rollResultCount",
                   "{count, plural, one {# roll} other {# rolls}}",
                   { count: filteredSlotOptions.length },
@@ -306,7 +311,7 @@ export function PrinterSlotPicker({
             className={`w-full text-slate-700 ${formInputChromeClassName}`}
             disabled={!tauri || busy}
           />
-          <div className="mt-2.5 max-h-44 space-y-1.5 overflow-y-auto rounded-xl border border-slate-200 p-2.5 dark:border-slate-600">
+          <div hidden={!!spoolPickerNotice} className="mt-2.5 max-h-44 space-y-1.5 overflow-y-auto rounded-xl border border-slate-200 p-2.5 dark:border-slate-600">
             <button
               type="button"
               className={`${slotOptionButtonClassName(draft.targetSpoolId === "", "font-semibold")} py-2`}
