@@ -415,9 +415,11 @@ test("lendInventorySpool routes client writes to the host", async () => {
       note: "Bring back",
       expected_return_at: "2026-09-05",
     },
-    { clientReadOnly: true, clientHostBaseUrl: "http://host", clientLibraryId: "library-1" },
+    { clientReadOnly: true, clientHostBaseUrl: "http://host", clientLibraryId: "library-1", clientTargetGeneration: 7 },
     {
-      lendHostSpool: async (baseUrl, _libraryId, input) => {
+      lendHostSpool: async (baseUrl, libraryId, input, generation) => {
+        assert.equal(libraryId, "library-1");
+        assert.equal(generation, 7);
         calls.push({ baseUrl, input });
       },
     },
@@ -469,9 +471,11 @@ test("returnInventoryLoan routes client returns to the host with inbound flag", 
       note: "Done",
       inbound: true,
     },
-    { clientReadOnly: true, clientHostBaseUrl: "http://host", clientLibraryId: "library-1" },
+    { clientReadOnly: true, clientHostBaseUrl: "http://host", clientLibraryId: "library-1", clientTargetGeneration: 7 },
     {
-      returnHostLoan: async (baseUrl, _libraryId, input) => {
+      returnHostLoan: async (baseUrl, libraryId, input, generation) => {
+        assert.equal(libraryId, "library-1");
+        assert.equal(generation, 7);
         calls.push({ baseUrl, input });
       },
     },

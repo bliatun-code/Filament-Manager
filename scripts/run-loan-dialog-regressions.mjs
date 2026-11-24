@@ -275,6 +275,75 @@ async function checkReturn({ page, calls, state, fallback }, inbound) {
   assert.equal(calls.filter((call) => call.command === command).length, 2);
 }
 
+async function checkPairedDialogTargets({ page, fixture, calls, state, fallback }) {
+  await page.locator("#inventory-stock-tab").click();
+  await page.getByRole("button", { name: /^Return ·/ }).waitFor({ state: "detached" });
+  const hostA = { mode: "CLIENT", library_id: "library-a", host_base_url: "https://host-a.invalid",
+    client_auth_paired: true, target_generation: 1 };
+  let current = hostA;
+  const writes = [];
+  state.invoke = (command, payload) => {
+    switch (command) {
+      case "get_library_sync_page_status": return current;
+      case "fetch_library_sync_loans":
+      case "fetch_library_sync_active_loans": return fixture.loanRows;
+      case "fetch_cached_library_sync_loans":
+      case "fetch_cached_library_sync_active_loans": return null;
+      case "fetch_library_sync_printer_overview": return fixture.printerRows;
+      case "fetch_library_sync_spool_snapshot": return { rows: fixture.spoolRows, captured_at: null };
+      case "lend_library_sync_host_spool":
+      case "return_library_sync_host_loan": {
+        const input = payload.input;
+        assert.equal(input.base_url, hostA.host_base_url);
+        assert.equal(input.expected_library_id, hostA.library_id);
+        if (input.expected_target_generation !== current.target_generation) {
+          throw new Error("[loan-regression] superseded dialog");
+        }
+        writes.push(command);
+        return null;
+      }
+      default: return fallback(command, payload);
+    }
+  };
+  await page.locator("#inventory-loans-tab").click();
+  for (const action of ["lend", "return", "hand-back"]) {
+    const lend = action === "lend";
+    const inbound = action === "hand-back";
+    const command = lend ? "lend_library_sync_host_spool" : "return_library_sync_host_loan";
+    const attempts = () => calls.filter(call => call.command === command);
+    const initialAttempts = attempts().length;
+    const initialWrites = writes.length;
+    for (const stale of [true, false]) {
+      const reviewed = current.target_generation;
+      await page.getByRole("button", { name: /^Return ·/ }).waitFor();
+      const open = page.getByRole("button", { name: lend ? "Loan out roll" : inbound ? /^Hand back ·/ : /^Return ·/, exact: true });
+      await open.click();
+      const dialog = page.getByRole("dialog");
+      if (lend) await dialog.getByLabel("Borrower name", { exact: true }).fill("Test borrower");
+      await dialog.getByRole("spinbutton").fill("450");
+      if (stale) {
+        current = { ...hostA, host_base_url: "https://host-b.invalid", library_id: "library-b", target_generation: reviewed + 1 };
+        current = { ...hostA, target_generation: current.target_generation + 1 };
+      }
+      const confirm = dialog.getByRole("button", { name: lend ? "Loan out roll" : inbound ? "Confirm hand-back" : "Confirm return", exact: true });
+      await confirm.evaluate(button => { button.click(); button.click(); });
+      if (stale) {
+        await dialog.getByRole("alert").waitFor();
+        assert.equal(writes.length, initialWrites);
+        await dialog.getByRole("button", { name: "Close", exact: true }).first().click();
+      }
+      await dialog.waitFor({ state: "hidden" });
+      const submitted = attempts();
+      assert.equal(submitted.length, initialAttempts + (stale ? 1 : 2));
+      const input = submitted.at(-1).payload.input;
+      assert.equal(input.expected_target_generation, reviewed);
+      if (!lend) assert.equal(input.inbound, inbound);
+    }
+    assert.equal(writes.length, initialWrites + 1);
+  }
+  assert.ok(!calls.some(({ command }) => ["lend_spool", "return_spool_loan", "return_inbound_spool_loan"].includes(command)));
+}
+
 async function checkScrollableLoanForm({ page, fixture }) {
   fixture.spoolRows.push(...Array.from({ length: 40 }, (_, index) => ({
     ...structuredClone(fixture.spoolRows[0]),
@@ -339,6 +408,7 @@ async function main() {
     const failures = [];
     for (const [name, check] of [
       ["loan form remains scrollable with 42 rolls and a short window", checkScrollableLoanForm],
+      ["paired loan dialogs keep the reviewed target through A–B–A and recover on reopen", checkPairedDialogTargets],
       ["failed reopen clears old selection; retry uses current assignments", checkReopen],
       ["narrow validation focuses the invalid field and shows its message", checkVisibleValidation],
       ["late load cannot overwrite a newly opened draft", checkLateLoad],

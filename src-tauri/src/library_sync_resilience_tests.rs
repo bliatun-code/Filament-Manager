@@ -1109,7 +1109,8 @@ async fn real_tcp_client_completes_the_five_fixed_workflows_on_the_host() {
                 &state,
                 LibrarySyncLendSpoolInput {
                     base_url,
-                    expected_library_id: Some(HOST_LIBRARY_ID.to_string()),
+                    expected_library_id: HOST_LIBRARY_ID.to_string(),
+                    expected_target_generation: target_generation,
                     spool_id,
                     borrower_name: "Workflow Borrower".to_string(),
                     counterparty_contact: Some("borrower@example.test".to_string()),

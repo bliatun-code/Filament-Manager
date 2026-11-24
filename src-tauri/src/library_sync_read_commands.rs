@@ -646,6 +646,7 @@ mod tests {
         .to_string()
     }
 
+    mod loan_writes;
     mod printer_picker;
     mod spool_snapshot;
     mod wishlist_purchase;

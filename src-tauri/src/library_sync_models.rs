@@ -173,7 +173,8 @@ pub(crate) struct LibrarySyncAcceptBambuLiveWeightEstimateInput {
 #[derive(Deserialize)]
 pub(crate) struct LibrarySyncReturnLoanInput {
     pub(crate) base_url: String,
-    pub(crate) expected_library_id: Option<String>,
+    pub(crate) expected_library_id: String,
+    pub(crate) expected_target_generation: u64,
     pub(crate) loan_id: String,
     pub(crate) returned_grams: i64,
     pub(crate) note: Option<String>,
@@ -183,7 +184,8 @@ pub(crate) struct LibrarySyncReturnLoanInput {
 #[derive(Deserialize)]
 pub(crate) struct LibrarySyncLendSpoolInput {
     pub(crate) base_url: String,
-    pub(crate) expected_library_id: Option<String>,
+    pub(crate) expected_library_id: String,
+    pub(crate) expected_target_generation: u64,
     pub(crate) spool_id: String,
     pub(crate) borrower_name: String,
     pub(crate) counterparty_contact: Option<String>,

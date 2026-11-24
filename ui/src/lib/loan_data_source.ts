@@ -26,7 +26,7 @@ import {
   type NormalizedLoanDetailsRow,
 } from "./loan_row_normalization";
 import {
-  requireClientHostWriteTarget,
+  type ClientHostTargetInput,
   resolveClientHostCacheTarget,
   resolveClientHostTarget,
 } from "./host_write_target";
@@ -66,11 +66,13 @@ type LoanRowsPageDependencies = {
   listLocalLoans?: typeof listSpoolLoans;
 };
 
-type LoanWriteTarget = {
-  clientReadOnly?: boolean;
-  clientHostBaseUrl?: string | null;
-  clientLibraryId?: string | null;
-};
+type LoanWriteTarget = ClientHostTargetInput & { clientReadOnly?: boolean };
+
+function reviewedLoanHost(target: LoanWriteTarget) {
+  const host = resolveClientHostCacheTarget(target);
+  if (!host) throw new Error("Host connection details are missing for this loan action.");
+  return host;
+}
 
 type LoanWriteDependencies = {
   lendHostSpool?: typeof lendLibrarySyncHostSpool;
@@ -282,11 +284,8 @@ export async function lendInventorySpool(
   const lendLocalSpool = dependencies.lendLocalSpool ?? lendSpool;
 
   if (target.clientReadOnly) {
-    const hostTarget = requireClientHostWriteTarget(
-      target,
-      "Host connection details are missing for this loan action.",
-    );
-    await lendHostSpool(hostTarget.baseUrl, hostTarget.libraryId, input);
+    const hostTarget = reviewedLoanHost(target);
+    await lendHostSpool(hostTarget.baseUrl, hostTarget.libraryId, input, hostTarget.targetGeneration);
     return;
   }
 
@@ -304,11 +303,8 @@ export async function returnInventoryLoan(
     dependencies.returnLocalInboundLoan ?? returnInboundSpoolLoan;
 
   if (target.clientReadOnly) {
-    const hostTarget = requireClientHostWriteTarget(
-      target,
-      "Host connection details are missing for this loan action.",
-    );
-    await returnHostLoan(hostTarget.baseUrl, hostTarget.libraryId, input);
+    const hostTarget = reviewedLoanHost(target);
+    await returnHostLoan(hostTarget.baseUrl, hostTarget.libraryId, input, hostTarget.targetGeneration);
     return;
   }
 

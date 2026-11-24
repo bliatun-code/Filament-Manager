@@ -1265,6 +1265,7 @@ export default function InventoryPage({
       {showLoanTrackingModal ? <Suspense fallback={null}><LoanOutModal
         open={showLoanTrackingModal}
         onClose={closeLoanTrackingModal}
+        onRetryLibrarySyncRole={retryLibrarySyncRole}
         preferredSpoolId={loanTrackingSpoolId}
         clientReadOnly={clientReadOnly}
         clientHostWritePaired={clientHostWritePaired}

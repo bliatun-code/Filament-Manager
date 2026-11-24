@@ -94,13 +94,15 @@ export async function lendSpool(input: LendSpoolInput) {
 
 export async function lendLibrarySyncHostSpool(
   baseUrl: string,
-  expectedLibraryId: string | null | undefined,
+  expectedLibraryId: string,
   input: LendSpoolInput,
+  expectedTargetGeneration: number,
 ) {
   return invoke<void>("lend_library_sync_host_spool", {
     input: {
       base_url: baseUrl,
-      expected_library_id: expectedLibraryId ?? null,
+      expected_library_id: expectedLibraryId,
+      expected_target_generation: expectedTargetGeneration,
       spool_id: input.spool_id,
       borrower_name: input.borrower_name,
       counterparty_contact: input.counterparty_contact ?? null,
@@ -121,13 +123,15 @@ export async function returnInboundSpoolLoan(input: ReturnSpoolLoanInput) {
 
 export async function returnLibrarySyncHostLoan(
   baseUrl: string,
-  expectedLibraryId: string | null | undefined,
+  expectedLibraryId: string,
   input: ReturnSpoolLoanInput & { inbound?: boolean },
+  expectedTargetGeneration: number,
 ) {
   return invoke<void>("return_library_sync_host_loan", {
     input: {
       base_url: baseUrl,
-      expected_library_id: expectedLibraryId ?? null,
+      expected_library_id: expectedLibraryId,
+      expected_target_generation: expectedTargetGeneration,
       loan_id: input.loan_id,
       returned_grams: input.returned_grams,
       note: input.note ?? null,
