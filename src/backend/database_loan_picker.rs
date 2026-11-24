@@ -144,10 +144,10 @@ mod tests {
         assert_eq!(db.loan_picker_page(&q).unwrap().total, 0);
         let master = db
             .upsert_manual_master(ManualMasterInput {
-                material: "PLA".into(),
-                filament_name: "Satin".into(),
-                color_name: "Blå".into(),
-                vendor: Some("Store".into()),
+                material: "PLA",
+                filament_name: "Satin",
+                color_name: "Blå",
+                vendor: Some("Store"),
                 hex_color: None,
                 product_url: None,
                 default_weight: Some(1000),
