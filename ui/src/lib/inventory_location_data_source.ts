@@ -20,7 +20,8 @@ import {
   type InventoryLocationRow,
 } from "./tauri_location_client";
 import { resolveClientHostCacheTarget } from "./host_write_target";
-import { isUserManagedInventoryLocation } from "./inventory_location_model";
+import { loadCachedInventorySpools, loadInventorySpools } from "./inventory_data_source";
+import { inventoryLocationUsageById, isUserManagedInventoryLocation } from "./inventory_location_model";
 
 export type InventoryLocationDataOptions = {
   clientReadOnly: boolean;
@@ -40,6 +41,8 @@ type LocationDataDependencies = {
   listLocal?: typeof listInventoryLocations;
   fetchHost?: typeof fetchLibrarySyncLocations;
   fetchCached?: typeof fetchCachedLibrarySyncLocations;
+  loadStock?: typeof loadInventorySpools;
+  loadCachedStock?: typeof loadCachedInventorySpools;
 };
 
 export function selectableInventoryLocations(rows: InventoryLocationRow[]) {
@@ -75,77 +78,82 @@ export function legacyLocationsFromSpools(spools: InventorySpool[]): InventoryLo
 
 export async function loadInventoryLocations(
   options: InventoryLocationDataOptions,
-  spools: InventorySpool[],
+  spools?: InventorySpool[],
   dependencies: LocationDataDependencies = {},
 ): Promise<InventoryLocationLoadResult> {
   const listLocal = dependencies.listLocal ?? listInventoryLocations;
   const fetchHost = dependencies.fetchHost ?? fetchLibrarySyncLocations;
   const fetchCached = dependencies.fetchCached ?? fetchCachedLibrarySyncLocations;
 
-  if (!options.clientReadOnly) {
+  async function withLegacyCounts(result: InventoryLocationLoadResult, deriveLocations = false) {
+    if (!deriveLocations && result.rows.every(row =>
+      !isUserManagedInventoryLocation(row) || row.linked_spool_count != null)) return result;
+
+    const cachedOnly = result.source === "CACHED" || result.source === "OFFLINE";
+    const loadStock = cachedOnly
+      ? dependencies.loadCachedStock ?? loadCachedInventorySpools
+      : dependencies.loadStock ?? loadInventorySpools;
+    const snapshot = spools === undefined ? await loadStock(options) : null;
+    const stock = spools ?? (snapshot && snapshot.source !== "OFFLINE" ? snapshot.rows : null);
+    if (!stock) return result;
+    const counts = inventoryLocationUsageById(stock);
+    const rows = deriveLocations ? legacyLocationsFromSpools(stock) : result.rows;
+    const fromSavedStock = result.source === "OFFLINE" && snapshot?.source === "CACHED";
     return {
-      rows: await listLocal(true),
-      mutationsSupported: true,
-      source: "LIVE",
-      updatedAt: null,
+      ...result,
+      source: fromSavedStock ? "CACHED" as const : result.source,
+      updatedAt: fromSavedStock ? snapshot.updatedAt : result.updatedAt,
+      rows: rows.map(row => ({
+        ...row, linked_spool_count: row.linked_spool_count ?? counts.get(row.id) ?? 0,
+      })),
     };
+  }
+
+  if (!options.clientReadOnly) {
+    return withLegacyCounts({
+      rows: await listLocal(true), mutationsSupported: true, source: "LIVE", updatedAt: null,
+    });
   }
 
   const baseUrl = options.clientHostBaseUrl?.trim();
   const libraryId = options.clientLibraryId?.trim();
   const cacheTarget = resolveClientHostCacheTarget(options);
-  if (!baseUrl || !libraryId) {
-    return {
-      rows: legacyLocationsFromSpools(spools),
-      mutationsSupported: false,
-      source: "OFFLINE",
-      updatedAt: null,
-    };
-  }
+  const offline: InventoryLocationLoadResult = {
+    rows: [], mutationsSupported: false, source: "OFFLINE", updatedAt: null,
+  };
+  if (!baseUrl || !libraryId) return withLegacyCounts(offline, true);
 
+  let live: InventoryLocationListResponse;
   try {
-    const live = await fetchHost({ baseUrl, expectedLibraryId: libraryId });
-    if (!live.mutations_supported) {
-      const rows = live.rows.length > 0 ? live.rows : legacyLocationsFromSpools(spools);
-      return {
-        rows,
-        mutationsSupported: false,
-        source: "LEGACY_HOST",
-        updatedAt: live.captured_at ?? null,
-      };
-    }
-    return {
-      rows: live.rows,
-      mutationsSupported: true,
-      source: "LIVE",
-      updatedAt: live.captured_at ?? null,
-    };
-  } catch (error) {
-    const cached = cacheTarget
-      ? await fetchCached({
-          baseUrl: cacheTarget.baseUrl,
-          expectedLibraryId: cacheTarget.libraryId,
-          targetGeneration: cacheTarget.targetGeneration,
-        }).catch((): InventoryLocationListResponse | null => null)
-      : null;
-    if (cached) {
-      return {
-        rows: cached.rows,
-        mutationsSupported: cached.mutations_supported,
-        source: "CACHED",
-        updatedAt: cached.captured_at ?? null,
-      };
-    }
-    if (spools.length > 0) {
-      return {
-        rows: legacyLocationsFromSpools(spools),
-        mutationsSupported: false,
-        source: "OFFLINE",
-        updatedAt: null,
-      };
-    }
-    throw error;
+    live = await fetchHost({ baseUrl, expectedLibraryId: libraryId, targetGeneration: options.clientTargetGeneration });
+  } catch {
+    const cached = cacheTarget && await fetchCached({
+      baseUrl: cacheTarget.baseUrl, expectedLibraryId: cacheTarget.libraryId,
+      targetGeneration: cacheTarget.targetGeneration,
+    }).catch(() => null);
+    if (cached) return withLegacyCounts({
+      rows: cached.rows, mutationsSupported: false, source: "CACHED", updatedAt: cached.captured_at ?? null,
+    });
+    return withLegacyCounts(offline, true);
   }
+  return withLegacyCounts({
+    rows: live.rows,
+    mutationsSupported: live.mutations_supported,
+    source: live.mutations_supported ? "LIVE" : "LEGACY_HOST",
+    updatedAt: live.captured_at ?? null,
+  }, !live.mutations_supported && !live.rows.length);
+}
+
+// A compact Host rename updates the saved locations without replacing the
+// complete inventory capture. Resolve names by immutable ID on offline drilldown.
+export function applyInventoryLocationNames(spools: InventorySpool[], locations: InventoryLocationRow[]) {
+  const names = new Map(locations.map(row => [row.id, row.name]));
+  return spools.map(spool => {
+    const location = (spool.locationId && names.get(spool.locationId)) || spool.location;
+    const homeLocation = (spool.homeLocationId && names.get(spool.homeLocationId)) || spool.homeLocation;
+    return location === spool.location && homeLocation === spool.homeLocation
+      ? spool : { ...spool, location, homeLocation };
+  });
 }
 
 export type InventoryLocationMutationContext = InventoryLocationDataOptions & {

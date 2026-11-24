@@ -48,6 +48,15 @@ full snapshot absorbs any loan changes confirmed while its pages were in flight.
 Older Hosts use their snapshot and supported list endpoints for the badges;
 an unavailable count displays a dash.
 
+Opening **Locations** from Loans and refreshing after a rename use location rows
+and the compact workspace counts. Each roll counts once per linked location,
+including its home location. Deletion uses all saved references, including
+child locations. Paired Clients can display saved location counts offline.
+Older Hosts and caches without counts derive them from stock when available.
+Opening a location's linked rolls loads Inventory filtered by the location ID.
+Merging locations on a paired Client refreshes the full inventory copy because
+the merge can move both current and home assignments.
+
 Opening **Loan out roll** reads the first 150 eligible rolls, the total count
 and any eligible selection from Inventory in one call. Searches match all
 words across the full library, including the roll reference and location.

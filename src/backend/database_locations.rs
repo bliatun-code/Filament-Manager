@@ -32,16 +32,30 @@ pub(crate) fn list_locations(
     include_archived: bool,
 ) -> InventoryResult<Vec<InventoryLocationRow>> {
     let mut statement = conn.prepare(
-        "SELECT location.id, location.name, location.type, location.parent_id,
+        "WITH spool_links AS (
+             SELECT location_id AS location, 1 AS first_link, master_id
+             FROM filament_spools WHERE deleted_at IS NULL AND location_id IS NOT NULL
+             UNION ALL
+             SELECT home_location_id, home_location_id IS NOT location_id, master_id
+             FROM filament_spools WHERE deleted_at IS NULL AND home_location_id IS NOT NULL
+         ), spool_counts AS (
+             SELECT location, count(*) AS refs, count(*) FILTER (
+                 WHERE first_link AND m.id IS NOT NULL
+             ) AS rolls
+             FROM spool_links LEFT JOIN filament_master_list m ON m.id = master_id
+             GROUP BY location
+         ), children AS (
+             SELECT parent_id, count(*) AS refs FROM inventory_locations
+             WHERE parent_id IS NOT NULL GROUP BY parent_id
+         )
+         SELECT location.id, location.name, location.type, location.parent_id,
                 location.x, location.y, location.z, location.archived_at,
                 COALESCE(location.created_at, ''), COALESCE(location.updated_at, ''),
-                (SELECT COUNT(*) FROM filament_spools
-                 WHERE location_id = location.id AND deleted_at IS NULL)
-                  + (SELECT COUNT(*) FROM filament_spools
-                     WHERE home_location_id = location.id AND deleted_at IS NULL)
-                  + (SELECT COUNT(*) FROM inventory_locations child
-                     WHERE child.parent_id = location.id) AS reference_count
+                COALESCE(spool_counts.refs, 0) + COALESCE(children.refs, 0),
+                COALESCE(spool_counts.rolls, 0)
          FROM inventory_locations location
+         LEFT JOIN spool_counts ON spool_counts.location = location.id
+         LEFT JOIN children ON children.parent_id = location.id
          WHERE ?1 != 0 OR archived_at IS NULL
          ORDER BY archived_at IS NOT NULL, name COLLATE NOCASE, id",
     )?;
@@ -54,16 +68,19 @@ pub(crate) fn get_location(
     location_id: &str,
 ) -> InventoryResult<Option<InventoryLocationRow>> {
     conn.query_row(
-        "SELECT location.id, location.name, location.type, location.parent_id,
+        "WITH stock AS (
+             SELECT count(*) FILTER (WHERE s.location_id = ?1)
+                  + count(*) FILTER (WHERE s.home_location_id = ?1) AS refs,
+                    count(m.id) AS rolls
+             FROM filament_spools s LEFT JOIN filament_master_list m ON m.id = s.master_id
+             WHERE s.deleted_at IS NULL AND (s.location_id = ?1 OR s.home_location_id = ?1)
+         )
+         SELECT location.id, location.name, location.type, location.parent_id,
                 location.x, location.y, location.z, location.archived_at,
                 COALESCE(location.created_at, ''), COALESCE(location.updated_at, ''),
-                (SELECT COUNT(*) FROM filament_spools
-                 WHERE location_id = location.id AND deleted_at IS NULL)
-                  + (SELECT COUNT(*) FROM filament_spools
-                     WHERE home_location_id = location.id AND deleted_at IS NULL)
-                  + (SELECT COUNT(*) FROM inventory_locations child
-                     WHERE child.parent_id = location.id) AS reference_count
-         FROM inventory_locations location
+                stock.refs + (SELECT count(*) FROM inventory_locations WHERE parent_id = ?1),
+                stock.rolls
+         FROM inventory_locations location CROSS JOIN stock
          WHERE location.id = ?1
          LIMIT 1",
         params![location_id.trim()],
@@ -381,6 +398,7 @@ fn map_location_row(row: &rusqlite::Row<'_>) -> Result<InventoryLocationRow, rus
         created_at: row.get(8)?,
         updated_at: row.get(9)?,
         reference_count: Some(reference_count),
+        linked_spool_count: Some(row.get(11)?),
         can_delete: is_user_managed_location_type(&location_type) && reference_count == 0,
     })
 }
@@ -841,6 +859,40 @@ mod tests {
 
         drop(db);
         let _ = std::fs::remove_file(path);
+    }
+
+    #[test]
+    fn linked_rolls_match_drilldown_while_all_edges_protect_deletion() {
+        let db = FilamentDatabase::open(":memory:").unwrap();
+        db.apply_schema().unwrap();
+        let shelf = db.create_inventory_location("Shelf", None).unwrap();
+        let child = db
+            .create_inventory_location("Child", Some(&shelf.id))
+            .unwrap();
+        seed_master_and_spool(&db, "both", &shelf.id, &shelf.id);
+        seed_master_and_spool(&db, "current", &shelf.id, &child.id);
+        seed_master_and_spool(&db, "home", &child.id, &shelf.id);
+        seed_master_and_spool(&db, "removed", &shelf.id, &shelf.id);
+        db.connection()
+            .execute(
+                "UPDATE filament_spools SET deleted_at = 'yesterday' WHERE id = 'removed'",
+                [],
+            )
+            .unwrap();
+
+        let renamed = db.rename_inventory_location(&shelf.id, "New name").unwrap();
+        assert_eq!(renamed.linked_spool_count, Some(3));
+        assert_eq!(renamed.reference_count, Some(5));
+        assert!(!renamed.can_delete);
+        let rows = db.list_inventory_locations(true).unwrap();
+        assert_eq!(rows.iter().find(|r| r.id == shelf.id), Some(&renamed));
+        assert_eq!(
+            rows.iter()
+                .find(|r| r.id == child.id)
+                .unwrap()
+                .linked_spool_count,
+            Some(2)
+        );
     }
 
     #[test]

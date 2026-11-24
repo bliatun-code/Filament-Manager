@@ -79,7 +79,7 @@ type InventoryLocationArchiveConfirmationProps = {
   onCancel: () => void;
   onConfirm: () => void;
   referenceCount: number | null;
-  visibleRollCount: number;
+  visibleRollCount: number | null;
 };
 
 export function InventoryLocationArchiveConfirmation({
@@ -100,17 +100,17 @@ export function InventoryLocationArchiveConfirmation({
         })}
       </div>
       <p className="mt-1">
-        {referenceCount == null
+        {referenceCount != null
           ? t(
-              "inventory.locationArchiveLegacyConfirmDetail",
-              "{count, plural, =0 {No visible rolls are connected} one {# visible roll remains connected} other {# visible rolls remain connected}}. This Host cannot report hidden home or child links. The location disappears from new choices, but can be restored later.",
-              { count: visibleRollCount },
-            )
-          : t(
               "inventory.locationArchiveConfirmDetail",
               "{count, plural, =0 {No saved links point to this location} one {# saved link continues to point to this location} other {# saved links continue to point to this location}}. The location disappears from new choices, but can be restored later.",
               { count: referenceCount },
-            )}
+            )
+          : visibleRollCount != null ? t(
+              "inventory.locationArchiveLegacyConfirmDetail",
+              "{count, plural, =0 {No visible rolls are connected} one {# visible roll remains connected} other {# visible rolls remain connected}}. This Host cannot report hidden home or child links. The location disappears from new choices, but can be restored later.",
+              { count: visibleRollCount },
+            ) : t("common.unknown", "Unknown")}
       </p>
       <div className="mt-3 flex flex-wrap gap-2">
         <PageHeaderButton
@@ -201,7 +201,6 @@ type InventoryLocationManagementPanelProps = {
   rows: InventoryLocationRow[];
   showOfflineSourceWarning?: boolean;
   source: "LIVE" | "CACHED" | "LEGACY_HOST" | "OFFLINE";
-  usageByLocationId: ReadonlyMap<string, number>;
 };
 
 function locationDomId(locationId: string): string {
@@ -235,7 +234,6 @@ function InventoryLocationManagementContents({
   rows,
   showOfflineSourceWarning = true,
   source,
-  usageByLocationId,
 }: InventoryLocationManagementPanelProps) {
   const { t } = useI18n();
   const mutationsAvailable = canMutate && mutationsSupported && source === "LIVE";
@@ -320,9 +318,9 @@ function InventoryLocationManagementContents({
   };
 
   const renderLocationRow = (row: InventoryLocationActionState) => {
-    const usageCount = usageByLocationId.get(row.id) ?? 0;
+    const usageCount = row.linked_spool_count ?? null;
     const referenceCount = row.reference_count;
-    const usageLabel = t(
+    const usageLabel = usageCount == null ? "–" : t(
       "inventory.locationUsageCount",
       "{count, plural, =0 {No connected rolls} one {# connected roll} other {# connected rolls}}",
       { count: usageCount },
@@ -412,7 +410,7 @@ function InventoryLocationManagementContents({
                   {referenceLabel}
                 </div>
               ) : null}
-              {usageCount > 0 ? (
+              {usageCount != null && usageCount > 0 ? (
                 <button
                   type="button"
                   aria-label={`${row.name}: ${usageLabel}`}

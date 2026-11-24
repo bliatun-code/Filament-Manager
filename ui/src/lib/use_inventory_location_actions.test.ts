@@ -26,12 +26,13 @@ async function harness() {
       actions=useInventoryLocationActions({active:open,ready,loading:loading||refreshing,source,context:{clientReadOnly:host!=="local",clientHostBaseUrl:"http://"+host,
         clientLibraryId:"library",clientTargetGeneration:generation,clientHostWritePaired:paired,mutationsSupported:supported},
         tauri:true,manageBusy:busy,setManageBusy:setBusy,setError,setInfoMessage:setInfo,t,
-        reloadSpools:async report=>{refreshes++;if(refreshRows){setRefreshing(true);await new Promise(resolve=>setTimeout(resolve,0));setRefreshedRevision(v=>v+1);setRefreshing(false);}if(held)await new Promise(resolve=>release=resolve);if(failure==="throw")throw Error("refresh rejected");report?.("locations",failure);}});
+        reloadSpools:async report=>{refreshes++;report?.("locations","LIVE");},
+        refreshLocations:async report=>{refreshes++;if(refreshRows){setRefreshing(true);await new Promise(resolve=>setTimeout(resolve,0));setRefreshedRevision(v=>v+1);setRefreshing(false);}if(held)await new Promise(resolve=>release=resolve);if(failure==="throw")throw Error("refresh rejected");report?.("locations",failure);}});
       state={busy,error:actions.locationError??error,info:actions.locationInfo??info};
       return React.createElement(I18nContext.Provider,{value:{locale:"en",setLocale:()=>{},t}},
         state.error&&React.createElement("div",{role:"alert"},state.error),
         open&&React.createElement(InventoryLocationManagementPanel,{authorityKey:actions.authorityKey,busy,canMutate:ready&&paired,loading:loading||refreshing,source,
-          mutationsSupported:supported,rows:rows.map(row=>({...row,updated_at:String(revision+refreshedRevision)})),usageByLocationId:new Map(),onReload:()=>{},onOpenLinkedSpools:()=>{},
+          mutationsSupported:supported,rows:rows.map(row=>({...row,updated_at:String(revision+refreshedRevision)})),onReload:()=>{},onOpenLinkedSpools:()=>{},
           onCreate:name=>track(actions.createLocation(name)),onRename:(id,name)=>track(actions.renameLocation(id,name)),
           onArchive:id=>track(actions.archiveLocation(id)),onDelete:id=>track(actions.deleteLocation(id)),onRestore:id=>track(actions.restoreLocation(id)),
           onMerge:(a,b)=>track(actions.mergeLocations(a,b))}));
