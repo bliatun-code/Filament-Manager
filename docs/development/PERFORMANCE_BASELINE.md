@@ -40,11 +40,17 @@ the lists it needs separately.
 Printers reads the overview and printer settings together. The overview carries
 vendor, initial and tare weights, catalog default weight and the material's
 low-stock threshold for each resolved assignment. Opening or refreshing manual
-slots uses those rows for display and weighing. Opening the picker, observing
-a Bambu Live tray or reading an assignment from an older Host without these
-details loads the full inventory. Only full inventory rows supply replacement
-choices and RFID matches. After a full read, refreshes keep it current until
-the page closes or the target changes.
+slots uses those rows for display and weighing.
+
+The spool picker requests up to 120 eligible rolls and the total number of
+matches in one call. Search covers the whole library, including localized placement
+labels. Show more requests the next page. Changed inventory, catalog or
+printer revisions restart pagination. A page never replaces a complete offline
+inventory snapshot.
+
+Live tray matching, older Hosts and incomplete assignments use the complete
+inventory. The picker reuses those rows when available. After a full read,
+refreshes keep it current until the page closes or the target changes.
 
 On a partial Host failure, the Client reads the saved copy of each failed domain.
 A saved overview can still display its assigned spools without a saved inventory

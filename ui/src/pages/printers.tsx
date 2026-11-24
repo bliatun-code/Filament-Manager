@@ -1,3 +1,7 @@
+import { loadLibrarySyncPageState } from "../lib/library_sync_state";
+import { getPrinterPickerPage } from "../lib/tauri_printer_client";
+import { PrinterPickerPageContext, type ReadPrinterPickerPage } from "../lib/printer_picker_page";
+import { intlLocaleFor } from "../../../src-tauri/companion_browser/supported_locales.js";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   isTauri,
@@ -125,6 +129,39 @@ export default function PrintersPage() {
     onTargetChanged: retryLibrarySyncRole,
   });
   const { slotLabelById } = useInventoryPrinterSlots(printers, t);
+
+  const readPickerPage = useMemo<ReadPrinterPickerPage | null>(() => {
+    if (!librarySyncReady || spoolReadState !== "deferred") return null;
+    if (!clientLibraryId || clientTargetGeneration == null || (clientReadOnly && !clientHostBaseUrl)) return null;
+    const target = {
+      base_url: clientReadOnly ? clientHostBaseUrl : null,
+      expected_library_id: clientLibraryId, target_generation: clientTargetGeneration,
+    };
+    const placements = {
+      slots: Object.fromEntries(slotLabelById), unassigned: t("inventory.unassigned", "Unassigned"),
+      loaned_to: t("dashboard.loanedTo", "Loaned to"), ext: t("printers.extSlot", "EXT Slot"),
+      slot: t("printers.slot", "Slot"), channel: t("printers.channel", "Channel"),
+      toolhead: t("printers.toolhead", "Toolhead"),
+    };
+    return async (query, isCurrent) => {
+      try {
+        return await getPrinterPickerPage({
+          ...query, locale: intlLocaleFor(locale), placements: query.search ? placements : undefined,
+        }, target);
+      } catch (error) {
+        if (!isCurrent()) throw error;
+        const current = await loadLibrarySyncPageState();
+        if (!isCurrent()) throw error;
+        if (current.clientReadOnly !== clientReadOnly || current.clientLibraryId !== clientLibraryId ||
+            current.clientTargetGeneration !== clientTargetGeneration ||
+            (clientReadOnly && current.clientHostBaseUrl !== clientHostBaseUrl)) {
+          retryLibrarySyncRole();
+          throw error;
+        }
+        return null;
+      }
+    };
+  }, [clientHostBaseUrl, clientLibraryId, clientReadOnly, clientTargetGeneration, librarySyncReady, locale, retryLibrarySyncRole, slotLabelById, spoolReadState, t]);
 
   const spoolPickerError = loadError ?? (spoolReadState === "unavailable"
     ? t("errors.requestFailed", "The request could not be completed.") : null);
@@ -775,39 +812,41 @@ export default function PrintersPage() {
         </div>
       ) : null}
 
-      <div className="content-section space-y-4">
-        {printers.map((printer) => (
-          <PrinterOverviewCard
-            key={printer.printer.id}
-            printer={printer}
-            defaultSlotsExpanded={true}
-            busy={busy}
-            tauri={tauri}
-            clientReadOnly={clientReadOnly}
-            clientPrinterSource={clientPrinterSource}
-            resolvedTheme={resolvedTheme}
-            bambuLiveIntegrations={bambuLiveIntegrations}
-            catalogMasters={catalogMasters}
-            openDropdownSlotId={openDropdownSlotId}
-            requestPickerSpools={requestPickerSpools}
-            spoolPickerNotice={spoolPickerNotice}
-            setOpenDropdownSlotId={setOpenDropdownSlotId}
-            spools={spools}
-            slotLabelById={slotLabelById}
-            allowedSpoolsForSlot={allowedSpoolsForSlot}
-            findAllowedSpoolForSlot={findAllowedSpoolForSlot}
-            getSlotDraft={getSlotDraft}
-            setSlotDraft={setSlotDraft}
-            findSpoolById={findSpoolById}
-            openIncomingWeightDialog={openIncomingWeightDialog}
-            openEmptySlotWeightDialog={openEmptySlotWeightDialog}
-            openRfidOverrideDialog={openRfidOverrideDialog}
-            registerLiveRfidCandidate={registerLiveRfidCandidate}
-            createLiveBambuCatalogSpool={createLiveBambuCatalogSpool}
-            openWeightPromptForDraft={openWeightPromptForDraft}
-          />
-        ))}
-      </div>
+      <PrinterPickerPageContext.Provider value={readPickerPage}>
+        <div className="content-section space-y-4">
+          {printers.map((printer) => (
+            <PrinterOverviewCard
+              key={printer.printer.id}
+              printer={printer}
+              defaultSlotsExpanded={true}
+              busy={busy}
+              tauri={tauri}
+              clientReadOnly={clientReadOnly}
+              clientPrinterSource={clientPrinterSource}
+              resolvedTheme={resolvedTheme}
+              bambuLiveIntegrations={bambuLiveIntegrations}
+              catalogMasters={catalogMasters}
+              openDropdownSlotId={openDropdownSlotId}
+              requestPickerSpools={requestPickerSpools}
+              spoolPickerNotice={spoolPickerNotice}
+              setOpenDropdownSlotId={setOpenDropdownSlotId}
+              spools={spools}
+              slotLabelById={slotLabelById}
+              allowedSpoolsForSlot={allowedSpoolsForSlot}
+              findAllowedSpoolForSlot={findAllowedSpoolForSlot}
+              getSlotDraft={getSlotDraft}
+              setSlotDraft={setSlotDraft}
+              findSpoolById={findSpoolById}
+              openIncomingWeightDialog={openIncomingWeightDialog}
+              openEmptySlotWeightDialog={openEmptySlotWeightDialog}
+              openRfidOverrideDialog={openRfidOverrideDialog}
+              registerLiveRfidCandidate={registerLiveRfidCandidate}
+              createLiveBambuCatalogSpool={createLiveBambuCatalogSpool}
+              openWeightPromptForDraft={openWeightPromptForDraft}
+            />
+          ))}
+        </div>
+      </PrinterPickerPageContext.Provider>
 
       {incomingWeightPrompt ? (
         <IncomingWeightModal

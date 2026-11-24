@@ -106,6 +106,7 @@ mod printer_command_support;
 mod printer_create_commands;
 mod printer_danger_zone_commands;
 mod printer_models;
+mod printer_picker_commands;
 mod printer_read_commands;
 mod printer_settings_commands;
 mod printer_slot_write_commands;
@@ -364,9 +365,7 @@ fn main() {
             apply_visual_qa_scenario_url(app)?;
 
             desktop_lifecycle::start_background_tasks(app).map_err(std::io::Error::other)?;
-            database_startup_probe::emit_database_startup_probe(&db_path)?;
-
-            Ok(())
+            database_startup_probe::emit_database_startup_probe(&db_path).map_err(Into::into)
         })
         .invoke_handler(tauri::generate_handler![
             inventory_read_commands::list_spools,
@@ -384,6 +383,7 @@ fn main() {
             inventory_read_commands::list_wishlist_items,
             printer_settings_commands::get_printer_settings,
             printer_read_commands::list_printer_overview,
+            printer_picker_commands::get_printer_picker_page,
             trusted_lan_status_commands::get_trusted_lan_companion_status,
             trusted_lan_interface_commands::list_trusted_lan_interfaces,
             trusted_lan_config_commands::update_trusted_lan_companion_config,

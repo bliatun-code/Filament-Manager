@@ -1,3 +1,4 @@
+use crate::backend::database_printer_picker::{PrinterPickerPage, PrinterPickerQuery};
 use crate::backend::filament_database::{
     FilamentDatabase, FilamentMasterCatalogRow, FilamentStandardsSnapshot, LibrarySyncSettingsRow,
     PrinterOverviewRow, SpoolLoanDetailsRow, SpoolWithMasterRow, WishlistItemRow,
@@ -7,6 +8,7 @@ use crate::backend::statistics::{
 };
 use crate::companion_error::CompanionApiError;
 use crate::companion_http::require_allowed_host;
+use crate::companion_models::PRINTER_PICKER_CAPABILITY;
 use crate::companion_models::{
     CatalogListQuery, CompanionHealthResponse, CompanionLibrarySnapshotResponse,
     CompanionPrinterSettingsResponse, FilamentConsumptionQuery, LoanListQuery, PaginationQuery,
@@ -56,6 +58,7 @@ pub(super) async fn handle_health(
                     VENDOR_CATALOG_DISCOVERY_CAPABILITY,
                     CATALOG_REFRESH_JOBS_CAPABILITY,
                     CATALOG_SPOOL_BATCH_CAPABILITY,
+                    PRINTER_PICKER_CAPABILITY,
                     PRINTER_SLOT_OPERATIONS_CAPABILITY,
                 ],
                 auth_mode: state.runtime.auth_mode().to_string(),
@@ -143,6 +146,22 @@ pub(super) async fn handle_library_domain_revisions(
                 library_id,
                 revisions,
             }))
+        })
+        .await
+}
+
+pub(super) async fn handle_printer_picker_page(
+    State(state): State<CompanionApiState>,
+    headers: HeaderMap,
+    Json(query): Json<PrinterPickerQuery>,
+) -> Result<Json<PrinterPickerPage>, CompanionApiError> {
+    require_allowed_host(&headers, &state.runtime)?;
+    state
+        .run_blocking("printer spool picker", move |state| {
+            let db = FilamentDatabase::open(&state.db_path)?;
+            db.printer_picker_page(&query)
+                .map(Json)
+                .map_err(CompanionApiError::from)
         })
         .await
 }

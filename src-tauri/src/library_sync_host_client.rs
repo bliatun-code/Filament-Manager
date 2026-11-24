@@ -22,7 +22,7 @@ use zeroize::{Zeroize, Zeroizing};
 
 use mdns_sd::{HostnameResolutionEvent, ServiceDaemon};
 
-const LIBRARY_SYNC_REQUEST_TIMEOUT: Duration = Duration::from_millis(2500);
+pub(crate) const LIBRARY_SYNC_REQUEST_TIMEOUT: Duration = Duration::from_millis(2500);
 const LIBRARY_SYNC_AUTH_REQUEST_TIMEOUT: Duration = Duration::from_secs(30);
 const MDNS_RETRY_TIMEOUT: Duration = Duration::from_millis(750);
 const LIBRARY_SYNC_CONNECT_TIMEOUT: Duration = Duration::from_millis(500);
