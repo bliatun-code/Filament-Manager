@@ -225,6 +225,7 @@ fn loan_dialogs_send_one_post_each_on_a_stable_host_and_none_after_health_switch
                 assert_eq!(refreshed.rows[0].spool.remaining_g, None);
             }
             server.join().unwrap();
+            drop(db);
             std::fs::remove_file(path).unwrap();
         }
     }
