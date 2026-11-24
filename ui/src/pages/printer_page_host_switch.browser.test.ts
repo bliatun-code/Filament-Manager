@@ -86,7 +86,12 @@ test("Printers discards late cached and live data when the paired target changes
                 return { mode: "CLIENT", host_base_url: "http://host-a", library_id: "library-a",
                   target_generation: generation, client_auth_paired: true };
               case "fetch_library_sync_printer_overview":
-                return [{ printer: { id: "printer-" + generation }, slots: [{ slot_id: "slot", ams_id: "ams", slot_index: 1 }] }];
+                return [{ printer: { id: "printer-" + generation }, slots: [{
+                  slot_id: "slot", ams_id: "ams", slot_index: 1, spool_id: "assigned-" + generation,
+                  spool_status: "ASSIGNED", spool_material: "PLA", spool_filament_name: "Basic", spool_color_name: "Red",
+                  assigned_spool_details: { master_id: "master", vendor: "eSUN", default_weight: 1000,
+                    initial_weight_g: 800, spool_tare_weight_g: 147, low_stock_threshold_g: 340 },
+                }] }];
               case "fetch_library_sync_printer_settings": return { printer_models: [], bambu_live_integrations: [] };
               case "fetch_library_sync_catalog_masters": return [];
               case "fetch_library_sync_spool_snapshot":
@@ -112,6 +117,7 @@ test("Printers discards late cached and live data when the paired target changes
           resume();
           await page.waitForFunction(() => document.querySelector("output")?.textContent === "printer-3");
           assert.equal(await page.locator("output").getAttribute("data-spools"), "deferred");
+          assert.equal(await page.locator("output").getAttribute("data-assigned"), "assigned-3");
           await open.click();
           await page.waitForFunction(() => document.querySelector("output")?.textContent === "printer-3 roll-3");
           await open.click();

@@ -1904,7 +1904,7 @@ fn clearing_printer_slot_releases_legacy_assigned_status_tokens() {
 }
 
 #[test]
-fn printer_overview_normalizes_slot_spool_ownership_tokens() {
+fn printer_overview_keeps_assigned_spool_details_independent_of_inventory_size() {
     let db_path = temp_db_path("printer-overview-normalized-ownership");
 
     let result = (|| -> Result<(), String> {
@@ -1966,6 +1966,8 @@ fn printer_overview_normalizes_slot_spool_ownership_tokens() {
             )
             .map_err(|error| error.to_string())?;
 
+        db.set_setting("low_stock_policy_json", r#"{"default_threshold_g":250,"material_overrides":[{"material":"PETG","threshold_g":325}]}"#)
+            .map_err(|error| error.to_string())?;
         let overview = db
             .list_printer_overview()
             .map_err(|error| error.to_string())?;
@@ -1977,12 +1979,67 @@ fn printer_overview_normalizes_slot_spool_ownership_tokens() {
         assert_eq!(slot.spool_ownership_type.as_deref(), Some("BORROWED_IN"));
         assert_eq!(slot.spool_owner_name.as_deref(), Some("Ada"));
 
+        let full = db.get_spool_with_master_by_id(&spool.id).unwrap().unwrap();
+        let details = slot.assigned_spool_details.as_ref().unwrap();
+        assert_eq!(details.master_id, full.master.id);
+        assert_eq!(details.vendor, full.master.vendor);
+        assert_eq!(details.default_weight, full.master.default_weight);
+        assert_eq!(details.initial_weight_g, full.spool.initial_weight_g);
+        assert_eq!(details.spool_tare_weight_g, full.spool.spool_tare_weight_g);
+        assert_eq!(details.low_stock_threshold_g, 325);
+        assert_eq!(
+            Some(details.low_stock_threshold_g),
+            full.low_stock_threshold_g
+        );
+        let mut legacy = serde_json::to_value(slot).unwrap();
+        legacy
+            .as_object_mut()
+            .unwrap()
+            .remove("assigned_spool_details");
+        let legacy: super::PrinterAmsSlotRow = serde_json::from_value(legacy).unwrap();
+        assert!(legacy.assigned_spool_details.is_none());
+        for empty in overview[0]
+            .slots
+            .iter()
+            .filter(|slot| slot.spool_id.is_none())
+        {
+            assert!(serde_json::to_value(empty)
+                .unwrap()
+                .get("assigned_spool_details")
+                .is_none());
+        }
+
+        db.conn
+            .execute(
+                "WITH RECURSIVE stock(n) AS (
+                VALUES (1) UNION ALL SELECT n + 1 FROM stock WHERE n < 9999
+             )
+             INSERT INTO filament_spools(id, master_id, status)
+             SELECT 'unassigned-' || n, ?1, 'IN_STOCK' FROM stock",
+                [&spool.master_id],
+            )
+            .unwrap();
+        assert_eq!(
+            serde_json::to_vec(&db.list_printer_overview().unwrap()).unwrap(),
+            serde_json::to_vec(&overview).unwrap(),
+        );
+
+        db.set_setting("low_stock_policy_json", "{damaged").unwrap();
+        let damaged = db.list_printer_overview().unwrap();
+        assert!(damaged[0]
+            .slots
+            .iter()
+            .all(|slot| slot.assigned_spool_details.is_none()));
+        assert!(damaged[0]
+            .slots
+            .iter()
+            .any(|slot| slot.spool_id.as_deref() == Some(&spool.id)));
         Ok(())
     })();
 
     let _ = std::fs::remove_file(&db_path);
     if let Err(message) = result {
-        panic!("printer_overview_normalizes_slot_spool_ownership_tokens failed: {message}");
+        panic!("printer_overview_keeps_assigned_spool_details_independent_of_inventory_size failed: {message}");
     }
 }
 

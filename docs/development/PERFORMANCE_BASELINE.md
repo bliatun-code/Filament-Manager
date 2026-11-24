@@ -37,14 +37,19 @@ that this lookup can read the settings with unreadable cache values and
 returns identical JSON with zero and 10,000 cached spools. Each page loads
 the lists it needs separately.
 
-Printers reads the overview and printer settings together. If all slots are empty
-and have no live tray observation, opening and refreshing skip the spool list.
-Opening a slot picker, displaying an assigned spool or resolving a live tray
-requires the full inventory. Subsequent refreshes keep it current until the
-page closes or the target changes. A partial Host read also requests the rows
-needed for offline display. Rust saves and returns the complete Client spool
-snapshot in one call. A failed overview or spool request reads only its matching offline
-copy. After loading the catalog, the page checks the current Host, library and
+Printers reads the overview and printer settings together. The overview carries
+vendor, initial and tare weights, catalog default weight and the material's
+low-stock threshold for each resolved assignment. Opening or refreshing manual
+slots uses those rows for display and weighing. Opening the picker, observing
+a Bambu Live tray or reading an assignment from an older Host without these
+details loads the full inventory. Only full inventory rows supply replacement
+choices and RFID matches. After a full read, refreshes keep it current until
+the page closes or the target changes.
+
+On a partial Host failure, the Client reads the saved copy of each failed domain.
+A saved overview can still display its assigned spools without a saved inventory
+list. Rust saves and returns complete Client spool snapshots in one call.
+After loading the catalog, the page checks the current Host, library and
 generation before displaying results. A change restarts loading for the new target.
 
 Statistics opens with the inventory overview. It includes ownership counts and

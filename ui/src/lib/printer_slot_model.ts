@@ -260,23 +260,17 @@ export function buildMeasuredTotalWeightDraft(
     : "";
 }
 
+export function isSpoolAllowedForSlot(row: SpoolWithMasterRow, slotSpoolId?: string | null): boolean {
+  const status = printerSlotSpoolStatus(row);
+  return !isSpoolStatusUnavailableForSlot(status) &&
+    (!isSpoolStatusAssigned(status) || (!!slotSpoolId && row.spool.id === slotSpoolId));
+}
+
 export function filterAllowedSpoolsForSlot<Row extends SpoolWithMasterRow>(
   sortedSpools: Row[],
   slotSpoolId?: string | null,
 ): Row[] {
-  return sortedSpools.filter((row) => {
-    const status = printerSlotSpoolStatus(row);
-    if (isSpoolStatusUnavailableForSlot(status)) {
-      return false;
-    }
-    if (slotSpoolId && row.spool.id === slotSpoolId) {
-      return true;
-    }
-    if (isSpoolStatusAssigned(status)) {
-      return false;
-    }
-    return true;
-  });
+  return sortedSpools.filter(row => isSpoolAllowedForSlot(row, slotSpoolId));
 }
 
 export function formatPrinterSpoolPlacement(

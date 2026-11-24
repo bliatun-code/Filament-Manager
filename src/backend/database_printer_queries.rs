@@ -1,9 +1,13 @@
+use std::cell::OnceCell;
+
 use rusqlite::{params, Connection, OptionalExtension};
 
+use super::database_low_stock_policy::load_low_stock_policy;
 use super::database_printer_models::{
-    PrinterAmsSlotRow, PrinterOverviewRow, PrinterRow, PrinterUsageRow,
+    PrinterAmsSlotRow, PrinterAssignedSpoolDetails, PrinterOverviewRow, PrinterRow, PrinterUsageRow,
 };
 use super::database_result::InventoryResult;
+use super::low_stock_policy::LowStockPolicy;
 use super::spool_defaults::SPOOL_OWNERSHIP_SELECT_SQL_SP;
 
 pub(crate) fn list_printers(conn: &Connection) -> InventoryResult<Vec<PrinterRow>> {
@@ -46,8 +50,9 @@ pub(crate) fn list_printer_overview(conn: &Connection) -> InventoryResult<Vec<Pr
     let printers = list_printers(conn)?;
     let mut output = Vec::with_capacity(printers.len());
 
+    let policy = OnceCell::new();
     for printer in printers {
-        output.push(build_printer_overview(conn, printer)?);
+        output.push(build_printer_overview(conn, printer, &policy)?);
     }
 
     Ok(output)
@@ -76,13 +81,14 @@ pub(crate) fn get_printer_overview(
         )
         .optional()?;
     printer
-        .map(|printer| build_printer_overview(conn, printer))
+        .map(|printer| build_printer_overview(conn, printer, &OnceCell::new()))
         .transpose()
 }
 
 fn build_printer_overview(
     conn: &Connection,
     printer: PrinterRow,
+    policy: &OnceCell<rusqlite::Result<LowStockPolicy>>,
 ) -> InventoryResult<PrinterOverviewRow> {
     let manual_usage = conn.query_row(
         "SELECT
@@ -154,7 +160,8 @@ fn build_printer_overview(
                 sp.rfid_tag,
                 m.material, m.filament_name, m.color_name, m.hex_color,
                 s.rfid_override_tray_uuid, s.rfid_override_color_hex,
-                s.live_cache_cleared_at
+                s.live_cache_cleared_at,
+                m.id, m.vendor, m.default_weight, sp.initial_weight_g, sp.spool_tare_weight_g
              FROM ams_slots s
              JOIN ams_units u ON u.id = s.ams_id
              LEFT JOIN filament_spools sp ON sp.id = s.spool_id AND sp.deleted_at IS NULL
@@ -173,7 +180,28 @@ fn build_printer_overview(
                 s.id COLLATE NOCASE ASC",
     ))?;
     let rows = stmt.query_map(params![&printer.id], |row| {
+        let material: Option<String> = row.get(9)?;
+        let master_id: Option<String> = row.get(16)?;
+        let assigned_spool_details = match (master_id, material.as_deref()) {
+            (Some(master_id), Some(material)) => {
+                // Keep the overview readable if the optional inventory policy is damaged.
+                // The desktop then uses its existing full-inventory/error path.
+                match policy.get_or_init(|| load_low_stock_policy(conn)) {
+                    Ok(policy) => Some(PrinterAssignedSpoolDetails {
+                        master_id,
+                        vendor: row.get(17)?,
+                        default_weight: row.get(18)?,
+                        initial_weight_g: row.get(19)?,
+                        spool_tare_weight_g: row.get(20)?,
+                        low_stock_threshold_g: policy.threshold_for_material(material),
+                    }),
+                    Err(_) => None,
+                }
+            }
+            _ => None,
+        };
         Ok(PrinterAmsSlotRow {
+            assigned_spool_details,
             slot_id: row.get(0)?,
             ams_id: row.get(1)?,
             slot_index: row.get(2)?,
@@ -183,7 +211,7 @@ fn build_printer_overview(
             spool_owner_name: row.get(6)?,
             spool_remaining_g: row.get(7)?,
             spool_rfid_tag: row.get(8)?,
-            spool_material: row.get(9)?,
+            spool_material: material,
             spool_filament_name: row.get(10)?,
             spool_color_name: row.get(11)?,
             spool_hex_color: row.get(12)?,

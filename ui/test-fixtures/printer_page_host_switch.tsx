@@ -12,7 +12,7 @@ export function PrinterView() {
     ...role, tauri: true, supportedPrinterModels: models, loadErrorMessage: "Load failed",
     onInteractiveReload: onReload, onTargetChanged: role.retryLibrarySyncRole,
   });
-  return <><button onClick={data.requestPickerSpools}>Open picker</button><output data-spools={data.spoolReadState}>{[
+  return <><button onClick={data.requestPickerSpools}>Open picker</button><output data-spools={data.spoolReadState} data-assigned={data.printers.flatMap(row => row.slots.filter(slot => slot.assigned_spool_details).map(slot => slot.spool_id)).join(" ")}>{[
     ...data.printers.map(row => row.printer.id),
     ...data.spools.map(row => row.spool.id),
     ...data.catalogMasters.map(row => row.id),

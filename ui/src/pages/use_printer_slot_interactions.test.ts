@@ -50,13 +50,18 @@ async function buildPrinterWeightHarness() {
     const accept = () => {
       Promise.resolve(workflow.acceptIncomingAmsWeightEstimate()).finally(() => { settled += 1; });
     };
-    function Harness({ current, host, library, generation, ready, tauri, ams, confirmed, cached }) {
+    function Harness({ current, host, library, generation, ready, tauri, ams, confirmed, cached, compact }) {
       const [busy, setBusy] = useState(false), [error, setError] = useState(null),
         [info, setInfo] = useState(null);
       const trackBusy = useCallback(value => { feedback.push(["busy", value]); setBusy(value); }, []);
       const trackError = useCallback(value => { feedback.push(["error", value]); setError(value); }, []);
       const trackInfo = useCallback(value => { feedback.push(["info", value]); setInfo(value); }, []);
       currentSlot = slot(current);
+      if (compact) Object.assign(currentSlot, {
+        spool_status: "ASSIGNED", spool_remaining_g: 312,
+        assigned_spool_details: { master_id: "master-A", vendor: "eSUN", default_weight: 1000,
+          initial_weight_g: 800, spool_tare_weight_g: 147, low_stock_threshold_g: 340 },
+      });
       for (const row of spools) row.spool.remaining_g = confirmed && row.spool.id === current ? 400 : 500;
       if (confirmed) Object.assign(currentSlot,{spool_remaining_g:400,live_can_unload_without_weighing:true});
       const integrations = ams ? { "printer-1": { enabled: true, observed_state: {
@@ -77,13 +82,13 @@ async function buildPrinterWeightHarness() {
         ensureLocalWriteAllowed: allow, librarySyncReady: ready, locale: "en",
         printers: [{ printer: { id: "printer-1", model: "P1S", name: "QA" }, slots: [currentSlot] }],
         reloadData, setBusy: trackBusy, setError: trackError, setInfo: trackInfo,
-        spools, tauri, t,
+        spools: compact ? [] : spools, tauri, t,
       });
-      snapshot = () => ({ busy, error, info, prompt: workflow.incomingWeightPrompt });
+      snapshot = () => ({ busy, error, info, options: workflow.allowedSpoolsForSlot(current).length, currentRoll: workflow.findSpoolById(current)?.spool.id, prompt: workflow.incomingWeightPrompt });
       return <I18nContext.Provider value={i18n}>
         <button onClick={() => workflow.openEmptySlotWeightDialog("printer-1", currentSlot)}>Unload</button>
-        <button onClick={() => workflow.openIncomingWeightDialog("printer-1", currentSlot,
-          spools.find(row => row.spool.id === current))}>Update weight</button>
+        <button onClick={() => workflow.openWeightPromptForDraft({id:"printer-1"}, currentSlot,
+          workflow.getSlotDraft(currentSlot))}>Update weight</button>
         <button onClick={() => workflow.openIncomingWeightDialog("printer-1", currentSlot, spools[2])}>Load C</button>
         {workflow.incomingWeightPrompt && <IncomingWeightModal
           amsEstimateAvailable={workflow.liveAmsWeightAvailable} busy={busy} error={error} prompt={workflow.incomingWeightPrompt}
@@ -170,6 +175,24 @@ test("rendered printer weight operations keep the original roll and session", as
       });
     }
 
+    await scenario("compact manual assignments preserve the weight dialog without supplying replacement candidates", async page => {
+      for (const cached of [false, true]) {
+        await page.evaluate(`printerWeight.render({ compact: true, host: 'printer-a', cached: ${cached} })`);
+        assert.equal((await page.evaluate("printerWeight.snapshot()")).options, 0);
+        await page.getByRole("button", { name: "Update weight", exact: true }).click();
+        assert.equal(await page.getByRole("spinbutton").inputValue(), "459");
+        assert.equal((await page.evaluate("printerWeight.snapshot()")).prompt.targetSpoolId, "A");
+        await page.getByRole("button", { name: "Cancel", exact: true }).click();
+      }
+    });
+
+    await scenario("an observed tray cannot use a manual assignment in place of unavailable inventory", async page => {
+      await page.evaluate("printerWeight.render({ compact: true, ams: true, cached: true, host: 'printer-a' })");
+      const state = await page.evaluate("printerWeight.snapshot()");
+      assert.equal(state.currentRoll, undefined);
+      assert.equal(state.options, 0);
+    });
+
     await scenario("a silent slot replacement rejects the old measured roll without writes", async page => {
       await openUnload(page);
       await page.evaluate("printerWeight.render({ current: 'B' })");
@@ -231,6 +254,7 @@ test("rendered printer weight operations keep the original roll and session", as
     });
 
     await scenario("same-roll updates retry absolute measurements and stay completed after a refresh failure", async page => {
+      await page.evaluate("printerWeight.render({ compact: true })");
       await page.getByRole("button", { name: "Update weight", exact: true }).click();
       await page.getByRole("spinbutton").fill("600");
       await save(page, 1);
