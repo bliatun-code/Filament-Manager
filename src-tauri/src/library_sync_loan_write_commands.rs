@@ -5,12 +5,31 @@ use crate::library_sync_cache_refresh::{
     refresh_library_sync_spool_cache,
 };
 use crate::library_sync_command_support::{
-    encode_library_sync_path_segment, library_sync_host_input, prepare_library_sync_host_read,
-    prepare_library_sync_host_write, save_library_sync_success, trimmed_non_empty,
+    encode_library_sync_path_segment, library_sync_host_input,
+    prepare_library_sync_host_write_for_generation, save_library_sync_success, trimmed_non_empty,
 };
 use crate::library_sync_host_client::perform_library_sync_host_write;
 use crate::library_sync_models::{LibrarySyncLendSpoolInput, LibrarySyncReturnLoanInput};
+use crate::library_sync_target_guard::LibrarySyncTargetGuard;
 use crate::state::AppState;
+use crate::trusted_lan_health::CompanionHealthCheckResponse;
+
+fn prepare_loan_write(
+    state: &AppState,
+    base_url: &str,
+    library_id: &str,
+    generation: u64,
+) -> Result<(CompanionHealthCheckResponse, LibrarySyncTargetGuard), String> {
+    if library_id.trim().is_empty() {
+        return Err(crate::app_error::coded_command_error(
+            "common.invalid_request",
+        ));
+    }
+    let input = library_sync_host_input(base_url, Some(library_id));
+    let (_, health, target) =
+        prepare_library_sync_host_write_for_generation(state, &input, Some(generation))?;
+    Ok((health, target))
+}
 
 #[tauri::command]
 pub(crate) async fn return_library_sync_host_loan(
@@ -21,12 +40,16 @@ pub(crate) async fn return_library_sync_host_loan(
     run_library_sync_blocking(move || return_library_sync_host_loan_blocking(&state, input)).await
 }
 
-fn return_library_sync_host_loan_blocking(
+pub(crate) fn return_library_sync_host_loan_blocking(
     state: &AppState,
     input: LibrarySyncReturnLoanInput,
 ) -> Result<(), String> {
-    let host_input = library_sync_host_input(&input.base_url, input.expected_library_id.as_deref());
-    let (_, _, target) = prepare_library_sync_host_write(state, &host_input)?;
+    let (_, target) = prepare_loan_write(
+        state,
+        &input.base_url,
+        &input.expected_library_id,
+        input.expected_target_generation,
+    )?;
 
     let loan_id = input.loan_id.trim();
     if loan_id.is_empty() {
@@ -68,8 +91,12 @@ pub(crate) fn lend_library_sync_host_spool_blocking(
     state: &AppState,
     input: LibrarySyncLendSpoolInput,
 ) -> Result<(), String> {
-    let host_input = library_sync_host_input(&input.base_url, input.expected_library_id.as_deref());
-    let (_, health, target) = prepare_library_sync_host_read(state, &host_input)?;
+    let (health, target) = prepare_loan_write(
+        state,
+        &input.base_url,
+        &input.expected_library_id,
+        input.expected_target_generation,
+    )?;
 
     let spool_id = input.spool_id.trim();
     if spool_id.is_empty() {

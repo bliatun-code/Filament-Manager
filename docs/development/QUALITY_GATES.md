@@ -195,8 +195,11 @@ order, Escape, focus restoration, scroll reachability, and layout at 200% zoom.
 native responses: failed and late loads, fresh candidates on reopen, inline
 errors in both return directions, retained drafts, whole-gram validation,
 single submission, blocked dismissal while saving, and refresh failure after a
-successful write. It must pass all five scenarios; native transaction behavior
-is checked separately against temporary SQLite databases in the Rust suite.
+successful write. Paired lending, returns and inbound hand-backs carry the Host,
+library ID and target generation reviewed by the dialog. The loopback tests
+(`cargo test loan_dialogs_`) require zero writes after an A–B–A switch and
+one write per confirmation on an unchanged Host. The browser gate also checks
+that a newly opened dialog can submit after a stale confirmation is rejected.
 
 The desktop and Companion screenshot gates accept `auto`, `light`, `dark`,
 `dark-deep`, and `blue`. A theme-model or palette change must exercise a

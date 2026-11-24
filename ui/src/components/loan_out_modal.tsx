@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { AppModal } from "./app_modal";
 import {
   inventoryModalOverlayClassName,
@@ -56,6 +56,7 @@ import {
 type LoanOutModalProps = {
   open: boolean;
   onClose: () => void;
+  onRetryLibrarySyncRole?: () => void;
   preferredSpoolId?: string | null;
   clientReadOnly?: boolean;
   clientHostWritePaired?: boolean;
@@ -87,6 +88,7 @@ export function LoanOutModal(props: LoanOutModalProps) {
 function LoanOutSession({
   open,
   onClose,
+  onRetryLibrarySyncRole,
   preferredSpoolId = null,
   clientReadOnly = false,
   clientHostWritePaired = false,
@@ -126,17 +128,20 @@ function LoanOutSession({
   const reloadRequestRef = useRef(0);
   const submittingRef = useRef(false);
   const mountedRef = useRef(false);
+  const retryRoleOnClose = useRef(false);
   const candidatesReadyRef = useRef(false);
   const [loadFailed, setLoadFailed] = useState(false);
   const today = localCalendarDate();
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     mountedRef.current = true;
     return () => { mountedRef.current = false; };
   }, []);
 
   function closeUnlessSubmitting() {
-    if (!submittingRef.current) onClose();
+    if (submittingRef.current) return;
+    onClose();
+    if (retryRoleOnClose.current) onRetryLibrarySyncRole?.();
   }
 
   const reload = useCallback(async () => {
@@ -225,7 +230,7 @@ function LoanOutSession({
     : null;
 
   async function handleSubmit() {
-    if (!tauri || !selectedSpool || loading || !candidatesReadyRef.current || submittingRef.current) {
+    if (!mountedRef.current || !tauri || !selectedSpool || loading || !candidatesReadyRef.current || submittingRef.current) {
       return;
     }
     if (clientReadOnly && (!clientHostBaseUrl || !clientLibraryId)) {
@@ -292,11 +297,12 @@ function LoanOutSession({
           note: note.trim() || null,
           expected_return_at: expectedReturn.value,
         },
-        { clientReadOnly, clientHostBaseUrl, clientLibraryId },
+        { clientReadOnly, clientHostBaseUrl, clientLibraryId, clientTargetGeneration },
       );
     } catch (loanError) {
       console.error(loanError);
       if (!mountedRef.current) return;
+      retryRoleOnClose.current = clientReadOnly;
       setError(
         toErrorMessage(
           loanError,

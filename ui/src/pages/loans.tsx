@@ -1,4 +1,4 @@
-import { useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useDeferredValue, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import {
   exportLoansCsv,
   isTauri,
@@ -41,7 +41,7 @@ import {
 } from "../lib/desktop_visual_qa_scenario";
 import { useClientWriteGuards } from "../lib/use_client_write_guards";
 import { parseNonNegativeWeight } from "../lib/weight_display";
-import { useLibrarySyncState } from "./use_library_sync_state";
+import { useLibrarySyncState, type LibrarySyncUiState } from "./use_library_sync_state";
 
 type LoansPageProps = {
   embedded?: boolean;
@@ -49,7 +49,15 @@ type LoansPageProps = {
   onOpenSpool?: (spoolId: string) => void;
 };
 
-export default function LoansPage({ embedded = false, onDataChanged, onOpenSpool }: LoansPageProps = {}) {
+export default function LoansPage(props: LoansPageProps = {}) {
+  const library = useLibrarySyncState(isTauri());
+  // Return drafts and the loan rows they were opened from belong to one target.
+  const key = JSON.stringify([library.clientReadOnly, library.clientHostBaseUrl,
+    library.clientLibraryId, library.clientTargetGeneration]);
+  return <LoanWorkspace key={key} library={library} {...props} />;
+}
+
+function LoanWorkspace({ embedded = false, onDataChanged, onOpenSpool, library }: LoansPageProps & { library: LibrarySyncUiState }) {
   const { t, locale } = useI18n();
   const tauri = isTauri();
   const {
@@ -75,7 +83,7 @@ export default function LoansPage({ embedded = false, onDataChanged, onOpenSpool
     librarySyncReady,
     librarySyncResolving,
     retryLibrarySyncRole,
-  } = useLibrarySyncState(tauri);
+  } = library;
   const [loanHistory, setLoanHistory] = useState<LoanDataLoadResult | null>(null);
   const [activeLoanSnapshot, setActiveLoanSnapshot] = useState<LoanDataLoadResult | null>(null);
   const [filter, setFilter] = useState<LoanFilter>("ACTIVE");
@@ -90,6 +98,12 @@ export default function LoansPage({ embedded = false, onDataChanged, onOpenSpool
   const [returnModalNote, setReturnModalNote] = useState("");
   const [returnModalError, setReturnModalError] = useState<string | null>(null);
   const returnSubmittingRef = useRef(false);
+  const retryRoleOnClose = useRef(false);
+  const mounted = useRef(false);
+  useLayoutEffect(() => {
+    mounted.current = true;
+    return () => { mounted.current = false; };
+  }, []);
   const desktopVisualQaScenario = useMemo(() => resolveDesktopVisualQaScenario(), []);
   const [desktopVisualQaReturnApplied, setDesktopVisualQaReturnApplied] = useState(
     () =>
@@ -236,6 +250,7 @@ export default function LoansPage({ embedded = false, onDataChanged, onOpenSpool
       return;
     }
     const isInbound = isInboundLoan(loan);
+    retryRoleOnClose.current = false;
     setReturnModalLoan(loan);
     setReturnModalGrams(
       String(
@@ -302,10 +317,11 @@ export default function LoansPage({ embedded = false, onDataChanged, onOpenSpool
     setReturnModalGrams("");
     setReturnModalNote("");
     setReturnModalError(null);
+    if (retryRoleOnClose.current) retryLibrarySyncRole();
   }
 
   async function handleConfirmReturnLoan() {
-    if (!tauri || busy || returnSubmittingRef.current || !returnModalLoan || !isLoanCurrentlyActive(returnModalLoan)) {
+    if (!mounted.current || !tauri || busy || returnSubmittingRef.current || !returnModalLoan || !isLoanCurrentlyActive(returnModalLoan)) {
       return;
     }
     const measuredTotalGrams = parseNonNegativeWeight(returnModalGrams);
@@ -336,13 +352,15 @@ export default function LoansPage({ embedded = false, onDataChanged, onOpenSpool
           note: returnModalNote.trim() || null,
           inbound: isInbound,
         },
-        { clientReadOnly, clientHostBaseUrl, clientLibraryId },
+        { clientReadOnly, clientHostBaseUrl, clientLibraryId, clientTargetGeneration },
       );
+      if (!mounted.current) return;
       // The mutation is complete even if refreshing history fails.
       setReturnModalLoan(null);
       setReturnModalGrams("");
       setReturnModalNote("");
       await reload();
+      if (!mounted.current) return;
       onDataChanged?.();
       setInfo(
         isInbound
@@ -351,6 +369,8 @@ export default function LoansPage({ embedded = false, onDataChanged, onOpenSpool
       );
     } catch (returnError) {
       console.error(returnError);
+      if (!mounted.current) return;
+      retryRoleOnClose.current = clientReadOnly;
       setReturnModalError(
         isInboundLoan(returnModalLoan)
           ? t("loans.error.handBack", "Failed to hand back borrowed-in spool.")
@@ -572,6 +592,7 @@ export default function LoansPage({ embedded = false, onDataChanged, onOpenSpool
       <LoanOutModal
         open={showLoanOutModal}
         onClose={() => setShowLoanOutModal(false)}
+        onRetryLibrarySyncRole={retryLibrarySyncRole}
         clientReadOnly={clientReadOnly}
         clientHostWritePaired={clientHostWritePaired}
         clientHostBaseUrl={clientHostBaseUrl}
@@ -579,6 +600,7 @@ export default function LoansPage({ embedded = false, onDataChanged, onOpenSpool
         clientTargetGeneration={clientTargetGeneration}
         onLoanCreated={async () => {
           await reload();
+          if (!mounted.current) return;
           onDataChanged?.();
           setInfo(t("inventory.loanCreated", "Loan created."));
         }}
