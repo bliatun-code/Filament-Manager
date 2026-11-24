@@ -334,7 +334,7 @@ export default function SettingsPage({
     setPrinterOverview,
     setPrinters,
     setSpoolRows,
-    spoolRows,
+    spoolRows: loadedSpoolRows,
   } = useSettingsPageDataState(tauri);
   const settingsCatalogTargetIdentity =
     buildSettingsCatalogDataSourceIdentity({
@@ -344,6 +344,11 @@ export default function SettingsPage({
       libraryId: settingsClientLibraryId,
       targetGeneration: settingsClientTargetGeneration,
     });
+  const includeSpoolRows = activeTab === "PRINTERS" || activeTab === "FILAMENT_DEFAULTS";
+  const spoolRows = useMemo(
+    () => catalogDataSourceIdentity === settingsCatalogTargetIdentity ? loadedSpoolRows ?? [] : [],
+    [catalogDataSourceIdentity, settingsCatalogTargetIdentity, loadedSpoolRows],
+  );
   const settingsDataSourceReady =
     catalogDataSourceIdentity === settingsCatalogTargetIdentity &&
     catalogLoadStatus !== "pending";
@@ -461,6 +466,7 @@ export default function SettingsPage({
     t,
   });
   const reloadSettings = useSettingsPageReload({
+    includeSpoolRows,
     suspendSilentReload: busy,
     onDataReloaded: reloadFilamentDefaultsAfterPageData,
     setBambuLiveIntegrations,
@@ -544,7 +550,6 @@ export default function SettingsPage({
     settingsClientLibraryId,
     settingsClientReadOnly,
     settingsClientTargetGeneration,
-    settingsInventoryRows: spoolRows,
     settingsImportMessageLabels,
     settingsInventoryExportMessageLabels,
     settingsMaintenanceResetMessageLabels,
@@ -662,6 +667,7 @@ export default function SettingsPage({
     [setError, t],
   );
   const filamentDefaults = useSettingsFilamentDefaults({
+    enabled: activeTab === "FILAMENT_DEFAULTS",
     clientHostBaseUrl: settingsClientHostBaseUrl,
     clientLibraryId: settingsClientLibraryId,
     clientReadOnly: settingsClientReadOnly,
@@ -705,6 +711,7 @@ export default function SettingsPage({
     messageGroups,
     reloadSettings,
     settingsDataSourceReady,
+    spoolRowsPending: includeSpoolRows && loadedSpoolRows === null && !busy,
     setError,
     setInfo,
     showTransientInfo,

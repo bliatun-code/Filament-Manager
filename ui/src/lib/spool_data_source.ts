@@ -13,7 +13,7 @@ import {
   type NormalizedSpoolWithMasterRow,
 } from "./spool_row_normalization";
 
-type SpoolDataSourceOptions = {
+export type SpoolDataSourceOptions = {
   clientReadOnly: boolean;
   clientHostBaseUrl?: string | null;
   clientLibraryId?: string | null;

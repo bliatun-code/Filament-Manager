@@ -7,7 +7,6 @@ import type {
   LibrarySyncHostValidationResult,
   LibrarySyncRemoteSnapshot,
 } from "../lib/tauri_client";
-import type { NormalizedSpoolWithMasterRow } from "../lib/spool_row_normalization";
 import type {
   SettingsBackupErrorMessageLabels,
   SettingsBackupValidationMessageLabels,
@@ -23,7 +22,6 @@ import type { LibrarySyncMode } from "./settings_library_sync_model";
 import { useSettingsBackupExportActions } from "./use_settings_backup_export_actions";
 import { useSettingsBackupFileActions } from "./use_settings_backup_file_actions";
 import { useSettingsBackupFileControls } from "./use_settings_backup_file_controls";
-import { useSettingsInventoryRowsLoader } from "./use_settings_inventory_rows_loader";
 import { useSettingsMaintenanceActions } from "./use_settings_maintenance_actions";
 import { useSettingsApplicationDiagnostics } from "./use_settings_application_diagnostics";
 import { useSettingsFullBackupActivity } from "./use_settings_full_backup_activity";
@@ -68,7 +66,6 @@ type UseSettingsMaintenanceSectionInput = {
   settingsClientLibraryId: string | null;
   settingsClientReadOnly: boolean;
   settingsClientTargetGeneration: number | null;
-  settingsInventoryRows: NormalizedSpoolWithMasterRow[];
   settingsImportMessageLabels: () => SettingsImportMessageLabels;
   settingsInventoryExportMessageLabels: () => SettingsInventoryExportMessageLabels;
   settingsMaintenanceResetMessageLabels: () => SettingsMaintenanceResetMessageLabels;
@@ -111,7 +108,6 @@ export function useSettingsMaintenanceSection({
   settingsClientLibraryId,
   settingsClientReadOnly,
   settingsClientTargetGeneration,
-  settingsInventoryRows,
   settingsImportMessageLabels,
   settingsInventoryExportMessageLabels,
   settingsMaintenanceResetMessageLabels,
@@ -177,21 +173,13 @@ export function useSettingsMaintenanceSection({
     tauri,
   });
 
-  const loadSettingsInventoryRows = useSettingsInventoryRowsLoader({
-    fallbackRows: settingsInventoryRows,
-    settingsClientHostBaseUrl,
-    settingsClientLibraryId,
-    settingsClientReadOnly,
-    settingsClientTargetGeneration,
-  });
-
   const {
     handleExportFullBackup,
     handleExportInventoryCsv,
     handleExportInventoryJson,
   } = useSettingsBackupExportActions({
     busy,
-    loadSettingsInventoryRows,
+    settingsClientTargetGeneration,
     recordExportedBackupValidation,
     recordFullBackupExport,
     setBusy,

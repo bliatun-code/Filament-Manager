@@ -35,7 +35,8 @@ export type SettingsPageData = {
   revisionPollComplete: boolean;
 };
 
-type SettingsPageDataDependencies = {
+type SettingsPageLoadOptions = {
+  includeSpoolRows: boolean;
   loadPrinterSettings?: typeof getPrinterSettings;
   loadCatalogRows?: typeof loadCatalogMasters;
   loadSyncSettings?: typeof getLibrarySyncSettings;
@@ -79,7 +80,7 @@ function neutralPrinterSettingsSnapshot(): PrinterSettingsSnapshot {
 }
 
 export async function loadSettingsPageData(
-  dependencies: SettingsPageDataDependencies = {},
+  dependencies: SettingsPageLoadOptions,
 ): Promise<SettingsPageData> {
   const loadSettings = dependencies.loadSyncSettings ?? getLibrarySyncSettings;
   let settings = await loadSettings([]);
@@ -137,9 +138,10 @@ export async function settingsAfterHostCheck(
 
 async function loadClientSettings(
   settings: LibrarySyncSettings,
-  dependencies: SettingsPageDataDependencies,
+  dependencies: SettingsPageLoadOptions,
 ): Promise<SettingsPageData> {
   const {
+    includeSpoolRows,
     loadSyncSettings = getLibrarySyncSettings,
     loadCatalogRows = loadCatalogMasters,
     fetchHostPrinterOverview = fetchLibrarySyncPrinterOverview,
@@ -158,20 +160,24 @@ async function loadClientSettings(
     clientLibraryId: target?.libraryId,
     clientTargetGeneration: settings.target_generation,
   };
+  let spoolRequest = null;
+  if (target && includeSpoolRows) {
+    spoolRequest = settings.target_generation !== undefined
+      ? fetchHostSpoolSnapshot(target.baseUrl, target.libraryId, settings.target_generation)
+      : Promise.reject(new Error("Missing Host target generation for the spool snapshot."));
+  }
   const results = target ? await Promise.allSettled([
     loadCatalogRows({ ...options, limit: 5000 }),
     fetchHostPrinterOverview(target.baseUrl, target.libraryId),
     fetchHostPrinterSettings(target.baseUrl, target.libraryId),
-    settings.target_generation !== undefined
-      ? fetchHostSpoolSnapshot(target.baseUrl, target.libraryId, settings.target_generation)
-      : Promise.reject(new Error("Missing Host target generation for the spool snapshot.")),
+    spoolRequest,
     fetchHostSnapshot(target.baseUrl, target.libraryId),
   ]) : null;
   if (results) notifySettledErrors(results, onHostLoadError);
   const [catalog, printers, printerSettings, spools, snapshot] = results ?? [];
   const fallback: LibrarySyncCacheDomain[] = [];
   if (printers?.status !== "fulfilled") fallback.push("printers");
-  if (spools?.status !== "fulfilled") fallback.push("spools");
+  if (includeSpoolRows && spools?.status !== "fulfilled") fallback.push("spools");
   if (snapshot?.status !== "fulfilled") fallback.push("snapshot");
   const fetched = snapshot?.status === "fulfilled" ? snapshot.value : null;
   const current = await loadSyncSettings(fallback, settings.target_generation, fetched?.captured_at);
@@ -183,7 +189,7 @@ async function loadClientSettings(
     syncSettings: { ...current, cached_snapshot: librarySyncSnapshot },
     librarySyncSnapshot,
     overviewRows: printers?.status === "fulfilled" ? printers.value : current.cached_printers?.rows ?? [],
-    spoolRows: normalizeSpoolWithMasterRows(spools?.status === "fulfilled" ? spools.value.rows : current.cached_spools?.rows ?? []),
+    spoolRows: normalizeSpoolWithMasterRows(spools?.status === "fulfilled" ? spools.value?.rows ?? [] : current.cached_spools?.rows ?? []),
     bambuLiveIntegrations: printerSettings?.status === "fulfilled"
       ? mapBambuLiveIntegrations(printerSettings.value.bambu_live_integrations) : {},
     revisionPollComplete: results?.every(result => result.status === "fulfilled") ?? false,
@@ -192,11 +198,13 @@ async function loadClientSettings(
 
 async function loadLocalSettings(
   settings: LibrarySyncSettings,
-  dependencies: SettingsPageDataDependencies,
+  dependencies: SettingsPageLoadOptions,
 ): Promise<SettingsPageData> {
   const snapshot = await (dependencies.loadPrinterSettings ?? getPrinterSettings)();
   const catalogRows = await (dependencies.loadCatalogRows ?? loadCatalogMasters)({ clientReadOnly: false, limit: 5000 });
-  const spools = (dependencies.loadSpoolRows ?? loadAllSpoolRows)({ clientReadOnly: false }, 1000);
+  const spools = dependencies.includeSpoolRows
+    ? (dependencies.loadSpoolRows ?? loadAllSpoolRows)({ clientReadOnly: false }, 1000)
+    : Promise.resolve([]);
   const spoolRows = await (settings.low_stock_policy_valid === false ? spools.catch(() => []) : spools);
   const overviewRows = await (dependencies.listLocalPrinterOverview ?? listPrinterOverview)();
   const current = await (dependencies.loadSyncSettings ?? getLibrarySyncSettings)([]);

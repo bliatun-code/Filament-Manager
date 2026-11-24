@@ -40,6 +40,7 @@ import {
 import type { LibrarySyncMode } from "./settings_library_sync_model";
 
 type UseSettingsPageReloadInput = {
+  includeSpoolRows: boolean;
   onDataReloaded?: () => Promise<unknown> | unknown;
   suspendSilentReload?: boolean;
   setBambuLiveIntegrations: Dispatch<SetStateAction<Record<string, BambuLiveIntegrationEntry["config"]>>>;
@@ -54,7 +55,7 @@ type UseSettingsPageReloadInput = {
   setLoading: Dispatch<SetStateAction<boolean>>;
   setPrinterOverview: Dispatch<SetStateAction<PrinterOverviewRow[]>>;
   setPrinters: Dispatch<SetStateAction<PrinterRow[]>>;
-  setSpoolRows: Dispatch<SetStateAction<NormalizedSpoolWithMasterRow[]>>;
+  setSpoolRows: Dispatch<SetStateAction<NormalizedSpoolWithMasterRow[] | null>>;
   setSwatchDraftById: Dispatch<SetStateAction<Record<string, string>>>;
   settingsPageMessageLabels: () => SettingsPageMessageLabels;
   settingsClientHostBaseUrl: string | null;
@@ -66,6 +67,7 @@ type UseSettingsPageReloadInput = {
 };
 
 type SettingsReloadOptions = {
+  tabChange?: boolean;
   revisionCheck?: boolean;
   silent?: boolean;
 };
@@ -80,6 +82,7 @@ const SETTINGS_REVISION_DOMAINS = [
 class SettingsRevisionPollError extends Error {}
 
 export function useSettingsPageReload({
+  includeSpoolRows,
   onDataReloaded,
   suspendSilentReload = false,
   setBambuLiveIntegrations,
@@ -135,9 +138,10 @@ export function useSettingsPageReload({
       // Catalog rows are Host-scoped. Never keep Host A's last-good catalog visible while a
       // replacement Host B is unresolved; transient failures for the same identity are handled
       // later by retaining the already displayed rows.
+      setSpoolRows(null);
       setSwatchDraftById({});
     }
-  }, [dataSourceIdentity, setCatalogData, setSwatchDraftById]);
+  }, [dataSourceIdentity, setCatalogData, setSpoolRows, setSwatchDraftById]);
 
   useEffect(
     () => () => {
@@ -206,6 +210,7 @@ export function useSettingsPageReload({
       }
       const pageData = buildSettingsPageDataModel(
         await loadSettingsPageData({
+          includeSpoolRows,
           onHostLoadError: (loadError) => {
             console.warn(
               "Settings host printer overview unavailable, using cached snapshot.",
@@ -234,7 +239,7 @@ export function useSettingsPageReload({
       requestDataSourceIdentity = resolvedDataSourceIdentity;
       setPrinters(pageData.printers);
       setPrinterOverview(pageData.printerOverview);
-      setSpoolRows(pageData.spoolRows);
+      setSpoolRows(includeSpoolRows ? pageData.spoolRows : null);
       setBambuLiveIntegrations(pageData.bambuLiveIntegrations);
       // A rejected Client catalog read is a partial reload, not an authoritative empty
       // catalog. Commit the target resolved by this load atomically; the request token above
@@ -249,7 +254,7 @@ export function useSettingsPageReload({
       );
       setLibrarySyncSettings(pageData.librarySyncSettings);
       setLibrarySyncSnapshot(pageData.librarySyncSnapshot);
-      if (!options?.silent) {
+      if (!options?.silent && !(options?.tabChange && resolvedDataSourceIdentity === dataSourceIdentity)) {
         setLibrarySyncModeDraft(pageData.librarySyncModeDraft);
         setLibrarySyncDeviceNameDraft(pageData.librarySyncDeviceNameDraft);
         setLibrarySyncHostBaseUrlDraft(pageData.librarySyncHostBaseUrlDraft);
@@ -260,7 +265,8 @@ export function useSettingsPageReload({
       }
       let secondaryReloadComplete = true;
       try {
-        await onDataReloaded?.();
+        // Opening a spool-dependent tab already starts its own filament standards read.
+        if (!options?.tabChange) await onDataReloaded?.();
       } catch (secondaryLoadError) {
         // The base settings payload above is already valid and may contain the
         // client's cached Host data. A Host-dependent secondary section must
@@ -325,6 +331,7 @@ export function useSettingsPageReload({
       );
     }
   }, [
+    includeSpoolRows,
     onDataReloaded,
     setBambuLiveIntegrations,
     setCatalogData,

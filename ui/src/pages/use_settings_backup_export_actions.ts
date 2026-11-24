@@ -2,12 +2,8 @@ import type { SettingsBackupValidation } from "./settings_backup_model";
 import { type Dispatch, type SetStateAction } from "react";
 import { downloadTextFile } from "../lib/download_file";
 import { toErrorMessage } from "../lib/error_text";
-import { buildInventoryExportCsv, buildInventoryExportJson } from "../lib/inventory_export";
-import type { NormalizedSpoolWithMasterRow } from "../lib/spool_row_normalization";
 import {
   exportFullBackupJson,
-  exportInventoryCsv,
-  exportInventoryJson,
   fetchLibrarySyncFullBackupJson,
   validateFullBackupJson,
 } from "../lib/tauri_client";
@@ -16,8 +12,8 @@ import {
   buildSettingsBackupErrorMessage,
   buildSettingsBackupExportSuccessMessage,
   buildSettingsInventoryExportSuccessMessage,
-  resolveSettingsInventoryExportSource,
   type SettingsBackupErrorMessageLabels,
+  type SettingsInventoryExportFormat,
   type SettingsInventoryExportMessageLabels,
 } from "./settings_backup_model";
 
@@ -25,7 +21,7 @@ type SettingsTranslator = ReturnType<typeof useI18n>["t"];
 
 type UseSettingsBackupExportActionsInput = {
   busy: boolean;
-  loadSettingsInventoryRows: () => Promise<NormalizedSpoolWithMasterRow[]>;
+  settingsClientTargetGeneration: number | null;
   recordExportedBackupValidation: (
     validationSummary: SettingsBackupValidation,
     exportedAt: string,
@@ -46,7 +42,7 @@ type UseSettingsBackupExportActionsInput = {
 
 export function useSettingsBackupExportActions({
   busy,
-  loadSettingsInventoryRows,
+  settingsClientTargetGeneration,
   recordExportedBackupValidation,
   recordFullBackupExport,
   setBusy,
@@ -121,75 +117,30 @@ export function useSettingsBackupExportActions({
     }
   }
 
-  async function handleExportInventoryCsv() {
-    if (!tauri || busy) {
-      return;
-    }
+  async function exportInventory(format: SettingsInventoryExportFormat) {
+    if (!tauri || busy) return;
     setBusy(true);
     setError(null);
     setInfo(null);
+    const csv = format === "csv";
     try {
-      const payload =
-        resolveSettingsInventoryExportSource(settingsClientReadOnly) === "loadedRows"
-          ? { content: buildInventoryExportCsv(await loadSettingsInventoryRows()) }
-          : await exportInventoryCsv();
+      const { settingsInventoryExportContent } = await import("./settings_inventory_rows_loader_model");
+      const content = await settingsInventoryExportContent(format, {
+        clientReadOnly: settingsClientReadOnly,
+        clientHostBaseUrl: settingsClientHostBaseUrl,
+        clientLibraryId: settingsClientLibraryId,
+        clientTargetGeneration: settingsClientTargetGeneration,
+      });
       downloadTextFile(
-        payload.content,
-        `filament-manager-inventory-${Date.now()}.csv`,
-        "text/csv;charset=utf-8",
+        content,
+        `filament-manager-inventory-${Date.now()}.${format}`,
+        csv ? "text/csv;charset=utf-8" : "application/json;charset=utf-8",
       );
-      setInfo(
-        buildSettingsInventoryExportSuccessMessage("csv", settingsInventoryExportMessageLabels()),
-      );
+      setInfo(buildSettingsInventoryExportSuccessMessage(format, settingsInventoryExportMessageLabels()));
     } catch (exportError) {
       console.error(exportError);
-      setError(
-        toErrorMessage(
-          exportError,
-          buildSettingsBackupErrorMessage(
-            "exportInventoryCsvFailed",
-            settingsBackupErrorMessageLabels(),
-          ),
-          t,
-        ),
-      );
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  async function handleExportInventoryJson() {
-    if (!tauri || busy) {
-      return;
-    }
-    setBusy(true);
-    setError(null);
-    setInfo(null);
-    try {
-      const payload =
-        resolveSettingsInventoryExportSource(settingsClientReadOnly) === "loadedRows"
-          ? { content: buildInventoryExportJson(await loadSettingsInventoryRows()) }
-          : await exportInventoryJson();
-      downloadTextFile(
-        payload.content,
-        `filament-manager-inventory-${Date.now()}.json`,
-        "application/json;charset=utf-8",
-      );
-      setInfo(
-        buildSettingsInventoryExportSuccessMessage("json", settingsInventoryExportMessageLabels()),
-      );
-    } catch (exportError) {
-      console.error(exportError);
-      setError(
-        toErrorMessage(
-          exportError,
-          buildSettingsBackupErrorMessage(
-            "exportInventoryJsonFailed",
-            settingsBackupErrorMessageLabels(),
-          ),
-          t,
-        ),
-      );
+      const key = csv ? "exportInventoryCsvFailed" : "exportInventoryJsonFailed";
+      setError(toErrorMessage(exportError, buildSettingsBackupErrorMessage(key, settingsBackupErrorMessageLabels()), t));
     } finally {
       setBusy(false);
     }
@@ -197,7 +148,7 @@ export function useSettingsBackupExportActions({
 
   return {
     handleExportFullBackup,
-    handleExportInventoryCsv,
-    handleExportInventoryJson,
+    handleExportInventoryCsv: () => exportInventory("csv"),
+    handleExportInventoryJson: () => exportInventory("json"),
   };
 }

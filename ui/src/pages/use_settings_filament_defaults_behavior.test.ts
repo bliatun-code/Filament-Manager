@@ -245,6 +245,7 @@ function props(overrides: Partial<HookProps> = {}): HookProps {
     clientLibraryId: "library-a",
     clientReadOnly: true,
     clientTargetGeneration: 1,
+    enabled: true,
     fallbackSpoolRows: [],
     onInventoryChanged: () => undefined,
     onLoadError: () => undefined,
@@ -294,6 +295,23 @@ globalThis.window = {
 
 after(() => {
   globalThis.window = previousWindow;
+});
+
+test("filament standards read only while their tab is open, including after a page refresh", async () => {
+  const calls: string[] = [];
+  invokeHandler = async command => { calls.push(command); return snapshot("EUR"); };
+  const hidden = props({ enabled: false });
+  const harness = new HookHarness(useSettingsFilamentDefaults, hidden);
+  await harness.flush();
+  await harness.current.reload();
+  assert.deepEqual(calls, []);
+  harness.render({ ...hidden, enabled: true });
+  await harness.flush();
+  assert.deepEqual(calls, ["fetch_library_sync_filament_standards"]);
+  harness.render(hidden);
+  await harness.current.reload();
+  assert.equal(calls.length, 1);
+  harness.unmount();
 });
 
 test("blank client Host coordinates do not start a Host request", async () => {
