@@ -37,6 +37,15 @@ that this lookup can read the settings with unreadable cache values and
 returns identical JSON with zero and 10,000 cached spools. Each page loads
 the lists it needs separately.
 
+Opening **Loan out roll** reads the first 150 eligible rolls, the total count
+and any eligible selection from Inventory in one call. Searches match all
+words across the full library, including the roll reference and location.
+Show more restarts at the first page if inventory, catalog, printer or loan
+revisions have changed. The paired picker requires the same Host, library and
+target generation throughout. Only a Host without the picker capability uses
+the older live inventory and printer reads. An unreachable Host leaves lending
+unavailable and preserves the offline inventory copy.
+
 Printers reads the overview and printer settings together. The overview carries
 vendor, initial and tare weights, catalog default weight and the material's
 low-stock threshold for each resolved assignment. Opening or refreshing manual

@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { resolve } from "node:path";
 import { chromium, webkit } from "playwright";
+import { require as requireTs } from "tsx/cjs/api";
 import { mkdir } from "node:fs/promises";
 import { createVisualQaFixture } from "./create-visual-qa-fixture.mjs";
 import { cleanupVisualQaDatabase } from "./visual-qa-db.mjs";
@@ -64,6 +65,20 @@ function loanFixture(base) {
   return fixture;
 }
 
+const { buildLoanableSpoolCandidates } = requireTs("../ui/src/lib/loan_out_data_source.ts", import.meta.url);
+const { normalizeSpoolWithMasterRows } = requireTs("../ui/src/lib/spool_row_normalization.ts", import.meta.url);
+const { filterLoanableSpoolsBySearch } = requireTs("../ui/src/lib/loan_out_candidate_model.ts", import.meta.url);
+
+function resolveLoanDialogInvoke(fixture, command, payload) {
+  if (command !== "get_loan_picker_page") return resolveUiBrowserPerformanceInvoke(fixture, command, payload);
+  const { search, offset, selected_id } = payload.query;
+  const candidates = buildLoanableSpoolCandidates(normalizeSpoolWithMasterRows(fixture.spoolRows), fixture.printerRows);
+  const matches = filterLoanableSpoolsBySearch(candidates, search);
+  const rows = matches.slice(offset, offset + 150);
+  const selected = rows.some(row => row.id === selected_id) ? null : candidates.find(row => row.id === selected_id) ?? null;
+  return { rows, selected, total: candidates.length, matches: matches.length, revisions: [1, 1, 1, 1] };
+}
+
 async function runCase(browser, url, base, name, check) {
   const context = await browser.newContext({ locale: "en-US", viewport: { width: 1440, height: 1000 } });
   try {
@@ -81,13 +96,13 @@ async function runCase(browser, url, base, name, check) {
     });
     await installTauriFixtureBridge(page, fixture, calls, (data, command, payload) => {
       if (state.invoke) return state.invoke(command, payload);
-      return resolveUiBrowserPerformanceInvoke(data, command, payload);
+      return resolveLoanDialogInvoke(data, command, payload);
     });
     await page.goto(`${url}/?bfm_locale=en`, { waitUntil: "domcontentloaded" });
     await page.getByRole("navigation", { name: "Navigation", exact: true }).getByRole("button", { name: "Inventory", exact: true }).click();
     await page.locator("#inventory-loans-tab").click();
     await page.getByRole("button", { name: /^Return ·/ }).waitFor();
-    const fallback = (command, payload) => resolveUiBrowserPerformanceInvoke(fixture, command, payload);
+    const fallback = (command, payload) => resolveLoanDialogInvoke(fixture, command, payload);
     await check({ page, fixture, calls, state, fallback });
     assert.deepEqual(errors, [], `${name}: unexpected browser errors`);
     process.stdout.write(`  Passed: ${name}\n`);
@@ -110,7 +125,7 @@ async function checkReopen({ page, fixture, calls, state, fallback }) {
   fixture.printerRows = [{ printer: { id: "test-printer" }, slots: [{ spool_id: "dialog-spool-a" }] }];
   fixture.spoolRows[0].spool.remaining_g = 300;
   state.invoke = (command, payload) => {
-    if (command === "get_printer_settings") throw new Error("[loan-regression] settings failed");
+    if (command === "get_loan_picker_page") throw new Error("[loan-regression] picker failed");
     return fallback(command, payload);
   };
   dialog = await openLoanOut(page);
@@ -162,9 +177,9 @@ async function checkVisibleValidation({ page, calls }) {
 async function checkLateLoad({ page, fixture, state, fallback }) {
   const pending = deferred();
   const started = deferred();
-  const oldRows = structuredClone(fixture.spoolRows);
+  let oldPage;
   state.invoke = (command, payload) => {
-    if (command === "list_spools") { started.resolve(); return pending.promise; }
+    if (command === "get_loan_picker_page") { oldPage = fallback(command, payload); started.resolve(); return pending.promise; }
     return fallback(command, payload);
   };
   let dialog = await openLoanOut(page);
@@ -175,7 +190,7 @@ async function checkLateLoad({ page, fixture, state, fallback }) {
   state.invoke = null;
   dialog = await openLoanOut(page);
   await dialog.getByRole("spinbutton").fill("450");
-  pending.resolve(oldRows);
+  pending.resolve(oldPage);
   // A bridge round trip followed by paint drains the old request's continuation.
   await page.evaluate(async () => {
     await window.__TAURI__.invoke("list_printer_overview");
@@ -290,6 +305,7 @@ async function checkPairedDialogTargets({ page, fixture, calls, state, fallback 
       case "fetch_cached_library_sync_loans":
       case "fetch_cached_library_sync_active_loans": return null;
       case "fetch_library_sync_printer_overview": return fixture.printerRows;
+      case "get_loan_picker_page": return null; // Older Host
       case "fetch_library_sync_spool_snapshot": return { rows: fixture.spoolRows, captured_at: null };
       case "lend_library_sync_host_spool":
       case "return_library_sync_host_loan": {
@@ -342,6 +358,80 @@ async function checkPairedDialogTargets({ page, fixture, calls, state, fallback 
     assert.equal(writes.length, initialWrites + 1);
   }
   assert.ok(!calls.some(({ command }) => ["lend_spool", "return_spool_loan", "return_inbound_spool_loan"].includes(command)));
+}
+
+async function checkPagedLoanPicker({ page, fixture, state, calls, fallback }) {
+  const [first, preferred] = fixture.spoolRows;
+  fixture.trustedLanStatus = { ...fixture.trustedLanStatus, local_name_running: true, shell_url: "http://fixture.local:4278/companion" };
+  state.invoke = (command, payload) => {
+    if (["list_spool_history", "list_spool_usage"].includes(command)) return [];
+    return fallback(command, payload);
+  };
+  await page.locator("#inventory-stock-tab").click();
+  await page.getByRole("button", { name: /#pool-b/ }).filter({ visible: true }).click();
+  const open = page.getByRole("button", { name: "Loan out", exact: true });
+  await open.waitFor();
+
+  // Inventory reviewed two rolls. More stock has since arrived ahead of its selection.
+  const additions = Array.from({ length: 9998 }, (_, i) => ({
+    ...first, spool: { ...first.spool, id: `extra-${i + 1}` },
+  }));
+  fixture.spoolRows = [first, ...additions, preferred];
+  const started = deferred();
+  const late = deferred();
+  let revision = 1;
+  const pickerQueries = [];
+  state.invoke = (command, payload) => {
+    if (command !== "get_loan_picker_page") return fallback(command, payload);
+    pickerQueries.push(payload.query);
+    if (payload.query.search === "slow") {
+      started.resolve();
+      return late.promise;
+    }
+    if (payload.query.search === "offline") throw new Error("[loan-regression] picker offline");
+    return { ...fallback(command, payload), revisions: [revision, 1, 1, 1] };
+  };
+  const firstCall = calls.length;
+  await open.click();
+  const dialog = page.getByRole("dialog", { name: "Loan out roll" });
+  const group = dialog.getByRole("group", { name: "Available to loan" });
+  const rows = group.locator("button[aria-pressed]");
+  await group.getByRole("button", { pressed: true }).waitFor();
+  assert.equal(pickerQueries[0].selected_id, preferred.spool.id);
+  await dialog.getByText("10,000 rolls", { exact: true }).waitFor();
+  assert.equal(await rows.count(), 151);
+  assert.match(await group.getByRole("button", { pressed: true }).innerText(), /#pool-b/);
+  await dialog.getByRole("spinbutton").fill("411");
+
+  assert.ok(pickerQueries.every(q => q.offset === 0 && q.selected_id === preferred.spool.id));
+  const initialReads = pickerQueries.length;
+  const more = dialog.getByRole("button", { name: /Show more/ });
+  await more.click();
+  await rows.nth(300).waitFor();
+  assert.deepEqual(pickerQueries.slice(initialReads).map(q => q.offset), [150]);
+  revision++;
+  await more.click();
+  await rows.nth(151).waitFor({ state: "detached" });
+  assert.deepEqual(pickerQueries.slice(initialReads).map(q => q.offset), [150, 300, 0]);
+  assert.equal(await rows.count(), 151);
+
+  const search = dialog.getByRole("searchbox");
+  await search.fill("slow");
+  await waitForStart(started);
+  assert.equal(await rows.first().isDisabled(), true);
+  await search.fill("#pool-b Generic");
+  await dialog.getByText("1 of 10,000 rolls", { exact: true }).waitFor();
+  late.resolve({ rows: [], total: 0, matches: 0, selected: null, revisions: [1, 1, 1, 1] });
+  await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+  assert.equal(await rows.count(), 1);
+  assert.equal(await dialog.getByRole("spinbutton").inputValue(), "411");
+  assert.match(await group.getByRole("button", { pressed: true }).innerText(), /#pool-b/);
+
+  await search.fill("offline");
+  await dialog.getByRole("alert").waitFor();
+  assert.equal(await dialog.getByRole("button", { name: "Loan out roll", exact: true }).count(), 0);
+  assert.ok(!calls.slice(firstCall).some(({ command }) =>
+    command.includes("cached") || ["list_spools", "list_printer_overview", "lend_spool"].includes(command)));
 }
 
 async function checkScrollableLoanForm({ page, fixture }) {
@@ -407,6 +497,7 @@ async function main() {
     browser = await (engine === "webkit" ? webkit : chromium).launch({ headless: true });
     const failures = [];
     for (const [name, check] of [
+      ["inventory selection, paged search, changing stock and interrupted reads", checkPagedLoanPicker],
       ["loan form remains scrollable with 42 rolls and a short window", checkScrollableLoanForm],
       ["paired loan dialogs keep the reviewed target through A–B–A and recover on reopen", checkPairedDialogTargets],
       ["failed reopen clears old selection; retry uses current assignments", checkReopen],

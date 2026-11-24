@@ -1,3 +1,4 @@
+import { formatSpoolReference } from "./display_format";
 import type { LoanableSpool } from "./loan_out_data_source";
 
 export function filterLoanableSpoolsBySearch(
@@ -13,6 +14,7 @@ export function filterLoanableSpoolsBySearch(
     const searchable = [
       spool.id,
       `#${spool.id}`,
+      formatSpoolReference(spool.id),
       spool.vendor,
       spool.material,
       spool.filamentName,

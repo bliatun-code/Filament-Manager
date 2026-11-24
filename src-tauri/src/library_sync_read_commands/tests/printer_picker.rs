@@ -1,7 +1,7 @@
 use super::{fake_health, fake_host_state, spawn_fake_host_with, FakeHostResponse};
 use crate::backend::filament_database::FilamentDatabase;
 use crate::companion_models::PRINTER_PICKER_CAPABILITY;
-use crate::printer_picker_commands::printer_picker_page_blocking;
+use crate::spool_picker_commands::printer_picker_page_blocking;
 use serde_json::json;
 
 #[test]

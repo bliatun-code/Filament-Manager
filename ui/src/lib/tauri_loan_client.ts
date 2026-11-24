@@ -1,3 +1,4 @@
+import type { SpoolStatus } from "./shared_contracts.generated";
 import { invoke } from "./tauri_invoke";
 
 export type LendSpoolInput = {
@@ -145,4 +146,39 @@ export async function exportLoansCsv(includeReturned = true, direction?: string 
     includeReturned,
     direction: direction ?? null,
   });
+}
+
+export type LoanableSpool = {
+  id: string;
+  vendor: string;
+  material: string;
+  filamentName: string;
+  colorName: string;
+  hexColor?: string | null;
+  status: SpoolStatus;
+  remainingGrams?: number | null;
+  spoolTareWeightGrams?: number | null;
+  location?: string | null;
+};
+
+export type LoanPickerPage = {
+  rows: LoanableSpool[];
+  selected: LoanableSpool | null;
+  total: number;
+  matches: number;
+  revisions: [number, number, number, number];
+};
+
+export type LoanPickerQuery = {
+  locale: string;
+  search: string;
+  selected_id: string | null;
+  offset: number;
+};
+
+export function getLoanPickerPage(
+  query: LoanPickerQuery,
+  target: { base_url: string | null; expected_library_id: string; target_generation: number },
+) {
+  return invoke<LoanPickerPage | null>("get_loan_picker_page", { query, target });
 }

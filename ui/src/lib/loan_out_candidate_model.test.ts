@@ -9,7 +9,7 @@ import type { LoanableSpool } from "./loan_out_data_source";
 
 const spools: LoanableSpool[] = [
   {
-    id: "493767",
+    id: "spool_imported_493767",
     vendor: "eSUN",
     material: "PLA-Matte",
     filamentName: "PLA Matte",
@@ -34,6 +34,7 @@ test("loan candidate search covers identity, vendor, color, location and referen
   assert.deepEqual(filterLoanableSpoolsBySearch(spools, "peach pink"), [spools[0]]);
   assert.deepEqual(filterLoanableSpoolsBySearch(spools, "esun shelf 3"), [spools[0]]);
   assert.deepEqual(filterLoanableSpoolsBySearch(spools, "#493767"), [spools[0]]);
+  assert.deepEqual(filterLoanableSpoolsBySearch(spools, "#spool_imported_493767"), [spools[0]]);
   assert.deepEqual(filterLoanableSpoolsBySearch(spools, "print black"), [spools[1]]);
   assert.equal(filterLoanableSpoolsBySearch(spools, "petg").length, 0);
   assert.equal(filterLoanableSpoolsBySearch(spools, "   "), spools);

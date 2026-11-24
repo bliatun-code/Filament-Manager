@@ -1,11 +1,5 @@
 use std::{collections::HashMap, sync::LazyLock};
 
-use icu_collator::{
-    options::{CollatorOptions, Strength},
-    preferences::CollationNumericOrdering,
-    Collator, CollatorPreferences,
-};
-use icu_locale_core::Locale;
 use regex::Regex;
 use rusqlite::OptionalExtension;
 use rusqlite::{functions::FunctionFlags, params};
@@ -17,7 +11,7 @@ use super::{
     database_result::{InventoryError, InventoryResult},
     database_rows::map_spool_with_master_row,
     database_spool_models::SpoolWithMasterRow,
-    database_spool_queries::SPOOL_WITH_MASTER_SELECT,
+    database_spool_queries::{register_picker_order, SPOOL_WITH_MASTER_SELECT},
 };
 
 const ELIGIBLE_PAGE: &str = "WITH candidates AS MATERIALIZED (
@@ -165,24 +159,8 @@ impl FilamentDatabase {
         &self,
         query: &PrinterPickerQuery,
     ) -> InventoryResult<PrinterPickerPage> {
-        let mut prefs = query
-            .locale
-            .parse::<Locale>()
-            .map(CollatorPreferences::from)
-            .unwrap_or_default();
-        prefs.numeric_ordering = Some(CollationNumericOrdering::True);
-        let mut options = CollatorOptions::default();
-        options.strength = Some(Strength::Primary);
-        let collator =
-            Collator::try_new(prefs, options).map_err(|e| InventoryError::Db(e.to_string()))?;
         let conn = self.connection();
-        conn.create_collation("picker_order", move |a, b| {
-            if a == b {
-                std::cmp::Ordering::Equal
-            } else {
-                collator.compare(a.trim(), b.trim())
-            }
-        })?;
+        register_picker_order(conn, &query.locale)?;
         let placements = query.placements.clone();
         conn.create_scalar_function(
             "picker_search",
