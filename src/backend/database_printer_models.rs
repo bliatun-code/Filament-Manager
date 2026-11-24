@@ -20,11 +20,24 @@ pub struct PrinterUsageRow {
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct PrinterAssignedSpoolDetails {
+    pub master_id: String,
+    pub vendor: String,
+    pub default_weight: i64,
+    pub initial_weight_g: Option<i64>,
+    pub spool_tare_weight_g: Option<i64>,
+    pub low_stock_threshold_g: i64,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct PrinterAmsSlotRow {
     pub slot_id: String,
     pub ams_id: String,
     pub slot_index: i64,
     pub spool_id: Option<String>,
+    /// Absent on older Hosts, and when an assignment cannot be resolved.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub assigned_spool_details: Option<PrinterAssignedSpoolDetails>,
     pub spool_status: Option<String>,
     pub spool_ownership_type: Option<String>,
     pub spool_owner_name: Option<String>,

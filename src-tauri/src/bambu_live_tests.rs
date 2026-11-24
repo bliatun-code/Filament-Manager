@@ -335,6 +335,7 @@ fn mqtt_attempt(address: &str, error: std::io::Error) -> (SocketAddr, std::io::E
 
 fn make_slot() -> PrinterAmsSlotRow {
     PrinterAmsSlotRow {
+        assigned_spool_details: None,
         slot_id: "slot_1".to_string(),
         ams_id: "printer_1_ams_1".to_string(),
         slot_index: 1,

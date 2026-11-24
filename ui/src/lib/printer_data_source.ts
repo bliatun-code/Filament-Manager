@@ -7,6 +7,7 @@ import {
   getPrinterSettings,
   listPrinterOverview,
   type BambuLiveIntegrationEntry,
+  type PrinterAmsSlotRow,
   type PrinterOverviewRow,
   type PrinterSettingsSnapshot,
 } from "./tauri_client";
@@ -16,6 +17,7 @@ import {
   type loadSpoolRowsPage,
 } from "./spool_data_source";
 import {
+  normalizeSpoolWithMasterRow,
   normalizeSpoolWithMasterRows,
   type NormalizedSpoolWithMasterRow,
 } from "./spool_row_normalization";
@@ -185,6 +187,26 @@ export async function loadPrinterOverviewData(
   };
 }
 
+export function assignedPrinterSpool(slot: PrinterAmsSlotRow): NormalizedSpoolWithMasterRow | null {
+  const details = slot.assigned_spool_details;
+  if (!details || !slot.spool_id || slot.spool_status == null || slot.spool_material == null ||
+      slot.spool_filament_name == null || slot.spool_color_name == null) return null;
+  return normalizeSpoolWithMasterRow({
+    spool: {
+      id: slot.spool_id, master_id: details.master_id, status: slot.spool_status,
+      ownership_type: slot.spool_ownership_type, owner_name: slot.spool_owner_name,
+      initial_weight_g: details.initial_weight_g, remaining_g: slot.spool_remaining_g,
+      spool_tare_weight_g: details.spool_tare_weight_g, rfid_tag: slot.spool_rfid_tag,
+    },
+    master: {
+      id: details.master_id, vendor: details.vendor, material: slot.spool_material,
+      filament_name: slot.spool_filament_name, color_name: slot.spool_color_name,
+      hex_color: slot.spool_hex_color, default_weight: details.default_weight,
+    },
+    low_stock_threshold_g: details.low_stock_threshold_g,
+  });
+}
+
 async function readPrinterSpools<T>(
   options: PrinterDataSourceOptions,
   overview: Promise<PrinterOverviewRow[]>,
@@ -194,7 +216,7 @@ async function readPrinterSpools<T>(
   if (!options.deferUnusedSpools) return read();
   try {
     const printers = await overview;
-    if (!printers.some(({ slots }) => slots.some(slot => slot.spool_id))) {
+    if (!printers.some(({ slots }) => slots.some(slot => slot.spool_id && !assignedPrinterSpool(slot)))) {
       const integrations = mapBambuLiveIntegrations((await settings).bambu_live_integrations);
       const hasLiveTray = printers.some(({ printer, slots }) => slots.some(slot =>
         findLiveTrayForSlot(printer.id, slot, integrations, options.clientReadOnly, "LIVE").tray,

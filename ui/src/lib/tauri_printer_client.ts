@@ -21,6 +21,14 @@ export type PrinterAmsSlotRow = {
   ams_id: string;
   slot_index: number;
   spool_id?: string | null;
+  assigned_spool_details?: {
+    master_id: string;
+    vendor: string;
+    default_weight: number;
+    initial_weight_g: number | null;
+    spool_tare_weight_g: number | null;
+    low_stock_threshold_g: number;
+  } | null;
   spool_status?: string | null;
   spool_ownership_type?: string | null;
   spool_owner_name?: string | null;

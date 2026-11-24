@@ -15,6 +15,7 @@ import {
   type Dispatch,
   type SetStateAction,
 } from "react";
+import { assignedPrinterSpool } from "../lib/printer_data_source";
 import { commandErrorText } from "../lib/error_text";
 import {
   buildAllowedSpoolOptionMapsBySlotSpoolId,
@@ -31,6 +32,7 @@ import {
   buildSlotCatalogOnboardingPostCreateWrites,
   buildSlotCatalogOnboardingPrompt,
   buildSlotSwapDraft,
+  isSpoolAllowedForSlot,
   findPrinterSlotById,
   parseWeightInput,
   resolveLiveRfidObservedAt,
@@ -178,7 +180,19 @@ export function usePrinterSlotInteractions({
     };
   }, [resetPrinterInteractionState, scope, setBusy, setError, setInfo]);
 
-  const spoolsById = useMemo(() => buildSpoolsById(spools), [spools]);
+  const spoolsById = useMemo(() => {
+    const rows = buildSpoolsById(spools);
+    for (const { printer, slots } of printers) {
+      for (const slot of slots) {
+        if (!slot.spool_id || rows.has(slot.spool_id)) continue;
+        const live = resolveLiveTrayForSlot(printer.id, slot, bambuLiveIntegrations, clientReadOnly, clientPrinterSource);
+        if (live.tray) continue;
+        const assigned = assignedPrinterSpool(slot);
+        if (assigned) rows.set(slot.spool_id, assigned);
+      }
+    }
+    return rows;
+  }, [bambuLiveIntegrations, clientPrinterSource, clientReadOnly, printers, spools]);
 
   const resolveSpoolTareWeightById = useCallback(
     (spoolId: string | null | undefined) =>
@@ -217,9 +231,13 @@ export function usePrinterSlotInteractions({
       const optionMap =
         allowedSpoolOptionMapsBySlotSpoolId.get(slotSpoolId?.trim() ?? "") ??
         allowedSpoolOptionMapsBySlotSpoolId.get("");
-      return optionMap?.get(normalizedTargetId) ?? null;
+      const option = optionMap?.get(normalizedTargetId);
+      if (option) return option;
+      if (normalizedTargetId !== slotSpoolId) return null;
+      const assigned = spoolsById.get(normalizedTargetId);
+      return assigned && isSpoolAllowedForSlot(assigned, slotSpoolId) ? assigned : null;
     },
-    [allowedSpoolOptionMapsBySlotSpoolId],
+    [allowedSpoolOptionMapsBySlotSpoolId, spoolsById],
   );
 
   const getSlotDraft = useCallback(

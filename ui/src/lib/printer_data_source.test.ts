@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { loadPrinterOverviewData, loadPrinterPageData } from "./printer_data_source";
+import { assignedPrinterSpool, loadPrinterOverviewData, loadPrinterPageData } from "./printer_data_source";
 import type { PrinterOverviewRow, PrinterSettingsSnapshot, SpoolWithMasterRow } from "./tauri_client";
 
 function printerOverviewRow(id: string): PrinterOverviewRow {
@@ -437,15 +437,24 @@ test("empty live and saved lists retain their source, including when a live cach
 
 test("the overview defers inventory until a slot, a live observation or the picker needs it", async () => {
   for (const clientReadOnly of [false, true]) {
-    for (const scenario of ["empty", "assigned", "live", "overview RFID", "picker"]) {
+    for (const scenario of ["empty", "legacy assignment", "manual assignment", "mixed capability", "assigned live", "live", "overview RFID", "picker"]) {
       const printer = printerOverviewRow("printer-a");
       printer.slots.push({
         slot_id: "slot-1", ams_id: "printer-a_ams_1", slot_index: 1,
-        spool_id: scenario === "assigned" ? "roll" : null,
+        spool_id: ["legacy assignment", "manual assignment", "mixed capability", "assigned live"].includes(scenario) ? "roll" : null,
+        spool_status: "IN_USE", spool_ownership_type: "BORROWED_IN", spool_owner_name: "Ada",
+        spool_material: "PLA", spool_filament_name: "Basic", spool_color_name: "Red", spool_remaining_g: 312,
+        assigned_spool_details: scenario === "legacy assignment" ? undefined : {
+          master_id: "master", vendor: "eSUN", default_weight: 1000, initial_weight_g: 800,
+          spool_tare_weight_g: 147, low_stock_threshold_g: 340,
+        },
         live_observed_rfid_tag: scenario === "overview RFID" ? "RFID" : null,
       });
+      if (scenario === "mixed capability") printer.slots.push({
+        slot_id: "other", ams_id: "printer-a_ams_1", slot_index: 2, spool_id: "legacy",
+      });
       const settings = printerSettingsSnapshot("printer-a");
-      if (scenario === "live") settings.bambu_live_integrations[0].config.observed_state = {
+      if (scenario === "live" || scenario === "assigned live") settings.bambu_live_integrations[0].config.observed_state = {
         online: true, mqtt_connected: true, trays: [{ tray_index: 0, loaded: true, tray_uuid: "RFID" }],
       };
       let reads = 0;
@@ -462,9 +471,18 @@ test("the overview defers inventory until a slot, a live observation or the pick
           return { rows: rows(), captured_at: "fresh" };
         },
       });
-      const needsRows = scenario !== "empty" && (scenario !== "overview RFID" || clientReadOnly);
+      const needsRows = !["empty", "manual assignment"].includes(scenario) && (scenario !== "overview RFID" || clientReadOnly);
       assert.equal(reads, Number(needsRows), scenario);
       assert.equal(result.spoolReadState, needsRows ? "available" : "deferred");
+      if (scenario === "manual assignment") {
+        assert.deepEqual(result.spools, []); // The picker and inventory matcher need a complete inventory.
+        const assigned = assignedPrinterSpool(result.printers[0].slots[0]);
+        assert.ok(assigned);
+        assert.equal(assigned.spool.normalized_status, "ASSIGNED");
+        assert.equal(assigned.spool.owner_name, "Ada");
+        assert.equal(assigned.spool.ownership_type, "BORROWED_IN");
+        assert.equal(assigned.low_stock_threshold_g, 340);
+      }
       assert.equal(result.source, "LIVE");
       assert.equal(result.revisionPollComplete, true);
     }

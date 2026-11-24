@@ -357,16 +357,20 @@ export default function PrintersPage() {
   ]);
 
   useEffect(() => {
+    if ((desktopVisualQaScenario === "printer-slot-assignment" || desktopVisualQaScenario === "printer-slot-replacement") &&
+        !desktopVisualQaApplied && !loading && !loadError && spoolReadState === "deferred" &&
+        printers.some(printer => printer.slots.length)) {
+      requestPickerSpools();
+    }
+  }, [desktopVisualQaApplied, desktopVisualQaScenario, loadError, loading, printers, requestPickerSpools, spoolReadState]);
+
+  useEffect(() => {
     if (
       desktopVisualQaScenario !== "printer-slot-assignment" ||
       desktopVisualQaApplied ||
       loading ||
       !tauri
     ) {
-      return;
-    }
-    if (spoolReadState === "deferred" && printers.some(printer => printer.slots.length)) {
-      if (!loadError) requestPickerSpools();
       return;
     }
     for (const printer of printers) {
@@ -381,9 +385,6 @@ export default function PrintersPage() {
     }
   }, [
     allowedSpoolsForSlot,
-    spoolReadState,
-    requestPickerSpools,
-    loadError,
     desktopVisualQaApplied,
     desktopVisualQaScenario,
     loading,
