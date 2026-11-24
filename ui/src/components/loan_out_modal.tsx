@@ -1,4 +1,6 @@
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { intlLocaleFor } from "../../../src-tauri/companion_browser/supported_locales.js";
+import type { LoanPickerPage } from "../lib/tauri_loan_client";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { AppModal } from "./app_modal";
 import {
   inventoryModalOverlayClassName,
@@ -31,7 +33,7 @@ import {
 import { useResolvedTheme } from "../lib/theme_mode";
 import { lendInventorySpool } from "../lib/loan_data_source";
 import {
-  loadLoanableSpoolCandidates,
+  readLoanPicker,
   type LoanableSpool,
 } from "../lib/loan_out_data_source";
 import {
@@ -117,8 +119,10 @@ function LoanOutSession({
       input?.scrollIntoView({ block: "center" });
     });
   }
-  const [spools, setSpools] = useState<LoanableSpool[]>([]);
-  const [selectedSpoolId, setSelectedSpoolId] = useState<string | null>(null);
+  const [candidates, setCandidates] = useState<LoanableSpool[] | LoanPickerPage>([]);
+  const page = Array.isArray(candidates) ? null : candidates;
+  const spools = Array.isArray(candidates) ? candidates : candidates.rows;
+  const [selectedSpool, setSelectedSpool] = useState<LoanableSpool | null>(null);
   const [spoolSearchQuery, setSpoolSearchQuery] = useState("");
   const [borrowerName, setBorrowerName] = useState("");
   const [counterpartyContact, setCounterpartyContact] = useState("");
@@ -127,6 +131,8 @@ function LoanOutSession({
   const [expectedReturnAt, setExpectedReturnAt] = useState("");
   const reloadRequestRef = useRef(0);
   const submittingRef = useRef(false);
+  const searchTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const lastSearch = useRef(0);
   const mountedRef = useRef(false);
   const retryRoleOnClose = useRef(false);
   const candidatesReadyRef = useRef(false);
@@ -135,7 +141,7 @@ function LoanOutSession({
 
   useLayoutEffect(() => {
     mountedRef.current = true;
-    return () => { mountedRef.current = false; };
+    return () => { mountedRef.current = false; clearTimeout(searchTimer.current); };
   }, []);
 
   function closeUnlessSubmitting() {
@@ -144,61 +150,60 @@ function LoanOutSession({
     if (retryRoleOnClose.current) onRetryLibrarySyncRole?.();
   }
 
-  const reload = useCallback(async () => {
-    if (!tauri) {
-      return;
-    }
-    const requestId = reloadRequestRef.current + 1;
-    reloadRequestRef.current = requestId;
+  const selectSpool = useCallback((spool: LoanableSpool | null) => {
+    setSelectedSpool(spool);
+    setGramsOut(spool?.remainingGrams != null ? String(toMeasuredTotalWeight(spool, spool.remainingGrams)) : "");
+  }, []);
+
+  const read = useCallback(async (search: string, selection: LoanableSpool | null, previous: LoanPickerPage | null, initial: boolean) => {
+    if (!tauri) return;
+    const requestId = ++reloadRequestRef.current;
     candidatesReadyRef.current = false;
     setLoading(true);
     setLoadFailed(false);
-    setSpools([]);
-    setSelectedSpoolId(null);
-    setGramsOut("");
     setError(null);
+    const options = { clientReadOnly, clientHostBaseUrl, clientLibraryId, clientTargetGeneration };
+    const selectedId = selection?.id ?? (initial ? preferredSpoolId : null);
+    const query = { search, locale: intlLocaleFor(locale), selected_id: selectedId, offset: previous?.rows.length ?? 0 };
     try {
-      const candidates = await loadLoanableSpoolCandidates({
-        clientReadOnly,
-        clientHostBaseUrl,
-        clientLibraryId,
-        clientTargetGeneration,
-      });
-      if (reloadRequestRef.current !== requestId) {
-        return;
+      let result = await readLoanPicker(options, query);
+      if (reloadRequestRef.current !== requestId) return;
+      const revisions = previous?.revisions;
+      if (revisions && !Array.isArray(result) && result.revisions.some((value, i) => value !== revisions[i])) {
+        result = await readLoanPicker(options, { ...query, offset: 0 });
+        previous = null;
+      }
+      if (reloadRequestRef.current !== requestId) return;
+      let rows: LoanableSpool[];
+      let pinned: LoanableSpool | null = null;
+      if (Array.isArray(result)) {
+        rows = result;
+        setCandidates(rows);
+      } else {
+        rows = previous ? [...previous.rows, ...result.rows] : result.rows;
+        pinned = result.selected;
+        const selected = rows.some(row => row.id === pinned?.id) ? null : pinned;
+        setCandidates({ ...result, rows, selected });
+      }
+      const reviewed = pinned ?? rows.find(row => row.id === selectedId) ?? (initial ? rows[0] : null) ?? null;
+      if (!selection || !reviewed || selection.id !== reviewed.id || selection.remainingGrams !== reviewed.remainingGrams ||
+          resolveLoanableSpoolTareWeight(selection) !== resolveLoanableSpoolTareWeight(reviewed)) {
+        selectSpool(reviewed);
+      } else {
+        // Searching or appending must preserve the user's measured weight.
+        setSelectedSpool(reviewed);
       }
       candidatesReadyRef.current = true;
-      setSpools(candidates);
-      const preferredById = preferredSpoolId
-        ? candidates.find((spool) => spool.id === preferredSpoolId)
-        : undefined;
-      const preferred = preferredById ?? candidates[0] ?? null;
-      setSelectedSpoolId(preferred?.id ?? null);
-      setGramsOut(
-        preferred?.remainingGrams != null
-          ? String(toMeasuredTotalWeight(preferred, preferred.remainingGrams))
-          : "",
-      );
     } catch (loadError) {
+      if (reloadRequestRef.current !== requestId) return;
       console.error(loadError);
-      if (reloadRequestRef.current === requestId) {
-        setLoadFailed(true);
-        setError(t("inventory.error.loadInventory", "Failed to load inventory."));
-      }
+      retryRoleOnClose.current = clientReadOnly;
+      setLoadFailed(true);
+      setError(t("inventory.error.loadInventory", "Failed to load inventory."));
     } finally {
-      if (reloadRequestRef.current === requestId) {
-        setLoading(false);
-      }
+      if (reloadRequestRef.current === requestId) setLoading(false);
     }
-  }, [
-    clientHostBaseUrl,
-    clientLibraryId,
-    clientReadOnly,
-    clientTargetGeneration,
-    preferredSpoolId,
-    t,
-    tauri,
-  ]);
+  }, [tauri, clientReadOnly, clientHostBaseUrl, clientLibraryId, clientTargetGeneration, preferredSpoolId, locale, selectSpool, t]);
 
   useEffect(() => {
     if (!open || !tauri) {
@@ -210,17 +215,32 @@ function LoanOutSession({
     setExpectedReturnAt("");
     setSpoolSearchQuery("");
     setError(null);
-    void reload();
+    void read("", null, null, true);
     return () => {
+      clearTimeout(searchTimer.current);
       reloadRequestRef.current += 1;
       candidatesReadyRef.current = false;
     };
-  }, [open, reload, tauri]);
+  }, [open, read, tauri]);
 
-  const selectedSpool = useMemo(
-    () => (selectedSpoolId ? spools.find((spool) => spool.id === selectedSpoolId) ?? null : null),
-    [selectedSpoolId, spools],
-  );
+  function searchSpools(value: string) {
+    setSpoolSearchQuery(value);
+    if (!page) return; // A legacy Host supplied the complete list.
+    clearTimeout(searchTimer.current);
+    ++reloadRequestRef.current;
+    candidatesReadyRef.current = false;
+    setLoading(true);
+    const search = () => {
+      lastSearch.current = Date.now();
+      void read(value, selectedSpool, null, false);
+    };
+    if (Date.now() - lastSearch.current < 150) {
+      searchTimer.current = setTimeout(search, 100);
+    } else {
+      search();
+    }
+  }
+
   const previewTotalGrams = parseNonNegativeWeight(gramsOut);
   const selectedPlacementLabel = selectedSpool
     ? formatPlacementLabel(t, selectedSpool.location)
@@ -358,16 +378,16 @@ function LoanOutSession({
             {error ? <ModalNotice tone="danger" role="alert">{error}</ModalNotice> : null}
 
             {loadFailed ? (
-              <ModalActionButton onClick={() => void reload()} disabled={loading}>
+              <ModalActionButton onClick={() => void read(spoolSearchQuery, selectedSpool, null, !selectedSpool)} disabled={loading}>
                 {t("common.refresh", "Refresh")}
               </ModalActionButton>
             ) : null}
 
-            {loading ? (
+            {loading && !page ? (
               <ModalNotice className="border-dashed">
                 {t("inventory.loading", "Loading...")}
               </ModalNotice>
-            ) : loadFailed ? null : spools.length === 0 ? (
+            ) : loadFailed ? null : (page?.total ?? spools.length) === 0 ? (
               <ModalNotice className="border-dashed">
                 {t(
                   "inventory.noLoanableRolls",
@@ -379,18 +399,14 @@ function LoanOutSession({
                 <LoanOutCandidateList
                   disabled={!tauri || busy}
                   searchQuery={spoolSearchQuery}
-                  selectedSpoolId={selectedSpoolId}
+                  selectedSpoolId={selectedSpool?.id ?? null}
+                  page={page}
+                  pagePending={loading}
+                  onShowMore={() => { if (page && candidatesReadyRef.current) void read(spoolSearchQuery, selectedSpool, page, false); }}
                   spools={spools}
-                  onSearchQueryChange={setSpoolSearchQuery}
+                  onSearchQueryChange={searchSpools}
                   renderVendorBadge={(vendor) => <VendorBadge vendor={vendor} compact />}
-                  onSelectSpool={(spool) => {
-                    setSelectedSpoolId(spool.id);
-                    setGramsOut(
-                      spool.remainingGrams != null
-                        ? String(toMeasuredTotalWeight(spool, spool.remainingGrams))
-                        : "",
-                    );
-                  }}
+                  onSelectSpool={(spool) => { if (candidatesReadyRef.current) selectSpool(spool); }}
                 />
 
                 <div className={`${panelCardClassName} flex min-h-0 flex-col overflow-hidden`}>
@@ -548,7 +564,7 @@ function LoanOutSession({
 
                         <ModalActionButton
                           onClick={() => void handleSubmit()}
-                          disabled={!tauri || busy}
+                          disabled={!tauri || busy || loading}
                           className="mt-4"
                           fullWidth
                           resolvedTheme={resolvedTheme}

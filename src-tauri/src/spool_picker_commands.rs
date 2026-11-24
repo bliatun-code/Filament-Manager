@@ -1,8 +1,11 @@
-use serde::Deserialize;
+use serde::{de::DeserializeOwned, Deserialize, Serialize};
 
 use crate::{
+    backend::database_loan_picker::{LoanPickerPage, LoanPickerQuery},
     backend::database_printer_picker::{PrinterPickerPage, PrinterPickerQuery},
-    companion_models::PRINTER_PICKER_CAPABILITY,
+    backend::database_result::InventoryResult,
+    backend::filament_database::FilamentDatabase,
+    companion_models::{LOAN_PICKER_CAPABILITY, PRINTER_PICKER_CAPABILITY},
     library_sync_blocking_executor::run_library_sync_blocking,
     library_sync_command_support::{
         library_sync_host_input, prepare_library_sync_host_write_for_generation,
@@ -16,7 +19,7 @@ use crate::{
 };
 
 #[derive(Deserialize)]
-pub(crate) struct PrinterPickerTarget {
+pub(crate) struct PickerTarget {
     base_url: Option<String>,
     expected_library_id: String,
     target_generation: u64,
@@ -26,7 +29,7 @@ pub(crate) struct PrinterPickerTarget {
 pub(crate) async fn get_printer_picker_page(
     state: tauri::State<'_, AppState>,
     query: PrinterPickerQuery,
-    target: PrinterPickerTarget,
+    target: PickerTarget,
 ) -> Result<Option<PrinterPickerPage>, String> {
     let state = state.inner().clone();
     run_library_sync_blocking(move || printer_picker_page_blocking(&state, query, target)).await
@@ -35,8 +38,51 @@ pub(crate) async fn get_printer_picker_page(
 pub(crate) fn printer_picker_page_blocking(
     state: &AppState,
     query: PrinterPickerQuery,
-    target: PrinterPickerTarget,
+    target: PickerTarget,
 ) -> Result<Option<PrinterPickerPage>, String> {
+    read_picker_page(
+        state,
+        &query,
+        target,
+        PRINTER_PICKER_CAPABILITY,
+        "/api/v1/library/printer-spool-picker",
+        FilamentDatabase::printer_picker_page,
+    )
+}
+
+#[tauri::command]
+pub(crate) async fn get_loan_picker_page(
+    state: tauri::State<'_, AppState>,
+    query: LoanPickerQuery,
+    target: PickerTarget,
+) -> Result<Option<LoanPickerPage>, String> {
+    let state = state.inner().clone();
+    run_library_sync_blocking(move || loan_picker_page_blocking(&state, query, target)).await
+}
+
+pub(crate) fn loan_picker_page_blocking(
+    state: &AppState,
+    query: LoanPickerQuery,
+    target: PickerTarget,
+) -> Result<Option<LoanPickerPage>, String> {
+    read_picker_page(
+        state,
+        &query,
+        target,
+        LOAN_PICKER_CAPABILITY,
+        "/api/v1/library/loan-spool-picker",
+        FilamentDatabase::loan_picker_page,
+    )
+}
+
+fn read_picker_page<Q: Serialize, P: DeserializeOwned>(
+    state: &AppState,
+    query: &Q,
+    target: PickerTarget,
+    capability: &str,
+    path: &str,
+    local: fn(&FilamentDatabase, &Q) -> InventoryResult<P>,
+) -> Result<Option<P>, String> {
     if target.expected_library_id.trim().is_empty() {
         return Err(crate::app_error::coded_command_error(
             "common.invalid_request",
@@ -60,7 +106,7 @@ pub(crate) fn printer_picker_page_blocking(
                 Ok(())
             };
             check()?;
-            let page = db.printer_picker_page(&query)?;
+            let page = local(db, query)?;
             check()?;
             Ok(Some(page))
         });
@@ -71,20 +117,16 @@ pub(crate) fn printer_picker_page_blocking(
         &host,
         Some(target.target_generation),
     )?;
-    if !health
-        .capabilities
-        .iter()
-        .any(|c| c == PRINTER_PICKER_CAPABILITY)
-    {
+    if !health.capabilities.iter().any(|c| c == capability) {
         ensure_library_sync_target_current(state, &target)?;
         return Ok(None);
     }
-    // Authenticated JSON POST carries translated placement labels even for large printer farms.
+    // Send picker parameters in the authenticated POST body.
     // The route only reads. Keep the normal read timeout and leave the full offline snapshot intact.
     perform_library_sync_host_write_and_parse_for_target(
         state,
-        "/api/v1/library/printer-spool-picker",
-        &query,
+        path,
+        query,
         &target,
         Some(LIBRARY_SYNC_REQUEST_TIMEOUT),
     )

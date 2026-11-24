@@ -106,7 +106,6 @@ mod printer_command_support;
 mod printer_create_commands;
 mod printer_danger_zone_commands;
 mod printer_models;
-mod printer_picker_commands;
 mod printer_read_commands;
 mod printer_settings_commands;
 mod printer_slot_write_commands;
@@ -115,6 +114,7 @@ mod release_update_commands;
 mod saved_label_exports;
 mod secure_credential_mutation;
 mod security;
+mod spool_picker_commands;
 mod sqlite_recovery;
 mod state;
 mod trusted_lan_access_request_commands;
@@ -348,10 +348,9 @@ fn main() {
             let trusted_lan_runtime = trusted_lan_runtime_commands::load_trusted_lan_runtime(
                 db_path.to_string_lossy().as_ref(),
             )?;
-            let companion = state::CompanionRuntimeState::new(trusted_lan_runtime);
             let state = AppState {
                 db_path: db_path.to_string_lossy().to_string(),
-                companion,
+                companion: state::CompanionRuntimeState::new(trusted_lan_runtime),
                 credentials,
                 library_sync_auth,
             };
@@ -383,7 +382,8 @@ fn main() {
             inventory_read_commands::list_wishlist_items,
             printer_settings_commands::get_printer_settings,
             printer_read_commands::list_printer_overview,
-            printer_picker_commands::get_printer_picker_page,
+            spool_picker_commands::get_printer_picker_page,
+            spool_picker_commands::get_loan_picker_page,
             trusted_lan_status_commands::get_trusted_lan_companion_status,
             trusted_lan_interface_commands::list_trusted_lan_interfaces,
             trusted_lan_config_commands::update_trusted_lan_companion_config,

@@ -1,3 +1,4 @@
+use crate::backend::database_loan_picker::{LoanPickerPage, LoanPickerQuery};
 use crate::backend::database_printer_picker::{PrinterPickerPage, PrinterPickerQuery};
 use crate::backend::filament_database::{
     FilamentDatabase, FilamentMasterCatalogRow, FilamentStandardsSnapshot, LibrarySyncSettingsRow,
@@ -8,7 +9,6 @@ use crate::backend::statistics::{
 };
 use crate::companion_error::CompanionApiError;
 use crate::companion_http::require_allowed_host;
-use crate::companion_models::PRINTER_PICKER_CAPABILITY;
 use crate::companion_models::{
     CatalogListQuery, CompanionHealthResponse, CompanionLibrarySnapshotResponse,
     CompanionPrinterSettingsResponse, FilamentConsumptionQuery, LoanListQuery, PaginationQuery,
@@ -21,6 +21,7 @@ use crate::companion_models::{
     VENDOR_CATALOG_DISCOVERY_CAPABILITY, WISHLIST_RECEIPT_IDEMPOTENCY_CAPABILITY,
     WISHLIST_RECEIPT_LOCATION_CAPABILITY,
 };
+use crate::companion_models::{LOAN_PICKER_CAPABILITY, PRINTER_PICKER_CAPABILITY};
 use crate::companion_state::CompanionApiState;
 use crate::library_sync_models::{
     LibrarySyncDomainRevisionsResponse, LibrarySyncFullBackupResponse,
@@ -59,6 +60,7 @@ pub(super) async fn handle_health(
                     CATALOG_REFRESH_JOBS_CAPABILITY,
                     CATALOG_SPOOL_BATCH_CAPABILITY,
                     PRINTER_PICKER_CAPABILITY,
+                    LOAN_PICKER_CAPABILITY,
                     PRINTER_SLOT_OPERATIONS_CAPABILITY,
                 ],
                 auth_mode: state.runtime.auth_mode().to_string(),
@@ -160,6 +162,22 @@ pub(super) async fn handle_printer_picker_page(
         .run_blocking("printer spool picker", move |state| {
             let db = FilamentDatabase::open(&state.db_path)?;
             db.printer_picker_page(&query)
+                .map(Json)
+                .map_err(CompanionApiError::from)
+        })
+        .await
+}
+
+pub(super) async fn handle_loan_picker_page(
+    State(state): State<CompanionApiState>,
+    headers: HeaderMap,
+    Json(query): Json<LoanPickerQuery>,
+) -> Result<Json<LoanPickerPage>, CompanionApiError> {
+    require_allowed_host(&headers, &state.runtime)?;
+    state
+        .run_blocking("loan spool picker", move |state| {
+            let db = FilamentDatabase::open(&state.db_path)?;
+            db.loan_picker_page(&query)
                 .map(Json)
                 .map_err(CompanionApiError::from)
         })

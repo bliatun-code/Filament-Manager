@@ -54,6 +54,7 @@ fn build_router_with_security_config(
         .route("/library/revisions", get(handle_library_domain_revisions))
         .route("/library/snapshot", get(handle_library_snapshot))
         .route("/library/printer-spool-picker", post(handle_printer_picker_page))
+        .route("/library/loan-spool-picker", post(handle_loan_picker_page))
         .route("/library/spools", get(handle_library_spools))
         .route("/library/locations", get(handle_list_library_locations))
         .route("/library/printers", get(handle_library_printers))

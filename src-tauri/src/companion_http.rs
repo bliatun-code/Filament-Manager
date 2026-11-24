@@ -313,7 +313,11 @@ pub(crate) fn is_companion_data_read<B>(request: &Request<B>) -> bool {
         .extensions()
         .get::<axum::extract::OriginalUri>()
         .map_or(request.uri(), |original| &original.0);
-    request.method() == Method::POST && uri.path() == "/api/v1/library/printer-spool-picker"
+    request.method() == Method::POST
+        && matches!(
+            uri.path(),
+            "/api/v1/library/printer-spool-picker" | "/api/v1/library/loan-spool-picker"
+        )
 }
 
 pub(crate) async fn apply_companion_cache_policy(request: Request<Body>, next: Next) -> Response {
@@ -511,11 +515,14 @@ mod tests {
 
     #[test]
     fn picker_query_uses_read_deadlines_and_authority_rechecks_with_post_csrf() {
-        let query = Request::post("/api/v1/library/printer-spool-picker")
-            .body(())
-            .unwrap();
-        assert!(super::is_companion_data_read(&query));
-        assert!(super::requires_csrf(query.method()));
+        for path in [
+            "/api/v1/library/printer-spool-picker",
+            "/api/v1/library/loan-spool-picker",
+        ] {
+            let query = Request::post(path).body(()).unwrap();
+            assert!(super::is_companion_data_read(&query));
+            assert!(super::requires_csrf(query.method()));
+        }
         let write = Request::post("/api/v1/spools/assign").body(()).unwrap();
         assert!(!super::is_companion_data_read(&write));
     }

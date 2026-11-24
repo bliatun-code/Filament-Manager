@@ -1,7 +1,9 @@
+import { getLoanPickerPage, type LoanableSpool, type LoanPickerQuery } from "./tauri_loan_client";
+import { loadLibrarySyncPageState } from "./library_sync_state";
+import { createAppError } from "./error_text";
 import {
   isBorrowedInOwnership,
   isSpoolStatusLoanable,
-  type SpoolStatus,
 } from "./inventory_domain";
 import { loadPrinterOverviewData } from "./printer_data_source";
 import {
@@ -18,7 +20,9 @@ import {
 } from "./spool_row_normalization";
 import type { PrinterOverviewRow } from "./tauri_client";
 
-type LoanOutDataSourceOptions = {
+export type { LoanableSpool } from "./tauri_loan_client";
+
+export type LoanOutDataSourceOptions = {
   clientReadOnly: boolean;
   clientHostBaseUrl?: string | null;
   clientLibraryId?: string | null;
@@ -28,19 +32,6 @@ type LoanOutDataSourceOptions = {
 type LoanOutDataSourceDependencies = {
   loadSpoolRows?: typeof loadSpoolRowsPage;
   loadPrinterOverview?: typeof loadPrinterOverviewData;
-};
-
-export type LoanableSpool = {
-  id: string;
-  vendor: string;
-  material: string;
-  filamentName: string;
-  colorName: string;
-  hexColor?: string | null;
-  status: SpoolStatus;
-  remainingGrams?: number | null;
-  spoolTareWeightGrams?: number | null;
-  location?: string | null;
 };
 
 function collectAssignedSpoolIds(printers: PrinterOverviewRow[]): Set<string> {
@@ -112,4 +103,27 @@ export async function loadLoanableSpoolCandidates(
     normalizeSpoolWithMasterRows(spoolRows),
     printerOverview.printers,
   );
+}
+
+// Only a Host that explicitly lacks the page capability takes the legacy path.
+export async function readLoanPicker(options: LoanOutDataSourceOptions, query: LoanPickerQuery) {
+  const { clientLibraryId, clientTargetGeneration, clientHostBaseUrl, clientReadOnly } = options;
+  const baseUrl = clientReadOnly ? clientHostBaseUrl : null;
+  if (!clientLibraryId || clientTargetGeneration == null || (clientReadOnly && !baseUrl)) {
+    throw createAppError("common.invalid_request");
+  }
+  const page = await getLoanPickerPage(query, {
+    base_url: baseUrl ?? null,
+    expected_library_id: clientLibraryId,
+    target_generation: clientTargetGeneration,
+  });
+  if (page !== null) return page;
+  if (!clientReadOnly) throw createAppError("common.invalid_request");
+  const legacy = await loadLoanableSpoolCandidates(options);
+  const current = await loadLibrarySyncPageState();
+  if (!current.clientReadOnly || current.clientHostBaseUrl !== clientHostBaseUrl ||
+      current.clientLibraryId !== clientLibraryId || current.clientTargetGeneration !== clientTargetGeneration) {
+    throw createAppError("common.invalid_request");
+  }
+  return legacy;
 }

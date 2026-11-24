@@ -1,6 +1,12 @@
+use icu_collator::{
+    options::{CollatorOptions, Strength},
+    preferences::CollationNumericOrdering,
+    Collator, CollatorPreferences,
+};
+use icu_locale_core::Locale;
 use rusqlite::{params, Connection, OptionalExtension};
 
-use super::database_result::InventoryResult;
+use super::database_result::{InventoryError, InventoryResult};
 use super::database_rows::{map_spool_row, map_spool_with_master_row};
 use super::database_spool_models::{SpoolRow, SpoolWithMasterRow};
 
@@ -133,4 +139,24 @@ pub(crate) fn list_all_spools_with_master(
     conn: &Connection,
 ) -> InventoryResult<Vec<SpoolWithMasterRow>> {
     list_spools_with_master(conn, i64::MAX, 0)
+}
+
+pub(crate) fn register_picker_order(conn: &Connection, locale: &str) -> InventoryResult<()> {
+    let mut prefs = locale
+        .parse::<Locale>()
+        .map(CollatorPreferences::from)
+        .unwrap_or_default();
+    prefs.numeric_ordering = Some(CollationNumericOrdering::True);
+    let mut options = CollatorOptions::default();
+    options.strength = Some(Strength::Primary);
+    let collator =
+        Collator::try_new(prefs, options).map_err(|e| InventoryError::Db(e.to_string()))?;
+    conn.create_collation("picker_order", move |a, b| {
+        if a == b {
+            std::cmp::Ordering::Equal
+        } else {
+            collator.compare(a.trim(), b.trim())
+        }
+    })?;
+    Ok(())
 }

@@ -43,6 +43,7 @@ pub mod database_library_sync_validation;
 pub mod database_loan_create;
 pub mod database_loan_facade;
 pub mod database_loan_models;
+pub mod database_loan_picker;
 pub mod database_loan_queries;
 pub mod database_loan_return;
 pub mod database_loan_update;
