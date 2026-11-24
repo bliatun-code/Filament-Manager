@@ -17,7 +17,7 @@ fn loan_workspace_counts_keep_an_offline_copy_and_reject_a_b_a() {
         body: body.to_string(),
     };
     let totals = json!({"stock":10000,"loans":4,"locations":3,"purchases":0});
-    let (tx, rx) = std::sync::mpsc::channel::<std::path::PathBuf>();
+    let (tx, rx) = std::sync::mpsc::channel::<Option<std::path::PathBuf>>();
     let (url, server) = spawn_fake_host_with(
         vec![
             response("GET /api/v1/health ", health.clone()),
@@ -26,15 +26,15 @@ fn loan_workspace_counts_keep_an_offline_copy_and_reject_a_b_a() {
             response(get, totals),
         ],
         move |request| {
-            if request.starts_with(get) {
-                if let Some(path) = rx.recv().ok().filter(|p| !p.as_os_str().is_empty()) {
-                    let db = FilamentDatabase::open(path).unwrap();
-                    let a = db.get_library_sync_settings().unwrap();
-                    let mut b = a.clone();
-                    b.library_id = "other".into();
-                    db.save_library_sync_settings(&b).unwrap();
-                    db.save_library_sync_settings(&a).unwrap();
-                }
+            if request.starts_with(get)
+                && let Some(path) = rx.recv().unwrap()
+            {
+                let db = FilamentDatabase::open(path).unwrap();
+                let a = db.get_library_sync_settings().unwrap();
+                let mut b = a.clone();
+                b.library_id = "other".into();
+                db.save_library_sync_settings(&b).unwrap();
+                db.save_library_sync_settings(&a).unwrap();
             }
         },
     );
@@ -51,11 +51,11 @@ fn loan_workspace_counts_keep_an_offline_copy_and_reject_a_b_a() {
         )
     };
     let initial = generation();
-    tx.send(std::path::PathBuf::new()).unwrap();
+    tx.send(None).unwrap();
     let live = read(initial).unwrap();
     assert_eq!(live.stock, Some(10000));
     assert_eq!(db.cached_loan_workspace_counts().unwrap(), live);
-    tx.send(path.clone()).unwrap();
+    tx.send(Some(path.clone())).unwrap();
     assert!(read(initial)
         .unwrap_err()
         .contains("common.invalid_request"));
