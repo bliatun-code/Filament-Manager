@@ -16,6 +16,7 @@ use super::library_sync_defaults::{default_library_sync_device_name, normalize_l
 const LIBRARY_SYNC_HOST_CACHE_KEYS: &[&str] = &[
     "library_sync_cached_snapshot_json",
     super::database_loan_workspace::CACHED_COUNTS,
+    super::database_library_sync_cache::LOAN_SPOOL_EPOCH,
     SNAPSHOT_CAPTURED_AT_KEY,
     DASHBOARD_SNAPSHOT_KEY,
     "library_sync_cached_spools_json",
@@ -110,11 +111,20 @@ pub(crate) fn read_library_sync_settings(
             "library_sync_cached_snapshot_json",
         )?,
     };
-    let cached_spools = selected_cache(
+    let mut cached_spools: Option<
+        super::database_library_sync_models::LibrarySyncCachedSpoolListRow,
+    > = selected_cache(
         conn,
         includes(Spools) || legacy_dashboard,
         "library_sync_cached_spools_json",
     )?;
+    if let Some(cache) = &mut cached_spools {
+        super::database_library_sync_cache::apply_cached_loan_spool_changes(
+            conn,
+            &mut cache.rows,
+            0,
+        )?;
+    }
     let cached_printers = selected_cache(
         conn,
         includes(Printers),
@@ -300,6 +310,7 @@ fn library_sync_target_generation(conn: &Connection) -> InventoryResult<u64> {
 }
 
 fn clear_library_sync_host_caches(conn: &Connection) -> InventoryResult<()> {
+    super::database_library_sync_cache::clear_cached_loan_spool_changes(conn)?;
     for key in LIBRARY_SYNC_HOST_CACHE_KEYS {
         delete_setting(conn, key)?;
     }

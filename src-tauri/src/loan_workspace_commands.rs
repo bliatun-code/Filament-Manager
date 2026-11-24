@@ -66,6 +66,7 @@ pub(crate) fn counts_blocking(
     let Some(url) = target.base_url.as_ref() else {
         return target.with_database(state, FilamentDatabase::loan_workspace_counts);
     };
+    let epoch = target.with_database(state, FilamentDatabase::cached_loan_spool_epoch)?;
     let fetch = || {
         let input = library_sync_host_input(url, Some(&target.expected_library_id));
         let (_, health, peer) = prepare_library_sync_host_write_for_generation(
@@ -92,6 +93,9 @@ pub(crate) fn counts_blocking(
     };
     match fetch() {
         Ok(counts) => target.with_database(state, |db| {
+            if db.cached_loan_spool_epoch()? != epoch {
+                return db.cached_loan_workspace_counts();
+            }
             db.save_loan_workspace_counts(&counts)?;
             Ok(counts)
         }),

@@ -20,6 +20,10 @@ pub struct LoanWorkspaceCounts {
 }
 
 impl FilamentDatabase {
+    pub fn cached_loan_spool_epoch(&self) -> InventoryResult<i64> {
+        super::database_library_sync_cache::cached_loan_spool_epoch(self.connection())
+    }
+
     pub fn loan_workspace_counts(&self) -> InventoryResult<LoanWorkspaceCounts> {
         // The loan tab includes every non-deleted borrowed roll, including old
         // imports without a matching inbound loan. Purchases displays 500 rows.

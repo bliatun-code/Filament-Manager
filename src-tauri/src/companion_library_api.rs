@@ -2,7 +2,7 @@ use crate::backend::database_loan_picker::{LoanPickerPage, LoanPickerQuery};
 use crate::backend::database_printer_picker::{PrinterPickerPage, PrinterPickerQuery};
 use crate::backend::filament_database::{
     FilamentDatabase, FilamentMasterCatalogRow, FilamentStandardsSnapshot, LibrarySyncSettingsRow,
-    PrinterOverviewRow, SpoolLoanDetailsRow, SpoolWithMasterRow, WishlistItemRow,
+    PrinterOverviewRow, SpoolLoanDetailsRow, SpoolLoanRow, SpoolWithMasterRow, WishlistItemRow,
 };
 use crate::backend::statistics::{
     FilamentConsumptionRow, StatisticsEngine, StatisticsPeriod, StatisticsTrace,
@@ -167,6 +167,32 @@ pub(super) async fn handle_printer_picker_page(
                 .map_err(CompanionApiError::from)
         })
         .await
+}
+
+pub(super) fn loan_write_receipt(
+    state: &CompanionApiState,
+    loan: SpoolLoanRow,
+    message: &str,
+) -> crate::companion_models::LoanWriteResponse {
+    // The loan has committed. A failure reading the optional cache data must
+    // still deliver its acknowledgement, so a Client never replays the write.
+    let snapshot = FilamentDatabase::open(&state.db_path)
+        .and_then(|db| {
+            db.with_read_transaction(|db| {
+                Ok((
+                    db.get_spool_with_master_by_id(&loan.spool_id)?,
+                    Some(db.loan_workspace_counts()?),
+                ))
+            })
+        })
+        .unwrap_or_default();
+    crate::companion_models::LoanWriteResponse {
+        ok: true,
+        message: message.into(),
+        loan,
+        spool: snapshot.0,
+        counts: snapshot.1,
+    }
 }
 
 pub(super) async fn handle_loan_workspace_counts(

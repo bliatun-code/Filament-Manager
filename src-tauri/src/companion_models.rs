@@ -314,6 +314,10 @@ pub(crate) struct SessionStatusResponse {
 
 #[derive(Serialize)]
 pub(crate) struct LoanWriteResponse {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub(crate) counts: Option<crate::backend::database_loan_workspace::LoanWorkspaceCounts>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub(crate) spool: Option<crate::backend::filament_database::SpoolWithMasterRow>,
     pub(crate) ok: bool,
     pub(crate) message: String,
     pub(crate) loan: SpoolLoanRow,

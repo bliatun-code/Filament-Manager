@@ -42,7 +42,9 @@ active loans and four tab counts. Local libraries count in SQLite. Paired
 clients ask the Host for the counts and keep the last result for offline use.
 On the first offline open after upgrading, SQLite can derive the counts from
 existing cached lists. Opening Inventory or a specific roll loads the full inventory. A loan write
-preserves the timestamp of the last complete offline inventory copy.
+saves the affected Host roll and its tab counts from the acknowledgement,
+keeping the timestamp of the last complete offline inventory copy. A fresh
+full snapshot absorbs any loan changes confirmed while its pages were in flight.
 Older Hosts use their snapshot and supported list endpoints for the badges;
 an unavailable count displays a dash.
 

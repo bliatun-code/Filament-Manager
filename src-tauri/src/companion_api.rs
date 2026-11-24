@@ -1564,11 +1564,11 @@ pub(super) async fn handle_lend_spool(
                 })
                 .map_err(CompanionApiError::from)?;
 
-            Ok(Json(LoanWriteResponse {
-                ok: true,
-                message: "Spool loan created".to_string(),
+            Ok(Json(crate::companion_library_api::loan_write_receipt(
+                &state,
                 loan,
-            }))
+                "Spool loan created",
+            )))
         })
         .await
 }
@@ -1607,11 +1607,11 @@ pub(super) async fn handle_return_spool_loan(
                 })
                 .map_err(CompanionApiError::from)?;
 
-            Ok(Json(LoanWriteResponse {
-                ok: true,
-                message: "Spool loan returned".to_string(),
+            Ok(Json(crate::companion_library_api::loan_write_receipt(
+                &state,
                 loan,
-            }))
+                "Spool loan returned",
+            )))
         })
         .await
 }
@@ -1644,11 +1644,11 @@ pub(super) async fn handle_hand_back_borrowed_in_spool(
                 })
                 .map_err(CompanionApiError::from)?;
 
-            Ok(Json(LoanWriteResponse {
-                ok: true,
-                message: "Borrowed-in spool handed back".to_string(),
+            Ok(Json(crate::companion_library_api::loan_write_receipt(
+                &state,
                 loan,
-            }))
+                "Borrowed-in spool handed back",
+            )))
         })
         .await
 }

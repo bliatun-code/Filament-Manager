@@ -78,7 +78,10 @@ Host spool, find it from Host data, assign it to the requested slot without
 changing a sentinel assignment, create exactly one outbound loan and receive a
 multi-spool on-order item. It verifies weights, statuses, counts and the
 target-scoped spool, printer, loan and wishlist caches after the corresponding
-production Client command paths. The Client-local spool and history snapshot
+production Client command paths. After a loan, the offline inventory must reflect
+the affected roll while retaining the timestamp of its last complete capture.
+A full inventory read that overlaps an acknowledged loan must preserve the change.
+The Client-local spool and history snapshot
 must remain row-for-row identical.
 
 The [packaged multiprocess runner](../../scripts/run-packaged-host-client-e2e.mjs)
@@ -200,6 +203,9 @@ library ID and target generation reviewed by the dialog. The loopback tests
 (`cargo test loan_dialogs_`) require zero writes after an A–B–A switch and
 one write per confirmation on an unchanged Host. The browser gate also checks
 that a newly opened dialog can submit after a stale confirmation is rejected.
+The Loans workspace cases verify tab counts, offline rows, opening a specific
+roll and A–B–A during a read. Opening, lending and returning require zero
+full inventory or filament-standard reads on current Hosts.
 
 The desktop and Companion screenshot gates accept `auto`, `light`, `dark`,
 `dark-deep`, and `blue`. A theme-model or palette change must exercise a

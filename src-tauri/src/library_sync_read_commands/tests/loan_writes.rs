@@ -124,8 +124,27 @@ fn loan_dialogs_send_one_post_each_on_a_stable_host_and_none_after_health_switch
     for action in [LoanAction::Lend, LoanAction::Return, LoanAction::HandBack] {
         for change_during_health in [false, true] {
             let mut replies = vec![response("GET /api/v1/health ", fake_health())];
+            let mut updated = super::spool_snapshot::row("roll");
+            updated.spool.status = if matches!(action, LoanAction::Lend) {
+                "BORROWED"
+            } else {
+                "IN_STOCK"
+            }
+            .into();
+            updated.spool.remaining_g = Some(400);
             if !change_during_health {
-                replies.push(response(action.post(), "{}".into()));
+                let mut receipt = json!({"loan":{"id":"loan","spool_id":"roll"}});
+                if matches!(action, LoanAction::Lend) {
+                    receipt["spool"] = json!(updated);
+                    receipt["counts"] = json!({"stock":2,"loans":1,"locations":0,"purchases":0});
+                }
+                replies.push(response(action.post(), receipt.to_string()));
+                if matches!(action, LoanAction::Return) {
+                    replies.push(response(
+                        "GET /api/v1/spools/roll?history_limit=1&usage_limit=1 ",
+                        json!({"spool":updated}).to_string(),
+                    ));
+                }
                 replies.push(response(
                     "GET /api/v1/library/loans?include_returned=false",
                     "[]".into(),
@@ -151,8 +170,10 @@ fn loan_dialogs_send_one_post_each_on_a_stable_host_and_none_after_health_switch
                 .unwrap();
             let db = FilamentDatabase::open(&path).unwrap();
             let capture = "2020-01-01T00:00:00Z";
+            let saved = json!({"rows":[super::spool_snapshot::row("roll"), super::spool_snapshot::row("other")],
+                "captured_at":capture}).to_string();
             db.connection().execute("INSERT OR REPLACE INTO settings(key,value) VALUES ('library_sync_cached_spools_json',?1)",
-                [json!({"rows":[], "captured_at":capture}).to_string()]).unwrap();
+                [&saved]).unwrap();
             tx.send(path.clone()).unwrap();
             let result = action.submit(
                 &state,
@@ -170,6 +191,38 @@ fn loan_dialogs_send_one_post_each_on_a_stable_host_and_none_after_health_switch
                     .cached_spools
                     .unwrap();
                 assert_eq!(cache.captured_at, capture);
+                if matches!(action, LoanAction::Lend) {
+                    assert_eq!(db.cached_loan_workspace_counts().unwrap().loans, Some(1));
+                }
+                assert_eq!(
+                    cache.rows.iter().filter(|r| r.spool.id == "other").count(),
+                    1
+                );
+                let row = cache.rows.iter().find(|r| r.spool.id == "roll");
+                if matches!(action, LoanAction::HandBack) {
+                    assert!(row.is_none());
+                } else {
+                    assert_eq!(row.unwrap().spool.status, updated.spool.status);
+                    assert_eq!(row.unwrap().spool.remaining_g, Some(400));
+                }
+                let original: String = db
+                    .connection()
+                    .query_row(
+                        "SELECT value FROM settings WHERE key='library_sync_cached_spools_json'",
+                        [],
+                        |r| r.get(0),
+                    )
+                    .unwrap();
+                assert_eq!(original, saved);
+                db.save_library_sync_cached_spools(&[super::spool_snapshot::row("roll")])
+                    .unwrap();
+                let refreshed = db
+                    .get_library_sync_settings()
+                    .unwrap()
+                    .cached_spools
+                    .unwrap();
+                assert_eq!(refreshed.rows.len(), 1);
+                assert_eq!(refreshed.rows[0].spool.remaining_g, None);
             }
             server.join().unwrap();
             std::fs::remove_file(path).unwrap();
