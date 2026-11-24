@@ -334,6 +334,7 @@ test("loadPrinterPageData reports offline when host and cache are unavailable", 
   assert.deepEqual(result, {
     printers: [],
     spools: [],
+    spoolReadState: "unavailable",
     bambuLiveIntegrations: {},
     printerModels: ["Generic"],
     source: "OFFLINE",
@@ -431,5 +432,78 @@ test("empty live and saved lists retain their source, including when a live cach
     assert.deepEqual(result.printers, []);
     assert.equal(result.source, online ? "LIVE" : "CACHED");
     assert.equal(result.updatedAt, online ? null : "saved");
+  }
+});
+
+test("the overview defers inventory until a slot, a live observation or the picker needs it", async () => {
+  for (const clientReadOnly of [false, true]) {
+    for (const scenario of ["empty", "assigned", "live", "overview RFID", "picker"]) {
+      const printer = printerOverviewRow("printer-a");
+      printer.slots.push({
+        slot_id: "slot-1", ams_id: "printer-a_ams_1", slot_index: 1,
+        spool_id: scenario === "assigned" ? "roll" : null,
+        live_observed_rfid_tag: scenario === "overview RFID" ? "RFID" : null,
+      });
+      const settings = printerSettingsSnapshot("printer-a");
+      if (scenario === "live") settings.bambu_live_integrations[0].config.observed_state = {
+        online: true, mqtt_connected: true, trays: [{ tray_index: 0, loaded: true, tray_uuid: "RFID" }],
+      };
+      let reads = 0;
+      const rows = () => { reads++; return [spoolRow("roll")]; };
+      const result = await loadPrinterPageData({
+        clientReadOnly, clientHostBaseUrl: "http://host", clientLibraryId: "library-a",
+        clientTargetGeneration: 7, supportedPrinterModels: [], deferUnusedSpools: scenario !== "picker",
+      }, {
+        listLocalOverview: async () => [printer], loadLocalSettings: async () => settings,
+        loadLocalSpools: async () => rows(), fetchHostOverview: async () => [printer],
+        fetchHostSettings: async () => settings,
+        fetchHostSpoolSnapshot: async (...target) => {
+          assert.deepEqual(target, ["http://host", "library-a", 7]);
+          return { rows: rows(), captured_at: "fresh" };
+        },
+      });
+      const needsRows = scenario !== "empty" && (scenario !== "overview RFID" || clientReadOnly);
+      assert.equal(reads, Number(needsRows), scenario);
+      assert.equal(result.spoolReadState, needsRows ? "available" : "deferred");
+      assert.equal(result.source, "LIVE");
+      assert.equal(result.revisionPollComplete, true);
+    }
+  }
+});
+
+test("deferred overview reads keep partial Host data and distinguish an empty offline copy from a missing one", async () => {
+  const target = ["http://host", "library-a", 9] as const;
+  for (const failedDomain of ["overview", "settings", "both"]) {
+    for (const saved of [true, false]) {
+      const reads: Array<[string, ...unknown[]]> = [];
+      const printer = printerOverviewRow("printer-a");
+      const unavailable = () => Promise.reject(new Error("Host unavailable"));
+      const data = await loadPrinterPageData({
+        clientReadOnly: true, clientHostBaseUrl: target[0], clientLibraryId: target[1],
+        clientTargetGeneration: target[2], supportedPrinterModels: [], deferUnusedSpools: true,
+      }, {
+        fetchHostOverview: () => failedDomain === "settings" ? Promise.resolve([printer]) : unavailable(),
+        fetchHostSettings: () => failedDomain === "overview" ? Promise.resolve(printerSettingsSnapshot("printer-a")) : unavailable(),
+        fetchHostSpoolSnapshot: (...args) => { reads.push(["live spools", ...args]); return unavailable(); },
+        fetchCachedSpools: async (...args) => {
+          reads.push(["saved spools", ...args]);
+          return saved ? { rows: [], captured_at: "saved" } : null;
+        },
+        fetchCachedOverview: async (...args) => {
+          reads.push(["saved printers", ...args]);
+          return { rows: [printer], captured_at: "saved" };
+        },
+        onLoadError: () => {},
+      });
+      assert.deepEqual(reads, [
+        ["live spools", ...target],
+        ...(failedDomain === "settings" ? [] : [["saved printers", ...target]]),
+        ["saved spools", ...target],
+      ]);
+      assert.deepEqual(data.printers, [printer]);
+      assert.equal(data.spoolReadState, saved ? "available" : "unavailable");
+      assert.equal(data.source, "CACHED");
+      assert.equal(data.revisionPollComplete, false);
+    }
   }
 });

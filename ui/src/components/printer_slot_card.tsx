@@ -38,6 +38,8 @@ type PrinterSlotCardProps = {
   bambuLiveIntegrations: Record<string, BambuLiveIntegrationEntry["config"]>;
   catalogMasters: MasterCatalogRow[];
   openDropdownSlotId: string | null;
+  requestPickerSpools: () => void;
+  spoolPickerNotice: string | null;
   setOpenDropdownSlotId: Dispatch<SetStateAction<string | null>>;
   spools: SpoolWithMasterRow[];
   slotLabelById?: ReadonlyMap<string, string>;
@@ -90,6 +92,8 @@ export function PrinterSlotCard({
   bambuLiveIntegrations,
   catalogMasters,
   openDropdownSlotId,
+  requestPickerSpools,
+  spoolPickerNotice,
   setOpenDropdownSlotId,
   spools,
   slotLabelById,
@@ -199,6 +203,8 @@ export function PrinterSlotCard({
             isDropdownOpen={isDropdownOpen} selectedTargetSpool={selectedTargetSpool}
             slotSwatchHex={slotSwatchHex} slotOptions={slotOptions}
             slotLabelById={slotLabelById} draft={draft}
+            requestPickerSpools={requestPickerSpools}
+            spoolPickerNotice={spoolPickerNotice}
             setOpenDropdownSlotId={setOpenDropdownSlotId} setSlotDraft={setSlotDraft}
             openIncomingWeightDialog={openIncomingWeightDialog} openEmptySlotWeightDialog={openEmptySlotWeightDialog}
           />

@@ -37,7 +37,7 @@ test("Printers discards late cached and live data when the paired target changes
                 return { mode: "CLIENT", host_base_url: selected.base_url, library_id: selected.expected_library_id,
                   target_generation: selected.target_generation, client_auth_paired: true };
               case "fetch_library_sync_printer_overview":
-                return [{ printer: { id: selected === original ? "old-printer" : "new-printer" }, slots: [] }];
+                return [{ printer: { id: selected === original ? "old-printer" : "new-printer" }, slots: [{ slot_id: "slot", ams_id: "ams", slot_index: 1, spool_id: "assigned" }] }];
               case "fetch_library_sync_printer_settings": return { printer_models: [], bambu_live_integrations: [] };
               case "fetch_library_sync_spool_snapshot":
                 if (selected === original) throw new Error("interrupted spool read");
@@ -67,6 +67,62 @@ test("Printers discards late cached and live data when the paired target changes
           assert.deepEqual(calls.filter(([cmd]) => cmd === "fetch_library_sync_spool_snapshot").map(([,input]) => input), [original, replacement]);
           assert.deepEqual(calls.filter(([cmd]) => cmd.startsWith("fetch_cached_")), [["fetch_cached_library_sync_spools", original]]);
         } finally {
+          await page.close();
+        }
+      });
+    }
+    for (const cached of [false, true]) {
+      await context.test(`first picker discards late ${cached ? "cached" : "live"} rows after A–B–A`, async () => {
+        const page = await browser.newPage();
+        let generation = 1;
+        let resume!: () => void;
+        const pending = new Promise<void>(resolve => { resume = resolve; });
+        const reads: Array<[string, number]> = [];
+        try {
+          await page.exposeFunction("printerInvoke", async (cmd: string, args: { input?: { target_generation: number } }) => {
+            const target = args?.input?.target_generation;
+            switch (cmd) {
+              case "get_library_sync_page_status":
+                return { mode: "CLIENT", host_base_url: "http://host-a", library_id: "library-a",
+                  target_generation: generation, client_auth_paired: true };
+              case "fetch_library_sync_printer_overview":
+                return [{ printer: { id: "printer-" + generation }, slots: [{ slot_id: "slot", ams_id: "ams", slot_index: 1 }] }];
+              case "fetch_library_sync_printer_settings": return { printer_models: [], bambu_live_integrations: [] };
+              case "fetch_library_sync_catalog_masters": return [];
+              case "fetch_library_sync_spool_snapshot":
+              case "fetch_cached_library_sync_spools":
+                assert.ok(target);
+                reads.push([cmd, target]);
+                if (target === 1 && cached && cmd === "fetch_library_sync_spool_snapshot") throw Error("disconnected");
+                if (target === 1) await pending;
+                return { rows: [{ spool: { id: "roll-" + target, status: "IN_STOCK" }, master: {} }], captured_at: "saved" };
+              default: throw new Error("Unexpected command " + cmd);
+            }
+          });
+          await page.setContent('<div id="root"></div>');
+          await page.evaluate("window.__TAURI__ = {invoke: window.printerInvoke}; window.paints = [];" +
+            "new MutationObserver(() => window.paints.push(document.body.innerText)).observe(document.body, {subtree:true, childList:true, characterData:true});");
+          await page.addScriptTag({ content: chunk.code });
+          await page.waitForFunction(() => document.querySelector("output")?.textContent === "printer-1");
+          assert.deepEqual(reads, []);
+          const open = page.getByRole("button", { name: "Open picker" });
+          await open.click({ clickCount: 2 });
+          await context.waitFor(() => assert.equal(reads.length, cached ? 2 : 1), { timeout: 10_000 });
+          generation = 3;
+          resume();
+          await page.waitForFunction(() => document.querySelector("output")?.textContent === "printer-3");
+          assert.equal(await page.locator("output").getAttribute("data-spools"), "deferred");
+          await open.click();
+          await page.waitForFunction(() => document.querySelector("output")?.textContent === "printer-3 roll-3");
+          await open.click();
+          assert.deepEqual(reads, [
+            ["fetch_library_sync_spool_snapshot", 1],
+            ...(cached ? [["fetch_cached_library_sync_spools", 1]] : []),
+            ["fetch_library_sync_spool_snapshot", 3],
+          ]);
+          assert.equal(await page.evaluate("window.paints.some(text => text.includes('roll-1'))"), false);
+        } finally {
+          resume();
           await page.close();
         }
       });

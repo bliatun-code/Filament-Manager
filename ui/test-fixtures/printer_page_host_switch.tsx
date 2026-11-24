@@ -12,11 +12,11 @@ export function PrinterView() {
     ...role, tauri: true, supportedPrinterModels: models, loadErrorMessage: "Load failed",
     onInteractiveReload: onReload, onTargetChanged: role.retryLibrarySyncRole,
   });
-  return <output>{[
+  return <><button onClick={data.requestPickerSpools}>Open picker</button><output data-spools={data.spoolReadState}>{[
     ...data.printers.map(row => row.printer.id),
     ...data.spools.map(row => row.spool.id),
     ...data.catalogMasters.map(row => row.id),
-  ].join(" ")}</output>;
+  ].join(" ")}</output></>;
 }
 
 createRoot(document.getElementById("root")!).render(<PrinterView />);

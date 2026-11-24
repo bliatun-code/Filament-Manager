@@ -37,9 +37,13 @@ that this lookup can read the settings with unreadable cache values and
 returns identical JSON with zero and 10,000 cached spools. Each page loads
 the lists it needs separately.
 
-Printers requests the live overview, spool snapshot and printer settings together.
-Rust saves the complete spool snapshot and returns its rows and capture time in
-one call. A failed overview or spool request reads only its matching offline
+Printers reads the overview and printer settings together. If all slots are empty
+and have no live tray observation, opening and refreshing skip the spool list.
+Opening a slot picker, displaying an assigned spool or resolving a live tray
+requires the full inventory. Subsequent refreshes keep it current until the
+page closes or the target changes. A partial Host read also requests the rows
+needed for offline display. Rust saves and returns the complete Client spool
+snapshot in one call. A failed overview or spool request reads only its matching offline
 copy. After loading the catalog, the page checks the current Host, library and
 generation before displaying results. A change restarts loading for the new target.
 
