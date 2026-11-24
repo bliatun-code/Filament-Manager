@@ -15,6 +15,7 @@ use super::library_sync_defaults::{default_library_sync_device_name, normalize_l
 
 const LIBRARY_SYNC_HOST_CACHE_KEYS: &[&str] = &[
     "library_sync_cached_snapshot_json",
+    super::database_loan_workspace::CACHED_COUNTS,
     SNAPSHOT_CAPTURED_AT_KEY,
     DASHBOARD_SNAPSHOT_KEY,
     "library_sync_cached_spools_json",

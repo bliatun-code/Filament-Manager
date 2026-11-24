@@ -137,7 +137,6 @@ fn loan_dialogs_send_one_post_each_on_a_stable_host_and_none_after_health_switch
                 if matches!(action, LoanAction::Lend) {
                     replies.push(response("GET /api/v1/library/printers", "[]".into()));
                 }
-                replies.push(response("GET /api/v1/library/spools?", "[]".into()));
             }
             let (tx, rx) = std::sync::mpsc::channel::<std::path::PathBuf>();
             let (url, server) = spawn_fake_host_with(replies, move |request| {
@@ -150,6 +149,10 @@ fn loan_dialogs_send_one_post_each_on_a_stable_host_and_none_after_health_switch
                 .unwrap()
                 .get_library_sync_page_status()
                 .unwrap();
+            let db = FilamentDatabase::open(&path).unwrap();
+            let capture = "2020-01-01T00:00:00Z";
+            db.connection().execute("INSERT OR REPLACE INTO settings(key,value) VALUES ('library_sync_cached_spools_json',?1)",
+                [json!({"rows":[], "captured_at":capture}).to_string()]).unwrap();
             tx.send(path.clone()).unwrap();
             let result = action.submit(
                 &state,
@@ -161,6 +164,12 @@ fn loan_dialogs_send_one_post_each_on_a_stable_host_and_none_after_health_switch
                 assert!(result.unwrap_err().contains("common.invalid_request"));
             } else {
                 result.unwrap();
+                let cache = db
+                    .get_library_sync_settings()
+                    .unwrap()
+                    .cached_spools
+                    .unwrap();
+                assert_eq!(cache.captured_at, capture);
             }
             server.join().unwrap();
             std::fs::remove_file(path).unwrap();

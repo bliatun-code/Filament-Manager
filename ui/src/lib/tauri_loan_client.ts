@@ -182,3 +182,16 @@ export function getLoanPickerPage(
 ) {
   return invoke<LoanPickerPage | null>("get_loan_picker_page", { query, target });
 }
+
+export type LoanWorkspaceCounts = {
+  stock: number | null;
+  loans: number | null;
+  locations: number | null;
+  purchases: number | null;
+};
+
+export function getLoanWorkspaceCounts(target: {
+  base_url: string | null; expected_library_id: string; target_generation: number;
+}) {
+  return invoke<LoanWorkspaceCounts>("get_loan_workspace_counts", { target });
+}

@@ -647,6 +647,7 @@ mod tests {
     }
 
     mod loan_picker;
+    mod loan_workspace;
     mod loan_writes;
     mod printer_picker;
     mod spool_snapshot;

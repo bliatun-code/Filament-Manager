@@ -37,6 +37,15 @@ that this lookup can read the settings with unreadable cache values and
 returns identical JSON with zero and 10,000 cached spools. Each page loads
 the lists it needs separately.
 
+Opening **Loans & borrowed-in**, lending and returning load loan history,
+active loans and four tab counts. Local libraries count in SQLite. Paired
+clients ask the Host for the counts and keep the last result for offline use.
+On the first offline open after upgrading, SQLite can derive the counts from
+existing cached lists. Opening Inventory or a specific roll loads the full inventory. A loan write
+preserves the timestamp of the last complete offline inventory copy.
+Older Hosts use their snapshot and supported list endpoints for the badges;
+an unavailable count displays a dash.
+
 Opening **Loan out roll** reads the first 150 eligible rolls, the total count
 and any eligible selection from Inventory in one call. Searches match all
 words across the full library, including the roll reference and location.

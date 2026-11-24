@@ -61,6 +61,7 @@ pub(super) async fn handle_health(
                     CATALOG_SPOOL_BATCH_CAPABILITY,
                     PRINTER_PICKER_CAPABILITY,
                     LOAN_PICKER_CAPABILITY,
+                    crate::companion_models::LOAN_WORKSPACE_COUNTS,
                     PRINTER_SLOT_OPERATIONS_CAPABILITY,
                 ],
                 auth_mode: state.runtime.auth_mode().to_string(),
@@ -164,6 +165,20 @@ pub(super) async fn handle_printer_picker_page(
             db.printer_picker_page(&query)
                 .map(Json)
                 .map_err(CompanionApiError::from)
+        })
+        .await
+}
+
+pub(super) async fn handle_loan_workspace_counts(
+    State(state): State<CompanionApiState>,
+    headers: HeaderMap,
+) -> Result<Json<crate::backend::database_loan_workspace::LoanWorkspaceCounts>, CompanionApiError> {
+    require_allowed_host(&headers, &state.runtime)?;
+    state
+        .run_blocking("loan workspace counts", move |state| {
+            Ok(Json(
+                FilamentDatabase::open(&state.db_path)?.loan_workspace_counts()?,
+            ))
         })
         .await
 }

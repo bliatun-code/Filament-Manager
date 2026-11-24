@@ -41,23 +41,26 @@ import {
 } from "../lib/desktop_visual_qa_scenario";
 import { useClientWriteGuards } from "../lib/use_client_write_guards";
 import { parseNonNegativeWeight } from "../lib/weight_display";
-import { useLibrarySyncState, type LibrarySyncUiState } from "./use_library_sync_state";
+import type { LibrarySyncUiState } from "./use_library_sync_state";
+import { getLoanWorkspaceCounts, type LoanWorkspaceCounts } from "../lib/tauri_loan_client";
+import { loadLibrarySyncPageState } from "../lib/library_sync_state";
 
 type LoansPageProps = {
   embedded?: boolean;
-  onDataChanged?: () => void;
+  library: LibrarySyncUiState;
+  onCountsChange: (counts: LoanWorkspaceCounts | null) => void;
   onOpenSpool?: (spoolId: string) => void;
 };
 
-export default function LoansPage(props: LoansPageProps = {}) {
-  const library = useLibrarySyncState(isTauri());
+export default function LoansPage(props: LoansPageProps) {
+  const { library } = props;
   // Return drafts and the loan rows they were opened from belong to one target.
   const key = JSON.stringify([library.clientReadOnly, library.clientHostBaseUrl,
     library.clientLibraryId, library.clientTargetGeneration]);
-  return <LoanWorkspace key={key} library={library} {...props} />;
+  return <LoanWorkspace key={key} {...props} />;
 }
 
-function LoanWorkspace({ embedded = false, onDataChanged, onOpenSpool, library }: LoansPageProps & { library: LibrarySyncUiState }) {
+function LoanWorkspace({ embedded = false, onCountsChange, onOpenSpool, library }: LoansPageProps) {
   const { t, locale } = useI18n();
   const tauri = isTauri();
   const {
@@ -102,8 +105,8 @@ function LoanWorkspace({ embedded = false, onDataChanged, onOpenSpool, library }
   const mounted = useRef(false);
   useLayoutEffect(() => {
     mounted.current = true;
-    return () => { mounted.current = false; };
-  }, []);
+    return () => { mounted.current = false; onCountsChange(null); };
+  }, [onCountsChange]);
   const desktopVisualQaScenario = useMemo(() => resolveDesktopVisualQaScenario(), []);
   const [desktopVisualQaReturnApplied, setDesktopVisualQaReturnApplied] = useState(
     () =>
@@ -125,13 +128,26 @@ function LoanWorkspace({ embedded = false, onDataChanged, onOpenSpool, library }
         clientLibraryId,
         clientTargetGeneration,
       };
-      const [history, active] = await Promise.all([
+      const [history, active, counts] = await Promise.all([
         loadLoanRowsPage(options),
         loadLoanRowsPage({ ...options, activeOnly: true, limit: 2500 }),
+        clientLibraryId && clientTargetGeneration != null
+          ? getLoanWorkspaceCounts({
+              base_url: clientReadOnly ? clientHostBaseUrl : null,
+              expected_library_id: clientLibraryId,
+              target_generation: clientTargetGeneration,
+            }).catch(() => null)
+          : null,
       ]);
-      if (requestId !== reloadRequestRef.current) {
+      const current = await loadLibrarySyncPageState();
+      if (!mounted.current || requestId !== reloadRequestRef.current) return;
+      if (current.clientReadOnly !== clientReadOnly || current.clientLibraryId !== clientLibraryId ||
+          current.clientTargetGeneration !== clientTargetGeneration || current.clientHostBaseUrl !== clientHostBaseUrl ||
+          current.clientHostWritePaired !== clientHostWritePaired) {
+        retryLibrarySyncRole();
         return;
       }
+      onCountsChange(counts);
       setLoanHistory(history);
       setActiveLoanSnapshot(active);
       // OFFLINE is a settled client fallback. The dedicated Host warning
@@ -139,12 +155,18 @@ function LoanWorkspace({ embedded = false, onDataChanged, onOpenSpool, library }
       completeRefresh();
     } catch (loadError) {
       console.error(loadError);
-      if (requestId === reloadRequestRef.current) {
+      if (mounted.current && requestId === reloadRequestRef.current) {
+        setLoanHistory(null);
+        setActiveLoanSnapshot(null);
+        onCountsChange(null);
         failRefresh(t("loans.error.load", "Failed to load loan data."));
       }
     }
   }, [
     beginRefresh,
+    clientHostWritePaired,
+    onCountsChange,
+    retryLibrarySyncRole,
     clientHostBaseUrl,
     clientLibraryId,
     clientReadOnly,
@@ -361,7 +383,6 @@ function LoanWorkspace({ embedded = false, onDataChanged, onOpenSpool, library }
       setReturnModalNote("");
       await reload();
       if (!mounted.current) return;
-      onDataChanged?.();
       setInfo(
         isInbound
           ? `${t("loans.markedHandedBackTo", "Marked borrowed-in spool as handed back to")} ${returnModalLoan.loan.counterparty_name ?? returnModalLoan.loan.borrower_name}.`
@@ -601,7 +622,6 @@ function LoanWorkspace({ embedded = false, onDataChanged, onOpenSpool, library }
         onLoanCreated={async () => {
           await reload();
           if (!mounted.current) return;
-          onDataChanged?.();
           setInfo(t("inventory.loanCreated", "Loan created."));
         }}
       />

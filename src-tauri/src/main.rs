@@ -85,6 +85,7 @@ mod library_sync_spool_write_commands;
 mod library_sync_target_guard;
 mod library_sync_validation_commands;
 mod library_sync_wishlist_write_commands;
+mod loan_workspace_commands;
 mod local_service_advertisement;
 #[cfg(target_os = "macos")]
 mod macos_app_registration;
@@ -356,10 +357,8 @@ fn main() {
             };
             app.manage(state.clone());
             desktop_lifecycle::initialize(app).map_err(std::io::Error::other)?;
-
             #[cfg(debug_assertions)]
             apply_visual_qa_window_size(app.handle())?;
-
             #[cfg(debug_assertions)]
             apply_visual_qa_scenario_url(app)?;
 
@@ -384,6 +383,7 @@ fn main() {
             printer_read_commands::list_printer_overview,
             spool_picker_commands::get_printer_picker_page,
             spool_picker_commands::get_loan_picker_page,
+            loan_workspace_commands::get_loan_workspace_counts,
             trusted_lan_status_commands::get_trusted_lan_companion_status,
             trusted_lan_interface_commands::list_trusted_lan_interfaces,
             trusted_lan_config_commands::update_trusted_lan_companion_config,
