@@ -29,6 +29,7 @@ import {
 } from "../lib/tauri_client";
 
 type UseSettingsFilamentDefaultsInput = {
+  enabled: boolean;
   clientHostBaseUrl?: string | null;
   clientHostWritePaired: boolean;
   clientLibraryId?: string | null;
@@ -48,6 +49,7 @@ type LoadFilamentStandardsOptions = {
 };
 
 export function useSettingsFilamentDefaults({
+  enabled,
   clientHostBaseUrl,
   clientHostWritePaired,
   clientLibraryId,
@@ -213,19 +215,18 @@ export function useSettingsFilamentDefaults({
   );
 
   useEffect(() => {
-    void loadSnapshot();
+    if (enabled) void loadSnapshot();
     return () => {
       requestGenerationRef.current += 1;
     };
-  }, [loadSnapshot]);
+  }, [enabled, loadSnapshot]);
 
   const reload = useCallback(
-    () =>
-      loadSnapshot({
-        preserveSnapshotOnFailure: true,
-        propagateFailure: true,
-      }),
-    [loadSnapshot],
+    async () => {
+      if (!enabled) return null;
+      return loadSnapshot({ preserveSnapshotOnFailure: true, propagateFailure: true });
+    },
+    [enabled, loadSnapshot],
   );
   const retryLoad = useCallback(
     () => loadSnapshot({ preserveSnapshotOnFailure: true }),

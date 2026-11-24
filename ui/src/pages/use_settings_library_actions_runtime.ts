@@ -24,7 +24,8 @@ type UseSettingsLibraryActionsRuntimeInput = {
   libraryRuntime: SettingsLibraryRuntime;
   loading: boolean;
   messageGroups: SettingsMessageGroups;
-  reloadSettings: () => Promise<void>;
+  reloadSettings: (options?: { tabChange: boolean }) => Promise<void>;
+  spoolRowsPending: boolean;
   settingsDataSourceReady: boolean;
   setError: Dispatch<SetStateAction<string | null>>;
   setInfo: Dispatch<SetStateAction<string | null>>;
@@ -41,6 +42,7 @@ export function useSettingsLibraryActionsRuntime({
   loading,
   messageGroups,
   reloadSettings,
+  spoolRowsPending,
   settingsDataSourceReady,
   setError,
   setInfo,
@@ -140,6 +142,7 @@ export function useSettingsLibraryActionsRuntime({
 
   useSettingsInitialLoad({
     dataSourceReady: settingsDataSourceReady,
+    spoolRowsPending,
     loadTrustedLanCompanionStatus,
     reloadSettings,
     tauri,

@@ -12,7 +12,7 @@ export function useSettingsPageDataState(tauri: boolean) {
   const [loading, setLoading] = useState(tauri);
   const [printers, setPrinters] = useState<PrinterRow[]>([]);
   const [printerOverview, setPrinterOverview] = useState<PrinterOverviewRow[]>([]);
-  const [spoolRows, setSpoolRows] = useState<NormalizedSpoolWithMasterRow[]>([]);
+  const [spoolRows, setSpoolRows] = useState<NormalizedSpoolWithMasterRow[] | null>(null);
   const [catalogData, setCatalogData] = useState(createSettingsCatalogDataState);
   const [lastCatalogReset, setLastCatalogReset] = useState<CatalogResetStats | null>(
     null,

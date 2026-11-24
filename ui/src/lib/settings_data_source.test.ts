@@ -178,6 +178,7 @@ function remoteSnapshot(
 test("loadSettingsPageData loads local settings overview and local spools", async () => {
   let roleResolved = false;
   const result = await loadSettingsPageData({
+    includeSpoolRows: true,
     loadPrinterSettings: async () => {
       assert.equal(roleResolved, true);
       return printerSettingsSnapshot("printer-local");
@@ -211,6 +212,7 @@ test("loadSettingsPageData loads local settings overview and local spools", asyn
 
 test("settings remain loadable for explicit recovery when the local low-stock policy is corrupt", async () => {
   const result = await loadSettingsPageData({
+    includeSpoolRows: true,
     loadPrinterSettings: async () => printerSettingsSnapshot("printer-local"),
     loadCatalogRows: async () => hostCatalogRows,
     loadSyncSettings: async () =>
@@ -243,6 +245,7 @@ test("loadSettingsPageData prefers host overview, settings, and spools for clien
     },
   });
   const result = await loadSettingsPageData({
+    includeSpoolRows: true,
     loadPrinterSettings: async () => {
       throw new Error("local printer settings must not be read in client mode");
     },
@@ -316,6 +319,7 @@ test("client settings distinguish an authoritative empty catalog from an unavail
   };
 
   const authoritativeEmpty = await loadSettingsPageData({
+    includeSpoolRows: true,
     ...dependencies,
     loadCatalogRows: async () => [],
   });
@@ -324,6 +328,7 @@ test("client settings distinguish an authoritative empty catalog from an unavail
   assert.equal(authoritativeEmpty.revisionPollComplete, true);
 
   const unavailable = await loadSettingsPageData({
+    includeSpoolRows: true,
     ...dependencies,
     loadCatalogRows: async () => {
       throw new Error("catalog read timed out");
@@ -345,6 +350,7 @@ test("loadSettingsPageData falls back to cached client printers and spools", asy
     },
   });
   const result = await loadSettingsPageData({
+    includeSpoolRows: true,
     loadPrinterSettings: async () => {
       throw new Error("local printer settings must not be read in client mode");
     },
@@ -395,6 +401,7 @@ test("loadSettingsPageData falls back to cached client printers and spools", asy
 
 test("loadSettingsPageData avoids local spools and Bambu settings when client host details are incomplete", async () => {
   const result = await loadSettingsPageData({
+    includeSpoolRows: true,
     loadPrinterSettings: async () => {
       throw new Error("local printer settings must not be read in client mode");
     },
@@ -445,6 +452,7 @@ test("loadSettingsPageData keeps fulfilled host client data without mixing local
   const freshHostSnapshot = remoteSnapshot();
 
   const result = await loadSettingsPageData({
+    includeSpoolRows: true,
     loadPrinterSettings: async () => {
       throw new Error("local printer settings must not be read in client mode");
     },
@@ -584,6 +592,7 @@ test("Settings requests only failed cache domains, including a disconnected Host
       return live;
     };
     const result = await loadSettingsPageData({
+      includeSpoolRows: true,
       loadSyncSettings: async (domains, generation, fetchedAt) => {
         assert.ok(domains);
         calls.push([...domains]);
@@ -626,6 +635,7 @@ test("Settings discards all old results on a Host, library or generation switch 
     let current = pairedSettings;
     const requests: string[][] = [];
     const result = await loadSettingsPageData({
+      includeSpoolRows: true,
       loadSyncSettings: async (domains, generation) => {
         assert.ok(domains);
         requests.push([...domains]);
@@ -671,6 +681,7 @@ test("Host checks reuse the visible summary on success and read only the saved s
 test("overlapping successful Host switches publish only the latest identity", async () => {
   let generation = 7;
   const result = await loadSettingsPageData({
+    includeSpoolRows: true,
     loadSyncSettings: async domains => {
       assert.deepEqual(domains, []);
       return { ...pairedSettings, target_generation: generation++ };
@@ -705,6 +716,7 @@ test("Client Settings makes one native spool request and keeps live rows if only
 
   try {
     const result = await loadSettingsPageData({
+      includeSpoolRows: true,
       loadSyncSettings: async (domains) => {
         assert.deepEqual(domains, []);
         return pairedSettings;
@@ -721,5 +733,36 @@ test("Client Settings makes one native spool request and keeps live rows if only
     }]);
   } finally {
     globalThis.window = previousWindow;
+  }
+});
+
+test("compact Settings reads no live or saved spools locally, on a healthy Client or while offline", async () => {
+  for (const source of ["local", "client", "offline", "missing target"]) {
+    const failed = () => Promise.reject(new Error("unreachable Host"));
+    const calls: string[][] = [];
+    let spoolReads = 0;
+    const result = await loadSettingsPageData({
+      includeSpoolRows: false,
+      loadSyncSettings: async domains => {
+        assert.ok(domains);
+        calls.push([...domains]);
+        if (source === "local") return syncSettings();
+        return source === "missing target" ? { ...pairedSettings, host_base_url: null } : pairedSettings;
+      },
+      loadPrinterSettings: async () => printerSettingsSnapshot("local"),
+      listLocalPrinterOverview: async () => [],
+      loadCatalogRows: source === "offline" ? failed : async () => [],
+      fetchHostPrinterSettings: source === "offline" ? failed : async () => printerSettingsSnapshot("host"),
+      fetchHostPrinterOverview: source === "offline" ? failed : async () => [],
+      fetchHostSnapshot: source === "offline" ? failed : async () => remoteSnapshot(),
+      fetchHostSpoolSnapshot: async () => { spoolReads++; return { rows: hostSpoolRows, captured_at: null }; },
+      loadSpoolRows: async () => { spoolReads++; return localSpoolRows; },
+      onHostLoadError: () => {},
+    });
+    const complete = source === "local" || source === "client";
+    assert.equal(spoolReads, 0);
+    assert.deepEqual(calls, [[], complete ? [] : ["printers", "snapshot"]]);
+    assert.deepEqual(result.spoolRows, []);
+    assert.equal(result.revisionPollComplete, complete);
   }
 });

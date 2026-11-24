@@ -64,16 +64,21 @@ loan revisions match before and after the new report. Missing or changed
 revisions and manual retries reload the page data. The final target check
 discards late replies after a Host or library change.
 
-Settings opens and refreshes with cache-free sync settings, including the device
-name, validation status and low-stock policy. Client reads run concurrently.
-Failed printer, spool and summary reads select just their own saved data. The
-final settings read checks the target generation within the same SQLite
-transaction and recovers a newer summary if another request overtook this one.
-A target change restarts the load once. One native command reads the Host spool
-list and saves the complete offline copy before returning the rows to Settings.
-Multi-page lists must have stable inventory and catalog revisions. An interrupted
-read keeps the previous complete copy, and a stale target cannot replace it.
-If only the local save fails, Settings still displays the live rows.
+Settings opens and refreshes General without reading local, live or cached spool
+rows. The Printers and Filament defaults tabs request spool rows when needed.
+Only Filament defaults requests the grouped filament standards. A paired Client
+export requests live rows on demand and uses the same target's complete saved
+copy if the Host read fails. A missing copy fails the export, while a saved
+empty library exports successfully.
+
+Settings reads the device name, validation status and low-stock policy without
+cache lists. Client reads run concurrently. Failed printer, summary and requested
+spool reads select their own saved data. The final settings read checks the
+target generation in the same SQLite transaction and recovers a newer summary
+if another request overtook it. A target change restarts the load once. The
+native spool command saves complete snapshots under stable inventory and catalog
+revisions. An interrupted read keeps the last complete copy, and a stale target
+cannot replace it. Live rows remain available if only the local save fails.
 
 The Client dashboard paints its cached figures before contacting the Host. The
 following live refresh consumes that first read once, scoped to the same Host,

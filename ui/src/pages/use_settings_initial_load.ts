@@ -3,7 +3,8 @@ import { useEffect } from "react";
 type UseSettingsInitialLoadOptions = {
   dataSourceReady: boolean;
   loadTrustedLanCompanionStatus: () => Promise<unknown>;
-  reloadSettings: () => Promise<void>;
+  reloadSettings: (options?: { tabChange: boolean }) => Promise<void>;
+  spoolRowsPending: boolean;
   tauri: boolean;
 };
 
@@ -11,6 +12,7 @@ export function useSettingsInitialLoad({
   dataSourceReady,
   loadTrustedLanCompanionStatus,
   reloadSettings,
+  spoolRowsPending,
   tauri,
 }: UseSettingsInitialLoadOptions) {
   useEffect(() => {
@@ -19,7 +21,9 @@ export function useSettingsInitialLoad({
     }
     if (!dataSourceReady) {
       void reloadSettings();
+    } else if (spoolRowsPending) {
+      void reloadSettings({ tabChange: true });
     }
     void loadTrustedLanCompanionStatus();
-  }, [dataSourceReady, loadTrustedLanCompanionStatus, reloadSettings, tauri]);
+  }, [dataSourceReady, loadTrustedLanCompanionStatus, reloadSettings, spoolRowsPending, tauri]);
 }

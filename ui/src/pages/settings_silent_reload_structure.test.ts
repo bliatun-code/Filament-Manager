@@ -25,7 +25,7 @@ test("silent settings reloads preserve editable local drafts", () => {
     "setLibrarySyncSnapshot(pageData.librarySyncSnapshot);",
   );
   const draftGuardIndex = source.indexOf(
-    "if (!options?.silent) {",
+    "if (!options?.silent",
     snapshotUpdateIndex,
   );
   const draftGuardEndIndex = source.indexOf("\n      }\n    } catch", draftGuardIndex);
@@ -43,7 +43,7 @@ test("silent settings reloads preserve editable local drafts", () => {
 
 test("silent settings reloads still update persisted and live datasets", () => {
   const updateBlockStart = source.indexOf("setPrinters(pageData.printers);");
-  const guardIndex = source.indexOf("if (!options?.silent) {", updateBlockStart);
+  const guardIndex = source.indexOf("if (!options?.silent", updateBlockStart);
 
   assert.ok(updateBlockStart > 0);
   assert.ok(guardIndex > updateBlockStart);
@@ -106,7 +106,7 @@ test("long catalog writes lock library target changes until their result is defi
 });
 
 test("a completed settings data reload also refreshes filament standards", () => {
-  const inventoryUpdateIndex = source.indexOf("setSpoolRows(pageData.spoolRows);");
+  const inventoryUpdateIndex = source.indexOf("setSpoolRows(includeSpoolRows ? pageData.spoolRows : null);");
   const standardsReloadIndex = source.indexOf("await onDataReloaded?.();");
   const revisionCommitIndex = source.indexOf(
     "revisionTrackerRef.current = observedTracker;",
