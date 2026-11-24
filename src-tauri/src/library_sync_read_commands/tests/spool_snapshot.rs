@@ -10,7 +10,7 @@ use serde_json::json;
 const FIRST: &str = "GET /api/v1/library/spools?limit=1000&offset=0 ";
 const NEXT: &str = "GET /api/v1/library/spools?limit=1000&offset=1000 ";
 
-fn row(id: &str) -> SpoolWithMasterRow {
+pub(super) fn row(id: &str) -> SpoolWithMasterRow {
     serde_json::from_value(json!({
         "spool": {
             "id": id, "master_id": "master", "status": "IN_STOCK", "ownership_type": "OWNED"
@@ -76,6 +76,46 @@ fn interrupted_second_page_preserves_previous_offline_copy_and_timestamp() {
     assert_eq!(cached.captured_at, saved);
     assert_eq!(cached.rows.len(), 1);
     assert_eq!(cached.rows[0].spool.id, "offline");
+    drop(db);
+    std::fs::remove_file(path).unwrap();
+}
+
+#[test]
+fn loan_acknowledged_during_full_stock_read_survives_in_live_and_offline_inventory() {
+    let (send, receive) = std::sync::mpsc::channel::<std::path::PathBuf>();
+    let (url, server) = spawn_fake_host_with(
+        vec![
+            health(),
+            response(FIRST, json!([row("roll"), row("handed-back")]).to_string()),
+        ],
+        move |request| {
+            if request.starts_with(FIRST) {
+                let db = FilamentDatabase::open(receive.recv().unwrap()).unwrap();
+                let engine = crate::backend::inventory_engine::InventoryEngine::new(db);
+                let mut changed = row("roll");
+                changed.spool.status = "BORROWED".into();
+                engine
+                    .save_cached_loan_spool_change("roll", Some(&changed), None)
+                    .unwrap();
+                engine
+                    .save_cached_loan_spool_change("handed-back", None, None)
+                    .unwrap();
+            }
+        },
+    );
+    let (state, path) = fake_host_state(&url);
+    let db = FilamentDatabase::open(&path).unwrap();
+    send.send(path.clone()).unwrap();
+    let live = fetch_library_sync_spool_snapshot_blocking(&state, target(&db)).unwrap();
+    server.join().unwrap();
+    let cached = fetch_cached_library_sync_spools_blocking(&state, &target(&db))
+        .unwrap()
+        .unwrap();
+    for rows in [live.rows, cached.rows] {
+        assert_eq!(rows.len(), 1);
+        assert_eq!(rows[0].spool.id, "roll");
+        assert_eq!(rows[0].spool.status, "BORROWED");
+    }
     drop(db);
     std::fs::remove_file(path).unwrap();
 }

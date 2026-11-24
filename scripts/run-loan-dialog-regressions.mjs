@@ -79,7 +79,7 @@ function resolveLoanDialogInvoke(fixture, command, payload) {
   return { rows, selected, total: candidates.length, matches: matches.length, revisions: [1, 1, 1, 1] };
 }
 
-async function runCase(browser, url, base, name, check) {
+async function runCase(browser, url, base, name, check, direct) {
   const context = await browser.newContext({ locale: "en-US", viewport: { width: 1440, height: 1000 } });
   try {
     const page = await context.newPage();
@@ -98,12 +98,15 @@ async function runCase(browser, url, base, name, check) {
       if (state.invoke) return state.invoke(command, payload);
       return resolveLoanDialogInvoke(data, command, payload);
     });
-    await page.goto(`${url}/?bfm_locale=en`, { waitUntil: "domcontentloaded" });
-    await page.getByRole("navigation", { name: "Navigation", exact: true }).getByRole("button", { name: "Inventory", exact: true }).click();
-    await page.locator("#inventory-loans-tab").click();
-    await page.getByRole("button", { name: /^Return ·/ }).waitFor();
+    const openWorkspace = () => page.goto(`${url}/?bfm_locale=en&bfm_visual_qa=loans-overview`, { waitUntil: "domcontentloaded" });
+    if (!direct) {
+      await page.goto(`${url}/?bfm_locale=en`, { waitUntil: "domcontentloaded" });
+      await page.getByRole("navigation", { name: "Navigation", exact: true }).getByRole("button", { name: "Inventory", exact: true }).click();
+      await page.locator("#inventory-loans-tab").click();
+      await page.getByRole("button", { name: /^Return ·/ }).waitFor();
+    }
     const fallback = (command, payload) => resolveLoanDialogInvoke(fixture, command, payload);
-    await check({ page, fixture, calls, state, fallback });
+    await check({ page, fixture, calls, state, fallback, openWorkspace });
     assert.deepEqual(errors, [], `${name}: unexpected browser errors`);
     process.stdout.write(`  Passed: ${name}\n`);
   } finally {
@@ -114,6 +117,101 @@ async function runCase(browser, url, base, name, check) {
 async function openLoanOut(page) {
   await page.getByRole("button", { name: "Loan out roll", exact: true }).click();
   return page.getByRole("dialog", { name: "Loan out roll" });
+}
+
+async function expectBadges(page, values) {
+  for (const [id, count] of Object.entries(values)) {
+    await page.locator(`#inventory-${id}-tab .inventory-workspace-count`).filter({ hasText: new RegExp(`^${count}$`) }).waitFor({state: id === "stock" ? "attached" : "visible"});
+  }
+}
+
+function assertLoansOnly(calls) {
+  const forbidden = ["list_spools", "fetch_library_sync_spool_snapshot", "fetch_cached_library_sync_spools",
+    "get_filament_standards", "fetch_library_sync_filament_standards"];
+  assert.deepEqual(calls.filter(call => forbidden.includes(call.command)), []);
+}
+
+async function checkWorkspaceOffline({ page, state, fixture, calls, fallback, openWorkspace }) {
+  const host = {mode: "CLIENT", library_id: "library-a", host_base_url: "https://host-a.invalid",
+    client_auth_paired: true, target_generation: 7};
+  const pending = deferred();
+  const started = deferred();
+  let current = host;
+  let offline = false;
+  state.invoke = (command, payload) => {
+    switch (command) {
+      case "get_library_sync_page_status": return current;
+      case "get_loan_workspace_counts":
+        assert.deepEqual(payload.target, {base_url: current.host_base_url, expected_library_id: current.library_id, target_generation: current.target_generation});
+        if (current === host) { started.resolve(); return pending.promise; }
+        return {stock: 10000, loans: 2, locations: 3, purchases: 0};
+      case "fetch_library_sync_loans":
+      case "fetch_library_sync_active_loans":
+        if (offline) throw new Error("[loan-regression] Host offline");
+        return fixture.loanRows.map(row => ({...row, loan: {...row.loan, borrower_name: "Old generation", counterparty_name: "Old generation"}}));
+      case "fetch_cached_library_sync_loans":
+      case "fetch_cached_library_sync_active_loans":
+        return {captured_at: "2024-01-02T12:00:00Z", rows: fixture.loanRows};
+      default: return fallback(command, payload);
+    }
+  };
+  await openWorkspace();
+  await waitForStart(started);
+  await expectBadges(page, {stock: "–", loans: "–"});
+  current = {...host, host_base_url: "https://host-b.invalid", library_id: "library-b", target_generation: 8};
+  current = {...host, target_generation: 9};
+  offline = true;
+  pending.resolve({stock: 17, loans: 19, locations: 21, purchases: 23});
+  await page.getByText(/Showing the last cached loan snapshot/).waitFor();
+  await expectBadges(page, {stock: 10000, loans: 2, locations: 3, purchases: 0});
+  await page.getByRole("button", {name: /^Return ·/}).waitFor();
+  await page.getByRole("button", {name: /^Hand back ·/}).waitFor();
+  assert.equal(await page.getByText("Old generation", {exact: true}).count(), 0);
+  assertLoansOnly(calls);
+}
+
+async function checkWorkspaceWrites({ page, state, fixture, calls, fallback, openWorkspace }) {
+  fixture.loanRows = fixture.loanRows.filter(row => row.loan.loan_direction === "INBOUND");
+  fixture.activeLoanRows = fixture.loanRows;
+  fixture.spoolRows[0].spool.ownership_type = "BORROWED_IN";
+  const source = fixture.loanRows[0];
+  state.invoke = (command, payload) => {
+    if (command === "lend_spool") {
+      const input = payload.input;
+      const loan = {...source, loan: {...source.loan, id: "new-loan", spool_id: input.spool_id,
+        borrower_name: input.borrower_name, counterparty_name: input.borrower_name, loan_direction: "OUTBOUND"}};
+      fixture.loanRows = [loan, source];
+      fixture.activeLoanRows = fixture.loanRows;
+      return loan;
+    }
+    if (command === "return_spool_loan") {
+      fixture.loanRows[0].loan.returned_at = "2025-01-02T12:00:00Z";
+      fixture.activeLoanRows = [source];
+      return fixture.loanRows[0];
+    }
+    if (["list_spool_history", "list_spool_usage"].includes(command)) return [];
+    return fallback(command, payload);
+  };
+  await openWorkspace();
+  await expectBadges(page, {stock: 2, loans: 1, locations: 0, purchases: fixture.wishlistRows.length});
+  const dialog = await openLoanOut(page);
+  await dialog.getByLabel("Borrower name", {exact: true}).fill("Badge test");
+  await dialog.getByRole("button", {name: "Loan out roll", exact: true}).click();
+  await expectBadges(page, {stock: 2, loans: 2});
+  await page.getByRole("button", {name: /^Return ·/}).click();
+  await page.getByRole("button", {name: "Confirm return", exact: true}).click();
+  await expectBadges(page, {stock: 2, loans: 1});
+  assert.equal(await page.getByRole("button", {name: /^Return ·/}).count(), 0);
+  assertLoansOnly(calls);
+
+  await page.getByRole("button", {name: "All", exact: true}).last().click();
+  const row = page.getByRole("row").filter({hasText: "Badge test"});
+  await row.locator("summary").click();
+  fixture.trustedLanStatus = {...fixture.trustedLanStatus, local_name_running: true, shell_url: "http://fixture.local:4278/companion"};
+  await row.getByRole("button", {name: "Open roll"}).click();
+  await page.getByRole("dialog", {name: /Selected roll:.*Dialog b/}).waitFor();
+  assert.equal(await page.locator("#inventory-stock-tab").getAttribute("aria-pressed"), "true");
+  assert.ok(calls.some(call => call.command === "list_spools"));
 }
 
 async function checkReopen({ page, fixture, calls, state, fallback }) {
@@ -412,6 +510,7 @@ async function checkPagedLoanPicker({ page, fixture, state, calls, fallback }) {
   revision++;
   await more.click();
   await rows.nth(151).waitFor({ state: "detached" });
+  await rows.nth(150).waitFor();
   assert.deepEqual(pickerQueries.slice(initialReads).map(q => q.offset), [150, 300, 0]);
   assert.equal(await rows.count(), 151);
 
@@ -496,7 +595,9 @@ async function main() {
     assert.ok(["chromium", "webkit"].includes(engine));
     browser = await (engine === "webkit" ? webkit : chromium).launch({ headless: true });
     const failures = [];
-    for (const [name, check] of [
+    for (const [name, check, direct] of [
+      ["loan workspace badges and stock on demand after lending and returning", checkWorkspaceWrites, true],
+      ["offline loan rows and badges reject a late A–B–A read", checkWorkspaceOffline, true],
       ["inventory selection, paged search, changing stock and interrupted reads", checkPagedLoanPicker],
       ["loan form remains scrollable with 42 rolls and a short window", checkScrollableLoanForm],
       ["paired loan dialogs keep the reviewed target through A–B–A and recover on reopen", checkPairedDialogTargets],
@@ -508,7 +609,7 @@ async function main() {
       ["inbound hand-back errors, draft retention and single submission", (ctx) => checkReturn(ctx, true)],
     ]) {
       try {
-        await runCase(browser, url, fixture, name, check);
+        await runCase(browser, url, fixture, name, check, direct);
       } catch (error) {
         console.error(`  Failed: ${name}
 ${error.stack ?? error}`);

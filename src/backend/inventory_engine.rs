@@ -422,6 +422,36 @@ impl InventoryEngine {
         self.db.save_library_sync_host_snapshot(snapshot, dashboard)
     }
 
+    pub fn cached_loan_spool_epoch(&self) -> InventoryResult<i64> {
+        self.db.cached_loan_spool_epoch()
+    }
+
+    pub fn apply_cached_loan_spool_changes(
+        &self,
+        rows: &mut Vec<SpoolWithMasterRow>,
+        since: i64,
+    ) -> InventoryResult<()> {
+        super::database_library_sync_cache::apply_cached_loan_spool_changes(
+            self.db.connection(),
+            rows,
+            since,
+        )
+    }
+
+    pub fn save_cached_loan_spool_change(
+        &self,
+        id: &str,
+        row: Option<&SpoolWithMasterRow>,
+        counts: Option<&super::database_loan_workspace::LoanWorkspaceCounts>,
+    ) -> InventoryResult<()> {
+        super::database_library_sync_cache::save_cached_loan_spool_change(
+            self.db.connection(),
+            id,
+            row,
+            counts,
+        )
+    }
+
     pub fn save_library_sync_cached_spools(
         &self,
         rows: &[SpoolWithMasterRow],

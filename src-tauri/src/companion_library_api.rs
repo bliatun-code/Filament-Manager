@@ -2,7 +2,7 @@ use crate::backend::database_loan_picker::{LoanPickerPage, LoanPickerQuery};
 use crate::backend::database_printer_picker::{PrinterPickerPage, PrinterPickerQuery};
 use crate::backend::filament_database::{
     FilamentDatabase, FilamentMasterCatalogRow, FilamentStandardsSnapshot, LibrarySyncSettingsRow,
-    PrinterOverviewRow, SpoolLoanDetailsRow, SpoolWithMasterRow, WishlistItemRow,
+    PrinterOverviewRow, SpoolLoanDetailsRow, SpoolLoanRow, SpoolWithMasterRow, WishlistItemRow,
 };
 use crate::backend::statistics::{
     FilamentConsumptionRow, StatisticsEngine, StatisticsPeriod, StatisticsTrace,
@@ -61,6 +61,7 @@ pub(super) async fn handle_health(
                     CATALOG_SPOOL_BATCH_CAPABILITY,
                     PRINTER_PICKER_CAPABILITY,
                     LOAN_PICKER_CAPABILITY,
+                    crate::companion_models::LOAN_WORKSPACE_COUNTS,
                     PRINTER_SLOT_OPERATIONS_CAPABILITY,
                 ],
                 auth_mode: state.runtime.auth_mode().to_string(),
@@ -164,6 +165,46 @@ pub(super) async fn handle_printer_picker_page(
             db.printer_picker_page(&query)
                 .map(Json)
                 .map_err(CompanionApiError::from)
+        })
+        .await
+}
+
+pub(super) fn loan_write_receipt(
+    state: &CompanionApiState,
+    loan: SpoolLoanRow,
+    message: &str,
+) -> crate::companion_models::LoanWriteResponse {
+    // The loan has committed. A failure reading the optional cache data must
+    // still deliver its acknowledgement, so a Client never replays the write.
+    let snapshot = FilamentDatabase::open(&state.db_path)
+        .and_then(|db| {
+            db.with_read_transaction(|db| {
+                Ok((
+                    db.get_spool_with_master_by_id(&loan.spool_id)?,
+                    Some(db.loan_workspace_counts()?),
+                ))
+            })
+        })
+        .unwrap_or_default();
+    crate::companion_models::LoanWriteResponse {
+        ok: true,
+        message: message.into(),
+        loan,
+        spool: snapshot.0,
+        counts: snapshot.1,
+    }
+}
+
+pub(super) async fn handle_loan_workspace_counts(
+    State(state): State<CompanionApiState>,
+    headers: HeaderMap,
+) -> Result<Json<crate::backend::database_loan_workspace::LoanWorkspaceCounts>, CompanionApiError> {
+    require_allowed_host(&headers, &state.runtime)?;
+    state
+        .run_blocking("loan workspace counts", move |state| {
+            Ok(Json(
+                FilamentDatabase::open(&state.db_path)?.loan_workspace_counts()?,
+            ))
         })
         .await
 }

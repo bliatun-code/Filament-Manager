@@ -649,6 +649,14 @@ export function resolveUiBrowserPerformanceInvoke(
         ...fixture.desktopLifecycleSettings,
         launch_at_login: Boolean(payload.enabled),
       };
+    case "get_loan_workspace_counts":
+      return {
+        stock: fixture.spoolRows.length,
+        loans: fixture.activeLoanRows.filter(({ loan }) => loan.loan_direction !== "INBOUND").length +
+          fixture.spoolRows.filter(({ spool }) => spool.ownership_type === "BORROWED_IN").length,
+        locations: 0,
+        purchases: fixture.wishlistRows.length,
+      };
     case "get_library_sync_page_status": {
       const settings = fixture.librarySyncSettings;
       return {

@@ -15,7 +15,9 @@ pub(crate) fn fetch_and_cache_library_sync_spools(
     target: &LibrarySyncTargetGuard,
     page_size: usize,
 ) -> Result<LibrarySyncSpoolSnapshot, String> {
-    let rows = read_consistent_pages(
+    let epoch =
+        with_current_library_sync_target(state, target, |engine| engine.cached_loan_spool_epoch())?;
+    let mut rows = read_consistent_pages(
         page_size,
         500_000 / page_size,
         |offset| {
@@ -37,6 +39,9 @@ pub(crate) fn fetch_and_cache_library_sync_spools(
     // A local cache write failure still leaves a complete live read. A target
     // change rejects the entire result outside the save, including its rows.
     let captured_at = with_current_library_sync_target(state, target, |engine| {
+        // A loan can commit while the Host pages are in flight. Keep that
+        // acknowledged change in both the live result and the complete cache.
+        engine.apply_cached_loan_spool_changes(&mut rows, epoch)?;
         Ok(engine.save_library_sync_cached_spools(&rows).ok())
     })?;
     Ok(LibrarySyncSpoolSnapshot { captured_at, rows })

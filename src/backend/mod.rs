@@ -47,6 +47,7 @@ pub mod database_loan_picker;
 pub mod database_loan_queries;
 pub mod database_loan_return;
 pub mod database_loan_update;
+pub mod database_loan_workspace;
 pub mod database_location_facade;
 pub mod database_location_models;
 pub mod database_locations;

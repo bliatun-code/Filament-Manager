@@ -1,18 +1,70 @@
+use crate::backend::filament_database::SpoolWithMasterRow;
 use crate::companion_models::LOAN_METADATA_CAPABILITY;
 use crate::library_sync_blocking_executor::run_library_sync_blocking;
 use crate::library_sync_cache_refresh::{
     refresh_library_sync_loan_cache, refresh_library_sync_printer_cache,
-    refresh_library_sync_spool_cache,
 };
 use crate::library_sync_command_support::{
     encode_library_sync_path_segment, library_sync_host_input,
     prepare_library_sync_host_write_for_generation, save_library_sync_success, trimmed_non_empty,
 };
-use crate::library_sync_host_client::perform_library_sync_host_write;
+use crate::library_sync_host_client::{
+    get_library_sync_host_json_authenticated_for_target, perform_library_sync_host_write_and_parse,
+};
 use crate::library_sync_models::{LibrarySyncLendSpoolInput, LibrarySyncReturnLoanInput};
+use crate::library_sync_target_guard::with_current_library_sync_target;
 use crate::library_sync_target_guard::LibrarySyncTargetGuard;
 use crate::state::AppState;
 use crate::trusted_lan_health::CompanionHealthCheckResponse;
+
+#[derive(serde::Deserialize)]
+struct LoanReceipt {
+    counts: Option<crate::backend::database_loan_workspace::LoanWorkspaceCounts>,
+    loan: LoanIdentity,
+    spool: Option<SpoolWithMasterRow>,
+}
+
+#[derive(serde::Deserialize)]
+struct LoanIdentity {
+    id: String,
+    spool_id: String,
+}
+
+fn cache_acknowledged_roll(
+    state: &AppState,
+    target: &LibrarySyncTargetGuard,
+    receipt: LoanReceipt,
+    handed_back: bool,
+) {
+    let loan = receipt.loan;
+    let row = if handed_back {
+        None
+    } else {
+        // Older Hosts return just the loan. Read only this roll and keep the
+        // successful write acknowledged even if the follow-up is interrupted.
+        let spool = receipt.spool.or_else(|| {
+            #[derive(serde::Deserialize)]
+            struct Detail {
+                spool: SpoolWithMasterRow,
+            }
+            let id = encode_library_sync_path_segment(&loan.spool_id);
+            get_library_sync_host_json_authenticated_for_target::<Detail>(
+                state,
+                &format!("/api/v1/spools/{id}?history_limit=1&usage_limit=1"),
+                target,
+            )
+            .ok()
+            .map(|detail| detail.spool)
+        });
+        let Some(spool) = spool.filter(|row| row.spool.id == loan.spool_id) else {
+            return;
+        };
+        Some(spool)
+    };
+    let _ = with_current_library_sync_target(state, target, |engine| {
+        engine.save_cached_loan_spool_change(&loan.spool_id, row.as_ref(), receipt.counts.as_ref())
+    });
+}
 
 fn prepare_loan_write(
     state: &AppState,
@@ -62,7 +114,7 @@ pub(crate) fn return_library_sync_host_loan_blocking(
         format!("/api/v1/loans/{loan_id}/return")
     };
 
-    perform_library_sync_host_write(
+    let receipt = perform_library_sync_host_write_and_parse(
         state,
         &path,
         &serde_json::json!({
@@ -72,8 +124,12 @@ pub(crate) fn return_library_sync_host_loan_blocking(
         &target,
     )?;
 
+    if let Ok(receipt) = serde_json::from_value::<LoanReceipt>(receipt)
+        && receipt.loan.id == input.loan_id.trim()
+    {
+        cache_acknowledged_roll(state, &target, receipt, input.inbound);
+    }
     refresh_library_sync_loan_cache(state, &target);
-    refresh_library_sync_spool_cache(state, &target);
     save_library_sync_success(state, &target, "Host loan updated.", None)?;
     Ok(())
 }
@@ -114,7 +170,7 @@ pub(crate) fn lend_library_sync_host_spool_blocking(
     )?;
 
     let spool_id = encode_library_sync_path_segment(spool_id);
-    perform_library_sync_host_write(
+    let receipt = perform_library_sync_host_write_and_parse(
         state,
         &format!("/api/v1/spools/{spool_id}/lend"),
         &serde_json::json!({
@@ -127,9 +183,13 @@ pub(crate) fn lend_library_sync_host_spool_blocking(
         &target,
     )?;
 
+    if let Ok(receipt) = serde_json::from_value::<LoanReceipt>(receipt)
+        && receipt.loan.spool_id == input.spool_id.trim()
+    {
+        cache_acknowledged_roll(state, &target, receipt, false);
+    }
     refresh_library_sync_loan_cache(state, &target);
     refresh_library_sync_printer_cache(state, &target);
-    refresh_library_sync_spool_cache(state, &target);
     save_library_sync_success(state, &target, "Host loan-out write completed.", None)?;
 
     Ok(())

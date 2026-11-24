@@ -272,6 +272,7 @@ pub(crate) const PURCHASE_RECEIPT_METADATA_CAPABILITY: &str = "purchase-receipt-
 pub(crate) const WISHLIST_RECEIPT_LOCATION_CAPABILITY: &str = "wishlist-receipt-location-v1";
 pub(crate) const WISHLIST_RECEIPT_IDEMPOTENCY_CAPABILITY: &str = "wishlist-receipt-idempotency-v1";
 pub(crate) const CATALOG_SPOOL_BATCH_CAPABILITY: &str = "catalog-spool-batch-v1";
+pub(crate) const LOAN_WORKSPACE_COUNTS: &str = "loan-workspace-counts-v1";
 pub(crate) const LOAN_PICKER_CAPABILITY: &str = "loan-spool-picker-v1";
 pub(crate) const PRINTER_PICKER_CAPABILITY: &str = "printer-spool-picker-v1";
 pub(crate) const PRINTER_SLOT_OPERATIONS_CAPABILITY: &str = "printer-slot-operations-v1";
@@ -313,6 +314,10 @@ pub(crate) struct SessionStatusResponse {
 
 #[derive(Serialize)]
 pub(crate) struct LoanWriteResponse {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub(crate) counts: Option<crate::backend::database_loan_workspace::LoanWorkspaceCounts>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub(crate) spool: Option<crate::backend::filament_database::SpoolWithMasterRow>,
     pub(crate) ok: bool,
     pub(crate) message: String,
     pub(crate) loan: SpoolLoanRow,

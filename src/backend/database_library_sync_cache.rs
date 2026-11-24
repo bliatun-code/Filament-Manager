@@ -1,4 +1,5 @@
 use rusqlite::Connection;
+use std::collections::BTreeMap;
 
 use super::database_library_sync_models::{
     LibrarySyncCachedFilamentConsumptionListRow, LibrarySyncCachedLoanListRow,
@@ -54,8 +55,86 @@ pub(crate) fn save_library_sync_cached_spools(
     };
     let serialized =
         serde_json::to_string(&payload).map_err(|error| InventoryError::Db(error.to_string()))?;
-    set_setting(conn, "library_sync_cached_spools_json", &serialized)?;
+    let tx = conn.unchecked_transaction()?;
+    set_setting(&tx, "library_sync_cached_spools_json", &serialized)?;
+    clear_cached_loan_spool_changes(&tx)?;
+    tx.commit()?;
     Ok(payload.captured_at)
+}
+
+// Store only the changed Host row on acknowledgement. Materialize these changes
+// when Inventory actually reads its complete snapshot, retaining its capture time.
+pub(crate) const LOAN_SPOOL_EPOCH: &str = "library_sync_loan_spool_epoch";
+const LOAN_SPOOL_PREFIX: &str = "library_sync_cached_loan_spool:";
+
+pub(crate) fn clear_cached_loan_spool_changes(conn: &Connection) -> InventoryResult<()> {
+    conn.execute(
+        "DELETE FROM settings WHERE key GLOB ?1",
+        [format!("{LOAN_SPOOL_PREFIX}*")],
+    )?;
+    Ok(())
+}
+
+pub(crate) fn save_cached_loan_spool_change(
+    conn: &Connection,
+    id: &str,
+    row: Option<&SpoolWithMasterRow>,
+    counts: Option<&super::database_loan_workspace::LoanWorkspaceCounts>,
+) -> InventoryResult<()> {
+    let value = serde_json::to_string(&row).map_err(|e| InventoryError::Db(e.to_string()))?;
+    let tx = conn.unchecked_transaction()?;
+    tx.execute(
+        "INSERT INTO settings(key,value) VALUES (?1,1)
+        ON CONFLICT(key) DO UPDATE SET value=CAST(value AS INTEGER)+1",
+        [LOAN_SPOOL_EPOCH],
+    )?;
+    tx.execute("INSERT OR REPLACE INTO settings (key,value)
+        SELECT ?1,json_object('epoch',CAST(value AS INTEGER),'spool',json(?2)) FROM settings WHERE key=?3",
+        rusqlite::params![format!("{LOAN_SPOOL_PREFIX}{id}"), value, LOAN_SPOOL_EPOCH])?;
+    if let Some(counts) = counts {
+        let json = serde_json::to_string(counts).map_err(|e| InventoryError::Db(e.to_string()))?;
+        set_setting(&tx, super::database_loan_workspace::CACHED_COUNTS, &json)?;
+    }
+    tx.commit()?;
+    Ok(())
+}
+
+pub(crate) fn cached_loan_spool_epoch(conn: &Connection) -> InventoryResult<i64> {
+    Ok(conn.query_row(
+        "SELECT coalesce((SELECT CAST(value AS INTEGER) FROM settings WHERE key=?1),0)",
+        [LOAN_SPOOL_EPOCH],
+        |row| row.get(0),
+    )?)
+}
+
+pub(crate) fn apply_cached_loan_spool_changes(
+    conn: &Connection,
+    spools: &mut Vec<SpoolWithMasterRow>,
+    since: i64,
+) -> InventoryResult<()> {
+    let mut stmt = conn.prepare("SELECT key,value -> '$.spool' FROM settings WHERE key GLOB ?1 AND value ->> '$.epoch' > ?2")?;
+    let mut rows = stmt.query(rusqlite::params![format!("{LOAN_SPOOL_PREFIX}*"), since])?;
+    let mut changes = BTreeMap::<String, Option<SpoolWithMasterRow>>::new();
+    while let Some(row) = rows.next()? {
+        let key: String = row.get(0)?;
+        let value: String = row.get(1)?;
+        changes.insert(
+            key[LOAN_SPOOL_PREFIX.len()..].to_owned(),
+            serde_json::from_str(&value).map_err(|e| InventoryError::Db(e.to_string()))?,
+        );
+    }
+    if !changes.is_empty() {
+        spools.retain_mut(|row| match changes.remove(&row.spool.id) {
+            Some(Some(updated)) => {
+                *row = updated;
+                true
+            }
+            Some(None) => false,
+            None => true,
+        });
+        spools.extend(changes.into_values().flatten());
+    }
+    Ok(())
 }
 
 pub(crate) fn save_library_sync_cached_locations(

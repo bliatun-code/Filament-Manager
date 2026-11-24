@@ -185,7 +185,7 @@ test("inventory exposes managed location objects and autocomplete in one click",
     inventoryPageSource,
     /showLocationSpools\(location\);\s*setActiveWorkspaceView\("STOCK"\)/,
   );
-  assert.match(inventoryPageSource, /totalLocationCount=\{hasCount\(domainSources\.locations\) \? selectableInventoryLocations/);
+  assert.match(inventoryPageSource, /totalLocationCount=\{loansOnly \? loanCounts\?\.locations \?\? null : hasCount\(domainSources\.locations\) \? selectableInventoryLocations/);
 });
 
 test("inventory search and filter controls expose accessible names and state", () => {
