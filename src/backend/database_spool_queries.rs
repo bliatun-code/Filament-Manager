@@ -97,13 +97,7 @@ pub(crate) fn list_spools_with_master_by_rfid(
     Ok(results)
 }
 
-pub(crate) fn list_spools_with_master(
-    conn: &Connection,
-    limit: i64,
-    offset: i64,
-) -> InventoryResult<Vec<SpoolWithMasterRow>> {
-    let mut stmt = conn.prepare(
-        "SELECT s.id, s.master_id, s.qr_code, s.status, s.ownership_type, s.owner_name,
+pub(crate) const SPOOL_WITH_MASTER_SELECT: &str = "SELECT s.id, s.master_id, s.qr_code, s.status, s.ownership_type, s.owner_name,
                 s.owner_contact, s.rfid_tag, s.rfid_observed_at, s.ownership_note, s.initial_weight_g, s.current_weight_g,
                 s.remaining_g, s.spool_tare_weight_g, s.location_id, s.home_location_id, s.purchase_date,
                 s.purchase_price, s.batch_code, s.last_used_at, s.purchase_currency,
@@ -114,11 +108,17 @@ pub(crate) fn list_spools_with_master(
          FROM filament_spools s
          JOIN filament_master_list m ON m.id = s.master_id
          LEFT JOIN inventory_locations location ON location.id = s.location_id
-         LEFT JOIN inventory_locations home_location ON home_location.id = s.home_location_id
-         WHERE s.deleted_at IS NULL
-         ORDER BY s.updated_at DESC, s.id DESC
-         LIMIT ?1 OFFSET ?2",
-    )?;
+         LEFT JOIN inventory_locations home_location ON home_location.id = s.home_location_id";
+
+pub(crate) fn list_spools_with_master(
+    conn: &Connection,
+    limit: i64,
+    offset: i64,
+) -> InventoryResult<Vec<SpoolWithMasterRow>> {
+    let mut stmt = conn.prepare(&format!(
+        "{SPOOL_WITH_MASTER_SELECT} WHERE s.deleted_at IS NULL
+         ORDER BY s.updated_at DESC, s.id DESC LIMIT ?1 OFFSET ?2"
+    ))?;
 
     let rows = stmt.query_map(params![limit, offset], map_spool_with_master_row)?;
 

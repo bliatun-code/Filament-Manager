@@ -292,7 +292,7 @@ pub(crate) async fn enforce_companion_request_timeout(
     request: Request<Body>,
     next: Next,
 ) -> Response {
-    if !request_timeout_applies(request.method()) {
+    if request.method() != Method::OPTIONS && !is_companion_data_read(&request) {
         // The handler may already have dispatched a non-cancellable SQLite transaction through
         // `spawn_blocking`. Returning 408 while that work continues would make the caller retry an
         // operation that may have committed. Mutations therefore wait for one definitive result;
@@ -305,8 +305,15 @@ pub(crate) async fn enforce_companion_request_timeout(
     }
 }
 
-fn request_timeout_applies(method: &Method) -> bool {
-    matches!(*method, Method::GET | Method::HEAD | Method::OPTIONS)
+pub(crate) fn is_companion_data_read<B>(request: &Request<B>) -> bool {
+    if matches!(*request.method(), Method::GET | Method::HEAD) {
+        return true;
+    }
+    let uri = request
+        .extensions()
+        .get::<axum::extract::OriginalUri>()
+        .map_or(request.uri(), |original| &original.0);
+    request.method() == Method::POST && uri.path() == "/api/v1/library/printer-spool-picker"
 }
 
 pub(crate) async fn apply_companion_cache_policy(request: Request<Body>, next: Next) -> Response {
@@ -501,6 +508,17 @@ mod tests {
     use std::sync::atomic::{AtomicUsize, Ordering};
     use std::sync::Arc;
     use std::time::{Duration, Instant};
+
+    #[test]
+    fn picker_query_uses_read_deadlines_and_authority_rechecks_with_post_csrf() {
+        let query = Request::post("/api/v1/library/printer-spool-picker")
+            .body(())
+            .unwrap();
+        assert!(super::is_companion_data_read(&query));
+        assert!(super::requires_csrf(query.method()));
+        let write = Request::post("/api/v1/spools/assign").body(()).unwrap();
+        assert!(!super::is_companion_data_read(&write));
+    }
 
     struct PendingBody;
 

@@ -1904,6 +1904,131 @@ fn clearing_printer_slot_releases_legacy_assigned_status_tokens() {
 }
 
 #[test]
+fn printer_picker_searches_all_eligible_rows_and_returns_one_stable_page() {
+    use crate::backend::database_printer_picker::{PickerPlacements, PrinterPickerQuery};
+
+    let path = temp_db_path("printer-picker");
+    let db = FilamentDatabase::open(&path).unwrap();
+    db.apply_schema().unwrap();
+    db.upsert_printer_with_ams("printer_1", "P1S", "Workshop", 1, 4)
+        .unwrap();
+    let master = db
+        .upsert_manual_master(ManualMasterInput {
+            material: "PLA",
+            filament_name: "Satin",
+            color_name: "Rød",
+            hex_color: None,
+            product_url: None,
+            vendor: Some("Blå"),
+            default_weight: Some(1000),
+        })
+        .unwrap();
+    let mut query = PrinterPickerQuery {
+        slot_id: "printer_1_ams_1_slot_1".into(),
+        locale: "nb-NO".into(),
+        search: String::new(),
+        offset: 0,
+        placements: Some(PickerPlacements {
+            slots: Default::default(),
+            unassigned: "Uten plassering".into(),
+            loaned_to: "Utlånt til".into(),
+            ext: "Ekstern".into(),
+            slot: "Spor".into(),
+            channel: "Kanal".into(),
+            toolhead: "Hode".into(),
+        }),
+    };
+    assert_eq!(db.printer_picker_page(&query).unwrap().total, 0);
+    db.conn.execute("WITH RECURSIVE stock(n) AS (VALUES (1) UNION ALL SELECT n+1 FROM stock WHERE n<10000)
+        INSERT INTO filament_spools(id, master_id, status) SELECT 'roll-'||n, ?1, 'IN_STOCK' FROM stock", [&master]).unwrap();
+    let first = db.printer_picker_page(&query).unwrap();
+    assert_eq!((first.total, first.rows.len()), (10000, 120));
+    assert_eq!(first.rows[1].spool.id, "roll-2");
+    query.offset = 120;
+    let second = db.printer_picker_page(&query).unwrap();
+    assert_eq!(second.revisions, first.revisions);
+    assert_eq!(second.rows[0].spool.id, "roll-121");
+    query.offset = 9999;
+    assert_eq!(
+        db.printer_picker_page(&query).unwrap().rows[0].spool.id,
+        "roll-10000"
+    );
+    query.offset = 0;
+    for term in ["rØD roll-10000", "ROLL-10000 uten plassering"] {
+        query.search = term.into();
+        let search = db.printer_picker_page(&query).unwrap();
+        assert_eq!(search.total, 1);
+        assert_eq!(search.rows[0].spool.id, "roll-10000");
+    }
+    db.conn
+        .execute_batch(
+            "UPDATE filament_spools SET status='loaned out' WHERE id='roll-1';
+        UPDATE filament_spools SET status='IN_USE' WHERE id IN ('roll-2','roll-3');
+        UPDATE ams_slots SET spool_id='roll-3' WHERE id='printer_1_ams_1_slot_1';
+        UPDATE filament_spools SET status='EMPTY' WHERE id='roll-4';
+        UPDATE filament_spools SET ownership_type='BORROWED_IN' WHERE id='roll-5';
+        UPDATE filament_spools SET deleted_at='now' WHERE id='roll-6';",
+        )
+        .unwrap();
+    query.search.clear();
+    let changed = db.printer_picker_page(&query).unwrap();
+    assert_ne!(first.revisions, changed.revisions);
+    assert_eq!(changed.total, 9996);
+    assert_eq!(changed.rows[0].spool.id, "roll-3");
+    assert_eq!(changed.current_match.as_deref(), Some("roll-3"));
+    assert_eq!(changed.rows[1].spool.ownership_type, "BORROWED_IN");
+    query.search = "%_".into();
+    assert_eq!(db.printer_picker_page(&query).unwrap().total, 0);
+    let placements = query.placements.as_mut().unwrap();
+    placements
+        .slots
+        .insert("bench-slot".into(), "Verksted · Spor 1".into());
+    let location_id = db.ensure_location("Printer:Workshop:bench-slot").unwrap();
+    db.conn
+        .execute(
+            "UPDATE filament_spools SET location_id = ?1 WHERE id = 'roll-10000'",
+            [location_id],
+        )
+        .unwrap();
+    query.search = "verksted · spor".into();
+    assert_eq!(
+        db.printer_picker_page(&query).unwrap().rows[0].spool.id,
+        "roll-10000"
+    );
+    for (color, id) in [("Zinn", "order-z"), ("Åker", "order-a")] {
+        let master = db
+            .upsert_manual_master(ManualMasterInput {
+                material: "PETG",
+                filament_name: "Test",
+                color_name: color,
+                hex_color: None,
+                product_url: None,
+                vendor: Some("Test"),
+                default_weight: Some(1000),
+            })
+            .unwrap();
+        db.conn
+            .execute(
+                "INSERT INTO filament_spools(id,master_id,status) VALUES (?1,?2,'IN_STOCK')",
+                rusqlite::params![id, master],
+            )
+            .unwrap();
+    }
+    query.search = "order-".into();
+    assert_eq!(
+        db.printer_picker_page(&query).unwrap().rows[0].spool.id,
+        "order-z"
+    );
+    query.locale = "en-US".into();
+    assert_eq!(
+        db.printer_picker_page(&query).unwrap().rows[0].spool.id,
+        "order-a"
+    );
+    drop(db);
+    std::fs::remove_file(path).unwrap();
+}
+
+#[test]
 fn printer_overview_keeps_assigned_spool_details_independent_of_inventory_size() {
     let db_path = temp_db_path("printer-overview-normalized-ownership");
 

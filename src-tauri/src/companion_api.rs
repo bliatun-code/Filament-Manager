@@ -12,8 +12,8 @@ use crate::companion_assets::companion_browser_assets;
 use crate::companion_assets::{cached_companion_browser_asset, COMPANION_BROWSER_HTML};
 use crate::companion_error::CompanionApiError;
 use crate::companion_http::{
-    has_valid_csrf, header_string, require_allowed_host, require_allowed_origin,
-    require_stable_request_host, requires_csrf,
+    has_valid_csrf, header_string, is_companion_data_read, require_allowed_host,
+    require_allowed_origin, require_stable_request_host, requires_csrf,
 };
 use crate::companion_models::*;
 use crate::companion_payload::{
@@ -36,7 +36,7 @@ use crate::state::{AppState, TrustedLanCompanionRuntime, TrustedLanCompanionRunt
 use crate::trusted_lan_interfaces::current_trusted_lan_interface_index;
 use axum::body::Body;
 use axum::extract::{Path, State};
-use axum::http::{header::ORIGIN, HeaderMap, Method, Request};
+use axum::http::{header::ORIGIN, HeaderMap, Request};
 use axum::middleware::Next;
 use axum::response::{IntoResponse, Response};
 use axum::Json;
@@ -1801,8 +1801,7 @@ pub(super) async fn require_companion_session(
     request: Request<Body>,
     next: Next,
 ) -> Response {
-    let revalidate_authority_after_response =
-        request.method() == Method::GET || request.method() == Method::HEAD;
+    let revalidate_authority_after_response = is_companion_data_read(&request);
     let headers = request.headers().clone();
     if let Err(error) = require_allowed_host(&headers, &state.runtime) {
         return error.into_response();

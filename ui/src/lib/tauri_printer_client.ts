@@ -1,3 +1,4 @@
+import type { SpoolWithMasterRow } from "./tauri_inventory_client";
 import { invoke } from "./tauri_invoke";
 
 export type PrinterRow = {
@@ -256,6 +257,36 @@ export type AcceptBambuLiveWeightEstimateInput = {
 
 export async function getPrinterSettings() {
   return invoke<PrinterSettingsSnapshot>("get_printer_settings");
+}
+
+export type PrinterPickerPage = {
+  rows: SpoolWithMasterRow[];
+  total: number;
+  current_match: string | null;
+  revisions: [number, number, number];
+};
+
+export type PrinterPickerQuery = {
+  slot_id: string;
+  search: string;
+  offset: number;
+};
+
+type PrinterPickerPlacements = {
+  slots: Record<string, string>;
+  unassigned: string;
+  loaned_to: string;
+  ext: string;
+  slot: string;
+  channel: string;
+  toolhead: string;
+};
+
+export function getPrinterPickerPage(
+  query: PrinterPickerQuery & { locale: string; placements?: PrinterPickerPlacements },
+  target: { base_url: string | null; expected_library_id: string; target_generation: number },
+) {
+  return invoke<PrinterPickerPage | null>("get_printer_picker_page", { query, target });
 }
 
 export async function listPrinterOverview() {

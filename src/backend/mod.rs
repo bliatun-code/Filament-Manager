@@ -57,6 +57,7 @@ pub mod database_printer_facade;
 pub mod database_printer_live_events;
 pub mod database_printer_models;
 pub mod database_printer_mutations;
+pub mod database_printer_picker;
 pub mod database_printer_queries;
 pub mod database_printer_schema;
 pub mod database_printer_slot_assignment;
