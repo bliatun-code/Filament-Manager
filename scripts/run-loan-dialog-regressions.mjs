@@ -181,6 +181,7 @@ async function checkStockCards({page, state, fixture, calls, fallback, openWorks
   const reads = [];
   let mode = "live";
   let revision = 1;
+  let purchaseCount = 1;
   state.invoke = (command,payload) => {
     switch (command) {
       case "get_library_sync_page_status": return status;
@@ -196,6 +197,9 @@ async function checkStockCards({page, state, fixture, calls, fallback, openWorks
       case "fetch_cached_library_sync_spools":
         assert.deepEqual(payload.input,target);
         return {rows:[hidden],captured_at:"2026-01-01"};
+      case "get_stock_purchase_count":
+        assert.deepEqual(payload.target,target);
+        return purchaseCount;
       case "get_stock_card_page": {
         assert.deepEqual(payload.target,target);
         if (mode === "legacy") return null;
@@ -217,6 +221,7 @@ async function checkStockCards({page, state, fixture, calls, fallback, openWorks
   await page.locator("#inventory-stock-tab").click();
   const panel=page.locator("#inventory-stock-panel");
   await panel.getByText(/8 spools/).waitFor();
+  await expectBadges(page, {purchases: 1});
   assert.equal(await panel.locator(".inventory-roll-row").count(),3);
   await panel.getByRole("button",{name:/Show all/}).click();
   await panel.locator(".inventory-roll-row").nth(7).waitFor();
@@ -239,6 +244,11 @@ async function checkStockCards({page, state, fixture, calls, fallback, openWorks
     assert.equal(await panel.locator(".inventory-product-card").count(), mode === "legacy" ? 3 : 1);
   }
   assert.ok(calls.some(c=>c.command==="fetch_cached_library_sync_spools"));
+  mode = "live";
+  purchaseCount++;
+  await page.getByRole("button", {name: "Refresh", exact: true}).click();
+  await expectBadges(page, {purchases: 2});
+  assert.ok(!calls.some(c => c.command === "get_purchase_queue_page"));
 }
 
 async function checkLegacyLocation({ page, state, fixture, calls, fallback, openWorkspace }) {

@@ -165,6 +165,12 @@ transaction. Master ID matches take priority over product descriptions. Concurre
 clients receive the same item ID. Older Hosts require an update for this Dashboard
 shortcut. Manual purchase entry uses the ordinary create operation. Overlapping clicks share a request only for the same
 product and target. A completed purchase opens Purchases directly for that library.
+The Stock tab reads only the total purchase count locally. A paired Client sends
+its saved Stock page revision to the Host. On the first read or a revision
+change, the Host includes up to 50 recent orders in the same snapshot so the
+Client can renew its offline copy. Only the count crosses the desktop bridge
+on a successful compact read. Older Hosts use the existing purchase reader.
+
 Opening and refreshing Purchases reads the queue independently of stock.
 The current Host and local database count the full purchase queue and return
 50 matching rows per page. Filtering and literal case-insensitive search run

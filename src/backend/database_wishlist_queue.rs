@@ -1,4 +1,4 @@
-use rusqlite::{functions::FunctionFlags, params};
+use rusqlite::{functions::FunctionFlags, params, OptionalExtension};
 use serde::{Deserialize, Serialize};
 
 use super::{
@@ -34,7 +34,52 @@ pub struct PurchaseQueuePage {
     pub rows: Vec<WishlistItemRow>,
 }
 
+#[derive(Debug, Deserialize, Serialize)]
+pub struct StockPurchaseQuery {
+    pub cached_revision: Option<i64>,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+pub struct StockPurchaseSnapshot {
+    pub total: i64,
+    pub revision: i64,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub rows: Option<Vec<WishlistItemRow>>,
+}
+
 impl FilamentDatabase {
+    pub fn stock_purchase_count(&self) -> InventoryResult<i64> {
+        Ok(self
+            .connection()
+            .query_row("SELECT count(*) FROM wishlist_items", [], |row| row.get(0))?)
+    }
+
+    pub fn stock_purchase_snapshot(
+        &self,
+        query: &StockPurchaseQuery,
+    ) -> InventoryResult<StockPurchaseSnapshot> {
+        self.with_read_transaction(|db| {
+            let revision = db.library_domain_revisions()?.wishlist;
+            Ok(StockPurchaseSnapshot {
+                revision,
+                total: db.stock_purchase_count()?,
+                rows: if query.cached_revision == Some(revision) {
+                    None
+                } else {
+                    Some(db.list_wishlist_items(PAGE_SIZE)?)
+                },
+            })
+        })
+    }
+
+    pub fn cached_stock_purchase_revision(&self) -> InventoryResult<Option<i64>> {
+        Ok(self.connection().query_row(
+            "SELECT CASE WHEN json_valid(value) THEN CASE WHEN json_extract(value,'$.stock_page')=1
+                   AND json_type(value,'$.rows')='array' THEN json_extract(value,'$.revision') END END
+             FROM settings WHERE key='library_sync_cached_wishlist_json'", [], |row| row.get(0),
+        ).optional()?.flatten())
+    }
+
     pub fn purchase_queue_page(
         &self,
         query: &PurchaseQueueQuery,
@@ -84,6 +129,8 @@ impl FilamentDatabase {
 // omit the optional revision. Pages from different Host revisions must not mix.
 #[derive(Deserialize, Serialize)]
 struct CachedQueue {
+    #[serde(default)]
+    stock_page: bool,
     revision: Option<i64>,
     captured_at: String,
     rows: Vec<WishlistItemRow>,
@@ -91,9 +138,19 @@ struct CachedQueue {
 
 impl FilamentDatabase {
     pub fn cache_purchase_queue_page(&self, page: &PurchaseQueuePage) -> InventoryResult<()> {
+        self.cache_purchase_rows(&page.rows, page.summary.all, page.revision, false)
+    }
+
+    pub fn cache_purchase_rows(
+        &self,
+        page_rows: &[WishlistItemRow],
+        total: i64,
+        revision: i64,
+        stock_page: bool,
+    ) -> InventoryResult<()> {
         const KEY: &str = "library_sync_cached_wishlist_json";
         // An empty filter is not an empty library. Keep the last offline capture.
-        if page.rows.is_empty() && page.summary.all > 0 {
+        if page_rows.is_empty() && total > 0 {
             return Ok(());
         }
         self.with_write_transaction(|db| {
@@ -103,14 +160,14 @@ impl FilamentDatabase {
             if previous
                 .as_ref()
                 .and_then(|cache| cache.revision)
-                .is_some_and(|rev| rev > page.revision)
+                .is_some_and(|rev| rev > revision)
             {
                 return Ok(());
             }
-            let mut rows = page.rows.clone();
-            if let Some(cache) = previous.filter(|cache| cache.revision == Some(page.revision)) {
+            let mut rows = page_rows.to_vec();
+            if let Some(cache) = previous.filter(|cache| cache.revision == Some(revision)) {
                 let seen: std::collections::HashSet<_> =
-                    page.rows.iter().map(|row| &row.id).collect();
+                    page_rows.iter().map(|row| &row.id).collect();
                 rows.extend(
                     cache
                         .rows
@@ -120,7 +177,8 @@ impl FilamentDatabase {
                 );
             }
             let cached = CachedQueue {
-                revision: Some(page.revision),
+                stock_page,
+                revision: Some(revision),
                 captured_at: db.sqlite_now()?,
                 rows,
             };
@@ -134,6 +192,36 @@ impl FilamentDatabase {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn stock_count_distinguishes_a_saved_empty_page_from_a_missing_capture() {
+        let db = FilamentDatabase::open(":memory:").unwrap();
+        db.apply_schema().unwrap();
+        let read = || {
+            db.stock_purchase_snapshot(&StockPurchaseQuery {
+                cached_revision: db.cached_stock_purchase_revision().unwrap(),
+            })
+            .unwrap()
+        };
+        let empty = read();
+        assert_eq!(empty.total, 0);
+        let rows = empty.rows.unwrap();
+        assert!(rows.is_empty());
+        db.cache_purchase_rows(&rows, 0, empty.revision, true)
+            .unwrap();
+        assert!(read().rows.is_none());
+
+        db.connection()
+            .execute_batch(
+                "WITH RECURSIVE n(i) AS (VALUES(1) UNION ALL SELECT i+1 FROM n WHERE i<51)
+             INSERT INTO wishlist_items(id,material,filament_name,color_name,status)
+             SELECT printf('order-%02d',i),'PLA','Silk','Blue','ON_ORDER' FROM n",
+            )
+            .unwrap();
+        let changed = read();
+        assert_eq!(changed.total, 51);
+        assert_eq!(changed.rows.unwrap().len(), 50);
+    }
 
     #[test]
     fn searches_and_counts_the_entire_queue_and_caches_only_visited_rows() {

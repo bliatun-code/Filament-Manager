@@ -37,7 +37,7 @@ pub(crate) fn list_wishlist_items(
         "SELECT id, master_id, material, filament_name, color_name, vendor, status, quantity,
                 note, created_at, updated_at
          FROM wishlist_items
-         ORDER BY updated_at DESC, created_at DESC
+         ORDER BY updated_at DESC, created_at DESC, id
          LIMIT ?1",
     )?;
     let rows = stmt.query_map(params![limit], map_wishlist_item)?;
