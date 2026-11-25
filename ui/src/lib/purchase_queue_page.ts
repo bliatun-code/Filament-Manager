@@ -1,5 +1,4 @@
-import { invoke } from "./tauri_invoke";
-import type { WishlistItemRow } from "./tauri_wishlist_client";
+import { getPurchaseQueuePage, type WishlistItemRow } from "./tauri_wishlist_client";
 import { fetchCachedLibrarySyncWishlist, type LibraryReadTarget } from "./tauri_library_sync_client";
 import {
   filterWishlistQueueItems, loadWishlistItemsSnapshot, summarizeWishlistQueue,
@@ -23,9 +22,7 @@ function pageOfSavedRows(rows: WishlistItemRow[], query: PurchaseQueueQuery, pin
 
 export async function loadPurchaseQueuePage(target: LibraryReadTarget, query: PurchaseQueueQuery, options: WishlistDataSourceOptions) {
   try {
-    const page = await invoke<PurchaseQueuePage | null>("get_purchase_queue_page", {
-      target, query: { ...query, reviewed_item_id: options.reviewedItemId },
-    });
+    const page = await getPurchaseQueuePage(target, query, options.reviewedItemId);
     if (page) return { rows: page.rows, page, source: "LIVE" as const };
   } catch (error) {
     if (!target.base_url) throw error;

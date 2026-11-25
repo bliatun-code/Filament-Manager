@@ -1,5 +1,6 @@
 import { invoke } from "./tauri_invoke";
-import type { LibrarySyncPageStatus } from "./tauri_library_sync_client";
+import type { PurchaseQueuePage, PurchaseQueueQuery } from "./purchase_queue_page";
+import type { LibraryReadTarget, LibrarySyncPageStatus } from "./tauri_library_sync_client";
 import type { PurchaseReceiptMetadata } from "./purchase_receipt_metadata";
 
 export type WishlistItemRow = {
@@ -192,5 +193,11 @@ export async function fetchLibrarySyncWishlistItems(
       ...(reviewedItemId && { reviewed_item_id: reviewedItemId }),
       ...(expectedGeneration != null && { expected_target_generation: expectedGeneration }),
     },
+  });
+}
+
+export function getPurchaseQueuePage(target: LibraryReadTarget, query: PurchaseQueueQuery, reviewedItemId?: string) {
+  return invoke<PurchaseQueuePage | null>("get_purchase_queue_page", {
+    target, query: { ...query, reviewed_item_id: reviewedItemId },
   });
 }
