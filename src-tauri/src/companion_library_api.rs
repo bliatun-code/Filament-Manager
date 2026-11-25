@@ -67,6 +67,7 @@ pub(super) async fn handle_health(
                     PRINTER_PICKER_CAPABILITY,
                     LOAN_PICKER_CAPABILITY,
                     crate::companion_models::STOCK_CARDS_CAPABILITY,
+                    crate::companion_models::DASHBOARD_PURCHASE_CAPABILITY,
                     LOCATION_SPOOLS_CAPABILITY,
                     crate::companion_models::LOAN_WORKSPACE_COUNTS,
                     PRINTER_SLOT_OPERATIONS_CAPABILITY,

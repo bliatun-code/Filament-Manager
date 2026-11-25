@@ -33,7 +33,18 @@ fn stale_dashboard_generation_sends_neither_wishlist_read_nor_create() {
         "material": "PLA", "filament_name": "Basic", "color_name": "Gray", "vendor": "Test",
     }))
     .unwrap();
+    let target = serde_json::from_value(json!({
+        "mode":"CLIENT","host_base_url":url,"library_id":original.library_id,
+        "target_generation":original.target_generation
+    }))
+    .unwrap();
     for error in [
+        crate::inventory_create_commands::ensure_dashboard_purchase_blocking(
+            &state,
+            suggestion(),
+            target,
+        )
+        .unwrap_err(),
         fetch_library_sync_wishlist_items_blocking(&state, read).unwrap_err(),
         create_library_sync_host_wishlist_item_blocking(&state, write).unwrap_err(),
     ] {
@@ -81,6 +92,59 @@ fn local_dashboard_purchase_rechecks_its_library_under_the_write_gate() {
     );
     create_local_wishlist_item(&state, item("legacy"), None).unwrap();
     assert_eq!(db.list_wishlist_items(10).unwrap().len(), 2);
+    drop(db);
+    std::fs::remove_file(path).unwrap();
+}
+
+fn suggestion() -> crate::backend::inventory_engine::CreateWishlistItemInput {
+    serde_json::from_value(json!({
+        "id":"suggestion", "material":"PLA","filament_name":"Silk","color_name":"Blue"
+    }))
+    .unwrap()
+}
+
+#[test]
+fn paired_dashboard_purchase_requires_capability_and_returns_host_order_id() {
+    use super::{fake_health, spawn_fake_host_with, FakeHostResponse};
+    use crate::companion_models::DASHBOARD_PURCHASE_CAPABILITY;
+    use crate::inventory_create_commands::ensure_dashboard_purchase_blocking;
+    let response = |path, body: serde_json::Value| FakeHostResponse {
+        expected_request_prefix: path,
+        status: "200 OK",
+        body: body.to_string(),
+    };
+    let mut health: serde_json::Value = serde_json::from_str(&fake_health()).unwrap();
+    let legacy = response("GET /api/v1/health ", health.clone());
+    health["capabilities"] = json!([DASHBOARD_PURCHASE_CAPABILITY]);
+    let order =
+        json!({"kind":"REUSED","itemId":"older-order","status":"ON_ORDER","match":"IDENTITY"});
+    let (url, server) = spawn_fake_host_with(
+        vec![
+            legacy,
+            response("GET /api/v1/health ", health),
+            response("POST /api/v1/wishlist/dashboard-purchase ", order.clone()),
+            response("GET /api/v1/library/wishlist?limit=500 ", json!([])),
+        ],
+        |request| {
+            if request.starts_with("POST ") {
+                assert!(request.to_ascii_lowercase().contains("\r\ncookie:"));
+            }
+        },
+    );
+    let (state, path) = fake_host_state(&url);
+    let db = FilamentDatabase::open(&path).unwrap();
+    let target = || {
+        serde_json::from_value(
+            serde_json::to_value(db.get_library_sync_page_status().unwrap()).unwrap(),
+        )
+        .unwrap()
+    };
+    let run = || ensure_dashboard_purchase_blocking(&state, suggestion(), target());
+    assert!(run()
+        .unwrap_err()
+        .contains("purchase_metadata.host_unsupported"));
+    assert_eq!(serde_json::to_value(run().unwrap()).unwrap(), order);
+    server.join().unwrap();
     drop(db);
     std::fs::remove_file(path).unwrap();
 }

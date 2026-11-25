@@ -57,7 +57,7 @@ test("Dashboard purchase handoff stays with the reviewed library", async (t) => 
         };
         await page.exposeFunction("purchaseInvoke", async (cmd: string, args: {
           input?: CreatePayload;
-          target?: LibraryReadTarget;
+          target?: LibraryReadTarget | WishlistPurchaseTarget;
         } = {}) => {
           if (afterClick) calls.push(cmd);
           if (cmd === "get_library_sync_page_status" && saved.length) {
@@ -113,15 +113,14 @@ test("Dashboard purchase handoff stays with the reviewed library", async (t) => 
               saved[0] = { ...saved[0], quantity: 0, status: "RECEIVED" };
               received = true;
               return { spool_ids: ["Delivered roll"], received_quantity: 1, remaining_quantity: 0, status: "RECEIVED" };
-            case "create_library_sync_host_wishlist_item": {
+            case "ensure_dashboard_purchase": {
               assert.ok(args.input);
-              assert.equal(args.input.expected_library_id, origin.library_id);
-              assert.equal(args.input.expected_target_generation, origin.target_generation);
+              assert.deepEqual(args.target, origin);
               saved.push({ ...args.input, status: "WISHLIST", id: "host-assigned-id",
                 created_at: snapshot.captured_at, updated_at: snapshot.captured_at });
               if (scenario === "switch after save" || scenario === "A–B–A after save") target = replacement;
               if (scenario === "A–B–A after save") target = backToA;
-              return null;
+              return {kind:"CREATED", itemId:"host-assigned-id", status:"WISHLIST"};
             }
             case "fetch_library_sync_printer_settings": return { ...fixture.printerSettings, printers: [] };
             case "fetch_library_sync_printer_overview":

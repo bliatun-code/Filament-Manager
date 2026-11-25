@@ -159,8 +159,11 @@ continue to use the spool-list calculations until a compact snapshot is availabl
 
 A low-stock purchase suggestion carries the mode, Host address, library ID and
 target generation of the dashboard that displayed it. Clicking it checks compact
-status before and after checking the live purchase queue. Native writes verify
-the reviewed target again. Overlapping clicks share a request only for the same
+status and the native command verifies the reviewed target again. The authoritative
+database checks all open purchases and inserts only when needed, in one immediate
+transaction. Master ID matches take priority over product descriptions. Concurrent
+clients receive the same item ID. Older Hosts require an update for this Dashboard
+shortcut. Manual purchase entry uses the ordinary create operation. Overlapping clicks share a request only for the same
 product and target. A completed purchase opens Purchases directly for that library.
 Opening and refreshing Purchases reads the queue independently of stock.
 

@@ -24,7 +24,7 @@ use crate::companion_location_api::{
 };
 use crate::companion_state::CompanionApiState;
 use crate::companion_wishlist_write_api::{
-    handle_create_wishlist_item, handle_delete_wishlist_item,
+    handle_create_wishlist_item, handle_dashboard_purchase, handle_delete_wishlist_item,
     handle_receive_idempotent_wishlist_item, handle_receive_wishlist_item,
     handle_update_wishlist_item_status,
 };
@@ -133,6 +133,7 @@ fn build_router_with_security_config(
         )
         .route("/printers/active", post(handle_set_active_printer))
         .route("/loans/active", get(handle_list_active_spool_loans))
+        .route("/wishlist/dashboard-purchase", post(handle_dashboard_purchase))
         .route("/wishlist", get(handle_list_wishlist_items))
         .route("/wishlist", post(handle_create_wishlist_item))
         .route(

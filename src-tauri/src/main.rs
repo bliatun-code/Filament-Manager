@@ -406,6 +406,7 @@ fn main() {
             inventory_create_commands::create_spool,
             inventory_catalog_batch_commands::create_catalog_spool_batch,
             library_sync_catalog_batch_commands::create_library_sync_host_catalog_spool_batch,
+            inventory_create_commands::ensure_dashboard_purchase,
             inventory_create_commands::create_wishlist_item,
             inventory_create_commands::create_manual_spool,
             printer_create_commands::create_printer,

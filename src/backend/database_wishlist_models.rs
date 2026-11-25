@@ -16,6 +16,23 @@ pub struct WishlistItemRow {
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(tag = "kind", rename_all = "SCREAMING_SNAKE_CASE")]
+pub enum DashboardPurchaseResult {
+    Created {
+        #[serde(rename = "itemId")]
+        item_id: String,
+        status: String,
+    },
+    Reused {
+        #[serde(rename = "itemId")]
+        item_id: String,
+        status: String,
+        #[serde(rename = "match")]
+        matched_by: String,
+    },
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
 pub struct WishlistReceiptResult {
     pub spool_ids: Vec<String>,
     pub received_quantity: i64,

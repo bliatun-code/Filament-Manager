@@ -14,6 +14,27 @@ use crate::companion_state::CompanionApiState;
 use axum::extract::{Path, State};
 use axum::Json;
 
+pub(super) async fn handle_dashboard_purchase(
+    State(state): State<CompanionApiState>,
+    Json(mut input): Json<CreateWishlistItemInput>,
+) -> Result<
+    Json<crate::backend::database_wishlist_models::DashboardPurchaseResult>,
+    CompanionApiError,
+> {
+    input.id = format!(
+        "wish_companion_{}_{}",
+        unix_epoch_millis(),
+        random_hex_token(4)
+    );
+    input.quantity = Some(1);
+    input.note = None;
+    state
+        .run_blocking("dashboard purchase", move |state| {
+            Ok(Json(state.service.ensure_dashboard_purchase(input)?))
+        })
+        .await
+}
+
 pub(super) async fn handle_create_wishlist_item(
     State(state): State<CompanionApiState>,
     Json(payload): Json<CreateWishlistItemRequest>,
