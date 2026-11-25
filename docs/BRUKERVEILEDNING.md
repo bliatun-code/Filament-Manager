@@ -30,6 +30,8 @@ Se tilgjengelige ruller, lastede printere og lav beholdning samlet. Kjøpsforsla
 
 Søk eller filtrer etter materiale og farge, og åpne en rull for å se plassering og gjenværende vekt. Utlån, lokasjoner og bestillinger har egne faner i Lager.
 
+Klikk på antallet ruller ved en lokasjon for å se hva som står der eller har lokasjonen som hjemmeplassering. Du kan søke i alle rullene som er knyttet til lokasjonen, også dem som ligger på neste side.
+
 ## Printere
 
 ![Printere](images/v0.35.0/nb/printers.png)

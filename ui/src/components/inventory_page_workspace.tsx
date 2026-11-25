@@ -89,6 +89,7 @@ function InventoryAddModalBoundary({
 type InventoryPageWorkspaceProps = {
   activeView: InventoryWorkspaceView;
   loansPanel?: ReactNode;
+  linkedLocationPanel?: ReactNode;
   totalLoanCount?: number | null;
   addModalActive: boolean;
   addModalProps: InventoryAddModalProps;
@@ -138,6 +139,7 @@ type InventoryPageWorkspaceProps = {
 export function InventoryPageWorkspace({
   activeView,
   loansPanel,
+  linkedLocationPanel,
   totalLoanCount = 0,
   addModalActive,
   addModalProps,
@@ -352,18 +354,21 @@ export function InventoryPageWorkspace({
           aria-labelledby="inventory-locations-tab"
           hidden={activeView !== "LOCATIONS"}
         >
-          {activeView === "LOCATIONS" ? (
-            <InventoryLocationManagementPanel
-              {...locationPanelProps}
-              showOfflineSourceWarning={
-                clientReadOnly &&
-                !clientDataWarningVisible &&
-                !loadErrorVisible &&
-                librarySyncReady &&
-                !loading
-              }
-            />
-          ) : null}
+          {activeView === "LOCATIONS" ? <>
+            <div hidden={!!linkedLocationPanel}>
+              <InventoryLocationManagementPanel
+                {...locationPanelProps}
+                showOfflineSourceWarning={
+                  clientReadOnly &&
+                  !clientDataWarningVisible &&
+                  !loadErrorVisible &&
+                  librarySyncReady &&
+                  !loading
+                }
+              />
+            </div>
+            {linkedLocationPanel}
+          </> : null}
         </div>
 
         {addModalActive ? (

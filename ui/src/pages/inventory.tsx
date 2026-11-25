@@ -2,6 +2,7 @@ import { clientPairingActionHint } from "../lib/error_text";
 import {
   lazy,
   Suspense,
+  type ComponentProps,
   useCallback,
   useEffect,
   useMemo,
@@ -14,6 +15,7 @@ import type { InventoryWorkspaceView } from "../components/inventory_workspace_n
 import { InventoryRfidCaptureModal } from "../components/inventory_rfid_capture_modal";
 import { InventoryLabelSheetModal } from "../components/inventory_label_sheet_modal";
 
+import { isLocationSpoolTargetCurrent, type LocationSpoolTarget } from "../lib/tauri_location_client";
 import type { LoanWorkspaceCounts } from "../lib/tauri_loan_client";
 import { matchesWishlistPurchaseTarget } from "../lib/tauri_wishlist_client";
 import { dashboardPurchaseNotice, type InventoryNavigationIntent } from "../lib/app_navigation_model";
@@ -78,6 +80,33 @@ import { isTauri } from "../lib/tauri_client";
 const LoanOutModal = lazy(() => import("../components/loan_out_modal").then(module => ({ default: module.LoanOutModal })));
 
 const LoansPage = lazy(() => import("./loans"));
+type LocationPanelComponent = typeof import("../components/inventory_location_spools_panel").InventoryLocationSpoolsPanel;
+
+// Keep the drilldown out of the Inventory bundle. A regular async import lets
+// the first result paint as soon as it arrives, including on small libraries.
+function LinkedLocationView(props: ComponentProps<LocationPanelComponent>) {
+  const { t } = useI18n();
+  const [Panel, setPanel] = useState<LocationPanelComponent | null>(null);
+  const [failed, setFailed] = useState(false);
+  useEffect(() => {
+    let current = true;
+    void import("../components/inventory_location_spools_panel")
+      .then(module => { if (current) setPanel(() => module.InventoryLocationSpoolsPanel); })
+      .catch(() => { if (current) setFailed(true); });
+    return () => { current = false; };
+  }, []);
+  if (Panel) return <Panel {...props} />;
+  return <div className="surface-card p-5">
+    <p role="status">{failed ? t("inventory.error.loadInventory", "Failed to load inventory.") : t("inventory.loading", "Loading spools...")}</p>
+    <button type="button" className="mt-2 underline" onClick={props.onBack}>{t("common.back", "Back")}</button>
+  </div>;
+}
+
+type LinkedLocation = {
+  location: InventoryLocationFilter;
+  target: LocationSpoolTarget;
+  authority: string;
+};
 
 const InventoryLoadSpoolModal = lazy(() =>
   import("../components/inventory_load_spool_modal").then(module => ({ default: module.InventoryLoadSpoolModal })),
@@ -225,18 +254,6 @@ export default function InventoryPage({
   } = useInventoryFilters(spools, {
     deterministicPagePreferences: Boolean(desktopVisualQaScenario || detailVisualFixture),
   });
-  const openLinkedLocationSpools = useCallback(
-    (location: InventoryLocationFilter) => {
-      showLocationSpools(location);
-      setActiveWorkspaceView("STOCK");
-      if (typeof window !== "undefined") {
-        window.requestAnimationFrame(() => {
-          document.getElementById("inventory-location-filter-chip")?.focus();
-        });
-      }
-    },
-    [showLocationSpools],
-  );
   const {
     closeRfidCaptureModal,
     closeRollModal,
@@ -278,6 +295,27 @@ export default function InventoryPage({
     loading: locationsLoading, source: locationSource, context: locationMutationContext,
     tauri, manageBusy, setManageBusy, setError, setInfoMessage, refreshLocations, reloadSpools, t,
   });
+
+  const [linkedLocation, setLinkedLocation] = useState<LinkedLocation | null>(null);
+  const linkedOrigin = useRef<HTMLElement | null>(null);
+  const pendingLocationStock = useRef<(LinkedLocation & { spoolId?: string }) | null>(null);
+  const stockFilterAuthority = useRef<string | null>(null);
+  const currentLinkedLocation = locationsOnly && linkedLocation?.authority === locationAuthorityKey ? linkedLocation : null;
+  useEffect(() => {
+    if (!locationsOnly || linkedLocation?.authority !== locationAuthorityKey) setLinkedLocation(null);
+    if (stockFilterAuthority.current && stockFilterAuthority.current !== locationAuthorityKey) {
+      stockFilterAuthority.current = null;
+      clearLocationFilter();
+      setSearch("");
+    }
+  }, [locationsOnly, linkedLocation, locationAuthorityKey, clearLocationFilter, setSearch]);
+  const openLinkedLocationSpools = (location: InventoryLocationFilter) => {
+    if (!librarySyncReady || !clientLibraryId || clientTargetGeneration == null || (clientReadOnly && !clientHostBaseUrl)) return;
+    linkedOrigin.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    setLinkedLocation({ location, authority: locationAuthorityKey, target: {
+      base_url: clientReadOnly ? clientHostBaseUrl : null, expected_library_id: clientLibraryId, target_generation: clientTargetGeneration,
+    } });
+  };
 
   const openPurchaseQueue = useCallback(() => {
     setActiveWorkspaceView("PURCHASES");
@@ -346,9 +384,40 @@ export default function InventoryPage({
 
   const pendingPurchaseNavigation = navigationIntent?.kind === "PURCHASES" && !purchasesOnly;
   useEffect(() => {
+    const handoff = pendingLocationStock.current;
+    if (handoff && (activeWorkspaceView !== "STOCK" || handoff.authority !== locationAuthorityKey)) {
+      pendingLocationStock.current = null;
+    }
     if (!tauri || !librarySyncReady || pendingPurchaseNavigation || loansOnly || pendingLoanNavigation) return;
-    void refreshInventoryData({ purchasesOnly, locationsOnly });
-  }, [librarySyncReady, pendingPurchaseNavigation, loansOnly, pendingLoanNavigation, purchasesOnly, locationsOnly, refreshInventoryData, tauri]);
+    let current = true;
+    void refreshInventoryData({ purchasesOnly, locationsOnly, onStockLoaded: handoff ? async rows => {
+      if (!current || pendingLocationStock.current !== handoff) return;
+      try {
+        const sameTarget = await isLocationSpoolTargetCurrent(handoff.target);
+        if (!current || pendingLocationStock.current !== handoff) return;
+        pendingLocationStock.current = null;
+        if (!sameTarget) { retryLibrarySyncRole(); return; }
+        if (handoff.spoolId) {
+          if (rows.some(row => row.id === handoff.spoolId &&
+            (row.locationId === handoff.location.id || row.homeLocationId === handoff.location.id))) {
+            openRollModal(handoff.spoolId);
+          } else {
+            setError(t("inventory.noMatch", "No spools match current filters."));
+          }
+        } else {
+          window.requestAnimationFrame(() => document.getElementById("inventory-location-filter-chip")?.focus());
+        }
+      } catch {
+        if (current && pendingLocationStock.current === handoff) {
+          pendingLocationStock.current = null;
+          setError(t("inventory.error.loadInventory", "Failed to load inventory."));
+        }
+      }
+    } : undefined });
+    return () => { current = false; };
+  }, [activeWorkspaceView, librarySyncReady, locationAuthorityKey, pendingPurchaseNavigation, loansOnly,
+    pendingLoanNavigation, purchasesOnly, locationsOnly, refreshInventoryData, tauri, openRollModal,
+    retryLibrarySyncRole, t]);
 
   const refreshInventoryPage = useCallback(() => {
     if (loansOnly) return;
@@ -660,6 +729,8 @@ export default function InventoryPage({
   });
 
   const selectRollForManage = useCallback((spoolId: string) => {
+    // An explicit selection supersedes any pending drilldown into Stock.
+    pendingLocationStock.current = null;
     const openSelectedRoll = () => {
       setActiveWorkspaceView("STOCK");
       if (clientReadOnly && !clientHostWritePaired) {
@@ -1495,6 +1566,22 @@ export default function InventoryPage({
         loadError={loadError}
         loadErrorRetryDisabled={!tauri || librarySyncResolving || manageBusy}
         loadErrorRetrying={librarySyncResolving || refreshing}
+        linkedLocationPanel={currentLinkedLocation &&
+          <LinkedLocationView key={currentLinkedLocation.authority + currentLinkedLocation.location.id}
+            location={currentLinkedLocation.location} target={currentLinkedLocation.target}
+            onTargetChanged={retryLibrarySyncRole}
+            onBack={() => {
+              setLinkedLocation(null);
+              const origin = linkedOrigin.current;
+              window.requestAnimationFrame(() => (origin?.isConnected ? origin : document.getElementById("inventory-location-active-heading"))?.focus());
+            }}
+            onOpenInventory={(query, spoolId) => {
+              pendingLocationStock.current = { ...currentLinkedLocation, spoolId };
+              stockFilterAuthority.current = currentLinkedLocation.authority;
+              showLocationSpools(currentLinkedLocation.location);
+              setSearch(query);
+              setActiveWorkspaceView("STOCK");
+            }} />}
         locationPanelProps={{
           authorityKey: locationAuthorityKey,
           busy: manageBusy,

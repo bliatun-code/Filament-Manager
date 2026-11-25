@@ -96,7 +96,7 @@ impl FilamentDatabase {
     }
 }
 
-fn apply_low_stock_thresholds(
+pub(crate) fn apply_low_stock_thresholds(
     connection: &rusqlite::Connection,
     rows: &mut [SpoolWithMasterRow],
 ) -> InventoryResult<()> {

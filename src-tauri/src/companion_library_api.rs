@@ -1,4 +1,5 @@
 use crate::backend::database_loan_picker::{LoanPickerPage, LoanPickerQuery};
+use crate::backend::database_location_spools::{LocationSpoolPage, LocationSpoolQuery};
 use crate::backend::database_printer_picker::{PrinterPickerPage, PrinterPickerQuery};
 use crate::backend::filament_database::{
     FilamentDatabase, FilamentMasterCatalogRow, FilamentStandardsSnapshot, LibrarySyncSettingsRow,
@@ -21,7 +22,9 @@ use crate::companion_models::{
     VENDOR_CATALOG_DISCOVERY_CAPABILITY, WISHLIST_RECEIPT_IDEMPOTENCY_CAPABILITY,
     WISHLIST_RECEIPT_LOCATION_CAPABILITY,
 };
-use crate::companion_models::{LOAN_PICKER_CAPABILITY, PRINTER_PICKER_CAPABILITY};
+use crate::companion_models::{
+    LOAN_PICKER_CAPABILITY, LOCATION_SPOOLS_CAPABILITY, PRINTER_PICKER_CAPABILITY,
+};
 use crate::companion_state::CompanionApiState;
 use crate::library_sync_models::{
     LibrarySyncDomainRevisionsResponse, LibrarySyncFullBackupResponse,
@@ -61,6 +64,7 @@ pub(super) async fn handle_health(
                     CATALOG_SPOOL_BATCH_CAPABILITY,
                     PRINTER_PICKER_CAPABILITY,
                     LOAN_PICKER_CAPABILITY,
+                    LOCATION_SPOOLS_CAPABILITY,
                     crate::companion_models::LOAN_WORKSPACE_COUNTS,
                     PRINTER_SLOT_OPERATIONS_CAPABILITY,
                 ],
@@ -221,6 +225,21 @@ pub(super) async fn handle_loan_picker_page(
             db.loan_picker_page(&query)
                 .map(Json)
                 .map_err(CompanionApiError::from)
+        })
+        .await
+}
+
+pub(super) async fn handle_location_spools(
+    State(state): State<CompanionApiState>,
+    headers: HeaderMap,
+    Json(query): Json<LocationSpoolQuery>,
+) -> Result<Json<LocationSpoolPage>, CompanionApiError> {
+    require_allowed_host(&headers, &state.runtime)?;
+    state
+        .run_blocking("location spools", move |state| {
+            Ok(Json(
+                FilamentDatabase::open(&state.db_path)?.location_spool_page(&query)?,
+            ))
         })
         .await
 }

@@ -65,7 +65,7 @@ pub(crate) fn save_library_sync_cached_spools(
 // Store only the changed Host row on acknowledgement. Materialize these changes
 // when Inventory actually reads its complete snapshot, retaining its capture time.
 pub(crate) const LOAN_SPOOL_EPOCH: &str = "library_sync_loan_spool_epoch";
-const LOAN_SPOOL_PREFIX: &str = "library_sync_cached_loan_spool:";
+pub(crate) const LOAN_SPOOL_PREFIX: &str = "library_sync_cached_loan_spool:";
 
 pub(crate) fn clear_cached_loan_spool_changes(conn: &Connection) -> InventoryResult<()> {
     conn.execute(

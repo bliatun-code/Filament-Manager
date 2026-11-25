@@ -1,3 +1,5 @@
+import { getLibrarySyncPageStatus } from "./tauri_library_sync_client";
+import type { SpoolWithMasterRow } from "./tauri_inventory_client";
 import { invoke } from "./tauri_invoke";
 
 export type InventoryLocationRow = {
@@ -44,6 +46,36 @@ function hostTargetInput(target: HostTarget) {
     expected_library_id: target.expectedLibraryId ?? null,
     ...(target.targetGeneration == null ? {} : { expected_target_generation: target.targetGeneration }),
   };
+}
+
+export type LocationSpoolQuery = { location_id: string; search: string; offset: number };
+export type LocationSpoolTarget = {
+  base_url: string | null;
+  expected_library_id: string;
+  target_generation: number;
+};
+export type LocationSpoolPage = {
+  rows: SpoolWithMasterRow[];
+  total: number;
+  matches: number;
+  revisions: [number, number];
+};
+
+export async function isLocationSpoolTargetCurrent(target: LocationSpoolTarget) {
+  const current = await getLibrarySyncPageStatus();
+  return (current.mode === "CLIENT") === (target.base_url !== null) &&
+    current.library_id === target.expected_library_id && current.target_generation === target.target_generation &&
+    (target.base_url === null || current.host_base_url === target.base_url);
+}
+
+export function getLocationSpoolPage(query: LocationSpoolQuery, target: LocationSpoolTarget) {
+  return invoke<LocationSpoolPage | null>("get_location_spool_page", { query, target });
+}
+
+export function getCachedLocationSpoolPage(query: LocationSpoolQuery, target: LocationSpoolTarget) {
+  return invoke<(LocationSpoolPage & { captured_at: string }) | null>(
+    "get_cached_location_spool_page", { query, target },
+  );
 }
 
 export function listInventoryLocations(includeArchived = false) {

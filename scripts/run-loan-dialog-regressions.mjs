@@ -126,7 +126,8 @@ async function expectBadges(page, values) {
 }
 
 function assertLoansOnly(calls) {
-  const forbidden = ["list_spools", "fetch_library_sync_spool_snapshot", "fetch_cached_library_sync_spools",
+  const forbidden = ["list_spools", "fetch_library_sync_spools", "fetch_library_sync_spool_snapshot",
+    "fetch_cached_library_sync_spools", "save_library_sync_spool_cache",
     "get_filament_standards", "fetch_library_sync_filament_standards"];
   assert.deepEqual(calls.filter(call => forbidden.includes(call.command)), []);
 }
@@ -170,6 +171,43 @@ async function checkWorkspaceOffline({ page, state, fixture, calls, fallback, op
   assertLoansOnly(calls);
 }
 
+async function checkLegacyLocation({ page, state, fixture, calls, fallback, openWorkspace }) {
+  const location = { id: "shelf", name: "Legacy shelf", location_type: "GENERIC",
+    linked_spool_count: 1, reference_count: 1, created_at: "", updated_at: "" };
+  const target = { base_url: "https://legacy.invalid", expected_library_id: "legacy", target_generation: 4 };
+  const status = { mode: "CLIENT", host_base_url: target.base_url, library_id: target.expected_library_id,
+    target_generation: target.target_generation, client_auth_paired: true };
+  fixture.spoolRows[0].spool.home_location_id = location.id;
+  state.invoke = (command, payload) => {
+    switch (command) {
+      case "get_library_sync_page_status": return status;
+      case "get_loan_workspace_counts": return { stock: 2, locations: 1, loans: 2, purchases: 0 };
+      case "fetch_library_sync_loans":
+      case "fetch_library_sync_active_loans": return fixture.loanRows;
+      case "fetch_library_sync_locations": return { rows: [location], mutations_supported: true };
+      case "get_location_spool_page":
+        assert.deepEqual(payload.target, target);
+        return null;
+      case "fetch_library_sync_spool_snapshot":
+        assert.deepEqual(payload.input, target);
+        return { rows: fixture.spoolRows, captured_at: "2026-01-02" };
+      default: return fallback(command, payload);
+    }
+  };
+  await openWorkspace();
+  await expectBadges(page, { stock: 2 });
+  await page.locator("#inventory-locations-tab").click();
+  const link = page.getByRole("button", { name: "Legacy shelf: 1 connected roll", exact: true });
+  await link.waitFor();
+  assertLoansOnly(calls);
+  await link.click();
+  const shelf = page.locator("#inventory-location-spools");
+  await shelf.locator('[data-location-spool-id="dialog-spool-a"]').waitFor();
+  assert.equal(await shelf.locator("[data-location-spool-id]").count(), 1);
+  assert.equal(calls.filter(call => call.command === "fetch_library_sync_spool_snapshot").length, 1);
+  assert.equal(calls.filter(call => call.command === "get_cached_location_spool_page").length, 0);
+}
+
 async function checkLinkedLocations({ page, state, fixture, calls, fallback, openWorkspace }) {
   const host = { mode: "CLIENT", host_base_url: "https://a.invalid", library_id: "A",
     target_generation: 11, client_auth_paired: true };
@@ -191,11 +229,11 @@ async function checkLinkedLocations({ page, state, fixture, calls, fallback, ope
       case "fetch_cached_library_sync_locations":
         assert.equal(payload.input.target_generation, 13);
         return { rows: [location], captured_at: "2026-01-02", mutations_supported: false };
-      case "fetch_library_sync_spool_snapshot": throw Error("[loan-regression] offline");
-      case "fetch_cached_library_sync_spools": return { rows: fixture.spoolRows, captured_at: "2026-01-01" };
-      case "fetch_library_sync_wishlist_items":
-      case "fetch_library_sync_printer_overview": return [];
-      case "fetch_library_sync_filament_standards": return fixture.filamentStandards;
+      case "get_location_spool_page": throw Error("[loan-regression] offline");
+      case "get_cached_location_spool_page":
+        assert.equal(payload.target.target_generation, 13);
+        assert.equal(payload.query.location_id, location.id);
+        return { rows: [fixture.spoolRows[0]], total: 1, matches: 1, revisions: [2, 1], captured_at: "2026-01-01" };
       case "validate_library_sync_host": return { reachable: false };
       default: return fallback(command, payload);
     }
@@ -214,11 +252,203 @@ async function checkLinkedLocations({ page, state, fixture, calls, fallback, ope
   await expectBadges(page, { stock: 2, loans: 2, locations: 1, purchases: 0 });
   assertLoansOnly(calls);
   await link.click();
-  await page.locator("#inventory-location-filter-chip").waitFor();
-  const stock = page.locator("#inventory-stock-panel");
-  await stock.getByText(/Dialog a/i).first().waitFor();
-  assert.equal(await stock.getByText(/Dialog b/i).count(), 0);
-  assert.ok(calls.some(call => call.command === "fetch_cached_library_sync_spools"));
+  const shelf = page.locator("#inventory-location-spools");
+  await shelf.locator('[data-location-spool-id="dialog-spool-a"]').waitFor();
+  assert.equal(await shelf.locator("[data-location-spool-id]").count(), 1);
+  assert.ok(calls.some(call => call.command === "get_cached_location_spool_page"));
+  await expectBadges(page, { stock: 2, loans: 2, locations: 1, purchases: 0 });
+  assertLoansOnly(calls);
+}
+
+async function checkLocationPages({ page, state, fixture, calls, fallback, openWorkspace }) {
+  const count = 103;
+  const host = { mode: "CLIENT", host_base_url: "https://a.invalid", library_id: "A",
+    target_generation: 1, client_auth_paired: true };
+  let current = host;
+  let revision = 1;
+  let disconnected = false;
+  let hasCache = true;
+  const started = deferred(), latePage = deferred();
+  const location = { id: "shelf", name: "Side shelf", location_type: "GENERIC",
+    linked_spool_count: count, reference_count: count, created_at: "", updated_at: "" };
+  const rows = Array.from({ length: count }, (_, index) => {
+    const base = fixture.spoolRows[0];
+    return {
+      ...base, spool: { ...base.spool, id: `linked-${index}`, location_id: location.id },
+      master: { ...base.master, filament_name: `Shelf spool ${index}` },
+    };
+  });
+  const queries = [];
+  state.invoke = (command, payload) => {
+    switch (command) {
+      case "get_library_sync_page_status": return current;
+      case "get_loan_workspace_counts": return { stock: 10000, loans: 2, locations: 1, purchases: 0 };
+      case "fetch_library_sync_loans":
+      case "fetch_library_sync_active_loans": return fixture.loanRows;
+      case "fetch_library_sync_locations": return { rows: [location], mutations_supported: true };
+      case "get_location_spool_page": {
+        const { query, target } = payload;
+        assert.equal(query.location_id, location.id);
+        assert.deepEqual(target, { base_url: current.host_base_url, expected_library_id: current.library_id,
+          target_generation: current.target_generation });
+        queries.push({ ...query });
+        if (disconnected) throw Error("[loan-regression] connection interrupted");
+        if (query.search === "delayed") { started.resolve(); return latePage.promise; }
+        const found = rows.filter(row => row.master.filament_name.includes(query.search));
+        return { rows: found.slice(query.offset, query.offset + 100), total: count, matches: found.length,
+          revisions: [revision, 1] };
+      }
+      case "get_cached_location_spool_page": {
+        assert.equal(payload.target.target_generation, 3);
+        if (!hasCache) return null;
+        const saved = { ...rows[0], spool: { ...rows[0].spool, id: "saved-shelf-roll" } };
+        return { rows: payload.query.offset === 0 ? [saved] : [], total: 1, matches: 1,
+          revisions: [2, 8], captured_at: "2026-01-02" };
+      }
+      default: return fallback(command, payload);
+    }
+  };
+  await openWorkspace();
+  await expectBadges(page, { stock: 10000 });
+  await page.locator("#inventory-locations-tab").click();
+  const link = page.getByRole("button", { name: "Side shelf: 103 connected rolls", exact: true });
+  await link.click();
+  const shelf = page.locator("#inventory-location-spools");
+  const row = id => shelf.locator(`[data-location-spool-id="${id}"]`);
+  await row("linked-99").waitFor();
+  assert.equal(await shelf.locator("[data-location-spool-id]").count(), 100);
+  const more = shelf.getByRole("button", { name: "Show more" });
+  revision++;
+  rows[0].spool.id = "first-after-stock-change";
+  await more.click();
+  // A changed library must restart at the beginning before exposing the next page.
+  await row("first-after-stock-change").waitFor();
+  await more.click();
+  await row("linked-102").waitFor();
+  assert.equal(await shelf.locator("[data-location-spool-id]").count(), 103);
+  assert.deepEqual(queries.map(query => query.offset), [0, 100, 0, 100]);
+  const search = shelf.getByRole("searchbox");
+  await search.fill("spool 102");
+  await row("first-after-stock-change").waitFor({ state: "detached" });
+  await row("linked-102").waitFor();
+  assert.equal(await shelf.locator("[data-location-spool-id]").count(), 1);
+  await search.fill("no such roll");
+  await shelf.locator('[data-location-spool-id]').first().waitFor({ state: "detached" });
+  await page.locator('[data-location-spool-matches="0"]').waitFor();
+  await search.fill("delayed");
+  await waitForStart(started);
+  await page.evaluate(() => {
+    window.staleShelfRowSeen = false;
+    new MutationObserver(() => {
+      if (document.querySelector('[data-location-spool-id="stale-generation"]')) window.staleShelfRowSeen = true;
+    }).observe(document.body, { childList: true, subtree: true, attributes: true });
+  });
+  current = { ...host, library_id: "B", host_base_url: "https://b.invalid", target_generation: 2 };
+  current = { ...host, target_generation: 3 };
+  latePage.resolve({ rows: [{ ...rows[0], spool: { ...rows[0].spool, id: "stale-generation" } }],
+    matches: 1, total: 1, revisions: [1, 1] });
+  await link.waitFor();
+  await link.click();
+  await row("linked-99").waitFor();
+  assert.equal(await page.evaluate(() => window.staleShelfRowSeen), false);
+  await expectBadges(page, { stock: 10000, loans: 2, locations: 1, purchases: 0 });
+  disconnected = true;
+  await more.click();
+  await row("saved-shelf-roll").waitFor();
+  await shelf.getByText(/Showing the last cached inventory snapshot/).waitFor();
+  assert.equal(await shelf.locator("[data-location-spool-id]").count(), 1);
+  hasCache = false;
+  await shelf.getByRole("button", { name: "Refresh" }).click();
+  await shelf.getByText(/no cached inventory snapshot/i).waitFor();
+  assert.equal(await shelf.locator("[data-location-spool-id]").count(), 0);
+  assert.equal(await shelf.getByText("No connected rolls", { exact: true }).count(), 0);
+  assertLoansOnly(calls);
+}
+
+async function checkLocationRollHandoff({ page, state, fixture, calls, fallback, openWorkspace }) {
+  const host = { mode: "CLIENT", host_base_url: "http://shelf-a.local:4278", library_id: "A",
+    target_generation: 21, client_auth_paired: true };
+  let current = host;
+  const location = { id: "handoff-shelf", name: "Handoff shelf", location_type: "GENERIC",
+    linked_spool_count: 1, reference_count: 1, created_at: "", updated_at: "" };
+  const reviewed = fixture.spoolRows[0];
+  reviewed.spool.home_location_id = location.id;
+  const replacement = structuredClone(reviewed);
+  replacement.master.filament_name = "New generation roll";
+  const started = deferred(), response = deferred();
+  let delayRead = false;
+  const snapshots = [];
+  const detailReads = [];
+  state.invoke = (command, payload) => {
+    switch (command) {
+      case "get_library_sync_page_status": return current;
+      case "get_loan_workspace_counts": return { stock: 1, loans: 2, purchases: 0, locations: 1 };
+      case "fetch_library_sync_locations": return { rows: [location], mutations_supported: true };
+      case "fetch_library_sync_loans":
+      case "fetch_library_sync_active_loans": return fixture.loanRows;
+      case "fetch_library_sync_printer_overview": return [];
+      case "fetch_library_sync_wishlist_items": return [];
+      case "get_location_spool_page": return { rows: [reviewed], total: 1, matches: 1, revisions: [1, 1] };
+      case "fetch_library_sync_spool_snapshot": {
+        const generation = payload.input.target_generation;
+        snapshots.push(generation);
+        if (delayRead && generation === host.target_generation) {
+          started.resolve();
+          return response.promise;
+        }
+        const roll = generation === host.target_generation ? reviewed : replacement;
+        return { rows: [roll], captured_at: "2026-01-01" };
+      }
+      case "fetch_library_sync_spool_detail":
+        detailReads.push(payload.input.spool_id);
+        return { spool: reviewed, history: [], usage: [] };
+      default: return fallback(command, payload);
+    }
+  };
+  const link = page.getByRole("button", { name: "Handoff shelf: 1 connected roll", exact: true });
+  const panel = page.locator("#inventory-location-spools");
+  const roll = panel.locator('[data-location-spool-id="dialog-spool-a"]');
+  const openShelf = async () => {
+    await openWorkspace();
+    await expectBadges(page, { stock: 1 });
+    await page.locator("#inventory-locations-tab").click();
+    await link.press("Enter");
+    await roll.waitFor();
+  };
+
+  await openShelf();
+  await panel.getByRole("button", { name: "Back", exact: true }).click();
+  await page.waitForFunction(() => document.activeElement?.getAttribute("aria-label") === "Handoff shelf: 1 connected roll");
+  await link.press("Enter");
+  await roll.waitFor();
+  assertLoansOnly(calls);
+  await roll.click();
+  await page.getByRole("dialog", { name: /Selected roll:.*Dialog a/ }).waitFor();
+  assert.equal(await page.locator("#inventory-stock-tab").getAttribute("aria-pressed"), "true");
+  assert.deepEqual(snapshots, [21]);
+
+  await openShelf();
+  detailReads.length = 0;
+  delayRead = true;
+  await page.evaluate(() => {
+    window.locationDetailOpened = false;
+    new MutationObserver(() => {
+      if (document.querySelector('[role="dialog"]')) window.locationDetailOpened = true;
+    }).observe(document.body, { childList: true, subtree: true, attributes: true });
+  });
+  await roll.click();
+  await waitForStart(started);
+  current = { ...host, host_base_url: "http://shelf-b.local:4278", library_id: "B", target_generation: 22 };
+  current = { ...host, target_generation: 23 };
+  response.resolve({ rows: [reviewed], captured_at: "2026-01-01" });
+  // The new generation has the same spool ID and placement. Rendering it in regular
+  // stock proves the refresh completed before we assert that the old click was dropped.
+  await page.getByRole("heading", { name: /New generation roll/ }).waitFor();
+  assert.equal(await page.evaluate(() => window.locationDetailOpened), false);
+  assert.equal(await page.getByRole("dialog").count(), 0);
+  assert.equal(await page.locator("#inventory-location-filter-chip").count(), 0);
+  assert.deepEqual(detailReads, []);
+  assert.deepEqual(snapshots, [21, 21, 23]);
 }
 
 async function checkWorkspaceWrites({ page, state, fixture, calls, fallback, openWorkspace }) {
@@ -649,6 +879,9 @@ async function main() {
     for (const [name, check, direct] of [
       ["loan workspace badges and stock on demand after lending and returning", checkWorkspaceWrites, true],
       ["Locations rejects an A–B–A read and opens the linked offline rolls on click", checkLinkedLocations, true],
+      ["Location pages and search stay within the shelf and reject an old Host generation", checkLocationPages, true],
+      ["A shelf roll opens its detail only on the reviewed Host generation", checkLocationRollHandoff, true],
+      ["An older Host supplies the complete stock for the selected location on demand", checkLegacyLocation, true],
       ["offline loan rows and badges reject a late A–B–A read", checkWorkspaceOffline, true],
       ["inventory selection, paged search, changing stock and interrupted reads", checkPagedLoanPicker],
       ["loan form remains scrollable with 42 rolls and a short window", checkScrollableLoanForm],
