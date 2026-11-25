@@ -255,7 +255,7 @@ test("inventory refreshes page data without eagerly loading the add-flow catalog
   assert.match(inventoryPageWorkspaceSource, /PageLoadErrorBanner/);
   assert.match(inventoryPageSource, /onRetryLoadError=\{retryInventoryPageLoad\}/);
   assert.match(inventoryPageDataSource, /usePageRefreshState/);
-  assert.match(refreshSource, /reloadSpools\(reportResult, onStockLoaded\)/);
+  assert.match(refreshSource, /reloadSpools\(reportResult, onStockLoaded, requestCards\)/);
   assert.match(refreshSource, /reloadWishlist\(reportResult\)/);
   assert.match(refreshSource, /reloadActiveLoans\(reportResult\)/);
   assert.match(refreshSource, /reloadPrinterOverview\(reportResult\)/);

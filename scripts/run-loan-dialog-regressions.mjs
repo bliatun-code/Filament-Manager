@@ -171,6 +171,76 @@ async function checkWorkspaceOffline({ page, state, fixture, calls, fallback, op
   assertLoansOnly(calls);
 }
 
+async function checkStockCards({page, state, fixture, calls, fallback, openWorkspace}) {
+  const target = {base_url: "https://cards.invalid", expected_library_id: "cards", target_generation: 3};
+  const status = {mode:"CLIENT", host_base_url:target.base_url, library_id:"cards", target_generation:3,
+    client_auth_paired:true};
+  const first = fixture.spoolRows[0], later = fixture.spoolRows[1];
+  const hidden = {...later, master: {...later.master, filament_name: "Hidden search match"}, spool: {...later.spool, id: "hidden-roll"}};
+  const members = Array.from({length: 8}, (_, i) => ({...first, spool:{...first.spool,id:"card-member-" + i}}));
+  const reads = [];
+  let mode = "live";
+  let revision = 1;
+  state.invoke = (command,payload) => {
+    switch (command) {
+      case "get_library_sync_page_status": return status;
+      case "get_loan_workspace_counts": return {stock:10, locations:0, loans:2, purchases:0};
+      case "fetch_library_sync_loans":
+      case "fetch_library_sync_active_loans": return fixture.loanRows;
+      case "fetch_library_sync_locations": return {rows:[], mutations_supported:true};
+      case "fetch_library_sync_printer_overview":
+      case "fetch_library_sync_wishlist_items": return [];
+      case "fetch_library_sync_spool_snapshot":
+        if (mode === "offline") throw Error("[loan-regression] Host disconnected");
+        return {rows:[...members,later,hidden],captured_at:"2026-01-01"};
+      case "fetch_cached_library_sync_spools":
+        assert.deepEqual(payload.input,target);
+        return {rows:[hidden],captured_at:"2026-01-01"};
+      case "get_stock_card_page": {
+        assert.deepEqual(payload.target,target);
+        if (mode === "legacy") return null;
+        if (mode === "offline") throw Error("[loan-regression] Host disconnected");
+        const {member_of,offset}=payload.query;
+        reads.push(offset);
+        const cards = offset === 1 && !member_of ? [{count:1,remaining:300,rows:[later]}] :
+          [{count:8,remaining:4000,rows:member_of ? members.slice(offset) : members.slice(0,3)}];
+        return {cards, total:10, visible:10, groups:3, borrowed:0, revisions:[revision,1]};
+      }
+      default: return fallback(command,payload);
+    }
+  };
+  await openWorkspace();
+  await expectBadges(page,{stock:10});
+  await page.getByRole("button", {name:/^Return ·/}).waitFor();
+  reads.length = 0;
+  calls.length = 0;
+  await page.locator("#inventory-stock-tab").click();
+  const panel=page.locator("#inventory-stock-panel");
+  await panel.getByText(/8 spools/).waitFor();
+  assert.equal(await panel.locator(".inventory-roll-row").count(),3);
+  await panel.getByRole("button",{name:/Show all/}).click();
+  await panel.locator(".inventory-roll-row").nth(7).waitFor();
+  revision++;
+  await panel.getByRole("button",{name:"Show more",exact:true}).click();
+  await panel.locator(".inventory-roll-row").nth(7).waitFor({state:"detached"});
+  await panel.getByRole("button",{name:"Show more",exact:true}).click();
+  await panel.getByRole("heading",{name:/Dialog b/}).waitFor();
+  assert.deepEqual(reads,[0,3,1,0,1]);
+  assert.ok(!calls.some(c=>c.command==="fetch_library_sync_spool_snapshot"));
+  await page.getByPlaceholder(/Search by material/i).fill("Hidden search match");
+  await panel.getByRole("heading",{name:/Hidden search match/}).waitFor();
+  assert.ok(calls.some(c=>c.command==="fetch_library_sync_spool_snapshot"));
+  for (mode of ["legacy", "offline"]) {
+    await openWorkspace();
+    await expectBadges(page,{stock:10});
+    await page.getByRole("button", {name:/^Return ·/}).waitFor();
+    await page.locator("#inventory-stock-tab").click();
+    await panel.getByRole("heading",{name:/Hidden search match/}).waitFor();
+    assert.equal(await panel.locator(".inventory-product-card").count(), mode === "legacy" ? 3 : 1);
+  }
+  assert.ok(calls.some(c=>c.command==="fetch_cached_library_sync_spools"));
+}
+
 async function checkLegacyLocation({ page, state, fixture, calls, fallback, openWorkspace }) {
   const location = { id: "shelf", name: "Legacy shelf", location_type: "GENERIC",
     linked_spool_count: 1, reference_count: 1, created_at: "", updated_at: "" };
@@ -881,6 +951,7 @@ async function main() {
       ["Locations rejects an A–B–A read and opens the linked offline rolls on click", checkLinkedLocations, true],
       ["Location pages and search stay within the shelf and reject an old Host generation", checkLocationPages, true],
       ["A shelf roll opens its detail only on the reviewed Host generation", checkLocationRollHandoff, true],
+      ["Stock cards read group totals, more members and more groups before a whole-library search", checkStockCards, true],
       ["An older Host supplies the complete stock for the selected location on demand", checkLegacyLocation, true],
       ["offline loan rows and badges reject a late A–B–A read", checkWorkspaceOffline, true],
       ["inventory selection, paged search, changing stock and interrupted reads", checkPagedLoanPicker],

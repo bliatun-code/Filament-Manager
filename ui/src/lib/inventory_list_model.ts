@@ -358,9 +358,8 @@ export function remainingBarClass(ratio: number): string {
 export function groupInventorySpools(filteredSpools: InventorySpool[]): SpoolGroup[] {
   const index = new Map<string, SpoolGroup>();
   for (const spool of filteredSpools) {
-    const key = `${spool.vendor}|${spool.material}|${spool.filamentName}|${spool.colorName}|${
-      spool.hexColor ?? ""
-    }|${spool.ownershipType}|${spool.ownerName ?? ""}`;
+    const key = JSON.stringify([spool.vendor, spool.material, spool.filamentName, spool.colorName,
+      spool.hexColor ?? "", spool.ownershipType, spool.ownerName ?? ""]);
     if (!index.has(key)) {
       index.set(key, {
         key,

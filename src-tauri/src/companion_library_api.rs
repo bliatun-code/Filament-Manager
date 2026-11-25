@@ -1,6 +1,7 @@
 use crate::backend::database_loan_picker::{LoanPickerPage, LoanPickerQuery};
 use crate::backend::database_location_spools::{LocationSpoolPage, LocationSpoolQuery};
 use crate::backend::database_printer_picker::{PrinterPickerPage, PrinterPickerQuery};
+use crate::backend::database_stock_cards::{StockCardPage, StockCardQuery};
 use crate::backend::filament_database::{
     FilamentDatabase, FilamentMasterCatalogRow, FilamentStandardsSnapshot, LibrarySyncSettingsRow,
     PrinterOverviewRow, SpoolLoanDetailsRow, SpoolLoanRow, SpoolWithMasterRow, WishlistItemRow,
@@ -65,6 +66,7 @@ pub(super) async fn handle_health(
                     CATALOG_SPOOL_BATCH_CAPABILITY,
                     PRINTER_PICKER_CAPABILITY,
                     LOAN_PICKER_CAPABILITY,
+                    crate::companion_models::STOCK_CARDS_CAPABILITY,
                     LOCATION_SPOOLS_CAPABILITY,
                     crate::companion_models::LOAN_WORKSPACE_COUNTS,
                     PRINTER_SLOT_OPERATIONS_CAPABILITY,
@@ -240,6 +242,21 @@ pub(super) async fn handle_loan_picker_page(
             db.loan_picker_page(&query)
                 .map(Json)
                 .map_err(CompanionApiError::from)
+        })
+        .await
+}
+
+pub(super) async fn handle_stock_cards(
+    State(state): State<CompanionApiState>,
+    headers: HeaderMap,
+    Json(query): Json<StockCardQuery>,
+) -> Result<Json<StockCardPage>, CompanionApiError> {
+    require_allowed_host(&headers, &state.runtime)?;
+    state
+        .run_blocking("stock cards", move |state| {
+            Ok(Json(
+                FilamentDatabase::open(&state.db_path)?.stock_card_page(&query)?,
+            ))
         })
         .await
 }

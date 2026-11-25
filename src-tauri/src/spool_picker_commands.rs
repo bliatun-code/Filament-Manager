@@ -1,10 +1,11 @@
-use serde::{de::DeserializeOwned, Deserialize, Serialize};
+use serde::{de::DeserializeOwned, Serialize};
 
 use crate::{
     backend::database_loan_picker::{LoanPickerPage, LoanPickerQuery},
     backend::database_location_spools::{LocationSpoolPage, LocationSpoolQuery},
     backend::database_printer_picker::{PrinterPickerPage, PrinterPickerQuery},
     backend::database_result::InventoryResult,
+    backend::database_stock_cards::{StockCardPage, StockCardQuery},
     backend::filament_database::FilamentDatabase,
     companion_models::{
         LOAN_PICKER_CAPABILITY, LOCATION_SPOOLS_CAPABILITY, PRINTER_PICKER_CAPABILITY,
@@ -24,12 +25,7 @@ use crate::{
     with_db,
 };
 
-#[derive(Deserialize)]
-pub(crate) struct PickerTarget {
-    base_url: Option<String>,
-    expected_library_id: String,
-    target_generation: u64,
-}
+pub(crate) use crate::library_sync_target_guard::LibraryReadTarget as PickerTarget;
 
 #[tauri::command]
 pub(crate) async fn get_printer_picker_page(
@@ -78,6 +74,38 @@ pub(crate) fn loan_picker_page_blocking(
         LOAN_PICKER_CAPABILITY,
         "/api/v1/library/loan-spool-picker",
         FilamentDatabase::loan_picker_page,
+    )
+}
+
+#[tauri::command]
+pub(crate) async fn get_stock_card_page(
+    state: tauri::State<'_, AppState>,
+    query: StockCardQuery,
+    target: PickerTarget,
+) -> Result<Option<StockCardPage>, String> {
+    let state = state.inner().clone();
+    run_library_sync_blocking(move || stock_card_page_blocking(&state, query, target)).await
+}
+
+pub(crate) fn stock_card_page_blocking(
+    state: &AppState,
+    query: StockCardQuery,
+    target: PickerTarget,
+) -> Result<Option<StockCardPage>, String> {
+    // A newly paired Client needs its first complete offline capture. The ordinary
+    // snapshot command commits that capture atomically, including an empty library.
+    if target.base_url.is_some()
+        && !target.with_database(state, FilamentDatabase::has_complete_stock_capture)?
+    {
+        return Ok(None);
+    }
+    read_picker_page(
+        state,
+        &query,
+        target,
+        crate::companion_models::STOCK_CARDS_CAPABILITY,
+        "/api/v1/library/stock-cards",
+        FilamentDatabase::stock_card_page,
     )
 }
 

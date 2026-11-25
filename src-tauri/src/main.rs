@@ -379,6 +379,7 @@ fn main() {
             printer_read_commands::list_printer_overview,
             spool_picker_commands::get_printer_picker_page,
             spool_picker_commands::get_loan_picker_page,
+            spool_picker_commands::get_stock_card_page,
             spool_picker_commands::get_location_spool_page,
             spool_picker_commands::get_cached_location_spool_page,
             loan_workspace_commands::get_loan_workspace_counts,

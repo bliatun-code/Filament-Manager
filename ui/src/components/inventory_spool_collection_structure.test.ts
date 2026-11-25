@@ -40,7 +40,7 @@ test("InventorySpoolCollection reveals large grouped roll sets in bounded pages"
   assert.match(source, /aria-expanded=\{groupExpanded\}/);
   assert.match(source, /aria-controls=\{rollListId\}/);
   assert.match(source, /id=\{rollListId\}/);
-  assert.match(source, /updateGroupRollLimit\(group\.key, group\.rolls\.length\)/);
+  assert.match(source, /updateGroupRollLimit\(group\.key, rollCount\)/);
   assert.match(source, /inventory\.showAllRolls/);
   assert.match(source, /inventory\.showFewerRolls/);
   assert.doesNotMatch(

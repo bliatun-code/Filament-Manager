@@ -81,7 +81,7 @@ type InventoryControlsPanelProps = {
   ownershipFilter: OwnershipFilter;
   vendorFilter: string;
   vendorOptions: string[];
-  visibleInventoryCount: number;
+  visibleInventoryCount: number | null;
 };
 
 function statusLabel(status: StatusFilter, t: ReturnType<typeof useI18n>["t"]) {
@@ -300,7 +300,7 @@ export function InventoryControlsPanel({
               className="text-sm font-semibold text-slate-800 dark:text-slate-100"
               aria-live="polite"
             >
-              <span className="tabular-nums">{visibleInventoryCount}</span> {resultLabel}
+              <span className="tabular-nums">{visibleInventoryCount ?? "–"}</span> {resultLabel}
             </div>
             {activeFilterCount > 0 ? (
               <span className="rounded-full border border-sky-300/65 bg-sky-50/70 px-2.5 py-1 text-[11px] font-semibold text-sky-700 dark:border-sky-400/35 dark:bg-sky-500/10 dark:text-sky-200">
