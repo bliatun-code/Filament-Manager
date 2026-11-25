@@ -12,6 +12,12 @@ pub(crate) struct PaginationQuery {
 }
 
 #[derive(Deserialize, Default)]
+pub(crate) struct WishlistPageQuery {
+    pub(crate) limit: Option<i64>,
+    pub(crate) reviewed_item_id: Option<String>,
+}
+
+#[derive(Deserialize, Default)]
 pub(crate) struct CatalogListQuery {
     pub(crate) limit: Option<i64>,
     pub(crate) search: Option<String>,

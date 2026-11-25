@@ -35,6 +35,7 @@ export type InventoryNavigationIntent =
       kind: "PURCHASES";
       notice?: "CREATED" | "REUSED";
       purchaseTarget?: WishlistPurchaseTarget;
+      reviewedItemId?: string;
       seq: number;
       status: "WISHLIST" | "ON_ORDER";
     }

@@ -45,7 +45,11 @@ import type {
 import type { InventoryLocationRow } from "./tauri_location_client";
 import type { InventorySpool } from "./inventory_list_model";
 
+import type { InventoryNavigationIntent } from "./app_navigation_model";
+import { matchesWishlistPurchaseTarget } from "./tauri_wishlist_client";
+
 type InventoryPageDataInput = {
+  purchaseIntent?: Extract<InventoryNavigationIntent, { kind: "PURCHASES" }> | null;
   setRfidCaptureFieldsBySlotId: Dispatch<SetStateAction<Record<string, RfidCaptureField[]>>>;
   tauriAvailable: boolean;
   t: ReturnType<typeof useI18n>["t"];
@@ -108,6 +112,7 @@ function createInventoryDomainSources(): Record<
 }
 
 export function useInventoryPageData({
+  purchaseIntent,
   setRfidCaptureFieldsBySlotId,
   tauriAvailable,
   t,
@@ -146,6 +151,9 @@ export function useInventoryPageData({
   const [clientReadOnly, setClientReadOnly] = useState(tauriAvailable);
   const [clientHostWritePaired, setClientHostWritePaired] = useState(false);
   const [libraryStatus, setLibraryStatus] = useState<LibrarySyncPageStatus | null>(null);
+  const reviewedTarget = purchaseIntent?.purchaseTarget && matchesWishlistPurchaseTarget(libraryStatus, purchaseIntent.purchaseTarget)
+    ? purchaseIntent.purchaseTarget : undefined;
+  const reviewedItemId = reviewedTarget ? purchaseIntent?.reviewedItemId : undefined;
   const clientHostDeviceName = libraryStatus?.host_device_name ?? null;
   const clientHostBaseUrl = libraryStatus?.host_base_url ?? null;
   const clientLibraryId = libraryStatus?.library_id ?? null;
@@ -516,6 +524,8 @@ export function useInventoryPageData({
     setWishlistLoading(true);
     try {
       const result = await loadWishlistItemsSnapshot({
+        reviewedItemId,
+        reviewedTarget,
         clientReadOnly,
         clientHostBaseUrl,
         clientLibraryId,
@@ -525,7 +535,9 @@ export function useInventoryPageData({
         clientHostBaseUrl && clientLibraryId && dataRequestIsCurrent("wishlist", requestId) &&
         await inventoryFallbackPairingRejected(clientHostBaseUrl, clientLibraryId);
       // The paired target can change in another window while the Host or its offline copy is being read.
-      const targetChanged = clientReadOnly && dataRequestIsCurrent("wishlist", requestId) && await clientReadTargetChanged();
+      const targetChanged = dataRequestIsCurrent("wishlist", requestId) && (clientReadOnly
+        ? await clientReadTargetChanged()
+        : reviewedTarget && !matchesWishlistPurchaseTarget(await getLibrarySyncPageStatus(), reviewedTarget));
       if (!dataRequestIsCurrent("wishlist", requestId)) {
         reportResult?.("wishlist", "SUPERSEDED");
         return;
@@ -561,6 +573,8 @@ export function useInventoryPageData({
       }
     }
   }, [
+    reviewedItemId,
+    reviewedTarget,
     beginDataRequest,
     clientHostBaseUrl,
     clientHostWritePaired,

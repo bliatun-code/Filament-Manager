@@ -49,7 +49,7 @@ pub(crate) fn create_local_wishlist_item(
     })
 }
 
-fn with_reviewed_local_target<T>(
+pub(crate) fn with_reviewed_local_target<T>(
     state: &AppState,
     expected: Option<&WishlistPurchaseTarget>,
     run: impl FnOnce() -> Result<T, String>,

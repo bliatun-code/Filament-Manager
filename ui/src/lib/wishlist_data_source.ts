@@ -31,6 +31,7 @@ export type WishlistDataSourceOptions = {
   clientLibraryId?: string | null;
   clientTargetGeneration?: number | null;
   reviewedTarget?: WishlistPurchaseTarget;
+  reviewedItemId?: string;
   limit?: number;
 };
 
@@ -282,7 +283,7 @@ async function loadWishlistItemsInternal(
     try {
       return {
         result: {
-          rows: await fetchHostWishlist(hostTarget.baseUrl, hostTarget.libraryId, limit, options.clientTargetGeneration),
+          rows: await fetchHostWishlist(hostTarget.baseUrl, hostTarget.libraryId, limit, options.clientTargetGeneration, options.reviewedItemId),
           source: "LIVE",
         },
         loadError: null,
@@ -316,7 +317,9 @@ async function loadWishlistItemsInternal(
 
   return {
     result: {
-      rows: await listLocalWishlist(limit),
+      rows: options.reviewedItemId
+        ? await listLocalWishlist(limit, options.reviewedItemId, options.reviewedTarget)
+        : await listLocalWishlist(limit),
       source: "LIVE",
     },
     loadError: null,

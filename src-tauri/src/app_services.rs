@@ -180,8 +180,12 @@ impl CompanionService {
         )
     }
 
-    pub fn list_wishlist_items(&self, limit: i64) -> InventoryResult<Vec<WishlistItemRow>> {
-        self.with_inventory(|engine| engine.list_wishlist_items(limit))
+    pub fn list_wishlist_items(
+        &self,
+        limit: i64,
+        reviewed_item_id: Option<&str>,
+    ) -> InventoryResult<Vec<WishlistItemRow>> {
+        self.with_inventory(|engine| engine.wishlist_page(limit, reviewed_item_id))
     }
 
     pub fn list_printer_overview(&self) -> InventoryResult<Vec<PrinterOverviewRow>> {

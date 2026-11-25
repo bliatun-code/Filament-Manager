@@ -22,6 +22,7 @@ fn stale_dashboard_generation_sends_neither_wishlist_read_nor_create() {
         db.get_library_sync_page_status().unwrap().target_generation > original.target_generation
     );
     let read = LibrarySyncWishlistListInput {
+        reviewed_item_id: None,
         base_url: url.clone(),
         expected_library_id: Some(original.library_id.clone()),
         expected_target_generation: Some(original.target_generation),
@@ -121,9 +122,17 @@ fn paired_dashboard_purchase_requires_capability_and_returns_host_order_id() {
     let (url, server) = spawn_fake_host_with(
         vec![
             legacy,
-            response("GET /api/v1/health ", health),
+            response("GET /api/v1/health ", health.clone()),
             response("POST /api/v1/wishlist/dashboard-purchase ", order.clone()),
             response("GET /api/v1/library/wishlist?limit=500 ", json!([])),
+            response("GET /api/v1/health ", health),
+            response(
+                "GET /api/v1/library/wishlist?limit=500&reviewed_item_id=old%2Forder%26x ",
+                json!([{
+                    "id":"old/order&x", "material":"PLA", "filament_name":"Silk", "color_name":"Blue",
+                    "vendor":"Manual", "status":"ON_ORDER", "quantity":7, "created_at":"", "updated_at":""
+                }]),
+            ),
         ],
         |request| {
             if request.starts_with("POST ") {
@@ -144,6 +153,29 @@ fn paired_dashboard_purchase_requires_capability_and_returns_host_order_id() {
         .unwrap_err()
         .contains("purchase_metadata.host_unsupported"));
     assert_eq!(serde_json::to_value(run().unwrap()).unwrap(), order);
+    let status = db.get_library_sync_page_status().unwrap();
+    let result = fetch_library_sync_wishlist_items_blocking(
+        &state,
+        LibrarySyncWishlistListInput {
+            reviewed_item_id: Some("old/order&x".into()),
+            base_url: url,
+            expected_library_id: Some(status.library_id),
+            expected_target_generation: Some(status.target_generation),
+            limit: Some(500),
+        },
+    )
+    .unwrap();
+    assert_eq!(result[0].id, "old/order&x");
+    assert_eq!(result[0].quantity, 7);
+    assert_eq!(
+        db.get_library_sync_settings()
+            .unwrap()
+            .cached_wishlist
+            .unwrap()
+            .rows[0]
+            .id,
+        result[0].id
+    );
     server.join().unwrap();
     drop(db);
     std::fs::remove_file(path).unwrap();

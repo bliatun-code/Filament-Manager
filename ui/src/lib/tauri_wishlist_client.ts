@@ -66,8 +66,8 @@ export type WishlistReceiptResult = {
   status: string;
 };
 
-export async function listWishlistItems(limit = 500) {
-  return invoke<WishlistItemRow[]>("list_wishlist_items", { limit });
+export async function listWishlistItems(limit = 500, reviewedItemId?: string, expectedTarget?: WishlistPurchaseTarget) {
+  return invoke<WishlistItemRow[]>("list_wishlist_items", { limit, ...(reviewedItemId && { reviewedItemId, expectedTarget }) });
 }
 
 export type DashboardPurchaseResult =
@@ -182,12 +182,14 @@ export async function fetchLibrarySyncWishlistItems(
   expectedLibraryId: string | null | undefined,
   limit = 500,
   expectedGeneration?: number | null,
+  reviewedItemId?: string,
 ) {
   return invoke<WishlistItemRow[]>("fetch_library_sync_wishlist_items", {
     input: {
       base_url: baseUrl,
       expected_library_id: expectedLibraryId ?? null,
       limit,
+      ...(reviewedItemId && { reviewed_item_id: reviewedItemId }),
       ...(expectedGeneration != null && { expected_target_generation: expectedGeneration }),
     },
   });

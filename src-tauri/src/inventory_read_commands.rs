@@ -20,8 +20,21 @@ pub(crate) fn list_spools(
 pub(crate) fn list_wishlist_items(
     state: tauri::State<'_, AppState>,
     limit: Option<i64>,
+    reviewed_item_id: Option<String>,
+    expected_target: Option<crate::inventory_create_commands::WishlistPurchaseTarget>,
 ) -> Result<Vec<WishlistItemRow>, String> {
     let capped = limit.unwrap_or(500).clamp(1, 2_000);
+    if let Some(target) = expected_target {
+        return crate::inventory_create_commands::with_reviewed_local_target(
+            &state,
+            Some(&target),
+            || {
+                with_inventory(&state, |engine| {
+                    engine.wishlist_page(capped, reviewed_item_id.as_deref())
+                })
+            },
+        );
+    }
     with_inventory(&state, |engine| engine.list_wishlist_items(capped))
 }
 

@@ -375,6 +375,17 @@ impl InventoryEngine {
         self.db.list_wishlist_items(limit)
     }
 
+    pub fn wishlist_page(
+        &self,
+        limit: i64,
+        reviewed_item_id: Option<&str>,
+    ) -> InventoryResult<Vec<WishlistItemRow>> {
+        match reviewed_item_id {
+            Some(id) => self.db.wishlist_page_with_reviewed_item(limit, id),
+            None => self.list_wishlist_items(limit),
+        }
+    }
+
     pub fn list_printers(&self) -> InventoryResult<Vec<PrinterRow>> {
         self.db.list_printers()
     }

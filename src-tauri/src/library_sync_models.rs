@@ -234,6 +234,7 @@ pub(crate) struct LibrarySyncAuditCatalogInput {
 
 #[derive(Deserialize)]
 pub(crate) struct LibrarySyncWishlistListInput {
+    pub(crate) reviewed_item_id: Option<String>,
     pub(crate) expected_target_generation: Option<u64>,
     pub(crate) base_url: String,
     pub(crate) expected_library_id: Option<String>,
