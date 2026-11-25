@@ -281,6 +281,7 @@ pub(crate) const CATALOG_SPOOL_BATCH_CAPABILITY: &str = "catalog-spool-batch-v1"
 pub(crate) const LOAN_WORKSPACE_COUNTS: &str = "loan-workspace-counts-v1";
 pub(crate) const STOCK_PURCHASE_COUNT_CAPABILITY: &str = "stock-purchase-count-v1";
 pub(crate) const PURCHASE_QUEUE_CAPABILITY: &str = "purchase-queue-page-v1";
+pub(crate) const STOCK_CARD_FILTER_CAPABILITY: &str = "stock-card-filters-v1";
 pub(crate) const STOCK_CARD_SEARCH_CAPABILITY: &str = "stock-card-search-v1";
 pub(crate) const STOCK_CARDS_CAPABILITY: &str = "stock-cards-v1";
 pub(crate) const DASHBOARD_PURCHASE_CAPABILITY: &str = "dashboard-purchase-v1";

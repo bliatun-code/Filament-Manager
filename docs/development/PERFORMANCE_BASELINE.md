@@ -28,8 +28,11 @@ inventory or catalog revision restarts paging. Free-text card search matches
 all terms on each spool before grouping and paging. Typing refreshes the card
 results independently of tab counts. Hosts without card-search support and
 offline Clients use the full stock reader and the existing local filter.
-Advanced filters, list view,
-labels and selection use the complete stock so they cover every matching roll.
+Current Hosts also filter individual rolls by status, ownership, material,
+vendor, location and low-stock policy before grouping. Opening the filter panel
+requests distinct materials and vendors from the whole stock in the same read
+transaction. Older Hosts and offline Clients filter the complete live or saved
+list. List view, labels and selection use the complete stock so they cover every matching roll.
 A Client without a complete offline capture obtains one on its first full read.
 Older Hosts and disconnected Clients use the existing full-list or scoped
 offline path. Reading a card page preserves the last complete capture and its

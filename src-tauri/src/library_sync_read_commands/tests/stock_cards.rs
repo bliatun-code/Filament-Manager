@@ -1,19 +1,37 @@
 use super::{fake_health, fake_host_state, spawn_fake_host_with, FakeHostResponse};
 use crate::{
     backend::{database_stock_cards::StockCardQuery, filament_database::FilamentDatabase},
-    companion_models::{STOCK_CARDS_CAPABILITY, STOCK_CARD_SEARCH_CAPABILITY},
+    companion_models::{
+        STOCK_CARDS_CAPABILITY, STOCK_CARD_FILTER_CAPABILITY, STOCK_CARD_SEARCH_CAPABILITY,
+    },
     spool_picker_commands::stock_card_page_blocking,
 };
 use serde_json::json;
 
 #[test]
 fn stock_card_pages_distinguish_old_hosts_and_offline_and_reject_late_a_b_a_reads() {
+    check_card_target(false);
+}
+
+#[test]
+fn filtered_stock_cards_fall_back_on_search_only_hosts_and_reject_a_b_a() {
+    check_card_target(true);
+}
+
+fn check_card_target(filter: bool) {
     const POST: &str = "POST /api/v1/library/stock-cards ";
     let health = |modern| {
         let mut body: serde_json::Value = serde_json::from_str(&fake_health()).unwrap();
         body["capabilities"] = json!([STOCK_CARDS_CAPABILITY]);
-        if modern {
+        if filter {
             body["capabilities"] = json!([STOCK_CARDS_CAPABILITY, STOCK_CARD_SEARCH_CAPABILITY]);
+        }
+        if modern {
+            body["capabilities"] = json!([
+                STOCK_CARDS_CAPABILITY,
+                STOCK_CARD_SEARCH_CAPABILITY,
+                STOCK_CARD_FILTER_CAPABILITY
+            ]);
         }
         FakeHostResponse {
             expected_request_prefix: "GET /api/v1/health ",
@@ -56,6 +74,7 @@ fn stock_card_pages_distinguish_old_hosts_and_offline_and_reject_late_a_b_a_read
     let db = FilamentDatabase::open(&path).unwrap();
     let initial = db.get_library_sync_page_status().unwrap().target_generation;
     let query = || StockCardQuery {
+        filters: filter.then(Default::default),
         member_of: None,
         locale: None,
         offset: 100,

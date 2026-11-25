@@ -182,6 +182,8 @@ async function checkStockCards({page, state, fixture, calls, fallback, openWorks
   let mode = "live";
   let revision = 1;
   let purchaseCount = 1;
+  const delayedFilter = deferred();
+  const filterStarted = deferred();
   const slowSearch = deferred();
   const searchStarted = deferred();
   const oldGeneration = deferred();
@@ -210,9 +212,11 @@ async function checkStockCards({page, state, fixture, calls, fallback, openWorks
         return purchaseCount;
       case "get_stock_card_page": {
         assert.deepEqual(payload.target,target);
-        if (mode === "legacy" || (mode === "cards-only" && payload.query.search)) return null;
+        if (mode === "legacy" || (mode === "cards-only" && payload.query.search) || (mode === "search-only" && payload.query.filters)) return null;
         if (mode === "offline") throw Error("[loan-regression] Host disconnected");
-        const {member_of,offset,search}=payload.query;
+        const {member_of,offset,search,filters}=payload.query;
+        const options = filters?.include_options ? {materials:["PLA","TPU"],vendors:["Generic","Rare vendor"]} : undefined;
+        if (filters?.vendor === "Rare vendor") { filterStarted.resolve(); return delayedFilter.promise; }
         if (search === "generation") {
           if (payload.target.target_generation === 3) { generationRead.resolve(); return oldGeneration.promise; }
           return generationPage("Current generation");
@@ -226,7 +230,7 @@ async function checkStockCards({page, state, fixture, calls, fallback, openWorks
         reads.push(offset);
         const cards = offset === 1 && !member_of ? [{count:1,remaining:300,rows:[later]}] :
           [{count:8,remaining:4000,rows:member_of ? members.slice(offset) : members.slice(0,3)}];
-        return {cards, total:10, visible:10, groups:3, borrowed:0, revisions:[revision,1]};
+        return {cards, options, total:10, visible:10, groups:3, borrowed:0, revisions:[revision,1]};
       }
       default: return fallback(command,payload);
     }
@@ -262,6 +266,13 @@ async function checkStockCards({page, state, fixture, calls, fallback, openWorks
   assert.equal(await panel.getByRole("heading",{name:/Hidden search match/}).count(),0);
   assert.ok(!calls.some(c => ["fetch_library_sync_spool_snapshot","get_stock_purchase_count",
     "fetch_library_sync_locations","fetch_library_sync_active_loans","fetch_library_sync_printer_overview"].includes(c.command)));
+  await page.getByRole("button",{name:"More filters", exact:true}).click();
+  await page.getByRole("button",{name:"Rare vendor", exact:true}).click();
+  await waitForStart(filterStarted);
+  await page.getByRole("button",{name:"Reset filters", exact:true}).click();
+  delayedFilter.resolve({cards:[],total:10, visible:0, groups:0, borrowed:0, revisions:[revision,1]});
+  await panel.getByText(/8 spools/).waitFor();
+  assert.ok(!calls.some(c => c.command === "fetch_library_sync_spool_snapshot" || c.command === "get_stock_purchase_count"));
   await searchBox.fill("generation");
   await waitForStart(generationRead);
   Object.assign(status, {library_id:"cards-b", host_base_url:"https://cards-b.invalid", target_generation:4});
@@ -287,6 +298,11 @@ async function checkStockCards({page, state, fixture, calls, fallback, openWorks
     await searchBox.fill("Hidden search match");
     await panel.getByRole("heading",{name:/Hidden search match/}).waitFor();
     await searchBox.fill("");
+    await page.getByRole("button",{name:"More filters",exact:true}).click();
+    await page.getByRole("button",{name:"Lost",exact:true}).click();
+    await panel.locator(".inventory-product-card").first().waitFor({state:"detached"});
+    await panel.getByRole("button",{name:"Reset filters",exact:true}).click();
+    await panel.getByRole("heading",{name:/Hidden search match/}).waitFor();
     assert.equal(calls.filter(c => c.command === "fetch_library_sync_spool_snapshot").length, spoolReads);
   }
   assert.ok(calls.some(c=>c.command==="fetch_cached_library_sync_spools"));
@@ -295,6 +311,14 @@ async function checkStockCards({page, state, fixture, calls, fallback, openWorks
   await page.getByRole("button", {name: "Refresh", exact: true}).click();
   await expectBadges(page, {purchases: 2});
   assert.ok(!calls.some(c => c.command === "get_purchase_queue_page"));
+  mode = "search-only";
+  await openWorkspace();
+  await page.locator("#inventory-stock-tab").click();
+  await panel.getByText(/8 spools/).waitFor();
+  calls.length = 0;
+  await page.getByRole("button",{name:"More filters",exact:true}).click();
+  await panel.getByRole("heading",{name:/Hidden search match/}).waitFor();
+  assert.ok(calls.some(c => c.command === "fetch_library_sync_spool_snapshot"));
 }
 
 async function checkLegacyLocation({ page, state, fixture, calls, fallback, openWorkspace }) {
