@@ -646,6 +646,7 @@ mod tests {
         .to_string()
     }
 
+    mod default_purchase_currency;
     mod loan_picker;
     mod loan_workspace;
     mod loan_writes;

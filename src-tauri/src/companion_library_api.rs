@@ -59,6 +59,7 @@ pub(super) async fn handle_health(
                     WISHLIST_RECEIPT_IDEMPOTENCY_CAPABILITY,
                     STATISTICS_VALUE_COST_REPORT_CAPABILITY,
                     FILAMENT_PRICE_STANDARDS_CAPABILITY,
+                    crate::companion_models::DEFAULT_PURCHASE_CURRENCY_CAPABILITY,
                     VENDOR_CATALOG_DISCOVERY_CAPABILITY,
                     CATALOG_REFRESH_JOBS_CAPABILITY,
                     CATALOG_SPOOL_BATCH_CAPABILITY,
@@ -74,6 +75,20 @@ pub(super) async fn handle_health(
                 device_name: sync_settings.device_name,
                 sync_mode: sync_settings.mode,
             }))
+        })
+        .await
+}
+
+pub(super) async fn handle_default_purchase_currency(
+    State(state): State<CompanionApiState>,
+    headers: HeaderMap,
+) -> Result<Json<Option<String>>, CompanionApiError> {
+    require_allowed_host(&headers, &state.runtime)?;
+    state
+        .run_blocking("default purchase currency", move |state| {
+            Ok(Json(
+                FilamentDatabase::open(&state.db_path)?.default_purchase_currency()?,
+            ))
         })
         .await
 }

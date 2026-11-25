@@ -153,6 +153,14 @@ the reviewed target again. Overlapping clicks share a request only for the same
 product and target. A completed purchase opens Purchases directly for that library.
 Opening and refreshing Purchases reads the queue independently of stock.
 
+Inventory and Purchases read the default purchase currency in the background.
+Local libraries read one SQLite setting. Current Hosts return the currency code
+or `null` through the authenticated library API. On older Hosts that support
+filament price standards, the native Client extracts the currency from that
+response. Only the currency crosses the desktop bridge in either case.
+The value belongs to the selected library and target generation. An unavailable
+Host leaves the default blank and the currency field allows manual entry.
+
 The source contract rejects artificial waits in the dashboard load path. A
 three-second `sleep`, delay promise, or timer cannot be added to the initial
 dashboard loader without failing verification. Polling timers remain allowed

@@ -221,6 +221,7 @@ export default function InventoryPage({
     clientHostBaseUrl,
     clientLibraryId,
     clientReadOnly,
+    clientTargetGeneration,
     tauriAvailable: tauri && librarySyncReady && !loansOnly && !locationsOnly && !pendingLoanNavigation,
   });
   const {

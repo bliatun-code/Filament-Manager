@@ -164,6 +164,7 @@ test("browser performance invoke adapter serves bounded data-backed pages", () =
     resolveUiBrowserPerformanceInvoke(data, "get_filament_standards"),
     data.filamentStandards,
   );
+  assert.equal(resolveUiBrowserPerformanceInvoke(data, "get_default_purchase_currency"), "NOK");
   assert.deepEqual(
     resolveUiBrowserPerformanceInvoke(data, "list_inventory_locations"),
     [],

@@ -1,3 +1,4 @@
+import type { LibraryReadTarget } from "./tauri_library_sync_client";
 import { invoke } from "./tauri_invoke";
 
 export const FILAMENT_STANDARDS_SCHEMA_VERSION = 1;
@@ -112,6 +113,10 @@ export type FilamentPriceBatchReceipt = {
   updated: FilamentPriceBatchUpdatedSpool[];
   skipped: FilamentPriceBatchSkippedSpool[];
 };
+
+export function getDefaultPurchaseCurrency(target: LibraryReadTarget) {
+  return invoke<string | null>("get_default_purchase_currency", { target });
+}
 
 export function getFilamentStandards() {
   return invoke<FilamentStandardsSnapshot>("get_filament_standards");

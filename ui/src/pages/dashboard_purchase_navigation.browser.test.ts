@@ -8,13 +8,14 @@ import { chromium } from "playwright";
 import { build, preview } from "vite";
 import { createVisualQaFixture } from "../../../scripts/create-visual-qa-fixture.mjs";
 import { buildUiBrowserPerformanceFixture, resolveUiBrowserPerformanceInvoke } from "../../../scripts/ui-browser-performance-probe.mjs";
-import type { WishlistItemRow, WishlistPurchaseTarget } from "../lib/tauri_client";
+import type { LibraryReadTarget, WishlistItemRow, WishlistPurchaseTarget } from "../lib/tauri_client";
 
 type CreatePayload = Pick<WishlistItemRow, "master_id" | "material" | "filament_name" | "color_name" | "vendor" | "quantity" | "note"> & {
   expected_library_id: string;
   expected_target_generation: number;
   target_generation?: number;
   item_id?: string;
+  purchase_metadata?: { purchase_price?: number; purchase_currency?: string };
 };
 
 test("Dashboard purchase handoff stays with the reviewed library", async (t) => {
@@ -54,7 +55,10 @@ test("Dashboard purchase handoff stays with the reviewed library", async (t) => 
           Object.assign(sample.master, { id: name, filament_name: name });
           return sample;
         };
-        await page.exposeFunction("purchaseInvoke", async (cmd: string, args: { input?: CreatePayload } = {}) => {
+        await page.exposeFunction("purchaseInvoke", async (cmd: string, args: {
+          input?: CreatePayload;
+          target?: LibraryReadTarget;
+        } = {}) => {
           if (afterClick) calls.push(cmd);
           if (cmd === "get_library_sync_page_status" && saved.length) {
             if (checkedAfterSave && !arrivalRead) {
@@ -104,6 +108,8 @@ test("Dashboard purchase handoff stays with the reviewed library", async (t) => 
               return { rows: [{ ...saved[0], filament_name: "Cached purchase" }], captured_at: snapshot.captured_at };
             case "receive_library_sync_host_wishlist_item":
               assert.equal(args.input?.item_id, "host-assigned-id");
+              assert.equal(args.input.purchase_metadata?.purchase_price, 25);
+              assert.equal(args.input.purchase_metadata?.purchase_currency, "SEK");
               saved[0] = { ...saved[0], quantity: 0, status: "RECEIVED" };
               received = true;
               return { spool_ids: ["Delivered roll"], received_quantity: 1, remaining_quantity: 0, status: "RECEIVED" };
@@ -123,7 +129,13 @@ test("Dashboard purchase handoff stays with the reviewed library", async (t) => 
             case "list_companion_access_requests": return [];
             case "fetch_library_sync_locations": return { rows: [], captured_at: snapshot.captured_at };
             case "fetch_library_sync_domain_revisions": return fixture.revisions;
-            case "fetch_library_sync_filament_standards": return fixture.filamentStandards;
+            case "get_default_purchase_currency":
+              if (offline) throw new Error("Host offline");
+              if (scenario === "receive and open stock") {
+                assert.deepEqual(args.target, { base_url: origin.host_base_url, expected_library_id: origin.library_id,
+                  target_generation: origin.target_generation });
+              }
+              return "SEK";
             case "fetch_library_sync_catalog_masters": return fixture.catalogRows;
             case "get_library_sync_host_catalog_refresh_job": return null;
             default: return resolveUiBrowserPerformanceInvoke(fixture, cmd, args);
@@ -177,7 +189,12 @@ test("Dashboard purchase handoff stays with the reviewed library", async (t) => 
             "fetch_library_sync_active_loans", "fetch_library_sync_printer_overview", "fetch_library_sync_locations"].includes(cmd)));
           if (scenario === "receive and open stock") {
             await queue.getByRole("button", { name: "Stock roll now" }).click();
-            await page.getByRole("dialog").getByRole("button", { name: "Receive 1 roll", exact: true }).click();
+            const dialog = page.getByRole("dialog");
+            await dialog.locator('input[name="purchase_price"]').fill("25");
+            assert.equal(await dialog.locator('input[name="purchase_currency"]').inputValue(), "SEK");
+            assert.ok(calls.includes("get_default_purchase_currency"));
+            assert.ok(!calls.includes("fetch_library_sync_filament_standards"));
+            await dialog.getByRole("button", { name: "Receive 1 roll", exact: true }).click();
             await page.getByText(/Received 1 ×/).first().waitFor();
             await stockTab.click();
             await page.locator("#inventory-stock-panel").getByText(/Delivered roll/).first().waitFor();
