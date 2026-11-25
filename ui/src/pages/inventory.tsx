@@ -37,7 +37,6 @@ import {
 } from "../lib/inventory_location_data_source";
 import { useInventoryLocationActions } from "../lib/use_inventory_location_actions";
 import type { RfidCaptureField } from "../lib/inventory_rfid_capture";
-import { inventoryLocationUsageById } from "../lib/inventory_location_model";
 import {
   buildInventoryDetailVisualFixture,
   isInventoryDetailVisualFixtureEnabled,
@@ -53,7 +52,7 @@ import { useInventoryLoanTrackingModal } from "../lib/use_inventory_loan_trackin
 import { useInventoryLabelSheetAction } from "../lib/use_inventory_label_sheet_action";
 import { useInventoryLoadSpoolAction } from "../lib/use_inventory_load_spool_action";
 import type { ClientSnapshotSource } from "../lib/page_refresh_state";
-import { useInventoryPageData } from "../lib/use_inventory_page_data";
+import { useInventoryPageData, type InventoryReloadReporter } from "../lib/use_inventory_page_data";
 import { useInventoryPrinterSlots } from "../lib/use_inventory_printer_slots";
 import { useInventoryRfidCaptureRefresh } from "../lib/use_inventory_rfid_capture_refresh";
 import { useInventoryRfidCaptureViewModel } from "../lib/use_inventory_rfid_capture_view_model";
@@ -123,6 +122,7 @@ export default function InventoryPage({
   const pendingLoanNavigation = navigationIntent?.kind === "LOANS";
   const loansOnly = activeWorkspaceView === "LOANS";
   const [loanCounts, setLoanCounts] = useState<LoanWorkspaceCounts | null>(null);
+  const locationsOnly = activeWorkspaceView === "LOCATIONS";
   const purchasesOnly = activeWorkspaceView === "PURCHASES";
   const [rfidCaptureFieldsBySlotId, setRfidCaptureFieldsBySlotId] = useState<
     Record<string, RfidCaptureField[]>
@@ -140,6 +140,7 @@ export default function InventoryPage({
     clientReadOnly,
     clientTargetGeneration,
     domainSources,
+    invalidateInventoryDataRequests,
     completeDataLoad,
     detailUnavailable,
     historyLoading,
@@ -152,6 +153,8 @@ export default function InventoryPage({
     loadError,
     loading,
     locations,
+    locationCounts,
+    locationsUpdatedAt,
     locationsLoading,
     locationMutationsSupported,
     locationSource,
@@ -182,16 +185,15 @@ export default function InventoryPage({
     tauriAvailable: tauri,
     t,
   });
+  useEffect(() => invalidateInventoryDataRequests, [activeWorkspaceView, invalidateInventoryDataRequests]);
+  const compactCounts = loansOnly ? loanCounts : locationCounts;
+  const compactBadges = loansOnly || locationsOnly;
   const defaultPurchaseCurrency = useDefaultPurchaseCurrency({
     clientHostBaseUrl,
     clientLibraryId,
     clientReadOnly,
-    tauriAvailable: tauri && librarySyncReady && !loansOnly && !pendingLoanNavigation,
+    tauriAvailable: tauri && librarySyncReady && !loansOnly && !locationsOnly && !pendingLoanNavigation,
   });
-  const locationUsageById = useMemo(
-    () => inventoryLocationUsageById(spools),
-    [spools],
-  );
   const {
     activeFilterCount,
     advancedFiltersOpen,
@@ -267,12 +269,14 @@ export default function InventoryPage({
     mutationsSupported: locationMutationsSupported,
   }), [clientHostBaseUrl, clientHostWritePaired, clientLibraryId, clientReadOnly,
     clientTargetGeneration, locationMutationsSupported]);
+  const refreshLocations = useCallback((report?: InventoryReloadReporter) =>
+    reloadLocations(undefined, report), [reloadLocations]);
   const { authorityKey: locationAuthorityKey, locationError, locationInfo,
     createLocation, renameLocation, archiveLocation, restoreLocation, deleteLocation, mergeLocations,
   } = useInventoryLocationActions({
-    active: activeWorkspaceView === "LOCATIONS", ready: librarySyncReady,
+    active: locationsOnly, ready: librarySyncReady,
     loading: locationsLoading, source: locationSource, context: locationMutationContext,
-    tauri, manageBusy, setManageBusy, setError, setInfoMessage, reloadSpools, t,
+    tauri, manageBusy, setManageBusy, setError, setInfoMessage, refreshLocations, reloadSpools, t,
   });
 
   const openPurchaseQueue = useCallback(() => {
@@ -343,16 +347,16 @@ export default function InventoryPage({
   const pendingPurchaseNavigation = navigationIntent?.kind === "PURCHASES" && !purchasesOnly;
   useEffect(() => {
     if (!tauri || !librarySyncReady || pendingPurchaseNavigation || loansOnly || pendingLoanNavigation) return;
-    void refreshInventoryData({ purchasesOnly });
-  }, [librarySyncReady, pendingPurchaseNavigation, loansOnly, pendingLoanNavigation, purchasesOnly, refreshInventoryData, tauri]);
+    void refreshInventoryData({ purchasesOnly, locationsOnly });
+  }, [librarySyncReady, pendingPurchaseNavigation, loansOnly, pendingLoanNavigation, purchasesOnly, locationsOnly, refreshInventoryData, tauri]);
 
   const refreshInventoryPage = useCallback(() => {
     if (loansOnly) return;
     void refreshInventoryData({
-      purchasesOnly,
+      purchasesOnly, locationsOnly,
       selectedSpoolId: showRollModal ? selectedSpoolId : null,
     });
-  }, [loansOnly, purchasesOnly, refreshInventoryData, selectedSpoolId, showRollModal]);
+  }, [loansOnly, purchasesOnly, locationsOnly, refreshInventoryData, selectedSpoolId, showRollModal]);
 
   const retryInventoryPageLoad = useCallback(() => {
     if (!librarySyncReady) {
@@ -1435,7 +1439,7 @@ export default function InventoryPage({
 
       <InventoryPageWorkspace
         activeView={activeWorkspaceView}
-        totalLoanCount={loansOnly ? loanCounts?.loans ?? null : hasCount(domainSources.loans) && hasCount(domainSources.spools)
+        totalLoanCount={compactBadges ? compactCounts?.loans ?? null : hasCount(domainSources.loans) && hasCount(domainSources.spools)
           ? activeLoans.length + spools.filter(spool => spool.ownershipType === "BORROWED_IN").length : null}
         loansPanel={<Suspense fallback={<div role="status">{t("loans.loading", "Loading loans...")}</div>}>
           <LoansPage embedded onCountsChange={setLoanCounts}
@@ -1450,9 +1454,9 @@ export default function InventoryPage({
         bulkSelectionTriggerProps={inventoryBulkSelectionTriggerProps}
         clientHostDeviceName={clientHostDeviceName}
         clientHostWritePaired={clientHostWritePaired}
-        clientInventoryPartial={!purchasesOnly && clientInventoryPartial}
-        clientInventorySource={purchasesOnly ? domainSources.wishlist : clientInventorySource}
-        clientInventoryUpdatedAt={purchasesOnly ? null : clientInventoryUpdatedAt}
+        clientInventoryPartial={!purchasesOnly && !locationsOnly && clientInventoryPartial}
+        clientInventorySource={purchasesOnly ? domainSources.wishlist : locationsOnly ? domainSources.locations : clientInventorySource}
+        clientInventoryUpdatedAt={purchasesOnly ? null : locationsOnly ? locationsUpdatedAt : clientInventoryUpdatedAt}
         clientReadOnly={clientReadOnly}
         librarySyncReady={librarySyncReady}
         loading={loading}
@@ -1510,7 +1514,6 @@ export default function InventoryPage({
           onRestore: restoreLocation,
           rows: locations,
           source: locationSource,
-          usageByLocationId: locationUsageById,
         }}
         onActiveViewChange={setActiveWorkspaceView}
         onRetryLoadError={retryInventoryPageLoad}
@@ -1531,9 +1534,9 @@ export default function InventoryPage({
         }}
         infoMessage={activeWorkspaceView === "LOCATIONS" ? locationInfo ?? infoMessage : activeWorkspaceView === "STOCK" ? bulkInfo ?? infoMessage : infoMessage}
         showRollModal={showRollModal}
-        totalInventoryCount={loansOnly ? loanCounts?.stock ?? null : hasCount(domainSources.spools) || detailVisualFixture ? spools.length : null}
+        totalInventoryCount={compactBadges ? compactCounts?.stock ?? null : hasCount(domainSources.spools) || detailVisualFixture ? spools.length : null}
         totalLocationCount={loansOnly ? loanCounts?.locations ?? null : hasCount(domainSources.locations) ? selectableInventoryLocations(locations).length : null}
-        totalPurchaseCount={loansOnly ? loanCounts?.purchases ?? null : hasCount(domainSources.wishlist) ? wishlistItems.length : null}
+        totalPurchaseCount={compactBadges ? compactCounts?.purchases ?? null : hasCount(domainSources.wishlist) ? wishlistItems.length : null}
       />
     </div>
   );

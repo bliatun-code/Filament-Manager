@@ -170,6 +170,57 @@ async function checkWorkspaceOffline({ page, state, fixture, calls, fallback, op
   assertLoansOnly(calls);
 }
 
+async function checkLinkedLocations({ page, state, fixture, calls, fallback, openWorkspace }) {
+  const host = { mode: "CLIENT", host_base_url: "https://a.invalid", library_id: "A",
+    target_generation: 11, client_auth_paired: true };
+  let current = host;
+  const started = deferred(), response = deferred();
+  const location = { id: "shelf", name: "Cached shelf", location_type: "GENERIC", linked_spool_count: 1,
+    reference_count: 2, created_at: "", updated_at: "" };
+  fixture.spoolRows[0].spool.home_location_id = location.id;
+  state.invoke = (command, payload) => {
+    switch (command) {
+      case "get_library_sync_page_status": return current;
+      case "get_loan_workspace_counts": return { stock: 2, loans: 2, locations: 1, purchases: 0 };
+      case "fetch_library_sync_loans":
+      case "fetch_library_sync_active_loans": return fixture.loanRows;
+      case "fetch_library_sync_locations":
+        assert.equal(payload.input.expected_target_generation, current.target_generation);
+        if (current === host) { started.resolve(); return response.promise; }
+        throw Error("[loan-regression] offline");
+      case "fetch_cached_library_sync_locations":
+        assert.equal(payload.input.target_generation, 13);
+        return { rows: [location], captured_at: "2026-01-02", mutations_supported: false };
+      case "fetch_library_sync_spool_snapshot": throw Error("[loan-regression] offline");
+      case "fetch_cached_library_sync_spools": return { rows: fixture.spoolRows, captured_at: "2026-01-01" };
+      case "fetch_library_sync_wishlist_items":
+      case "fetch_library_sync_printer_overview": return [];
+      case "fetch_library_sync_filament_standards": return fixture.filamentStandards;
+      case "validate_library_sync_host": return { reachable: false };
+      default: return fallback(command, payload);
+    }
+  };
+  await openWorkspace();
+  await expectBadges(page, { stock: 2, loans: 2 });
+  await page.locator("#inventory-locations-tab").click();
+  await waitForStart(started);
+  current = { ...host, host_base_url: "https://b.invalid", library_id: "B", target_generation: 12 };
+  current = { ...host, target_generation: 13 };
+  response.resolve({ rows: [{ ...location, name: "Stale shelf" }], mutations_supported: true });
+  const link = page.getByRole("button", { name: "Cached shelf: 1 connected roll", exact: true });
+  await link.waitFor();
+  assert.equal(await page.getByText("Stale shelf", {exact: true}).count(), 0);
+  assert.equal(await page.getByRole("button", {name: "Rename Cached shelf"}).count(), 0);
+  await expectBadges(page, { stock: 2, loans: 2, locations: 1, purchases: 0 });
+  assertLoansOnly(calls);
+  await link.click();
+  await page.locator("#inventory-location-filter-chip").waitFor();
+  const stock = page.locator("#inventory-stock-panel");
+  await stock.getByText(/Dialog a/i).first().waitFor();
+  assert.equal(await stock.getByText(/Dialog b/i).count(), 0);
+  assert.ok(calls.some(call => call.command === "fetch_cached_library_sync_spools"));
+}
+
 async function checkWorkspaceWrites({ page, state, fixture, calls, fallback, openWorkspace }) {
   fixture.loanRows = fixture.loanRows.filter(row => row.loan.loan_direction === "INBOUND");
   fixture.activeLoanRows = fixture.loanRows;
@@ -597,6 +648,7 @@ async function main() {
     const failures = [];
     for (const [name, check, direct] of [
       ["loan workspace badges and stock on demand after lending and returning", checkWorkspaceWrites, true],
+      ["Locations rejects an A–B–A read and opens the linked offline rolls on click", checkLinkedLocations, true],
       ["offline loan rows and badges reject a late A–B–A read", checkWorkspaceOffline, true],
       ["inventory selection, paged search, changing stock and interrupted reads", checkPagedLoanPicker],
       ["loan form remains scrollable with 42 rolls and a short window", checkScrollableLoanForm],

@@ -7,7 +7,7 @@ use crate::inventory_location_models::{
 };
 use crate::library_sync_blocking_executor::run_library_sync_blocking;
 use crate::library_sync_command_support::{
-    encode_library_sync_path_segment, library_sync_host_input, prepare_library_sync_host_read,
+    encode_library_sync_path_segment, library_sync_host_input,
     prepare_library_sync_host_write_for_generation, save_library_sync_success,
 };
 use crate::library_sync_host_client::{
@@ -34,7 +34,11 @@ fn fetch_library_sync_locations_blocking(
     input: LibrarySyncLocationTargetInput,
 ) -> Result<InventoryLocationListResponse, String> {
     let host_input = library_sync_host_input(&input.base_url, input.expected_library_id.as_deref());
-    let (_, health, target) = prepare_library_sync_host_read(state, &host_input)?;
+    let (_, health, target) = prepare_library_sync_host_write_for_generation(
+        state,
+        &host_input,
+        input.expected_target_generation,
+    )?;
     let advertised = host_supports_locations(&health.capabilities);
     match fetch_and_cache_locations(state, &target) {
         Ok(cached) => {
@@ -468,6 +472,34 @@ mod tests {
         assert!(!is_missing_location_endpoint(
             "Desktop sync write request returned 500 Internal Server Error."
         ));
+    }
+
+    #[test]
+    fn location_read_rejects_an_old_generation_after_switching_back() {
+        let (state, path) = test_state("http://127.0.0.1:1");
+        let db = FilamentDatabase::open(&path).unwrap();
+        let mut settings = db.get_library_sync_settings().unwrap();
+        let first = db.get_library_sync_page_status().unwrap().target_generation;
+        for url in ["http://127.0.0.1:2", "http://127.0.0.1:1"] {
+            settings.host_base_url = Some(url.to_string());
+            db.save_library_sync_settings(&settings).unwrap();
+        }
+        assert_ne!(
+            db.get_library_sync_page_status().unwrap().target_generation,
+            first
+        );
+        let input = crate::inventory_location_models::LibrarySyncLocationTargetInput {
+            base_url: "http://127.0.0.1:1".into(),
+            expected_library_id: Some("library-test".into()),
+            expected_target_generation: Some(first),
+        };
+        let error = super::fetch_library_sync_locations_blocking(&state, input).unwrap_err();
+        assert_eq!(
+            error,
+            crate::app_error::coded_command_error("common.invalid_request")
+        );
+        drop(db);
+        std::fs::remove_file(path).unwrap();
     }
 
     #[test]

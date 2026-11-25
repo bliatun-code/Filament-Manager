@@ -1,6 +1,7 @@
 import {
   useCallback,
   useEffect,
+  useMemo,
   useRef,
   useState,
   type Dispatch,
@@ -12,7 +13,8 @@ import {
   loadInventorySpools,
   inventoryFallbackPairingRejected,
 } from "./inventory_data_source";
-import { loadInventoryLocations } from "./inventory_location_data_source";
+import { getLoanWorkspaceCounts, type LoanWorkspaceCounts } from "./tauri_loan_client";
+import { applyInventoryLocationNames, loadInventoryLocations } from "./inventory_location_data_source";
 import { getLibrarySyncPageStatus, type LibrarySyncPageStatus } from "./tauri_library_sync_client";
 import { loadLibrarySyncPageState } from "./library_sync_state";
 import {
@@ -59,6 +61,7 @@ export type InventoryReloadReporter = (
 type InventoryRefreshInput = {
   selectedSpoolId?: string | null;
   purchasesOnly?: boolean;
+  locationsOnly?: boolean;
 };
 
 type LibrarySyncResolution = "LOADING" | "READY" | "ERROR";
@@ -106,7 +109,8 @@ export function useInventoryPageData({
   t,
 }: InventoryPageDataInput) {
   const [spools, setSpools] = useState<InventorySpool[]>([]);
-  const spoolsRef = useRef<InventorySpool[]>([]);
+  const [locationCounts, setLocationCounts] = useState<LoanWorkspaceCounts | null>(null);
+  const [locationsUpdatedAt, setLocationsUpdatedAt] = useState<string | null>(null);
   const [locations, setLocations] = useState<InventoryLocationRow[]>([]);
   const [locationsLoading, setLocationsLoading] = useState(false);
   const [locationMutationsSupported, setLocationMutationsSupported] = useState(false);
@@ -197,7 +201,8 @@ export function useInventoryPageData({
   }, []);
 
   const clearTargetScopedData = useCallback(() => {
-    spoolsRef.current = [];
+    setLocationCounts(null);
+    setLocationsUpdatedAt(null);
     setSpools([]);
     setInfoMessage(null);
     setLocations([]);
@@ -285,12 +290,8 @@ export function useInventoryPageData({
     void resolveLibrarySyncRole();
   }, [beginRefresh, librarySyncResolving, resolveLibrarySyncRole, tauriAvailable]);
 
-  useEffect(() => {
-    spoolsRef.current = spools;
-  }, [spools]);
-
   const reloadLocations = useCallback(async (
-    spoolRows: InventorySpool[] = spoolsRef.current,
+    spoolRows?: InventorySpool[],
     reportResult?: InventoryReloadReporter,
   ) => {
     if (!tauriAvailable) {
@@ -300,20 +301,33 @@ export function useInventoryPageData({
     const requestId = beginDataRequest("locations");
     setLocationsLoading(true);
     try {
-      const result = await loadInventoryLocations(
-        {
-          clientReadOnly,
-          clientHostBaseUrl,
-          clientLibraryId,
-          clientTargetGeneration,
-        },
-        spoolRows,
-      );
+      const options = { clientReadOnly, clientHostBaseUrl, clientLibraryId, clientTargetGeneration };
+      const [result, counts] = await Promise.all([
+        loadInventoryLocations(options, spoolRows),
+        spoolRows === undefined && clientLibraryId && clientTargetGeneration != null
+          ? getLoanWorkspaceCounts({
+              base_url: clientReadOnly ? clientHostBaseUrl : null,
+              expected_library_id: clientLibraryId,
+              target_generation: clientTargetGeneration,
+            }).catch(() => null)
+          : null,
+      ]);
+      const current = await loadLibrarySyncPageState();
       if (!dataRequestIsCurrent("locations", requestId)) {
         reportResult?.("locations", "SUPERSEDED");
         return;
       }
-      setLocations(result.rows);
+      if (current.clientReadOnly !== clientReadOnly || current.clientHostBaseUrl !== clientHostBaseUrl ||
+          current.clientLibraryId !== clientLibraryId || current.clientTargetGeneration !== clientTargetGeneration) {
+        reportResult?.("locations", "SUPERSEDED");
+        await resolveLibrarySyncRole();
+        return;
+      }
+      if (spoolRows === undefined) setLocationCounts(counts);
+      if (result.source !== "OFFLINE" || reportResult || result.rows.length) {
+        setLocationsUpdatedAt(result.updatedAt);
+        setLocations(result.rows);
+      }
       setLocationMutationsSupported(result.mutationsSupported);
       setLocationSource(result.source);
       const source =
@@ -349,6 +363,7 @@ export function useInventoryPageData({
     }
   }, [
     beginDataRequest,
+    resolveLibrarySyncRole,
     clientHostBaseUrl,
     clientLibraryId,
     clientReadOnly,
@@ -419,7 +434,6 @@ export function useInventoryPageData({
         recordClientInventoryDomainSource("locations", "OFFLINE");
         return;
       }
-      spoolsRef.current = result.rows;
       setSpools(result.rows);
       await reloadLocations(result.rows, reportResult);
       if (!dataRequestIsCurrent("spools", requestId)) {
@@ -737,6 +751,7 @@ export function useInventoryPageData({
 
   const refreshInventoryData = useCallback(async ({
     purchasesOnly = false,
+    locationsOnly = false,
     selectedSpoolId,
   }: InventoryRefreshInput = {}) => {
     if (!tauriAvailable) {
@@ -744,7 +759,7 @@ export function useInventoryPageData({
     }
     const requestId = refreshRequestRef.current + 1;
     refreshRequestRef.current = requestId;
-    if (clientReadOnly && !purchasesOnly) {
+    if (clientReadOnly && !purchasesOnly && !locationsOnly) {
       // A previous fallback must not classify a later exceptional refresh as
       // another expected offline result before the primary spool read settles.
       clientInventorySourceRef.current = "UNRESOLVED";
@@ -755,6 +770,17 @@ export function useInventoryPageData({
       resolutions.set(domain, resolution);
     };
     try {
+      if (locationsOnly) {
+        await reloadLocations(undefined, reportResult);
+        if (refreshRequestRef.current === requestId) {
+          if (resolutions.get("locations") === "ERROR") {
+            failRefresh(t("inventory.error.loadInventory", "Failed to load inventory."));
+          } else {
+            completeRefresh();
+          }
+        }
+        return;
+      }
       const expectedDomains: InventoryDataRequestDomain[] = purchasesOnly ? ["wishlist"] : [
         "spools",
         "locations",
@@ -806,6 +832,7 @@ export function useInventoryPageData({
     completeRefresh,
     failRefresh,
     reloadActiveLoans,
+    reloadLocations,
     reloadPrinterOverview,
     reloadSpoolDetail,
     reloadSpools,
@@ -813,6 +840,12 @@ export function useInventoryPageData({
     t,
     tauriAvailable,
   ]);
+
+  const displayedSpools = useMemo(() => {
+    if (clientInventorySource !== "CACHED" || !locationsUpdatedAt ||
+        (clientInventoryUpdatedAt && locationsUpdatedAt < clientInventoryUpdatedAt)) return spools;
+    return applyInventoryLocationNames(spools, locations);
+  }, [clientInventorySource, clientInventoryUpdatedAt, locationsUpdatedAt, locations, spools]);
 
   return {
     activeLoans,
@@ -830,6 +863,7 @@ export function useInventoryPageData({
     setInfoMessage,
     libraryStatus,
     domainSources,
+    invalidateInventoryDataRequests,
     completeDataLoad: completeRefresh,
     detailUnavailable,
     historyLoading,
@@ -839,6 +873,8 @@ export function useInventoryPageData({
     loadError,
     loading,
     locations,
+    locationCounts,
+    locationsUpdatedAt,
     locationsLoading,
     locationMutationsSupported,
     locationSource,
@@ -859,7 +895,7 @@ export function useInventoryPageData({
     setSpools,
     setUsageLoading,
     setUsagePoints,
-    spools,
+    spools: displayedSpools,
     refreshing,
     usageLoading,
     usagePoints,

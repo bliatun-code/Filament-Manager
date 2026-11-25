@@ -31,6 +31,7 @@ pub(crate) struct InventoryLocationListQuery {
 
 #[derive(Clone, Debug, Deserialize)]
 pub(crate) struct LibrarySyncLocationTargetInput {
+    pub(crate) expected_target_generation: Option<u64>,
     pub(crate) base_url: String,
     pub(crate) expected_library_id: Option<String>,
 }
