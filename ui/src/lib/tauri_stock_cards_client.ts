@@ -7,8 +7,8 @@ type StockCardResponse = {
   groups: number; visible: number; total: number; borrowed: number; revisions: number[];
 };
 
-export function getStockCardPage(target: LibraryReadTarget, offset: number, memberOf?: string) {
+export function getStockCardPage(target: LibraryReadTarget, offset: number, memberOf?: string, search = "") {
   return invoke<StockCardResponse | null>("get_stock_card_page", {
-    target, query: { offset, member_of: memberOf, locale: navigator.language },
+    target, query: { offset, search, member_of: memberOf, locale: navigator.language },
   });
 }

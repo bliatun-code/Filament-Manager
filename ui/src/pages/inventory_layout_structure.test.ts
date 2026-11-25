@@ -383,7 +383,7 @@ test("inventory data requests cannot land after a role or target transition", ()
   assert.match(targetClearSource, /setUsageLoading\(false\)/);
   assert.match(
     inventoryPageDataSource,
-    /const requestId = beginDataRequest\("spools"\);[\s\S]*?if \(!dataRequestIsCurrent\("spools", requestId\)\) \{[\s\S]*?"SUPERSEDED"[\s\S]*?return;/,
+    /const requestId = beginDataRequest\("spools"\);[\s\S]*?const isCurrent = \(\) => dataRequestIsCurrent\("spools", requestId\) && \(searchRequest\?\.current\(\) \?\? true\);[\s\S]*?if \(!isCurrent\(\)\) \{[\s\S]*?"SUPERSEDED"[\s\S]*?return;/,
   );
   assert.match(
     inventoryPageDataSource,
@@ -423,7 +423,7 @@ test("inventory loaders clear unavailable client-only state without clearing loc
   );
   assert.match(
     transientLoaderSource,
-    /const hasLastGoodSnapshot =[\s\S]*clientInventorySourceRef\.current === "LIVE"[\s\S]*clientInventorySourceRef\.current === "CACHED"[\s\S]*result\.source === "OFFLINE" && !reportResult && hasLastGoodSnapshot[\s\S]*\? "CACHED"/,
+    /const hasLastGoodSnapshot =[\s\S]*clientInventorySourceRef\.current === "LIVE"[\s\S]*clientInventorySourceRef\.current === "CACHED"[\s\S]*result\.source === "OFFLINE" && !reportResult && !searchRequest && hasLastGoodSnapshot[\s\S]*\? "CACHED"/,
   );
   assert.match(
     transientLoaderSource,

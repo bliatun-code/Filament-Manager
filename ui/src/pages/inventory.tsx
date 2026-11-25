@@ -236,6 +236,7 @@ export default function InventoryPage({
   });
   const {
     activeFilterCount,
+    otherFilterCount,
     advancedFiltersOpen,
     clearLocationFilter,
     filteredSpools,
@@ -402,7 +403,7 @@ export default function InventoryPage({
     setPendingStockAction(null);
   }, [activeWorkspaceView, locationAuthorityKey]);
   const requestCards = !requiresFullStock && inventoryView === "CARDS" && !advancedFiltersOpen &&
-    !activeFilterCount && !search && !navigationIntent && !addModalActive && !showRollModal &&
+    !otherFilterCount && !navigationIntent && !addModalActive && !showRollModal &&
     !recentlyAddedSpoolId && !detailVisualFixture;
   const requestCardsRef = useRef(requestCards);
   useEffect(() => { requestCardsRef.current = requestCards; }, [requestCards]);
@@ -411,7 +412,22 @@ export default function InventoryPage({
       void refreshInventoryData();
     }
   }, [cardPage, requestCards, activeWorkspaceView, librarySyncReady, refreshInventoryData]);
-  const waitingForAllRows = Boolean(cardPage && !requestCards);
+  const cardSearch = search.trim();
+  const lastCardSearchAt = useRef(-Infinity);
+  const pendingCardSearch = requestCards && cardPage != null && cardPage.search !== cardSearch;
+  useEffect(() => {
+    if (!pendingCardSearch || activeWorkspaceView !== "STOCK" || !librarySyncReady) return;
+    let current = true;
+    const delay = cardSearch ? Math.max(0, 100 - (performance.now() - lastCardSearchAt.current)) : 0;
+    const timer = window.setTimeout(() => {
+      lastCardSearchAt.current = performance.now();
+      void reloadSpools(undefined, undefined, true, undefined, undefined, {
+        text: cardSearch, current: () => current,
+      });
+    }, delay);
+    return () => { current = false; window.clearTimeout(timer); };
+  }, [activeWorkspaceView, cardSearch, librarySyncReady, locationAuthorityKey, pendingCardSearch, reloadSpools]);
+  const waitingForAllRows = Boolean(cardPage && (!requestCards || pendingCardSearch));
   const cardTotals = useMemo(() => new Map(cardPage?.cards.map(card =>
     [card.rows[0]?.id, {count: card.count, remaining: card.remaining}])), [cardPage]);
   const pendingPurchaseNavigation = navigationIntent?.kind === "PURCHASES" && !purchasesOnly;

@@ -176,7 +176,11 @@ pub(crate) fn stock_card_page_blocking(
         state,
         &query,
         target,
-        crate::companion_models::STOCK_CARDS_CAPABILITY,
+        if query.search.trim().is_empty() {
+            crate::companion_models::STOCK_CARDS_CAPABILITY
+        } else {
+            crate::companion_models::STOCK_CARD_SEARCH_CAPABILITY
+        },
         "/api/v1/library/stock-cards",
         FilamentDatabase::stock_card_page,
     )

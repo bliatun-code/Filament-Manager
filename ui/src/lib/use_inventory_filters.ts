@@ -104,8 +104,7 @@ export function useInventoryFilters(
     () => groupInventorySpools(filteredSpools),
     [filteredSpools],
   );
-  const activeFilterCount = [
-    deferredSearch.trim().length > 0,
+  const otherFilterCount = [
     statusFilter !== "ALL",
     lowStockOnly,
     ownershipFilter !== "ALL",
@@ -155,7 +154,8 @@ export function useInventoryFilters(
   }, []);
 
   return {
-    activeFilterCount,
+    activeFilterCount: otherFilterCount + Number(Boolean(deferredSearch.trim())),
+    otherFilterCount,
     advancedFiltersOpen,
     clearLocationFilter,
     filteredSpools,
