@@ -156,6 +156,48 @@ mod tests {
     }
 
     #[test]
+    fn purchase_and_active_loan_caches_are_independent_of_spools_and_each_other() {
+        let (state, path, input) = client_state();
+        let db = FilamentDatabase::open(&path).unwrap();
+        let poison = |key| {
+            db.connection()
+                .execute(
+                    "INSERT OR REPLACE INTO settings (key, value) VALUES (?1, X'FF')",
+                    [key],
+                )
+                .unwrap();
+        };
+        let purchases = || super::fetch_cached_library_sync_wishlist_blocking(&state, &input);
+        let loans = || super::fetch_cached_library_sync_active_loans_blocking(&state, &input);
+        let wishlist = "library_sync_cached_wishlist_json";
+        let active = "library_sync_cached_active_loans_json";
+        let history = "library_sync_cached_loans_json";
+        poison("library_sync_cached_spools_json");
+        assert!(purchases().unwrap().is_none());
+        assert!(loans().unwrap().is_none());
+
+        poison(history);
+        poison(active);
+        db.set_setting(wishlist, r#"{"captured_at":"purchase","rows":[{"id":"order","vendor":"Test","material":"PLA","filament_name":"Basic","color_name":"White","status":"ON_ORDER","quantity":7,"created_at":"","updated_at":""}]}"#).unwrap();
+        let saved = purchases().unwrap().unwrap();
+        assert_eq!(saved.captured_at, "purchase");
+        assert_eq!(saved.rows[0].quantity, 7);
+
+        poison(wishlist);
+        db.set_setting(active, r#"{"captured_at":"active","rows":[]}"#)
+            .unwrap();
+        assert_eq!(loans().unwrap().unwrap().captured_at, "active");
+        db.connection()
+            .execute("DELETE FROM settings WHERE key=?1", [active])
+            .unwrap();
+        db.set_setting(history, r#"{"captured_at":"legacy","rows":[]}"#)
+            .unwrap();
+        assert_eq!(loans().unwrap().unwrap().captured_at, "legacy");
+        drop(db);
+        std::fs::remove_file(path).unwrap();
+    }
+
+    #[test]
     fn cached_read_rejects_a_to_b_target_switch() {
         let (state, db_path, input) = client_state();
         let db = FilamentDatabase::open(&db_path).expect("reopen target A");
@@ -172,6 +214,8 @@ mod tests {
             fetch_cached_library_sync_spools_blocking(&state, &input).is_err(),
             "target A fallback must not read target B cache",
         );
+        assert!(super::fetch_cached_library_sync_wishlist_blocking(&state, &input).is_err());
+        assert!(super::fetch_cached_library_sync_active_loans_blocking(&state, &input).is_err());
         let _ = std::fs::remove_file(db_path);
     }
 
@@ -200,6 +244,8 @@ mod tests {
             fetch_cached_library_sync_spools_blocking(&state, &input).is_err(),
             "old target A generation must not read replacement A cache",
         );
+        assert!(super::fetch_cached_library_sync_wishlist_blocking(&state, &input).is_err());
+        assert!(super::fetch_cached_library_sync_active_loans_blocking(&state, &input).is_err());
         let _ = std::fs::remove_file(db_path);
     }
 }
@@ -285,7 +331,8 @@ pub(crate) fn fetch_cached_library_sync_active_loans_blocking(
 ) -> Result<Option<LibrarySyncCachedLoanList>, String> {
     let target = capture_cache_target(state, input)?;
     with_current_library_sync_target(state, &target, |engine| {
-        let settings = engine.get_library_sync_settings()?;
+        let settings =
+            engine.get_library_sync_settings_for_domains(&[LibrarySyncCacheDomain::ActiveLoans])?;
         // An existing installation might go offline before its first dedicated
         // refresh. The caller filters the legacy snapshot to its active rows.
         Ok(settings
@@ -312,7 +359,8 @@ pub(crate) fn fetch_cached_library_sync_wishlist_blocking(
 ) -> Result<Option<LibrarySyncCachedWishlistList>, String> {
     let target = capture_cache_target(state, input)?;
     with_current_library_sync_target(state, &target, |engine| {
-        let settings = engine.get_library_sync_settings()?;
+        let settings =
+            engine.get_library_sync_settings_for_domains(&[LibrarySyncCacheDomain::Wishlist])?;
         Ok(settings
             .cached_wishlist
             .map(|cached| LibrarySyncCachedWishlistList {

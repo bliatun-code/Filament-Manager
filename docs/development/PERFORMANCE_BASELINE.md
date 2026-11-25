@@ -173,7 +173,10 @@ before pagination. The search field updates immediately and requests a page afte
 immediately. A Dashboard handoff sorts the acknowledged order first
 within the selected filter. Each response reads totals and rows from one
 SQLite snapshot. Older Hosts use their existing recent list. Offline search
-and counts use only saved rows. The Client retains up to 500 visited rows from
+and counts use only saved rows. The Purchases fallback reads the saved wishlist.
+The active Loans fallback reads the saved active list, including an empty one,
+and uses saved loan history only when the active list is missing.
+The Client retains up to 500 visited purchase rows from
 the same wishlist revision and rejects pages from an obsolete pairing.
 
 Inventory and Purchases read the default purchase currency in the background.
