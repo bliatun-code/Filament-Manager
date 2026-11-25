@@ -318,6 +318,7 @@ pub(crate) fn is_companion_data_read<B>(request: &Request<B>) -> bool {
             uri.path(),
             "/api/v1/library/printer-spool-picker"
                 | "/api/v1/library/loan-spool-picker"
+                | "/api/v1/library/purchase-queue"
                 | "/api/v1/library/location-spools"
         )
 }
@@ -520,6 +521,7 @@ mod tests {
         for path in [
             "/api/v1/library/printer-spool-picker",
             "/api/v1/library/loan-spool-picker",
+            "/api/v1/library/purchase-queue",
             "/api/v1/library/location-spools",
         ] {
             let query = Request::post(path).body(()).unwrap();

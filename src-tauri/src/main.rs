@@ -179,8 +179,7 @@ fn set_dock_icon_theme(app: tauri::AppHandle, theme: String) -> Result<(), Strin
 
     #[cfg(not(target_os = "macos"))]
     {
-        let _ = app;
-        let _ = theme;
+        let _ = (app, theme);
         Ok(())
     }
 }
@@ -379,6 +378,7 @@ fn main() {
             printer_read_commands::list_printer_overview,
             spool_picker_commands::get_printer_picker_page,
             spool_picker_commands::get_loan_picker_page,
+            spool_picker_commands::get_purchase_queue_page,
             spool_picker_commands::get_stock_card_page,
             spool_picker_commands::get_location_spool_page,
             spool_picker_commands::get_cached_location_spool_page,

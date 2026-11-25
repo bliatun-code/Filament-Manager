@@ -26,7 +26,7 @@ impl FilamentDatabase {
 
     pub fn loan_workspace_counts(&self) -> InventoryResult<LoanWorkspaceCounts> {
         // The loan tab includes every non-deleted borrowed roll, including old
-        // imports without a matching inbound loan. Purchases displays 500 rows.
+        // imports without a matching inbound loan.
         let sql = format!("WITH stock AS (
             SELECT count(*) AS total, count(*) FILTER (WHERE ({SPOOL_OWNERSHIP_SELECT_SQL_S}) = 'BORROWED_IN') AS borrowed
             FROM filament_spools s JOIN filament_master_list m ON m.id = s.master_id WHERE s.deleted_at IS NULL
@@ -36,7 +36,7 @@ impl FilamentDatabase {
             AND {LOAN_DIRECTION_SELECT_SQL_L} = 'OUTBOUND' AND {ACTIVE_LOAN_PREDICATE_SQL_L}
         ), (SELECT count(*) FROM inventory_locations WHERE coalesce(archived_at, '') = ''
             AND upper(trim(type)) IN ('GENERIC', 'SHELF')),
-           (SELECT count(*) FROM (SELECT 1 FROM wishlist_items LIMIT 500)) FROM stock");
+           (SELECT count(*) FROM wishlist_items) FROM stock");
         Ok(self.connection().query_row(&sql, [], |r| {
             Ok(LoanWorkspaceCounts {
                 stock: r.get(0)?,
@@ -72,7 +72,7 @@ impl FilamentDatabase {
                 "SELECT count(*) FROM json_each((SELECT rows FROM valid_cache)) WHERE upper(trim(value ->> '$.location_type')) IN ('GENERIC','SHELF')
                  AND coalesce(value ->> '$.archived_at','') = ''", |r| r.get(0))?,
             purchases: self.reduce_cached_rows("library_sync_cached_wishlist_json",
-                "SELECT min(500, json_array_length((SELECT rows FROM valid_cache)))", |r| r.get(0))?,
+                "SELECT json_array_length((SELECT rows FROM valid_cache))", |r| r.get(0))?,
         };
         if counts != LoanWorkspaceCounts::default() {
             self.save_loan_workspace_counts(&counts)?;

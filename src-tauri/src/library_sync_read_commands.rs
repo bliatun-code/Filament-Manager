@@ -653,6 +653,7 @@ mod tests {
     mod loan_writes;
     mod location_spools;
     mod printer_picker;
+    mod purchase_queue;
     mod spool_snapshot;
     mod stock_cards;
     mod wishlist_purchase;

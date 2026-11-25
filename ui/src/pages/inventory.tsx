@@ -44,6 +44,7 @@ import {
   isInventoryDetailVisualFixtureEnabled,
 } from "../lib/inventory_visual_fixture";
 import { useResolvedTheme } from "../lib/theme_mode";
+import { useWishlistQueue } from "../lib/use_wishlist_queue";
 import { useInventoryAddWorkflow } from "../lib/use_inventory_add_workflow";
 import { useInventoryBulkActions } from "../lib/use_inventory_bulk_actions";
 import { useInventoryDetailVisualFixture } from "../lib/use_inventory_detail_visual_fixture";
@@ -154,6 +155,7 @@ export default function InventoryPage({
   const loansOnly = activeWorkspaceView === "LOANS";
   const [loanCounts, setLoanCounts] = useState<LoanWorkspaceCounts | null>(null);
   const locationsOnly = activeWorkspaceView === "LOCATIONS";
+  const purchaseQueue = useWishlistQueue();
   const purchasesOnly = activeWorkspaceView === "PURCHASES";
   const [rfidCaptureFieldsBySlotId, setRfidCaptureFieldsBySlotId] = useState<
     Record<string, RfidCaptureField[]>
@@ -210,9 +212,11 @@ export default function InventoryPage({
     spools,
     usageLoading,
     usagePoints,
+    queuePage,
     wishlistItems,
     wishlistLoading,
   } = useInventoryPageData({
+    queueQuery: purchasesOnly ? purchaseQueue.query : undefined,
     purchaseIntent: purchasesOnly ? reviewedPurchase : null,
     setRfidCaptureFieldsBySlotId,
     tauriAvailable: tauri,
@@ -346,6 +350,8 @@ export default function InventoryPage({
     setMasters,
     switchToManageMode,
   } = useInventoryAddWorkflow({
+    purchaseQueue,
+    queuePage,
     canUseClientHostWrite,
     clientHostBaseUrl,
     clientLibraryId,
@@ -1679,7 +1685,7 @@ export default function InventoryPage({
         showRollModal={showRollModal}
         totalInventoryCount={compactBadges ? compactCounts?.stock ?? null : hasCount(domainSources.spools) || detailVisualFixture ? (cardPage?.total ?? spools.length) : null}
         totalLocationCount={loansOnly ? loanCounts?.locations ?? null : hasCount(domainSources.locations) ? selectableInventoryLocations(locations).length : null}
-        totalPurchaseCount={compactBadges ? compactCounts?.purchases ?? null : hasCount(domainSources.wishlist) ? wishlistItems.length : null}
+        totalPurchaseCount={compactBadges ? compactCounts?.purchases ?? null : hasCount(domainSources.wishlist) ? queuePage?.summary.all ?? wishlistItems.length : null}
       />
     </div>
   );
