@@ -150,15 +150,27 @@ export function mapSpoolRowToInventorySpool(row: SpoolWithMasterRow): InventoryS
   };
 }
 
+export async function loadCachedInventorySpools(
+  options: InventoryDataSourceOptions,
+  fetchCachedSpools = fetchCachedLibrarySyncSpools,
+): Promise<InventoryDataLoadResult | null> {
+  const target = options.clientReadOnly && resolveClientHostCacheTarget(options);
+  if (!target) return null;
+  const cached = await fetchCachedSpools(target.baseUrl, target.libraryId, target.targetGeneration)
+    .catch((): LibrarySyncCachedSpoolList | null => null);
+  return cached && {
+    rows: mapSpoolRowsToInventorySpools(cached.rows),
+    source: "CACHED",
+    updatedAt: cached.captured_at ?? null,
+    usedFallback: true,
+  };
+}
+
 export async function loadInventorySpools(
   options: InventoryDataSourceOptions,
   dependencies: InventoryDataSourceDependencies = {},
 ): Promise<InventoryDataLoadResult> {
   const fetchCachedSpools = dependencies.fetchCachedSpools ?? fetchCachedLibrarySyncSpools;
-  const cacheTarget = options.clientReadOnly
-    ? resolveClientHostCacheTarget(options)
-    : null;
-
   try {
     const { rows, capturedAt } = await loadSpoolSnapshot(options, DEFAULT_SPOOL_PAGE_SIZE, {
       loadPage: dependencies.loadRowsPage,
@@ -175,21 +187,8 @@ export async function loadInventorySpools(
       throw loadError;
     }
 
-    const cached = cacheTarget
-      ? await fetchCachedSpools(
-          cacheTarget.baseUrl,
-          cacheTarget.libraryId,
-          cacheTarget.targetGeneration,
-        ).catch((): LibrarySyncCachedSpoolList | null => null)
-      : null;
-    if (cached) {
-      return {
-        rows: mapSpoolRowsToInventorySpools(cached.rows),
-        source: "CACHED",
-        updatedAt: cached.captured_at ?? null,
-        usedFallback: true,
-      };
-    }
+    const cached = await loadCachedInventorySpools(options, fetchCachedSpools);
+    if (cached) return cached;
 
     return {
       rows: [],

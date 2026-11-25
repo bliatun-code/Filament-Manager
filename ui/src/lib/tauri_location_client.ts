@@ -12,6 +12,7 @@ export type InventoryLocationRow = {
   archived_at?: string | null;
   can_delete?: boolean;
   created_at: string;
+  linked_spool_count?: number | null;
   reference_count?: number | null;
   updated_at: string;
 };

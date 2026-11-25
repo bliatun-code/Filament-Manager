@@ -19,12 +19,13 @@ type Input = {
   setManageBusy: Dispatch<SetStateAction<boolean>>;
   setError: Dispatch<SetStateAction<string | null>>;
   setInfoMessage: Dispatch<SetStateAction<string | null>>;
+  refreshLocations: (report?: InventoryReloadReporter) => Promise<void>;
   reloadSpools: (report?: InventoryReloadReporter) => Promise<void>;
   t: ReturnType<typeof useI18n>["t"];
 };
 
 export function useInventoryLocationActions({ active, ready, loading, source, context, tauri,
-  manageBusy, setManageBusy, setError, setInfoMessage, reloadSpools, t }: Input) {
+  manageBusy, setManageBusy, setError, setInfoMessage, refreshLocations, reloadSpools, t }: Input) {
   const authorityKey = JSON.stringify([context.clientReadOnly, context.clientHostBaseUrl,
     context.clientLibraryId, context.clientTargetGeneration, ready]);
   const view = useMemo(() => ({ authorityKey, active }), [authorityKey, active]);
@@ -48,7 +49,7 @@ export function useInventoryLocationActions({ active, ready, loading, source, co
   }, [view, setManageBusy]);
 
   const runLocationMutation = useCallback(async (
-    operation: () => Promise<unknown>, successMessage: string, reloadOnFailure = false,
+    operation: () => Promise<unknown>, successMessage: string, reloadOnFailure = false, refreshRows = refreshLocations,
   ): Promise<boolean> => {
     const scope = current.current;
     if (!scope || scope.view !== view || latestEligibility.current !== eligibility ||
@@ -66,7 +67,7 @@ export function useInventoryLocationActions({ active, ready, loading, source, co
     const refresh = async () => {
       let failed = false;
       try {
-        await reloadSpools((_domain, resolution) => {
+        await refreshRows((_domain, resolution) => {
           if (resolution !== "LIVE" && resolution !== "SUPERSEDED") failed = true;
         });
       } catch { failed = true; }
@@ -94,7 +95,7 @@ export function useInventoryLocationActions({ active, ready, loading, source, co
       if (isCurrent()) { scope.busy = false; setManageBusy(false); }
     }
   }, [view, eligibility, manageBusy, tauri, active, ready, loading, source, context,
-    setManageBusy, setError, setInfoMessage, reloadSpools, t]);
+    setManageBusy, setError, setInfoMessage, refreshLocations, t]);
 
   const createLocation = useCallback(
     (name: string) =>
@@ -147,8 +148,10 @@ export function useInventoryLocationActions({ active, ready, loading, source, co
       runLocationMutation(
         () => mergeLocationsForInventory(context, sourceId, targetId),
         t("inventory.locationsMerged", "Locations merged."),
+        false,
+        context.clientReadOnly ? reloadSpools : refreshLocations,
       ),
-    [context, runLocationMutation, t],
+    [context, refreshLocations, reloadSpools, runLocationMutation, t],
   );
 
   return { authorityKey, locationError, locationInfo, createLocation, renameLocation, archiveLocation, restoreLocation, deleteLocation, mergeLocations };

@@ -31,6 +31,9 @@ pub struct InventoryLocationRow {
     /// `None` means an older cached Host response did not report this value.
     #[serde(default)]
     pub reference_count: Option<i64>,
+    /// Distinct inventory rolls whose current or home location is this row.
+    #[serde(default)]
+    pub linked_spool_count: Option<i64>,
     /// Authoritative deletion capability from the database that owns the row.
     /// The default is deliberately false so an older cached Host response
     /// cannot accidentally enable permanent deletion in a newer client.
@@ -89,6 +92,7 @@ mod tests {
         .expect("deserialize older cached location row");
 
         assert_eq!(row.reference_count, None);
+        assert_eq!(row.linked_spool_count, None);
         assert!(!row.can_delete);
     }
 }

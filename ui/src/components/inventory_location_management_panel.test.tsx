@@ -33,12 +33,13 @@ function location(overrides: Partial<InventoryLocationRow> = {}): InventoryLocat
     created_at: "2026-08-21 10:00:00",
     reference_count: 1,
     updated_at: "2026-08-21 10:00:00",
+    linked_spool_count: 0,
     ...overrides,
   };
 }
 
 const rows = [
-  location({ reference_count: 2 }),
+  location({ reference_count: 2, linked_spool_count: 2 }),
   location({
     id: "location-active-2",
     name: "Shelf B",
@@ -54,6 +55,7 @@ const rows = [
   location({
     id: "location-archived",
     name: "Old shelf",
+    linked_spool_count: 1,
     archived_at: "2026-08-21 11:00:00",
   }),
   location({
@@ -103,10 +105,6 @@ function renderPanel(
         rows={rows}
         showOfflineSourceWarning={showOfflineSourceWarning}
         source={source}
-        usageByLocationId={new Map([
-          ["location-active", 2],
-          ["location-archived", 1],
-        ])}
       />
     </I18nContext.Provider>,
   );
@@ -281,7 +279,6 @@ test("large system location sets never inflate the management surface", () => {
         onRestore={async () => true}
         rows={[location(), ...systemRows]}
         source="LIVE"
-        usageByLocationId={new Map()}
       />
     </I18nContext.Provider>,
   );
