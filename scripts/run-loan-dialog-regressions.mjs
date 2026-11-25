@@ -195,6 +195,7 @@ async function checkStockCards({page, state, fixture, calls, fallback, openWorks
   state.invoke = (command,payload) => {
     switch (command) {
       case "get_library_sync_page_status": return status;
+      case "fetch_library_sync_catalog_masters": return fixture.catalogRows;
       case "get_loan_workspace_counts": return {stock:10, locations:0, loans:2, purchases:0};
       case "fetch_library_sync_loans":
       case "fetch_library_sync_active_loans": return fixture.loanRows;
@@ -253,6 +254,13 @@ async function checkStockCards({page, state, fixture, calls, fallback, openWorks
   await panel.getByRole("button",{name:"Show more",exact:true}).click();
   await panel.getByRole("heading",{name:/Dialog b/}).waitFor();
   assert.deepEqual(reads,[0,3,1,0,1]);
+  const readsBeforeRegistration = reads.length;
+  await page.getByRole("button", {name: "Add spool", exact: true}).click();
+  const registration = page.getByRole("dialog");
+  await registration.getByRole("button", {name: "Close", exact: true}).click();
+  await registration.waitFor({state: "detached"});
+  await panel.getByRole("heading", {name: /Dialog b/}).waitFor();
+  assert.equal(reads.length, readsBeforeRegistration, "Closing registration must retain the loaded card pages");
   assert.ok(!calls.some(c=>c.command==="fetch_library_sync_spool_snapshot"));
   const searchBox = page.getByPlaceholder(/Search by material/i);
   calls.length = 0;
