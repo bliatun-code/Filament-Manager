@@ -371,6 +371,13 @@ impl CompanionService {
         self.with_authoritative_inventory(|engine| engine.create_spool(input))
     }
 
+    pub fn ensure_dashboard_purchase(
+        &self,
+        input: CreateWishlistItemInput,
+    ) -> InventoryResult<crate::backend::database_wishlist_models::DashboardPurchaseResult> {
+        self.with_authoritative_inventory(|engine| engine.ensure_dashboard_purchase(input))
+    }
+
     pub fn create_wishlist_item(&self, input: CreateWishlistItemInput) -> InventoryResult<()> {
         self.with_authoritative_inventory(|engine| engine.create_wishlist_item(input))
     }

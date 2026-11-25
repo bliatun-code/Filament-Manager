@@ -274,6 +274,7 @@ pub(crate) const WISHLIST_RECEIPT_IDEMPOTENCY_CAPABILITY: &str = "wishlist-recei
 pub(crate) const CATALOG_SPOOL_BATCH_CAPABILITY: &str = "catalog-spool-batch-v1";
 pub(crate) const LOAN_WORKSPACE_COUNTS: &str = "loan-workspace-counts-v1";
 pub(crate) const STOCK_CARDS_CAPABILITY: &str = "stock-cards-v1";
+pub(crate) const DASHBOARD_PURCHASE_CAPABILITY: &str = "dashboard-purchase-v1";
 pub(crate) const LOCATION_SPOOLS_CAPABILITY: &str = "location-spools-v1";
 pub(crate) const LOAN_PICKER_CAPABILITY: &str = "loan-spool-picker-v1";
 pub(crate) const PRINTER_PICKER_CAPABILITY: &str = "printer-spool-picker-v1";

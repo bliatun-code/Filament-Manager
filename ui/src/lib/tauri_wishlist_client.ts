@@ -70,6 +70,14 @@ export async function listWishlistItems(limit = 500) {
   return invoke<WishlistItemRow[]>("list_wishlist_items", { limit });
 }
 
+export type DashboardPurchaseResult =
+  | { itemId: string; kind: "CREATED"; status: "WISHLIST" }
+  | { itemId: string; kind: "REUSED"; match: "MASTER_ID" | "IDENTITY"; status: "WISHLIST" | "ON_ORDER" };
+
+export function ensureDashboardPurchase(input: CreateWishlistItemInput, target: WishlistPurchaseTarget) {
+  return invoke<DashboardPurchaseResult>("ensure_dashboard_purchase", { input, target });
+}
+
 export async function createWishlistItem(input: CreateWishlistItemInput, expectedTarget?: WishlistPurchaseTarget) {
   return invoke<void>("create_wishlist_item", { input, ...(expectedTarget && { expectedTarget }) });
 }

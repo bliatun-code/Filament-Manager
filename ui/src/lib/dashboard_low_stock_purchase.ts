@@ -3,44 +3,26 @@ import {
   DASHBOARD_PURCHASE_CLIENT_PAIRING_REQUIRED,
   DASHBOARD_PURCHASE_HOST_TARGET_REQUIRED,
   DASHBOARD_PURCHASE_TARGET_CHANGED,
-  findOpenPurchaseDuplicate,
-  type DashboardOpenPurchaseDuplicate,
   type DashboardPurchaseCandidate,
 } from "./dashboard_action_model";
 import { resolveClientHostTarget } from "./host_write_target";
 import {
-  fetchLibrarySyncWishlistItems,
+  ensureDashboardPurchase,
+  type DashboardPurchaseResult,
   getLibrarySyncPageStatus,
   matchesWishlistPurchaseTarget,
-  listWishlistItems,
   type CreateWishlistItemInput,
   type LibrarySyncPageStatus,
   type WishlistPurchaseTarget,
-  type WishlistItemRow,
 } from "./tauri_client";
-import {
-  createWishlistEntry,
-  type WishlistDataSourceOptions,
-} from "./wishlist_data_source";
+import type { WishlistDataSourceOptions } from "./wishlist_data_source";
 
 export const DASHBOARD_PURCHASE_MODE_UNSUPPORTED =
   "The active library mode is not supported for this purchase action.";
 
-export type DashboardLowStockPurchaseResult =
-  | {
-      itemId: string;
-      kind: "CREATED";
-      status: "WISHLIST";
-    }
-  | ({ kind: "REUSED" } & DashboardOpenPurchaseDuplicate);
-
 type DashboardLowStockPurchaseDependencies = {
-  createEntry?: (
-    input: CreateWishlistItemInput,
-    options: WishlistDataSourceOptions,
-  ) => Promise<void>;
+  ensurePurchase?: typeof ensureDashboardPurchase;
   createId?: () => string;
-  loadItems?: (options: WishlistDataSourceOptions) => Promise<WishlistItemRow[]>;
   loadStatus?: typeof getLibrarySyncPageStatus;
 };
 
@@ -98,32 +80,13 @@ function normalizedCandidateInput(
   };
 }
 
-async function loadFreshWishlistItems(
-  options: WishlistDataSourceOptions,
-): Promise<WishlistItemRow[]> {
-  if (options.clientReadOnly) {
-    const hostTarget = resolveClientHostTarget(options);
-    if (!hostTarget) {
-      throw new Error(DASHBOARD_PURCHASE_HOST_TARGET_REQUIRED);
-    }
-    return fetchLibrarySyncWishlistItems(
-      hostTarget.baseUrl,
-      hostTarget.libraryId,
-      options.limit ?? 500,
-      options.reviewedTarget?.target_generation,
-    );
-  }
-  return listWishlistItems(options.limit ?? 500);
-}
-
 export function createDashboardLowStockPurchaseCoordinator(
   dependencies: DashboardLowStockPurchaseDependencies = {},
 ) {
   const loadStatus = dependencies.loadStatus ?? getLibrarySyncPageStatus;
-  const loadItems = dependencies.loadItems ?? loadFreshWishlistItems;
-  const createEntry = dependencies.createEntry ?? createWishlistEntry;
+  const ensurePurchase = dependencies.ensurePurchase ?? ensureDashboardPurchase;
   const createId = dependencies.createId ?? defaultWishlistId;
-  const inFlight = new Map<string, Promise<DashboardLowStockPurchaseResult>>();
+  const inFlight = new Map<string, Promise<DashboardPurchaseResult>>();
 
   const checkedOptions = async (target: WishlistPurchaseTarget): Promise<WishlistDataSourceOptions> => {
     const status = await loadStatus();
@@ -136,7 +99,7 @@ export function createDashboardLowStockPurchaseCoordinator(
   const enqueue = (
     candidate: DashboardPurchaseCandidate,
     target: WishlistPurchaseTarget | undefined,
-  ): Promise<DashboardLowStockPurchaseResult> => {
+  ): Promise<DashboardPurchaseResult> => {
     if (!target) return Promise.reject(new Error(DASHBOARD_PURCHASE_TARGET_CHANGED));
     const productKey = JSON.stringify([
       target.mode, target.host_base_url, target.library_id, target.target_generation, dashboardPurchaseCandidateKey(candidate),
@@ -146,18 +109,9 @@ export function createDashboardLowStockPurchaseCoordinator(
       return existing;
     }
 
-    const operation = (async (): Promise<DashboardLowStockPurchaseResult> => {
-      const options = { ...await checkedOptions(target), reviewedTarget: target };
-      const currentItems = await loadItems(options);
+    const operation = (async (): Promise<DashboardPurchaseResult> => {
       await checkedOptions(target);
-      const duplicate = findOpenPurchaseDuplicate(candidate, currentItems);
-      if (duplicate) {
-        return { ...duplicate, kind: "REUSED" };
-      }
-
-      const itemId = createId();
-      await createEntry(normalizedCandidateInput(itemId, candidate), options);
-      return { itemId, kind: "CREATED", status: "WISHLIST" };
+      return ensurePurchase(normalizedCandidateInput(createId(), candidate), target);
     })();
     inFlight.set(productKey, operation);
     const clear = () => {

@@ -7,12 +7,9 @@ import {
   resolveDashboardPurchaseDataSourceOptions,
 } from "./dashboard_low_stock_purchase";
 import type {
-  CreateWishlistItemInput,
   LibrarySyncSettings,
   WishlistPurchaseTarget,
-  WishlistItemRow,
 } from "./tauri_client";
-import type { WishlistDataSourceOptions } from "./wishlist_data_source";
 
 const candidate: DashboardPurchaseCandidate = {
   colorName: " Gray ",
@@ -36,102 +33,27 @@ function settings(
   };
 }
 
-const local: WishlistPurchaseTarget = { mode: "STANDALONE", library_id: "library-local", host_base_url: null, target_generation: 1 };
 const host: WishlistPurchaseTarget = { mode: "CLIENT", library_id: "library-host", host_base_url: "http://host.local:4278", target_generation: 7 };
 const hostStatus = () => ({ ...host, client_auth_paired: true });
 
-function wishlistItem(
-  id: string,
-  overrides: Partial<WishlistItemRow> = {},
-): WishlistItemRow {
-  return {
-    color_name: "Gray",
-    created_at: "2026-08-01 10:00:00",
-    filament_name: "Basic",
-    id,
-    master_id: "master-gray",
-    material: "PLA",
-    note: null,
-    quantity: 1,
-    status: "WISHLIST",
-    updated_at: "2026-08-01 10:00:00",
-    vendor: "Bambu Lab",
-    ...overrides,
-  };
-}
-
-test("low-stock purchase coordinator creates exactly one local wishlist entry under concurrency", async () => {
-  const creates: Array<{
-    input: CreateWishlistItemInput;
-    options: WishlistDataSourceOptions;
-  }> = [];
-  let releaseCreate!: () => void;
-  const createGate = new Promise<void>((resolve) => {
-    releaseCreate = resolve;
-  });
+test("concurrent clicks share one authoritative purchase and its returned ID", async () => {
+  const reply = Promise.withResolvers<{kind:"REUSED";status:"ON_ORDER";itemId:string;match:"MASTER_ID"}>();
+  let calls = 0;
   const coordinator = createDashboardLowStockPurchaseCoordinator({
-    createEntry: async (input, options) => {
-      creates.push({ input, options });
-      await createGate;
-    },
-    createId: () => "wish-dashboard-1",
-    loadItems: async () => [],
-    loadStatus: async () => settings(),
-  });
-
-  const first = coordinator.enqueue(candidate, local);
-  const second = coordinator.enqueue({ ...candidate }, local);
-  await new Promise((resolve) => setImmediate(resolve));
-
-  assert.equal(creates.length, 1);
-  releaseCreate();
-  assert.deepEqual(await Promise.all([first, second]), [
-    { itemId: "wish-dashboard-1", kind: "CREATED", status: "WISHLIST" },
-    { itemId: "wish-dashboard-1", kind: "CREATED", status: "WISHLIST" },
-  ]);
-  assert.deepEqual(creates, [
-    {
-      input: {
-        color_name: "Gray",
-        filament_name: "Basic",
-        id: "wish-dashboard-1",
-        master_id: "master-gray",
-        material: "PLA",
-        note: null,
-        quantity: 1,
-        vendor: "Bambu Lab",
-      },
-      options: { clientReadOnly: false, reviewedTarget: local },
-    },
-  ]);
-});
-
-test("low-stock purchase coordinator rechecks the queue and reuses an open duplicate", async () => {
-  let creates = 0;
-  const coordinator = createDashboardLowStockPurchaseCoordinator({
-    createEntry: async () => {
-      creates += 1;
-    },
-    createId: () => "must-not-be-used",
-    loadItems: async (options) => {
-      assert.deepEqual(options, {
-        clientHostBaseUrl: host.host_base_url,
-        reviewedTarget: host,
-        clientLibraryId: "library-host",
-        clientReadOnly: true,
-      });
-      return [wishlistItem("existing", { status: "ON_ORDER" })];
+    ensurePurchase: async (input, target) => {
+      calls++;
+      assert.deepEqual(target,host);
+      assert.equal(input.filament_name,"Basic");
+      return reply.promise;
     },
     loadStatus: async () => hostStatus(),
   });
-
-  assert.deepEqual(await coordinator.enqueue(candidate, host), {
-    itemId: "existing",
-    kind: "REUSED",
-    match: "MASTER_ID",
-    status: "ON_ORDER",
-  });
-  assert.equal(creates, 0);
+  const first = coordinator.enqueue(candidate,host);
+  assert.equal(first,coordinator.enqueue(candidate,host));
+  const existing = {kind:"REUSED",status:"ON_ORDER",itemId:"existing",match:"MASTER_ID"} as const;
+  reply.resolve(existing);
+  assert.deepEqual(await first,existing);
+  assert.equal(calls,1);
 });
 
 test("client purchase routing fails closed for missing pairing or host identity", () => {
@@ -156,23 +78,14 @@ test("client purchase routing fails closed for missing pairing or host identity"
   );
 });
 
-test("a failed fresh duplicate check never falls through to a client write", async () => {
-  let creates = 0;
+test("a lost purchase acknowledgement is surfaced without replay", async () => {
+  let calls = 0;
   const coordinator = createDashboardLowStockPurchaseCoordinator({
-    createEntry: async () => {
-      creates += 1;
-    },
-    loadItems: async () => {
-      throw new Error("host wishlist unavailable");
-    },
-    loadStatus: async () => hostStatus(),
+    loadStatus:async () => hostStatus(),
+    ensurePurchase:async () => { calls++; throw Error("connection lost"); },
   });
-
-  await assert.rejects(
-    () => coordinator.enqueue(candidate, host),
-    /host wishlist unavailable/,
-  );
-  assert.equal(creates, 0);
+  await assert.rejects(coordinator.enqueue(candidate,host), /connection lost/);
+  assert.equal(calls,1);
 });
 
 test("standalone and host modes both retain local wishlist writes", () => {
@@ -195,62 +108,20 @@ test("a suggestion is bound to the displayed mode, Host, library and generation 
   ]) {
     const coordinator = createDashboardLowStockPurchaseCoordinator({
       loadStatus: async () => ({ ...current, client_auth_paired: true }),
-      loadItems: () => assert.fail("must reject before reading the replacement queue"),
-      createEntry: () => assert.fail("must not create an entry"),
+      ensurePurchase: () => assert.fail("must not create an entry"),
     });
     await assert.rejects(coordinator.enqueue(candidate, host), { message: DASHBOARD_PURCHASE_TARGET_CHANGED });
     await assert.rejects(coordinator.enqueue(candidate, undefined), { message: DASHBOARD_PURCHASE_TARGET_CHANGED });
   }
 });
 
-test("switching Hosts during the duplicate check invalidates both empty and duplicate replies, including A–B–A", async () => {
-  for (const back of [false, true]) {
-    for (const rows of [[], [wishlistItem("old-duplicate")]]) {
-      let current = host;
-      const started = Promise.withResolvers<void>();
-      const reply = Promise.withResolvers<WishlistItemRow[]>();
-      const coordinator = createDashboardLowStockPurchaseCoordinator({
-        loadStatus: async () => ({ ...current, client_auth_paired: true }),
-        loadItems: async () => { started.resolve(); return reply.promise; },
-        createEntry: () => assert.fail("a delayed reply cannot authorize a write"),
-      });
-      const purchase = coordinator.enqueue(candidate, host);
-      await started.promise;
-      current = other;
-      if (back) current = { ...host, target_generation: other.target_generation + 1 };
-      reply.resolve(rows);
-      await assert.rejects(purchase, { message: DASHBOARD_PURCHASE_TARGET_CHANGED });
-    }
-  }
-});
-
-test("double clicks share one Host create, and a new generation has its own duplicate check", async () => {
-  let current = host;
-  const started = Promise.withResolvers<void>();
-  const reply = Promise.withResolvers<WishlistItemRow[]>();
-  const calls: number[] = [];
-  const writes: number[] = [];
+test("an A–B–A switch while a click awaits status prevents the write", async () => {
+  const status = Promise.withResolvers<LibrarySyncSettings>();
   const coordinator = createDashboardLowStockPurchaseCoordinator({
-    loadStatus: async () => ({ ...current, client_auth_paired: true }),
-    loadItems: async options => {
-      calls.push(options.reviewedTarget!.target_generation);
-      if (options.reviewedTarget!.target_generation === host.target_generation) {
-        started.resolve();
-        return reply.promise;
-      }
-      return [];
-    },
-    createEntry: async (_input, options) => { writes.push(options.reviewedTarget!.target_generation); },
+    loadStatus: () => status.promise,
+    ensurePurchase: () => assert.fail("must reject the stale click"),
   });
-  const old = coordinator.enqueue(candidate, host);
-  assert.equal(coordinator.enqueue({ ...candidate }, { ...host }), old);
-  await started.promise;
-  current = other;
-  const fresh = coordinator.enqueue(candidate, other);
-  assert.equal(coordinator.enqueue(candidate, other), fresh);
-  assert.equal((await fresh).kind, "CREATED");
-  reply.resolve([]);
-  await assert.rejects(old, { message: DASHBOARD_PURCHASE_TARGET_CHANGED });
-  assert.deepEqual(calls, [7, 8]);
-  assert.deepEqual(writes, [8]);
+  const clicked = coordinator.enqueue(candidate,host);
+  status.resolve(settings({...host, target_generation:9, client_auth_paired:true}));
+  await assert.rejects(clicked,{message:DASHBOARD_PURCHASE_TARGET_CHANGED});
 });

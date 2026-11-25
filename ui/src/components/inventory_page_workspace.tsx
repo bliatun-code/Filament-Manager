@@ -22,13 +22,18 @@ import {
 import { PageDataFallbackBanner } from "./page_data_fallback_banner";
 import { PageHeaderButton } from "./page_header_button";
 import { PageLoadErrorBanner } from "./page_load_error_banner";
-import { WishlistQueuePanel, type WishlistQueuePanelProps } from "./wishlist_queue_panel";
+import type { WishlistQueuePanelProps } from "./wishlist_queue_panel";
 import { formatDateTime } from "../lib/date_time";
 import { useI18n } from "../lib/i18n";
 import {
   resolveClientPageFeedbackState,
   type ClientSnapshotSource,
 } from "../lib/page_refresh_state";
+
+const WishlistQueuePanel = lazy(async () => {
+  const module = await import("./wishlist_queue_panel");
+  return { default: module.WishlistQueuePanel };
+});
 
 const InventoryBulkActionsPanelView = lazy(async () => {
   const module = await import("./inventory_bulk_actions_panel");
@@ -345,7 +350,9 @@ export function InventoryPageWorkspace({
           hidden={activeView !== "PURCHASES"}
         >
           {activeView === "PURCHASES" ? (
-            <WishlistQueuePanel key={purchaseQueueProps.authorityKey} {...purchaseQueueProps} showAddAction={false} />
+            <Suspense fallback={<div role="status">{t("wishlist.loading", "Loading wishlist...")}</div>}>
+              <WishlistQueuePanel key={purchaseQueueProps.authorityKey} {...purchaseQueueProps} showAddAction={false} />
+            </Suspense>
           ) : null}
         </div>
         <div

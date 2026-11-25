@@ -1487,6 +1487,18 @@ impl InventoryEngine {
     }
 
     pub fn create_wishlist_item(&self, input: CreateWishlistItemInput) -> InventoryResult<()> {
+        self.db.insert_wishlist_item(&Self::wishlist_row(input)?)
+    }
+
+    pub fn ensure_dashboard_purchase(
+        &self,
+        input: CreateWishlistItemInput,
+    ) -> InventoryResult<super::database_wishlist_models::DashboardPurchaseResult> {
+        self.db
+            .ensure_dashboard_purchase(&Self::wishlist_row(input)?)
+    }
+
+    fn wishlist_row(input: CreateWishlistItemInput) -> InventoryResult<WishlistItemRow> {
         let material = input.material.trim();
         let filament_name = input.filament_name.trim();
         let color_name = input.color_name.trim();
@@ -1503,7 +1515,7 @@ impl InventoryEngine {
             .unwrap_or("Manual")
             .to_string();
 
-        let item = WishlistItemRow {
+        Ok(WishlistItemRow {
             id: input.id,
             master_id: input.master_id,
             material: material.to_string(),
@@ -1520,8 +1532,7 @@ impl InventoryEngine {
                 .map(str::to_string),
             created_at: String::new(),
             updated_at: String::new(),
-        };
-        self.db.insert_wishlist_item(&item)
+        })
     }
 
     pub fn update_wishlist_item_status(
