@@ -181,10 +181,8 @@ test("inventory exposes managed location objects and autocomplete in one click",
   assert.match(inventoryPageSource, /locationPanelProps=\{\{/);
   assert.match(inventoryPageSource, /onOpenLinkedSpools: openLinkedLocationSpools/);
   assert.match(inventoryPageSource, /onReload: \(\) => reloadLocations\(\)/);
-  assert.match(
-    inventoryPageSource,
-    /showLocationSpools\(location\);\s*setActiveWorkspaceView\("STOCK"\)/,
-  );
+  assert.match(inventoryPageSource, /import\("\.\.\/components\/inventory_location_spools_panel"\)/);
+  assert.match(inventoryPageWorkspaceSource, /linkedLocationPanel/);
   assert.match(inventoryPageSource, /totalLocationCount=\{loansOnly \? loanCounts\?\.locations \?\? null : hasCount\(domainSources\.locations\) \? selectableInventoryLocations/);
 });
 
@@ -257,7 +255,7 @@ test("inventory refreshes page data without eagerly loading the add-flow catalog
   assert.match(inventoryPageWorkspaceSource, /PageLoadErrorBanner/);
   assert.match(inventoryPageSource, /onRetryLoadError=\{retryInventoryPageLoad\}/);
   assert.match(inventoryPageDataSource, /usePageRefreshState/);
-  assert.match(refreshSource, /reloadSpools\(reportResult\)/);
+  assert.match(refreshSource, /reloadSpools\(reportResult, onStockLoaded\)/);
   assert.match(refreshSource, /reloadWishlist\(reportResult\)/);
   assert.match(refreshSource, /reloadActiveLoans\(reportResult\)/);
   assert.match(refreshSource, /reloadPrinterOverview\(reportResult\)/);

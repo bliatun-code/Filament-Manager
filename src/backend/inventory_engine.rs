@@ -422,6 +422,13 @@ impl InventoryEngine {
         self.db.save_library_sync_host_snapshot(snapshot, dashboard)
     }
 
+    pub fn cached_location_spool_page(
+        &self,
+        query: &super::database_location_spools::LocationSpoolQuery,
+    ) -> InventoryResult<Option<super::database_location_spools::LocationSpoolPage>> {
+        self.db.cached_location_spool_page(query)
+    }
+
     pub fn cached_loan_spool_epoch(&self) -> InventoryResult<i64> {
         self.db.cached_loan_spool_epoch()
     }

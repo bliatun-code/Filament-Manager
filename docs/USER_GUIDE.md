@@ -30,6 +30,8 @@ Check available rolls, loaded printers and low-stock reminders. Purchase suggest
 
 Search or filter by material and colour, then open a spool for its location and remaining weight. Loans, storage locations and orders have their own Inventory tabs.
 
+Select the roll count beside a location to see which rolls are there or have it as their home location. Search includes all rolls linked to that location, including those on later pages.
+
 ## Printers
 
 ![Printers](images/v0.35.0/printers.png)

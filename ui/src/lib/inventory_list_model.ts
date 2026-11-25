@@ -280,7 +280,7 @@ export function filterInventorySpools(
   });
 }
 
-function searchableInventoryText(spool: InventorySpool): string {
+export function searchableInventoryText(spool: InventorySpool): string {
   return [
     spool.id,
     formatRollReference(spool),

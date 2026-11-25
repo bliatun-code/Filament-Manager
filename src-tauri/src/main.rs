@@ -185,11 +185,6 @@ fn set_dock_icon_theme(app: tauri::AppHandle, theme: String) -> Result<(), Strin
     }
 }
 
-#[tauri::command]
-fn get_app_version(app: tauri::AppHandle) -> Result<String, String> {
-    Ok(app.package_info().version.to_string())
-}
-
 #[cfg(debug_assertions)]
 fn normalize_desktop_visual_qa_readiness_token(value: &str) -> Option<&'static str> {
     match value.trim() {
@@ -383,6 +378,8 @@ fn main() {
             printer_read_commands::list_printer_overview,
             spool_picker_commands::get_printer_picker_page,
             spool_picker_commands::get_loan_picker_page,
+            spool_picker_commands::get_location_spool_page,
+            spool_picker_commands::get_cached_location_spool_page,
             loan_workspace_commands::get_loan_workspace_counts,
             trusted_lan_status_commands::get_trusted_lan_companion_status,
             trusted_lan_interface_commands::list_trusted_lan_interfaces,
@@ -419,7 +416,7 @@ fn main() {
             printer_active_commands::set_active_printer,
             set_dock_icon_theme,
             desktop_window_theme::set_native_window_theme,
-            get_app_version,
+            release_update_commands::get_app_version,
             packaged_desktop_e2e::get_packaged_desktop_e2e_configuration,
             packaged_desktop_e2e::complete_packaged_desktop_e2e,
             packaged_desktop_e2e::fail_packaged_desktop_e2e,

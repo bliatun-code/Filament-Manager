@@ -2,10 +2,13 @@ use serde::{de::DeserializeOwned, Deserialize, Serialize};
 
 use crate::{
     backend::database_loan_picker::{LoanPickerPage, LoanPickerQuery},
+    backend::database_location_spools::{LocationSpoolPage, LocationSpoolQuery},
     backend::database_printer_picker::{PrinterPickerPage, PrinterPickerQuery},
     backend::database_result::InventoryResult,
     backend::filament_database::FilamentDatabase,
-    companion_models::{LOAN_PICKER_CAPABILITY, PRINTER_PICKER_CAPABILITY},
+    companion_models::{
+        LOAN_PICKER_CAPABILITY, LOCATION_SPOOLS_CAPABILITY, PRINTER_PICKER_CAPABILITY,
+    },
     library_sync_blocking_executor::run_library_sync_blocking,
     library_sync_command_support::{
         library_sync_host_input, prepare_library_sync_host_write_for_generation,
@@ -13,7 +16,10 @@ use crate::{
     library_sync_host_client::{
         perform_library_sync_host_write_and_parse_for_target, LIBRARY_SYNC_REQUEST_TIMEOUT,
     },
-    library_sync_target_guard::ensure_library_sync_target_current,
+    library_sync_target_guard::{
+        capture_library_sync_target, ensure_library_sync_target_current,
+        with_current_library_sync_target,
+    },
     state::AppState,
     with_db,
 };
@@ -73,6 +79,62 @@ pub(crate) fn loan_picker_page_blocking(
         "/api/v1/library/loan-spool-picker",
         FilamentDatabase::loan_picker_page,
     )
+}
+
+#[tauri::command]
+pub(crate) async fn get_location_spool_page(
+    state: tauri::State<'_, AppState>,
+    query: LocationSpoolQuery,
+    target: PickerTarget,
+) -> Result<Option<LocationSpoolPage>, String> {
+    let state = state.inner().clone();
+    run_library_sync_blocking(move || location_spool_page_blocking(&state, query, target)).await
+}
+
+pub(crate) fn location_spool_page_blocking(
+    state: &AppState,
+    query: LocationSpoolQuery,
+    target: PickerTarget,
+) -> Result<Option<LocationSpoolPage>, String> {
+    read_picker_page(
+        state,
+        &query,
+        target,
+        LOCATION_SPOOLS_CAPABILITY,
+        "/api/v1/library/location-spools",
+        FilamentDatabase::location_spool_page,
+    )
+}
+
+#[tauri::command]
+pub(crate) async fn get_cached_location_spool_page(
+    state: tauri::State<'_, AppState>,
+    query: LocationSpoolQuery,
+    target: PickerTarget,
+) -> Result<Option<LocationSpoolPage>, String> {
+    let state = state.inner().clone();
+    run_library_sync_blocking(move || cached_location_spool_page_blocking(&state, query, target))
+        .await
+}
+
+pub(crate) fn cached_location_spool_page_blocking(
+    state: &AppState,
+    query: LocationSpoolQuery,
+    target: PickerTarget,
+) -> Result<Option<LocationSpoolPage>, String> {
+    let base_url = target
+        .base_url
+        .filter(|_| !target.expected_library_id.trim().is_empty())
+        .ok_or_else(|| crate::app_error::coded_command_error("common.invalid_request"))?;
+    let guard = capture_library_sync_target(state, &base_url, Some(&target.expected_library_id))?;
+    if guard.generation() != target.target_generation {
+        return Err(crate::app_error::coded_command_error(
+            "common.invalid_request",
+        ));
+    }
+    with_current_library_sync_target(state, &guard, |engine| {
+        engine.cached_location_spool_page(&query)
+    })
 }
 
 fn read_picker_page<Q: Serialize, P: DeserializeOwned>(

@@ -53,7 +53,14 @@ and the compact workspace counts. Each roll counts once per linked location,
 including its home location. Deletion uses all saved references, including
 child locations. Paired Clients can display saved location counts offline.
 Older Hosts and caches without counts derive them from stock when available.
-Opening a location's linked rolls loads Inventory filtered by the location ID.
+Opening a location's linked rolls requests up to 100 rows by immutable location
+ID. Both current and home placements qualify. A roll linked twice appears once.
+Searching covers the whole selected location, and a change to inventory or
+catalog data restarts pagination. Paired reads use the same Host, library and
+target generation throughout. Offline pages come from the saved inventory and
+preserve its capture time. A page never replaces the complete offline copy.
+Older Hosts can use the full-list fallback. Opening the full Inventory or a
+roll's editing controls remains an explicit action.
 Merging locations on a paired Client refreshes the full inventory copy because
 the merge can move both current and home assignments.
 

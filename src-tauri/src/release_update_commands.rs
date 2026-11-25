@@ -292,6 +292,11 @@ fn check_for_app_update_blocking(
 }
 
 #[tauri::command]
+pub(crate) fn get_app_version(app: tauri::AppHandle) -> Result<String, String> {
+    Ok(app.package_info().version.to_string())
+}
+
+#[tauri::command]
 pub(crate) async fn check_for_app_update(
     app: tauri::AppHandle,
 ) -> Result<AppUpdateCheckResult, String> {

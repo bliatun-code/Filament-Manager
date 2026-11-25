@@ -649,6 +649,7 @@ mod tests {
     mod loan_picker;
     mod loan_workspace;
     mod loan_writes;
+    mod location_spools;
     mod printer_picker;
     mod spool_snapshot;
     mod wishlist_purchase;

@@ -59,6 +59,7 @@ export type InventoryReloadReporter = (
 ) => void;
 
 type InventoryRefreshInput = {
+  onStockLoaded?: (rows: InventorySpool[]) => void;
   selectedSpoolId?: string | null;
   purchasesOnly?: boolean;
   locationsOnly?: boolean;
@@ -381,7 +382,7 @@ export function useInventoryPageData({
       current.clientTargetGeneration !== clientTargetGeneration;
   }, [clientHostBaseUrl, clientLibraryId, clientTargetGeneration]);
 
-  const reloadSpools = useCallback(async (reportResult?: InventoryReloadReporter) => {
+  const reloadSpools = useCallback(async (reportResult?: InventoryReloadReporter, onStockLoaded?: InventoryRefreshInput["onStockLoaded"]) => {
     if (!tauriAvailable) {
       reportResult?.("spools", "ERROR");
       reportResult?.("locations", "ERROR");
@@ -447,6 +448,7 @@ export function useInventoryPageData({
       const source =
         clientReadOnly && result.source === "CACHED" ? "CACHED" : "LIVE";
       recordClientInventoryDomainSource("spools", source);
+      onStockLoaded?.(result.rows);
       reportResult?.(
         "spools",
         source,
@@ -750,6 +752,7 @@ export function useInventoryPageData({
   ]);
 
   const refreshInventoryData = useCallback(async ({
+    onStockLoaded,
     purchasesOnly = false,
     locationsOnly = false,
     selectedSpoolId,
@@ -789,7 +792,7 @@ export function useInventoryPageData({
         "printers",
       ];
       const refreshes = purchasesOnly ? [reloadWishlist(reportResult, true)] : [
-        reloadSpools(reportResult),
+        reloadSpools(reportResult, onStockLoaded),
         reloadWishlist(reportResult),
         reloadActiveLoans(reportResult),
         reloadPrinterOverview(reportResult),
