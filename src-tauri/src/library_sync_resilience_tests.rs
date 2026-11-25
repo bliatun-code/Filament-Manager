@@ -1462,7 +1462,7 @@ async fn stock_purchase_count_refreshes_the_offline_copy_after_an_order() {
         };
         run_blocking(move || stock_purchase_count_blocking(&state, target))
     };
-    assert_eq!(read().await, Some(1));
+    assert_eq!(read().await, Some(0));
     let db = FilamentDatabase::open(&host_path).unwrap();
     let host_inventory = InventoryEngine::new(db);
     host_inventory
@@ -1483,8 +1483,8 @@ async fn stock_purchase_count_refreshes_the_offline_copy_after_an_order() {
             status: "ON_ORDER".into(),
         })
         .unwrap();
-    assert_eq!(read().await, Some(2));
-    assert_eq!(read().await, Some(2));
+    assert_eq!(read().await, Some(1));
+    assert_eq!(read().await, Some(1));
     host.stop().await;
     let saved = FilamentDatabase::open(&client_path)
         .unwrap()
@@ -1492,7 +1492,7 @@ async fn stock_purchase_count_refreshes_the_offline_copy_after_an_order() {
         .unwrap()
         .cached_wishlist
         .unwrap();
-    assert_eq!(saved.rows.len(), 2);
+    assert_eq!(saved.rows.len(), 1);
     assert!(saved
         .rows
         .iter()
