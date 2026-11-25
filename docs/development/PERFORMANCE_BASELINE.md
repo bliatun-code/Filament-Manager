@@ -24,7 +24,11 @@ bundle sizes.
 The default Inventory card view reads up to 96 product groups with three spool
 previews per card. Counts and weights cover the whole group. More groups and
 up to 100 more members of one group can be requested separately. A changed
-inventory or catalog revision restarts paging. Search, filters, list view,
+inventory or catalog revision restarts paging. Free-text card search matches
+all terms on each spool before grouping and paging. Typing refreshes the card
+results independently of tab counts. Hosts without card-search support and
+offline Clients use the full stock reader and the existing local filter.
+Advanced filters, list view,
 labels and selection use the complete stock so they cover every matching roll.
 A Client without a complete offline capture obtains one on its first full read.
 Older Hosts and disconnected Clients use the existing full-list or scoped

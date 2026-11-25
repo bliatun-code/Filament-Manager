@@ -407,27 +407,33 @@ export function useInventoryPageData({
       current.clientTargetGeneration !== clientTargetGeneration;
   }, [clientHostBaseUrl, clientLibraryId, clientTargetGeneration]);
 
-  const reloadSpools = useCallback(async (reportResult?: InventoryReloadReporter, onStockLoaded?: InventoryRefreshInput["onStockLoaded"], cards = false, previous?: StockCards, memberOf?: string) => {
+  const reloadSpools = useCallback(async (reportResult?: InventoryReloadReporter, onStockLoaded?: InventoryRefreshInput["onStockLoaded"], cards = false, previous?: StockCards, memberOf?: string, searchRequest?: { text: string; current: () => boolean }) => {
     if (!tauriAvailable) {
       reportResult?.("spools", "ERROR");
       reportResult?.("locations", "ERROR");
       return;
     }
     const requestId = beginDataRequest("spools");
+    const isCurrent = () => dataRequestIsCurrent("spools", requestId) && (searchRequest?.current() ?? true);
     try {
-      if (cards && clientLibraryId && clientTargetGeneration != null && (!clientReadOnly || clientHostBaseUrl)) {
-        const target = {base_url: clientReadOnly ? clientHostBaseUrl : null, expected_library_id: clientLibraryId, target_generation: clientTargetGeneration};
-        const page = await loadStockCards(target, previous, memberOf).catch(() => null);
-        if (!dataRequestIsCurrent("spools", requestId)) return;
+      const target = cards && clientLibraryId && clientTargetGeneration != null && (!clientReadOnly || clientHostBaseUrl)
+        ? {base_url: clientReadOnly ? clientHostBaseUrl : null, expected_library_id: clientLibraryId, target_generation: clientTargetGeneration}
+        : null;
+      if (target) {
+        const page = await loadStockCards(target, previous, memberOf, searchRequest?.text).catch(() => null);
+        if (!isCurrent()) return;
+        if ((page || searchRequest) && !await isLocationSpoolTargetCurrent(target)) {
+          await resolveLibrarySyncRole();
+          return;
+        }
+        if (!isCurrent()) return;
         if (page) {
-          if (!await isLocationSpoolTargetCurrent(target)) { await resolveLibrarySyncRole(); return; }
-          if (!dataRequestIsCurrent("spools", requestId)) return;
           setCardPage(page);
           setSpools(page.cards.flatMap(card => card.rows));
           clientInventorySourceRef.current = "LIVE";
           setClientInventoryUpdatedAt(null);
           recordClientInventoryDomainSource("spools", "LIVE");
-          if (!previous) await reloadLocations(undefined, reportResult, false);
+          if (!previous && !searchRequest) await reloadLocations(undefined, reportResult, false);
           reportResult?.("spools", "LIVE");
           return;
         }
@@ -438,13 +444,15 @@ export function useInventoryPageData({
         clientLibraryId,
         clientTargetGeneration,
       });
-      const pairingRejected = dataRequestIsCurrent("spools", requestId) &&
+      const pairingRejected = isCurrent() &&
         clientReadOnly && clientHostWritePaired && result.source !== "LIVE" &&
         clientHostBaseUrl && clientLibraryId &&
         await inventoryFallbackPairingRejected(clientHostBaseUrl, clientLibraryId);
       // Another window can switch the persisted target while a live or fallback read is in flight.
-      const targetChanged = clientReadOnly && dataRequestIsCurrent("spools", requestId) && await clientReadTargetChanged();
-      if (!dataRequestIsCurrent("spools", requestId)) {
+      const targetChanged = isCurrent() && (target && searchRequest
+        ? !await isLocationSpoolTargetCurrent(target)
+        : clientReadOnly && await clientReadTargetChanged());
+      if (!isCurrent()) {
         reportResult?.("spools", "SUPERSEDED");
         reportResult?.("locations", "SUPERSEDED");
         return;
@@ -459,16 +467,16 @@ export function useInventoryPageData({
           clientInventorySourceRef.current === "LIVE" ||
           clientInventorySourceRef.current === "CACHED";
         const source =
-          result.source === "OFFLINE" && !reportResult && hasLastGoodSnapshot
+          result.source === "OFFLINE" && !reportResult && !searchRequest && hasLastGoodSnapshot
             ? "CACHED"
             : result.source;
         clientInventorySourceRef.current = source;
         recordClientInventoryDomainSource("spools", source);
-        if (result.source !== "OFFLINE" || reportResult) {
+        if (result.source !== "OFFLINE" || reportResult || searchRequest) {
           setClientInventoryUpdatedAt(result.updatedAt);
         }
       }
-      if (clientReadOnly && result.source === "OFFLINE" && !reportResult) {
+      if (clientReadOnly && result.source === "OFFLINE" && !reportResult && !searchRequest) {
         // Background and post-mutation refreshes have their own feedback
         // owners. Keep their last-good rows, classify them as stale, and revoke
         // location writes until the Host is reachable again.
@@ -480,7 +488,7 @@ export function useInventoryPageData({
       setCardPage(null);
       setSpools(result.rows);
       await reloadLocations(result.rows, reportResult);
-      if (!dataRequestIsCurrent("spools", requestId)) {
+      if (!isCurrent()) {
         reportResult?.("spools", "SUPERSEDED");
         return;
       }
@@ -497,12 +505,17 @@ export function useInventoryPageData({
         source,
       );
     } catch (loadError) {
-      if (!dataRequestIsCurrent("spools", requestId)) {
+      if (!isCurrent()) {
         reportResult?.("spools", "SUPERSEDED");
         reportResult?.("locations", "SUPERSEDED");
         return;
       }
       console.error(loadError);
+      if (searchRequest) {
+        setCardPage(null);
+        setSpools([]);
+        failRefresh(t("inventory.error.loadInventory", "Failed to load inventory."));
+      }
       if (reportResult && clientReadOnly) {
         clientInventorySourceRef.current = "UNRESOLVED";
         recordClientInventoryDomainSource("spools", "UNRESOLVED");
@@ -513,6 +526,8 @@ export function useInventoryPageData({
     }
   }, [
     beginDataRequest,
+    failRefresh,
+    t,
     clientHostBaseUrl,
     clientLibraryId,
     clientReadOnly,

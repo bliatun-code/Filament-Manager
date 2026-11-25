@@ -1,7 +1,7 @@
 use super::{fake_health, fake_host_state, spawn_fake_host_with, FakeHostResponse};
 use crate::{
     backend::{database_stock_cards::StockCardQuery, filament_database::FilamentDatabase},
-    companion_models::STOCK_CARDS_CAPABILITY,
+    companion_models::{STOCK_CARDS_CAPABILITY, STOCK_CARD_SEARCH_CAPABILITY},
     spool_picker_commands::stock_card_page_blocking,
 };
 use serde_json::json;
@@ -11,8 +11,9 @@ fn stock_card_pages_distinguish_old_hosts_and_offline_and_reject_late_a_b_a_read
     const POST: &str = "POST /api/v1/library/stock-cards ";
     let health = |modern| {
         let mut body: serde_json::Value = serde_json::from_str(&fake_health()).unwrap();
+        body["capabilities"] = json!([STOCK_CARDS_CAPABILITY]);
         if modern {
-            body["capabilities"] = json!([STOCK_CARDS_CAPABILITY]);
+            body["capabilities"] = json!([STOCK_CARDS_CAPABILITY, STOCK_CARD_SEARCH_CAPABILITY]);
         }
         FakeHostResponse {
             expected_request_prefix: "GET /api/v1/health ",
@@ -58,6 +59,7 @@ fn stock_card_pages_distinguish_old_hosts_and_offline_and_reject_late_a_b_a_read
         member_of: None,
         locale: None,
         offset: 100,
+        search: "hidden roll".into(),
     };
     let target = |generation| {
         serde_json::from_value(json!({

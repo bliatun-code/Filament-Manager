@@ -1,6 +1,6 @@
 use icu_collator::{Collator, CollatorPreferences};
 use icu_locale_core::Locale;
-use rusqlite::{params, OptionalExtension};
+use rusqlite::{functions::FunctionFlags, params, OptionalExtension};
 use serde::{Deserialize, Serialize};
 
 use super::{
@@ -14,6 +14,8 @@ use super::{
 
 #[derive(Debug, Deserialize, Serialize)]
 pub struct StockCardQuery {
+    #[serde(default)]
+    pub search: String,
     pub locale: Option<String>,
     pub offset: u32,
     pub member_of: Option<String>,
@@ -43,7 +45,15 @@ const STOCK_CARD_GROUPS: &str = "
                           CASE WHEN replace(replace(upper(trim(s.ownership_type)), '-', '_'), ' ', '_') = 'BORROWED_IN'
                                THEN 'BORROWED_IN' ELSE 'OWNED' END, coalesce(s.owner_name, '')) AS product
         FROM filament_spools s JOIN filament_master_list m ON s.master_id = m.id
-        WHERE s.deleted_at IS NULL AND coalesce(upper(trim(s.status)), '') <> 'EMPTY'
+        LEFT JOIN inventory_locations l ON l.id=s.location_id
+        LEFT JOIN inventory_locations h ON h.id=s.home_location_id
+        WHERE (?5=0 OR stock_matches(concat_ws(' ',s.id,
+            '#' || substr(CASE WHEN substr(s.id,1,6)='spool_' THEN substr(s.id,7) ELSE s.id END,-6),
+            m.vendor,m.material,m.filament_name,m.color_name,l.name,h.name,s.location_id,s.home_location_id,
+            s.qr_code,s.rfid_tag,s.owner_name,s.owner_contact,
+            CASE WHEN replace(replace(upper(trim(s.ownership_type)), '-', '_'), ' ', '_')='BORROWED_IN'
+                 THEN 'borrowed in' ELSE 'owned' END)))
+          AND s.deleted_at IS NULL AND coalesce(upper(trim(s.status)), '') <> 'EMPTY'
     ), numbered AS (
         SELECT *, row_number() OVER (PARTITION BY product ORDER BY updated_at DESC, id DESC) AS n
         FROM stock
@@ -75,6 +85,21 @@ impl FilamentDatabase {
 
     fn read_stock_cards(&self, query: &StockCardQuery) -> InventoryResult<StockCardPage> {
         let conn = self.connection();
+        let terms: Vec<_> = query
+            .search
+            .split_whitespace()
+            .map(str::to_lowercase)
+            .collect();
+        let searching = !terms.is_empty();
+        conn.create_scalar_function(
+            "stock_matches",
+            1,
+            FunctionFlags::SQLITE_UTF8 | FunctionFlags::SQLITE_DETERMINISTIC,
+            move |ctx| {
+                let text = ctx.get::<String>(0)?.to_lowercase();
+                Ok(terms.iter().all(|term| text.contains(term)))
+            },
+        )?;
         let revisions = self.library_domain_revisions()?;
         let (total, borrowed) = conn.query_row(
                 "SELECT count(*), count(*) FILTER (WHERE replace(replace(upper(trim(ownership_type)),'-','_'),' ','_')='BORROWED_IN')
@@ -113,7 +138,8 @@ impl FilamentDatabase {
             offset,
             query.member_of,
             member_offset,
-            member_offset + limit
+            member_offset + limit,
+            searching
         ])?;
         while let Some(group) = groups.next()? {
             let ids: String = group.get(2)?;
@@ -136,7 +162,7 @@ impl FilamentDatabase {
         if offset > 0 && page.cards.is_empty() {
             // An out-of-range offset has no result row to carry the window totals.
             if let Some((groups, visible)) = stmt
-                .query_row(params![0, query.member_of, 0, 0], |row| {
+                .query_row(params![0, query.member_of, 0, 0, searching], |row| {
                     Ok((row.get(3)?, row.get(4)?))
                 })
                 .optional()?
@@ -158,6 +184,7 @@ mod tests {
         db.apply_schema().unwrap();
         let read = || {
             db.stock_card_page(&StockCardQuery {
+                search: String::new(),
                 locale: None,
                 offset: 0,
                 member_of: None,
@@ -182,6 +209,7 @@ mod tests {
         );
         let more = db
             .stock_card_page(&StockCardQuery {
+                search: String::new(),
                 locale: None,
                 offset: 3,
                 member_of: Some(card.rows[0].spool.id.clone()),
@@ -210,6 +238,7 @@ mod tests {
         let read = |offset| {
             db.stock_card_page(&StockCardQuery {
                 offset,
+                search: String::new(),
                 locale: Some("en-US".into()),
                 member_of: None,
             })
@@ -219,6 +248,28 @@ mod tests {
         let second = read(96);
         assert_eq!((first.cards.len(), second.cards.len()), (96, 2));
         assert_eq!((first.groups, second.visible, second.total), (98, 196, 196));
+        let search = |terms: &str| {
+            db.stock_card_page(&StockCardQuery {
+                offset: 0,
+                locale: None,
+                member_of: None,
+                search: terms.to_string(),
+            })
+            .unwrap()
+        };
+        let hits = search("098  PLA");
+        assert_eq!(
+            (
+                hits.total,
+                hits.visible,
+                hits.groups,
+                hits.cards[0].remaining
+            ),
+            (196, 2, 1, 150.0)
+        );
+        let one = search("#m098-b");
+        assert_eq!((one.visible, one.cards[0].remaining), (1, 50.0));
+        assert_eq!(search("%").groups, 0);
         let past_end = read(200);
         assert!(past_end.cards.is_empty());
         assert_eq!((past_end.groups, past_end.visible), (98, 196));
