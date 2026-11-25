@@ -153,6 +153,13 @@ mod dashboard_purchase_tests {
         let rows = db.list_wishlist_items(600).unwrap();
         assert_eq!(rows.len(), 502);
         assert_eq!(rows.iter().find(|r| r.id == "old").unwrap().quantity, 7);
+        db.connection()
+            .execute(
+                "INSERT INTO filament_master_list (id, material, filament_name, color_name)
+             VALUES ('catalog', 'PLA', 'Silk', 'Blå')",
+                [],
+            )
+            .unwrap();
         let mut exact = item("exact");
         exact.master_id = Some("catalog".into());
         exact.color_name = "renamed".into();
