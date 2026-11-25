@@ -18,6 +18,7 @@ async function buildHarness() {
     import { createRoot } from "react-dom/client";
     import { flushSync } from "react-dom";
     import { InventoryPageWorkspace } from ${file("./inventory_page_workspace.tsx")};
+    import { useDefaultPurchaseCurrency } from ${file("../lib/use_default_purchase_currency.ts")};
     import { I18nContext } from ${file("../lib/i18n.ts")};
     import { formatMessage } from ${file("../../../src-tauri/companion_browser/message_format.js")};
     import ${file("../index.css")};
@@ -27,15 +28,32 @@ async function buildHarness() {
     const item = {id:"same-wishlist-id",master_id:null,material:"PLA",filament_name:"Test roll",
       color_name:"Blue",vendor:"Generic",status:"ON_ORDER",quantity:3,note:null,
       created_at:"2026-09-09 10:00:00",updated_at:"2026-09-09 10:00:00"};
-    let authority = "host-a";
+    let target = {host:"host-a", library:"library-a", generation:1, client:true, enabled:true};
+    const currencyReads = [];
+    const currencyPaints = [];
+    const deferCurrency = new URLSearchParams(location.search).has("deferCurrency");
+    window.__TAURI__ = {invoke(command, payload) {
+      if (command !== "get_default_purchase_currency") throw Error("Unexpected command: " + command);
+      return new Promise((resolve, reject) => {
+        currencyReads.push({ target:payload.target, resolve, reject });
+        if (!deferCurrency) resolve("NOK");
+      });
+    }};
     const pending = [];
     const calls = [];
     const root = createRoot(document.getElementById("root"));
-    function render() {
-      const capturedAuthority = authority;
+    function Harness({target}) {
+      const capturedAuthority = target.host;
+      const authorityKey = JSON.stringify([target.host, target.library, target.generation, target.client]);
+      const defaultPurchaseCurrency = useDefaultPurchaseCurrency({
+        clientReadOnly:target.client, clientHostBaseUrl:target.host ? "http://" + target.host : null,
+        clientLibraryId:target.library, clientTargetGeneration:target.generation, tauriAvailable:target.enabled,
+      });
+      React.useLayoutEffect(() => { currencyPaints.push({ ...target, currency:defaultPurchaseCurrency }); });
+
       const purchaseQueueProps = {
-        authorityKey:capturedAuthority,addPurchaseDisabled:false,busy:false,catalogMasterById:new Map(),
-        confirmWishlistRemoveId:null,defaultPurchaseCurrency:"NOK",items:[item],loading:false,
+        authorityKey,addPurchaseDisabled:false,busy:false,catalogMasterById:new Map(),
+        confirmWishlistRemoveId:null,defaultPurchaseCurrency,items:[item],loading:false,
         onAddPurchase:noOp,onCancelDeleteItem:noOp,onDeleteItem:noOp,onFilterChange:noOp,
         onQueryChange:noOp,onRequestDeleteItem:noOp,onStatusChange:noOp,
         onStockItem:(row,quantity,metadata,homeLocation)=>{
@@ -45,7 +63,7 @@ async function buildHarness() {
         query:"",resolvedTheme:"light",summary:{all:1,wishlist:0,onOrder:1,received:0},
         tauriAvailable:true,value:"ON_ORDER",visibleItems:[item],
       };
-      root.render(<I18nContext.Provider value={i18n}>
+      return (<I18nContext.Provider value={i18n}>
         <InventoryPageWorkspace activeView="PURCHASES" addModalActive={false} addModalProps={{}}
           bulkActionsProps={{active:false}} bulkSelectionTriggerProps={{active:false,disabled:false,onActiveChange:noOp}}
           clientHostDeviceName={capturedAuthority} clientInventoryPartial={false} clientInventorySource="LIVE"
@@ -58,13 +76,22 @@ async function buildHarness() {
       </I18nContext.Provider>);
     }
     window.receiptUI = {
-      switchHost:next=>{authority=next;flushSync(render);},
+      switchHost:host=>{target={...target,host,generation:target.generation+1};flushSync(render);},
+      switchTarget:next=>{target={...target,...next};flushSync(render);return currencyPaints.at(-1).currency;},
+      currencyReads:()=>currencyReads.map(read=>read.target),
+      currencyPaints:()=>currencyPaints,
+      settleCurrency:async(index, value, offline=false)=>{
+        if (offline) currencyReads[index].reject(Error("Host unreachable"));
+        else currencyReads[index].resolve(value);
+        await new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)));
+      },
       calls:()=>calls,
       settle:async(index,succeeded)=>{
         pending[index](succeeded);
         await new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)));
       },
     };
+    function render() { root.render(<Harness target={target}/>); }
     flushSync(render);
   `;
   const result = await build({
@@ -118,14 +145,14 @@ test("purchase receipt drafts and pending submissions stay within their workspac
   const document = await buildHarness();
   const browser = await chromium.launch({ headless: true });
   try {
-    async function scenario(name: string, run: (page: Page) => Promise<void>) {
+    async function scenario(name: string, run: (page: Page) => Promise<void>, deferCurrency = false) {
       await context.test(name, async () => {
         const page = await browser.newPage({ viewport: { width: 1200, height: 1000 } });
         const errors: string[] = [];
         page.on("pageerror", error => errors.push(error.message));
         try {
           await page.route("http://localhost/**", route => route.fulfill({ contentType: "text/html", body: document }));
-          await page.goto("http://localhost/wishlist-lifecycle");
+          await page.goto("http://localhost/wishlist-lifecycle" + (deferCurrency ? "?deferCurrency" : ""));
           await run(page);
           assert.deepEqual(errors, []);
         } finally {
@@ -133,6 +160,83 @@ test("purchase receipt drafts and pending submissions stay within their workspac
         }
       });
     }
+
+    await scenario("currency reads follow the exact library and late replies cannot change a receipt", async page => {
+      const price = receiptDialog(page).locator('[name="purchase_price"]');
+      const currency = receiptDialog(page).locator('[name="purchase_currency"]');
+      await page.waitForFunction("receiptUI.currencyReads().length === 1");
+      await openReceipt(page);
+      await price.fill("125");
+      assert.equal(await currency.inputValue(), "");
+      await currency.fill("GBP");
+      await page.evaluate("receiptUI.settleCurrency(0, 'NOK')");
+      assert.equal(await price.inputValue(), "125");
+      assert.equal(await currency.inputValue(), "GBP");
+
+      // Same address, another library, including the very first commit.
+      assert.equal(await page.evaluate("receiptUI.switchTarget({library:'library-b',generation:2})"), "");
+      await page.waitForFunction("receiptUI.currencyReads().length === 2");
+      await openReceipt(page);
+      await assertEmptyReceipt(page);
+      await price.fill("60");
+      assert.equal(await currency.inputValue(), "");
+      // A–B–A leaves B's unresolved read in flight.
+      assert.equal(await page.evaluate("receiptUI.switchTarget({library:'library-a',generation:3})"), "");
+      await page.waitForFunction("receiptUI.currencyReads().length === 3");
+      await openReceipt(page);
+      await assertEmptyReceipt(page);
+      await page.evaluate("receiptUI.settleCurrency(2, 'EUR')");
+      await price.fill("35");
+      assert.equal(await currency.inputValue(), "EUR");
+      await page.evaluate("receiptUI.settleCurrency(1, 'CAD')");
+      assert.equal(await currency.inputValue(), "EUR");
+      assert.equal(await price.inputValue(), "35");
+      const paints = await page.evaluate("receiptUI.currencyPaints()");
+      assert.ok(paints.filter((paint: { generation: number }) => paint.generation === 2)
+        .every((paint: { currency: string }) => paint.currency === ""));
+      assert.ok(paints.filter((paint: { generation: number }) => paint.generation === 3)
+        .every((paint: { currency: string }) => ["", "EUR"].includes(paint.currency)));
+      assert.deepEqual(await page.evaluate("receiptUI.currencyReads()"), [
+        { base_url: "http://host-a", expected_library_id: "library-a", target_generation: 1 },
+        { base_url: "http://host-a", expected_library_id: "library-b", target_generation: 2 },
+        { base_url: "http://host-a", expected_library_id: "library-a", target_generation: 3 },
+      ]);
+    }, true);
+
+    await scenario("empty, offline and unresolved defaults leave prices editable with a manual currency", async page => {
+      await page.waitForFunction("receiptUI.currencyReads().length === 1");
+      await page.evaluate("receiptUI.settleCurrency(0, null)");
+      await openReceipt(page);
+      const price = receiptDialog(page).locator('[name="purchase_price"]');
+      const currency = receiptDialog(page).locator('[name="purchase_currency"]');
+      await price.fill("0");
+      assert.equal(await currency.inputValue(), "");
+
+      await page.evaluate("receiptUI.switchTarget({host:'host-b',library:'library-b',generation:2})");
+      await page.waitForFunction("receiptUI.currencyReads().length === 2");
+      await page.evaluate("receiptUI.settleCurrency(1, null, true)");
+      await openReceipt(page);
+      await assertEmptyReceipt(page);
+      await price.fill("99");
+      await currency.fill("CAD");
+      assert.equal(await currency.inputValue(), "CAD");
+      await page.evaluate("receiptUI.switchTarget({host:null,library:null,generation:null})");
+      await page.evaluate("receiptUI.switchTarget({client:false,library:'local',generation:3,enabled:false})");
+      assert.equal((await page.evaluate("receiptUI.currencyReads()")).length, 2);
+      await page.evaluate("receiptUI.switchTarget({enabled:true})");
+      await page.waitForFunction("receiptUI.currencyReads().length === 3");
+      assert.deepEqual((await page.evaluate("receiptUI.currencyReads()"))[2], {
+        base_url: null, expected_library_id: "local", target_generation: 3,
+      });
+      await openReceipt(page);
+      await assertEmptyReceipt(page);
+      await price.fill("12");
+      await page.evaluate("receiptUI.settleCurrency(2, 'USD')");
+      assert.equal(await price.inputValue(), "12");
+      assert.equal(await currency.inputValue(), "");
+      await price.fill("19");
+      assert.equal(await currency.inputValue(), "USD");
+    }, true);
 
     await scenario("A to B to A discards metadata and quantity even for an identical wishlist ID", async page => {
       await openReceipt(page);

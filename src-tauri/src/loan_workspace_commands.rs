@@ -1,6 +1,5 @@
 use crate::backend::{
     database_loan_workspace::LoanWorkspaceCounts,
-    database_result::InventoryResult,
     filament_database::{FilamentDatabase, InventoryLocationRow},
 };
 use crate::companion_models::{INVENTORY_LOCATIONS_CAPABILITY, LOAN_WORKSPACE_COUNTS};
@@ -10,50 +9,13 @@ use crate::library_sync_command_support::{
 };
 use crate::library_sync_host_client::get_library_sync_host_json_authenticated_for_target as host_get;
 use crate::library_sync_models::LibrarySyncSnapshotResponse;
-use crate::library_sync_target_guard::LibrarySyncTargetGuard;
-use crate::secure_credential_mutation::lock_secure_credential_mutation;
-use crate::{state::AppState, with_db};
-use serde::Deserialize;
-
-#[derive(Deserialize)]
-pub(crate) struct CountsTarget {
-    base_url: Option<String>,
-    expected_library_id: String,
-    target_generation: u64,
-}
-
-impl CountsTarget {
-    // Serialize the cache read/write with target changes, including A–B–A.
-    fn with_database<T>(
-        &self,
-        state: &AppState,
-        read: impl FnOnce(&FilamentDatabase) -> InventoryResult<T>,
-    ) -> Result<T, String> {
-        let _guard = lock_secure_credential_mutation()?;
-        with_db(state, |db| {
-            let current = db.get_library_sync_page_status()?;
-            if self.expected_library_id.is_empty()
-                || current.library_id != self.expected_library_id
-                || current.target_generation != self.target_generation
-                || (current.mode == "CLIENT") != self.base_url.is_some()
-                || (self.base_url.is_some() && current.host_base_url != self.base_url)
-            {
-                return Err(
-                    crate::backend::database_result::InventoryError::InvalidOperation {
-                        code: "common.invalid_request",
-                        message: "The selected library changed.".into(),
-                    },
-                );
-            }
-            read(db)
-        })
-    }
-}
+use crate::library_sync_target_guard::{LibraryReadTarget, LibrarySyncTargetGuard};
+use crate::state::AppState;
 
 #[tauri::command]
 pub(crate) async fn get_loan_workspace_counts(
     state: tauri::State<'_, AppState>,
-    target: CountsTarget,
+    target: LibraryReadTarget,
 ) -> Result<LoanWorkspaceCounts, String> {
     let state = state.inner().clone();
     run_library_sync_blocking(move || counts_blocking(&state, target)).await
@@ -61,7 +23,7 @@ pub(crate) async fn get_loan_workspace_counts(
 
 pub(crate) fn counts_blocking(
     state: &AppState,
-    target: CountsTarget,
+    target: LibraryReadTarget,
 ) -> Result<LoanWorkspaceCounts, String> {
     let Some(url) = target.base_url.as_ref() else {
         return target.with_database(state, FilamentDatabase::loan_workspace_counts);

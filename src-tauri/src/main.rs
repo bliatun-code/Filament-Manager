@@ -370,6 +370,7 @@ fn main() {
             inventory_location_commands::delete_inventory_location,
             inventory_location_commands::merge_inventory_locations,
             inventory_bulk_commands::execute_inventory_bulk_mutation,
+            inventory_filament_standards_commands::get_default_purchase_currency,
             inventory_filament_standards_commands::get_filament_standards,
             inventory_filament_standards_commands::save_filament_standards,
             inventory_filament_standards_commands::apply_filament_price_batch,

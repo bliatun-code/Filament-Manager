@@ -1,3 +1,4 @@
+import type { LibraryReadTarget } from "./tauri_library_sync_client";
 import type { SpoolStatus } from "./shared_contracts.generated";
 import { invoke } from "./tauri_invoke";
 
@@ -190,8 +191,6 @@ export type LoanWorkspaceCounts = {
   purchases: number | null;
 };
 
-export function getLoanWorkspaceCounts(target: {
-  base_url: string | null; expected_library_id: string; target_generation: number;
-}) {
+export function getLoanWorkspaceCounts(target: LibraryReadTarget) {
   return invoke<LoanWorkspaceCounts>("get_loan_workspace_counts", { target });
 }

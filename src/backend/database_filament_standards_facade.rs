@@ -9,6 +9,11 @@ use super::filament_standards::{
 };
 
 impl FilamentDatabase {
+    pub fn default_purchase_currency(&self) -> InventoryResult<Option<String>> {
+        super::database_filament_standards::read_default_purchase_currency(self.connection())
+            .map(|(currency, _)| currency)
+    }
+
     pub fn get_filament_standards(&self) -> InventoryResult<FilamentStandardsSnapshot> {
         get_filament_standards(self.connection())
     }

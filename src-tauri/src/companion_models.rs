@@ -278,6 +278,7 @@ pub(crate) const LOAN_PICKER_CAPABILITY: &str = "loan-spool-picker-v1";
 pub(crate) const PRINTER_PICKER_CAPABILITY: &str = "printer-spool-picker-v1";
 pub(crate) const PRINTER_SLOT_OPERATIONS_CAPABILITY: &str = "printer-slot-operations-v1";
 pub(crate) const STATISTICS_VALUE_COST_REPORT_CAPABILITY: &str = "statistics-value-cost-report";
+pub(crate) const DEFAULT_PURCHASE_CURRENCY_CAPABILITY: &str = "default-purchase-currency-v1";
 pub(crate) const FILAMENT_PRICE_STANDARDS_CAPABILITY: &str = "filament-price-standards-v1";
 pub(crate) const VENDOR_CATALOG_DISCOVERY_CAPABILITY: &str = "vendor-catalog-discovery-v1";
 pub(crate) const CATALOG_REFRESH_JOBS_CAPABILITY: &str = "catalog-refresh-jobs-v1";

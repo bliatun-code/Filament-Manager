@@ -51,6 +51,7 @@ fn build_router_with_security_config(
     let host_validation_state = state.clone();
     let http_security = CompanionHttpSecurity::new(security_config);
     let protected = Router::new()
+        .route("/library/default-purchase-currency", get(handle_default_purchase_currency))
         .route("/library/revisions", get(handle_library_domain_revisions))
         .route("/library/snapshot", get(handle_library_snapshot))
         .route("/library/printer-spool-picker", post(handle_printer_picker_page))

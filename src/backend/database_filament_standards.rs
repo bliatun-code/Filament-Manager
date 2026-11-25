@@ -343,17 +343,28 @@ pub(crate) fn apply_filament_price_batch(
     })
 }
 
+// An invalid saved preference has no usable default, while the full settings view
+// also needs to flag the invalid value for repair.
+pub(crate) fn read_default_purchase_currency(
+    connection: &Connection,
+) -> InventoryResult<(Option<String>, bool)> {
+    match get_setting(connection, DEFAULT_PURCHASE_CURRENCY_SETTING_KEY)?
+        .map(normalize_currency)
+        .transpose()
+    {
+        Ok(currency) => Ok((currency, true)),
+        Err(_) => Ok((None, false)),
+    }
+}
+
 fn load_filament_standards_settings(
     connection: &Connection,
 ) -> InventoryResult<(FilamentStandardsSettings, bool)> {
-    let mut settings = FilamentStandardsSettings::default();
-    let mut valid = true;
-    if let Some(raw_currency) = get_setting(connection, DEFAULT_PURCHASE_CURRENCY_SETTING_KEY)? {
-        match normalize_currency(raw_currency) {
-            Ok(currency) => settings.default_purchase_currency = Some(currency),
-            Err(_) => valid = false,
-        }
-    }
+    let (default_purchase_currency, mut valid) = read_default_purchase_currency(connection)?;
+    let mut settings = FilamentStandardsSettings {
+        default_purchase_currency,
+        ..Default::default()
+    };
     if let Some(raw) = get_setting(connection, FILAMENT_PRICE_STANDARDS_SETTING_KEY)? {
         match serde_json::from_str::<StoredFilamentPriceStandards>(&raw)
             .map_err(|error| error.to_string())
@@ -772,6 +783,29 @@ mod tests {
                     .any(|spool| spool.master_id == master_id)
             })
             .expect("find filament price group")
+    }
+
+    #[test]
+    fn default_purchase_currency_only_reads_its_setting_even_without_price_or_spool_tables() {
+        let db = FilamentDatabase::open(":memory:").unwrap();
+        db.connection()
+            .execute_batch(
+                "CREATE TABLE settings(key TEXT PRIMARY KEY,value TEXT);
+             INSERT INTO settings VALUES ('filament_price_standards_json',X'FF');",
+            )
+            .unwrap();
+        assert_eq!(db.default_purchase_currency().unwrap(), None);
+        for (raw, expected) in [
+            (" nok ", Some("NOK")),
+            ("eur", Some("EUR")),
+            ("", None),
+            ("kr", None),
+            ("ÅØÆ", None),
+            ("U$D", None),
+        ] {
+            set_setting(db.connection(), DEFAULT_PURCHASE_CURRENCY_SETTING_KEY, raw).unwrap();
+            assert_eq!(db.default_purchase_currency().unwrap().as_deref(), expected);
+        }
     }
 
     #[test]

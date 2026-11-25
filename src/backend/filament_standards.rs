@@ -276,7 +276,7 @@ pub fn filament_price_group_key_for_master(
     format!("v1:{components}")
 }
 
-pub(crate) fn normalize_currency(value: String) -> InventoryResult<String> {
+pub fn normalize_currency(value: String) -> InventoryResult<String> {
     let currency = value.trim().to_ascii_uppercase();
     if currency.len() != 3 || !currency.bytes().all(|byte| byte.is_ascii_alphabetic()) {
         return Err(invalid_standard(

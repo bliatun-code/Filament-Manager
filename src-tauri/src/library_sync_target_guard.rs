@@ -7,6 +7,41 @@ use crate::secure_credential_mutation::lock_secure_credential_mutation;
 use crate::state::AppState;
 use crate::{with_db, with_inventory};
 
+#[derive(serde::Deserialize)]
+pub(crate) struct LibraryReadTarget {
+    pub(crate) base_url: Option<String>,
+    pub(crate) expected_library_id: String,
+    pub(crate) target_generation: u64,
+}
+
+impl LibraryReadTarget {
+    // Serialize the cache read/write with target changes, including A–B–A.
+    pub(crate) fn with_database<T>(
+        &self,
+        state: &AppState,
+        read: impl FnOnce(&FilamentDatabase) -> InventoryResult<T>,
+    ) -> Result<T, String> {
+        let _guard = lock_secure_credential_mutation()?;
+        with_db(state, |db| {
+            let current = db.get_library_sync_page_status()?;
+            if self.expected_library_id.is_empty()
+                || current.library_id != self.expected_library_id
+                || current.target_generation != self.target_generation
+                || (current.mode == "CLIENT") != self.base_url.is_some()
+                || (self.base_url.is_some() && current.host_base_url != self.base_url)
+            {
+                return Err(
+                    crate::backend::database_result::InventoryError::InvalidOperation {
+                        code: "common.invalid_request",
+                        message: "The selected library changed.".into(),
+                    },
+                );
+            }
+            read(db)
+        })
+    }
+}
+
 #[derive(Clone, Debug)]
 pub(crate) struct LibrarySyncTargetGuard {
     base_url: String,

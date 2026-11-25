@@ -13,6 +13,12 @@ import type {
 import type { WishlistItemRow } from "./tauri_wishlist_client";
 import type { FilamentConsumptionRow } from "./tauri_statistics_client";
 
+export type LibraryReadTarget = {
+  base_url: string | null;
+  expected_library_id: string;
+  target_generation: number;
+};
+
 export type TrustedLanCompanionStatus = {
   enabled: boolean;
   selected_interface_name?: string | null;

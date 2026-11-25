@@ -128,7 +128,7 @@ async function expectBadges(page, values) {
 function assertLoansOnly(calls) {
   const forbidden = ["list_spools", "fetch_library_sync_spools", "fetch_library_sync_spool_snapshot",
     "fetch_cached_library_sync_spools", "save_library_sync_spool_cache",
-    "get_filament_standards", "fetch_library_sync_filament_standards"];
+    "get_filament_standards", "fetch_library_sync_filament_standards", "get_default_purchase_currency"];
   assert.deepEqual(calls.filter(call => forbidden.includes(call.command)), []);
 }
 

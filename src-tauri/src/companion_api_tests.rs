@@ -1998,6 +1998,7 @@ async fn companion_api_library_reads_require_an_active_session() {
             "/api/v1/library/printers",
             "/api/v1/library/printer-settings",
             "/api/v1/library/filament-standards",
+            "/api/v1/library/default-purchase-currency",
             "/api/v1/library/loans?limit=10",
             "/api/v1/library/statistics/filament-consumption?limit=10",
             "/api/v1/library/statistics/period-report?start_at_utc=2026-08-01T00%3A00%3A00Z&end_at_utc=2026-08-02T00%3A00%3A00Z",

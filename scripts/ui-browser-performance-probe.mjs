@@ -679,6 +679,8 @@ export function resolveUiBrowserPerformanceInvoke(
       return null;
     case "get_filament_standards":
       return fixture.filamentStandards;
+    case "get_default_purchase_currency":
+      return fixture.filamentStandards.settings.default_purchase_currency ?? null;
     case "local_dashboard_snapshot":
       return fixture.localDashboard;
     case "inventory_overview":
