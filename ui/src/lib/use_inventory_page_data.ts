@@ -52,7 +52,7 @@ import { matchesWishlistPurchaseTarget } from "./tauri_wishlist_client";
 const stockQueueQuery: PurchaseQueueQuery = { status: "ALL", search: "", offset: 0 };
 
 type InventoryPageDataInput = {
-  setPurchaseSearchText: (text: string) => void;
+  setPurchaseSearchText?: (text: string) => void;
   queueQuery?: PurchaseQueueQuery;
   purchaseIntent?: Extract<InventoryNavigationIntent, { kind: "PURCHASES" }> | null;
   setRfidCaptureFieldsBySlotId: Dispatch<SetStateAction<Record<string, RfidCaptureField[]>>>;
@@ -232,7 +232,7 @@ export function useInventoryPageData({
     setLocationsLoading(false);
     setLocationMutationsSupported(false);
     setLocationSource("OFFLINE");
-    setPurchaseSearchText("");
+    setPurchaseSearchText?.("");
     setQueueResult(null);
     setWishlistItems([]);
     setWishlistLoading(false);
