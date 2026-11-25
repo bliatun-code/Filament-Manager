@@ -7,6 +7,8 @@ import {
   type Dispatch,
   type SetStateAction,
 } from "react";
+import { loadStockCards, type StockCards } from "./stock_card_page";
+import { isLocationSpoolTargetCurrent } from "./tauri_location_client";
 import { loadActiveLoanRowsSnapshot } from "./loan_data_source";
 import {
   loadInventorySpoolDetail,
@@ -61,6 +63,7 @@ export type InventoryReloadReporter = (
 type InventoryRefreshInput = {
   onStockLoaded?: (rows: InventorySpool[]) => void;
   selectedSpoolId?: string | null;
+  cardPage?: boolean;
   purchasesOnly?: boolean;
   locationsOnly?: boolean;
 };
@@ -109,6 +112,7 @@ export function useInventoryPageData({
   tauriAvailable,
   t,
 }: InventoryPageDataInput) {
+  const [cardPage, setCardPage] = useState<StockCards | null>(null);
   const [spools, setSpools] = useState<InventorySpool[]>([]);
   const [locationCounts, setLocationCounts] = useState<LoanWorkspaceCounts | null>(null);
   const [locationsUpdatedAt, setLocationsUpdatedAt] = useState<string | null>(null);
@@ -204,6 +208,7 @@ export function useInventoryPageData({
   const clearTargetScopedData = useCallback(() => {
     setLocationCounts(null);
     setLocationsUpdatedAt(null);
+    setCardPage(null);
     setSpools([]);
     setInfoMessage(null);
     setLocations([]);
@@ -294,6 +299,7 @@ export function useInventoryPageData({
   const reloadLocations = useCallback(async (
     spoolRows?: InventorySpool[],
     reportResult?: InventoryReloadReporter,
+    readCounts = spoolRows === undefined,
   ) => {
     if (!tauriAvailable) {
       reportResult?.("locations", "ERROR");
@@ -305,7 +311,7 @@ export function useInventoryPageData({
       const options = { clientReadOnly, clientHostBaseUrl, clientLibraryId, clientTargetGeneration };
       const [result, counts] = await Promise.all([
         loadInventoryLocations(options, spoolRows),
-        spoolRows === undefined && clientLibraryId && clientTargetGeneration != null
+        readCounts && clientLibraryId && clientTargetGeneration != null
           ? getLoanWorkspaceCounts({
               base_url: clientReadOnly ? clientHostBaseUrl : null,
               expected_library_id: clientLibraryId,
@@ -324,7 +330,7 @@ export function useInventoryPageData({
         await resolveLibrarySyncRole();
         return;
       }
-      if (spoolRows === undefined) setLocationCounts(counts);
+      if (readCounts) setLocationCounts(counts);
       if (result.source !== "OFFLINE" || reportResult || result.rows.length) {
         setLocationsUpdatedAt(result.updatedAt);
         setLocations(result.rows);
@@ -382,7 +388,7 @@ export function useInventoryPageData({
       current.clientTargetGeneration !== clientTargetGeneration;
   }, [clientHostBaseUrl, clientLibraryId, clientTargetGeneration]);
 
-  const reloadSpools = useCallback(async (reportResult?: InventoryReloadReporter, onStockLoaded?: InventoryRefreshInput["onStockLoaded"]) => {
+  const reloadSpools = useCallback(async (reportResult?: InventoryReloadReporter, onStockLoaded?: InventoryRefreshInput["onStockLoaded"], cards = false, previous?: StockCards, memberOf?: string) => {
     if (!tauriAvailable) {
       reportResult?.("spools", "ERROR");
       reportResult?.("locations", "ERROR");
@@ -390,6 +396,23 @@ export function useInventoryPageData({
     }
     const requestId = beginDataRequest("spools");
     try {
+      if (cards && clientLibraryId && clientTargetGeneration != null && (!clientReadOnly || clientHostBaseUrl)) {
+        const target = {base_url: clientReadOnly ? clientHostBaseUrl : null, expected_library_id: clientLibraryId, target_generation: clientTargetGeneration};
+        const page = await loadStockCards(target, previous, memberOf).catch(() => null);
+        if (!dataRequestIsCurrent("spools", requestId)) return;
+        if (page) {
+          if (!await isLocationSpoolTargetCurrent(target)) { await resolveLibrarySyncRole(); return; }
+          if (!dataRequestIsCurrent("spools", requestId)) return;
+          setCardPage(page);
+          setSpools(page.cards.flatMap(card => card.rows));
+          clientInventorySourceRef.current = "LIVE";
+          setClientInventoryUpdatedAt(null);
+          recordClientInventoryDomainSource("spools", "LIVE");
+          if (!previous) await reloadLocations(undefined, reportResult, false);
+          reportResult?.("spools", "LIVE");
+          return;
+        }
+      }
       const result = await loadInventorySpools({
         clientReadOnly,
         clientHostBaseUrl,
@@ -435,6 +458,7 @@ export function useInventoryPageData({
         recordClientInventoryDomainSource("locations", "OFFLINE");
         return;
       }
+      setCardPage(null);
       setSpools(result.rows);
       await reloadLocations(result.rows, reportResult);
       if (!dataRequestIsCurrent("spools", requestId)) {
@@ -753,6 +777,7 @@ export function useInventoryPageData({
 
   const refreshInventoryData = useCallback(async ({
     onStockLoaded,
+    cardPage: requestCards = false,
     purchasesOnly = false,
     locationsOnly = false,
     selectedSpoolId,
@@ -792,7 +817,7 @@ export function useInventoryPageData({
         "printers",
       ];
       const refreshes = purchasesOnly ? [reloadWishlist(reportResult, true)] : [
-        reloadSpools(reportResult, onStockLoaded),
+        reloadSpools(reportResult, onStockLoaded, requestCards),
         reloadWishlist(reportResult),
         reloadActiveLoans(reportResult),
         reloadPrinterOverview(reportResult),
@@ -867,6 +892,7 @@ export function useInventoryPageData({
     libraryStatus,
     domainSources,
     invalidateInventoryDataRequests,
+    cardPage,
     completeDataLoad: completeRefresh,
     detailUnavailable,
     historyLoading,

@@ -170,6 +170,7 @@ export default function InventoryPage({
     clientTargetGeneration,
     domainSources,
     invalidateInventoryDataRequests,
+    cardPage,
     completeDataLoad,
     detailUnavailable,
     historyLoading,
@@ -383,6 +384,25 @@ export default function InventoryPage({
     autoOpenBambuBatch: desktopVisualQaScenario === "bambu-batch-add",
   };
 
+  const [requiresFullStock, setRequiresFullStock] = useState(false);
+  const [pendingStockAction, setPendingStockAction] = useState<{authority: string; kind: "labels" | "bulk"} | null>(null);
+  useEffect(() => {
+    setRequiresFullStock(false);
+    setPendingStockAction(null);
+  }, [activeWorkspaceView, locationAuthorityKey]);
+  const requestCards = !requiresFullStock && inventoryView === "CARDS" && !advancedFiltersOpen &&
+    !activeFilterCount && !search && !navigationIntent && !addModalActive && !showRollModal &&
+    !recentlyAddedSpoolId && !detailVisualFixture;
+  const requestCardsRef = useRef(requestCards);
+  useEffect(() => { requestCardsRef.current = requestCards; }, [requestCards]);
+  useEffect(() => {
+    if (cardPage && !requestCards && activeWorkspaceView === "STOCK" && librarySyncReady) {
+      void refreshInventoryData();
+    }
+  }, [cardPage, requestCards, activeWorkspaceView, librarySyncReady, refreshInventoryData]);
+  const waitingForAllRows = Boolean(cardPage && !requestCards);
+  const cardTotals = useMemo(() => new Map(cardPage?.cards.map(card =>
+    [card.rows[0]?.id, {count: card.count, remaining: card.remaining}])), [cardPage]);
   const pendingPurchaseNavigation = navigationIntent?.kind === "PURCHASES" && !purchasesOnly;
   useEffect(() => {
     const handoff = pendingLocationStock.current;
@@ -391,7 +411,7 @@ export default function InventoryPage({
     }
     if (!tauri || !librarySyncReady || pendingPurchaseNavigation || loansOnly || pendingLoanNavigation) return;
     let current = true;
-    void refreshInventoryData({ purchasesOnly, locationsOnly, onStockLoaded: handoff ? async rows => {
+    void refreshInventoryData({ purchasesOnly, locationsOnly, cardPage: requestCardsRef.current && !handoff, onStockLoaded: handoff ? async rows => {
       if (!current || pendingLocationStock.current !== handoff) return;
       try {
         const sameTarget = await isLocationSpoolTargetCurrent(handoff.target);
@@ -423,10 +443,11 @@ export default function InventoryPage({
   const refreshInventoryPage = useCallback(() => {
     if (loansOnly) return;
     void refreshInventoryData({
-      purchasesOnly, locationsOnly,
+      // Explicit Client refresh also renews the complete offline inventory.
+      purchasesOnly, locationsOnly, cardPage: requestCards && !clientReadOnly,
       selectedSpoolId: showRollModal ? selectedSpoolId : null,
     });
-  }, [loansOnly, purchasesOnly, locationsOnly, refreshInventoryData, selectedSpoolId, showRollModal]);
+  }, [requestCards, clientReadOnly, loansOnly, purchasesOnly, locationsOnly, refreshInventoryData, selectedSpoolId, showRollModal]);
 
   const retryInventoryPageLoad = useCallback(() => {
     if (!librarySyncReady) {
@@ -868,6 +889,16 @@ export default function InventoryPage({
     tauriAvailable: tauri,
     t,
   });
+
+  useEffect(() => {
+    if (!pendingStockAction || pendingStockAction.authority !== locationAuthorityKey ||
+        activeWorkspaceView !== "STOCK" || cardPage || loading || refreshing || !librarySyncReady) return;
+    setPendingStockAction(null);
+    if (loadError) return;
+    if (pendingStockAction.kind === "labels") void openInventoryLabelSheet();
+    else inventoryBulkSelectionTriggerProps.onActiveChange(true);
+  }, [activeWorkspaceView, cardPage, inventoryBulkSelectionTriggerProps, librarySyncReady, loadError, loading,
+    locationAuthorityKey, openInventoryLabelSheet, pendingStockAction, refreshing]);
 
   useEffect(() => {
     if (
@@ -1512,7 +1543,7 @@ export default function InventoryPage({
       <InventoryPageWorkspace
         activeView={activeWorkspaceView}
         totalLoanCount={compactBadges ? compactCounts?.loans ?? null : hasCount(domainSources.loans) && hasCount(domainSources.spools)
-          ? activeLoans.length + spools.filter(spool => spool.ownershipType === "BORROWED_IN").length : null}
+          ? activeLoans.length + (cardPage?.borrowed ?? spools.filter(spool => spool.ownershipType === "BORROWED_IN").length) : null}
         loansPanel={<Suspense fallback={<div role="status">{t("loans.loading", "Loading loans...")}</div>}>
           <LoansPage embedded onCountsChange={setLoanCounts}
             library={{ clientReadOnly, clientHostBaseUrl, clientLibraryId, clientTargetGeneration, clientHostWritePaired,
@@ -1523,7 +1554,14 @@ export default function InventoryPage({
         addModalActive={addModalActive}
         addModalProps={inventoryAddModalProps}
         bulkActionsProps={inventoryBulkActionsProps}
-        bulkSelectionTriggerProps={inventoryBulkSelectionTriggerProps}
+        bulkSelectionTriggerProps={{...inventoryBulkSelectionTriggerProps, onActiveChange: active => {
+          if (active && cardPage) {
+            setPendingStockAction({authority: locationAuthorityKey, kind: "bulk"});
+            setRequiresFullStock(true);
+            return;
+          }
+          inventoryBulkSelectionTriggerProps.onActiveChange(active);
+        }}}
         clientHostDeviceName={clientHostDeviceName}
         clientHostWritePaired={clientHostWritePaired}
         clientInventoryPartial={!purchasesOnly && !locationsOnly && clientInventoryPartial}
@@ -1534,11 +1572,16 @@ export default function InventoryPage({
         loading={loading}
         collectionProps={{
           ...inventoryBulkCollectionProps,
-          filteredSpools,
-          groupedSpools,
+          cardPage: cardPage && !waitingForAllRows ? {
+            totals: cardTotals, visible: cardPage.visible, hasMore: cardPage.cards.length < cardPage.groups,
+            next: () => void reloadSpools(undefined, undefined, true, cardPage),
+            moreRolls: id => void reloadSpools(undefined, undefined, true, cardPage, id),
+          } : undefined,
+          filteredSpools: waitingForAllRows ? [] : filteredSpools,
+          groupedSpools: waitingForAllRows ? [] : groupedSpools,
           slotLabelById,
           inventoryView,
-          loading,
+          loading: loading || waitingForAllRows,
           onSelectRoll: selectRollForManage,
           recentlyAddedSpoolId,
           resolvedTheme,
@@ -1561,7 +1604,7 @@ export default function InventoryPage({
           ownershipFilter,
           vendorFilter,
           vendorOptions,
-          visibleInventoryCount,
+          visibleInventoryCount: waitingForAllRows ? null : cardPage?.visible ?? visibleInventoryCount,
         }}
         error={activeWorkspaceView === "LOCATIONS" ? locationError ?? error : activeWorkspaceView === "STOCK" ? bulkError ?? error : error}
         loadError={loadError}
@@ -1610,7 +1653,12 @@ export default function InventoryPage({
           labelSheetDisabled: !tauri || manageBusy || loading || !librarySyncReady,
           lowStockOnly,
           onAddSpool: () => openAddModal(),
-          onCreateLabelSheet: () => void openInventoryLabelSheet(),
+          onCreateLabelSheet: () => {
+            if (cardPage) {
+              setPendingStockAction({authority: locationAuthorityKey, kind: "labels"});
+              setRequiresFullStock(true);
+            } else void openInventoryLabelSheet();
+          },
           onLowStockOnlyChange: setLowStockOnly,
           onSearchChange: setSearch,
           onStatusFilterChange: setStatusFilter,
@@ -1622,7 +1670,7 @@ export default function InventoryPage({
         }}
         infoMessage={activeWorkspaceView === "LOCATIONS" ? locationInfo ?? infoMessage : activeWorkspaceView === "STOCK" ? bulkInfo ?? infoMessage : infoMessage}
         showRollModal={showRollModal}
-        totalInventoryCount={compactBadges ? compactCounts?.stock ?? null : hasCount(domainSources.spools) || detailVisualFixture ? spools.length : null}
+        totalInventoryCount={compactBadges ? compactCounts?.stock ?? null : hasCount(domainSources.spools) || detailVisualFixture ? (cardPage?.total ?? spools.length) : null}
         totalLocationCount={loansOnly ? loanCounts?.locations ?? null : hasCount(domainSources.locations) ? selectableInventoryLocations(locations).length : null}
         totalPurchaseCount={compactBadges ? compactCounts?.purchases ?? null : hasCount(domainSources.wishlist) ? wishlistItems.length : null}
       />

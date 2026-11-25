@@ -21,6 +21,17 @@ bundle sizes.
 | 10,000 spools | A real 10,000-row fixture passes through normalization, inventory mapping, options, filtering, grouping, bounded render-window selection, overview calculation, and dashboard derivation without truncation. |
 | Dashboard revisit | The fixture exercises 250 cached-snapshot clones. A revisit paints the saved view before starting background reads. |
 
+The default Inventory card view reads up to 96 product groups with three spool
+previews per card. Counts and weights cover the whole group. More groups and
+up to 100 more members of one group can be requested separately. A changed
+inventory or catalog revision restarts paging. Search, filters, list view,
+labels and selection use the complete stock so they cover every matching roll.
+A Client without a complete offline capture obtains one on its first full read.
+Older Hosts and disconnected Clients use the existing full-list or scoped
+offline path. Reading a card page preserves the last complete capture and its
+timestamp. An explicit refresh of Stock on a paired Client renews that complete
+offline inventory.
+
 The 10,000-spool contract renders at most 200 list rows or 96 card groups at
 once. Complete pagination is separately covered by
 `ui/src/lib/spool_data_source.test.ts`, including the 10,000-row case with
@@ -41,7 +52,7 @@ Opening **Loans & borrowed-in**, lending and returning load loan history,
 active loans and four tab counts. Local libraries count in SQLite. Paired
 clients ask the Host for the counts and keep the last result for offline use.
 On the first offline open after upgrading, SQLite can derive the counts from
-existing cached lists. Opening Inventory or a specific roll loads the full inventory. A loan write
+existing cached lists. Opening a specific roll loads the full inventory. A loan write
 saves the affected Host roll and its tab counts from the acknowledgement,
 keeping the timestamp of the last complete offline inventory copy. A fresh
 full snapshot absorbs any loan changes confirmed while its pages were in flight.

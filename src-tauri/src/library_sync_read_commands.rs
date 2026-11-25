@@ -653,6 +653,7 @@ mod tests {
     mod location_spools;
     mod printer_picker;
     mod spool_snapshot;
+    mod stock_cards;
     mod wishlist_purchase;
 
     fn not_found_envelope() -> String {

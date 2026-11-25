@@ -86,6 +86,7 @@ pub mod database_spool_queries;
 pub mod database_spool_schema;
 pub mod database_spool_update_facade;
 pub mod database_spool_updates;
+pub mod database_stock_cards;
 pub mod database_system_facade;
 pub mod database_table_ops;
 pub mod database_tables;

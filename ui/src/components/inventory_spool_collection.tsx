@@ -29,6 +29,13 @@ import {
 } from "../lib/inventory_collection_window";
 
 type InventorySpoolCollectionProps = {
+  cardPage?: {
+    totals: ReadonlyMap<string, { count: number; remaining: number }>;
+    visible: number;
+    hasMore: boolean;
+    next: () => void;
+    moreRolls: (id: string) => void;
+  };
   addSpoolDisabled: boolean;
   bulkSelectionActive: boolean;
   bulkSelectionDisabled: boolean;
@@ -144,6 +151,7 @@ export function InventorySpoolCollection({
   selectedSpoolId,
   selectedBulkSpoolIds,
   totalSpoolCount,
+  cardPage,
   slotLabelById,
 }: InventorySpoolCollectionProps) {
   const { locale, t } = useI18n();
@@ -173,6 +181,10 @@ export function InventorySpoolCollection({
     visibleSpoolCount: filteredSpools.length,
   });
 
+  const representedCount = cardPage
+    ? groupedSpools.reduce((total, group) => total + (cardPage.totals.get(group.rolls[0].id)?.count ?? 0), 0)
+    : collectionWindow.representedSpoolCount;
+
   const updateGroupRollLimit = (groupKey: string, rollCount: number) => {
     setVisibleRollLimitsByGroup((current) => {
       const next = new Map(current);
@@ -195,15 +207,17 @@ export function InventorySpoolCollection({
       }
     >
       {inventoryView === "CARDS"
-        ? collectionWindow.groupedSpools.map((group, groupIndex) => {
+        ? (cardPage ? groupedSpools : collectionWindow.groupedSpools).map((group, groupIndex) => {
+            const stats = cardPage?.totals.get(group.rolls[0]?.id);
+            const rollCount = stats?.count ?? group.rolls.length;
             const hasRecentRoll = group.rolls.some(roll => roll.id === recentlyAddedSpoolId);
             const sortedRolls = [...group.rolls].sort((left, right) =>
               left.id === recentlyAddedSpoolId ? -1 : right.id === recentlyAddedSpoolId ? 1 : 0);
             const groupRollLimit = visibleRollLimitsByGroup.get(group.key) ?? 3;
             const visibleRolls = sortedRolls.slice(0, groupRollLimit);
             const groupExpanded = groupRollLimit > 3;
-            const allGroupRollsVisible = visibleRolls.length >= group.rolls.length;
-            const hiddenRollCount = Math.max(0, group.rolls.length - visibleRolls.length);
+            const allGroupRollsVisible = visibleRolls.length >= rollCount;
+            const hiddenRollCount = Math.max(0, rollCount - visibleRolls.length);
             const rollListId = `${collectionId}-group-${groupIndex}-rolls`;
             return <article key={group.key} className={`inventory-product-card ${hasRecentRoll ? "is-recent" : ""}`}>
               <FilamentSpoolVisual color={group.hexColor} className="inventory-product-spool" />
@@ -224,11 +238,17 @@ export function InventorySpoolCollection({
                     <div>{group.rolls.map(roll => <button key={roll.id} type="button" onClick={event => {
                       event.currentTarget.closest("details")?.removeAttribute("open");
                       onSelectRoll(roll.id);
-                    }}>{t("inventory.openCreatedRoll", "Open roll")} · {formatRollReference(roll)}</button>)}</div>
+                    }}>{t("inventory.openCreatedRoll", "Open roll")} · {formatRollReference(roll)}</button>)}
+                      {cardPage && group.rolls.length < rollCount ? (
+                        <button type="button" onClick={() => cardPage.moreRolls(group.rolls[0].id)}>
+                          {t("inventory.showMoreHistory", "Show more")}
+                        </button>
+                      ) : null}
+                    </div>
                   </details>
                 </header>
-                {group.rolls.length > 1 ? <div className="inventory-product-total">
-                  {group.rolls.length} {t("inventory.spoolResults", "spools")} · {formatGrams(group.totalRemaining, "dash", locale)}
+                {rollCount > 1 ? <div className="inventory-product-total">
+                  {rollCount} {t("inventory.spoolResults", "spools")} · {formatGrams(stats?.remaining ?? group.totalRemaining, "dash", locale)}
                 </div> : null}
                 <div id={rollListId} className="inventory-product-rolls">
                   {visibleRolls.map(roll => <div key={roll.id} className="inventory-roll-line">
@@ -237,7 +257,7 @@ export function InventorySpoolCollection({
                       label={t("inventory.bulkSelectSpool", "Select {reference}", { reference: formatRollReference(roll) })}
                       onCheckedChange={selected => onBulkSelectionChange(roll.id, selected)} /> : null}
                     <button type="button" onClick={() => onSelectRoll(roll.id)}
-                      className={`${group.rolls.length === 1 ? inventorySpoolRollButtonClassName("single") : inventorySpoolRollButtonClassName("compact")} ${selectedSpoolId === roll.id ? "is-selected" : ""}`}>
+                      className={`${rollCount === 1 ? inventorySpoolRollButtonClassName("single") : inventorySpoolRollButtonClassName("compact")} ${selectedSpoolId === roll.id ? "is-selected" : ""}`}>
                       <span className="inventory-roll-reference">{formatRollReference(roll)}</span>
                       <span className="inventory-roll-placement" title={formatInventoryPlacement(t, roll.location, slotLabelById)}>
                         {formatInventoryPlacement(t, roll.location, slotLabelById)}
@@ -250,8 +270,13 @@ export function InventorySpoolCollection({
                     </button>
                   </div>)}
                 </div>
-                {group.rolls.length > 3 ? <button type="button" aria-expanded={groupExpanded}
-                  aria-controls={rollListId} onClick={() => updateGroupRollLimit(group.key, group.rolls.length)}
+                {rollCount > 3 ? <button type="button" aria-expanded={groupExpanded}
+                  aria-controls={rollListId} onClick={() => {
+                    if (cardPage && group.rolls.length < rollCount && groupRollLimit >= group.rolls.length) {
+                      cardPage.moreRolls(group.rolls[0].id);
+                    }
+                    updateGroupRollLimit(group.key, rollCount);
+                  }}
                   className="inventory-more-rolls app-control-focus">
                   {allGroupRollsVisible ? t("inventory.showFewerRolls", "Show fewer rolls") :
                     `${t("inventory.showAllRolls", "Show all rolls")} (+${hiddenRollCount})`}
@@ -283,16 +308,16 @@ export function InventorySpoolCollection({
             </div>;
           })}
 
-      {collectionWindow.hasMore ? (
+      {(cardPage ? cardPage.hasMore : collectionWindow.hasMore) ? (
         <div className={inventoryView === "CARDS" ? "col-span-full" : undefined}>
           <div className="surface-subtle flex flex-col items-center justify-center gap-2 border-dashed px-4 py-3 sm:flex-row sm:gap-3">
             <div className="text-xs font-medium text-slate-600 dark:text-slate-300" aria-live="polite">
               <span className="tabular-nums">
-                {formatDisplayInteger(collectionWindow.representedSpoolCount, locale)}
+                {formatDisplayInteger(representedCount, locale)}
               </span>
               {" / "}
               <span className="tabular-nums">
-                {formatDisplayInteger(collectionWindow.totalSpoolCount, locale)}
+                {formatDisplayInteger(cardPage?.visible ?? collectionWindow.totalSpoolCount, locale)}
               </span>{" "}
               {collectionWindow.totalSpoolCount === 1
                 ? t("inventory.spoolResult", "spool")
@@ -301,7 +326,7 @@ export function InventorySpoolCollection({
             <button
               type="button"
               onClick={() =>
-                setRenderLimit((current) =>
+                cardPage ? cardPage.next() : setRenderLimit((current) =>
                   nextInventoryCollectionLimit(inventoryView, current),
                 )
               }
