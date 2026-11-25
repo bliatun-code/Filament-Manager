@@ -32,7 +32,10 @@ Current Hosts also filter individual rolls by status, ownership, material,
 vendor, location and low-stock policy before grouping. Opening the filter panel
 requests distinct materials and vendors from the whole stock in the same read
 transaction. Older Hosts and offline Clients filter the complete live or saved
-list. List view, labels and selection use the complete stock so they cover every matching roll.
+list. Opening and closing Add spool keeps the loaded cards and reads the
+registration catalog on demand. A successful registration refreshes stock
+so the new roll can be opened. List view, labels and selection use the
+complete stock so they cover every matching roll.
 A Client without a complete offline capture obtains one on its first full read.
 Older Hosts and disconnected Clients use the existing full-list or scoped
 offline path. Reading a card page preserves the last complete capture and its

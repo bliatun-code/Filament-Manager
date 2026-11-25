@@ -402,7 +402,7 @@ export default function InventoryPage({
     setRequiresFullStock(false);
     setPendingStockAction(null);
   }, [activeWorkspaceView, locationAuthorityKey]);
-  const requestCards = !requiresFullStock && inventoryView === "CARDS" && !navigationIntent && !addModalActive && !showRollModal &&
+  const requestCards = !requiresFullStock && inventoryView === "CARDS" && !navigationIntent && !showRollModal &&
     !recentlyAddedSpoolId && !detailVisualFixture;
   const requestCardsRef = useRef(requestCards);
   useEffect(() => { requestCardsRef.current = requestCards; }, [requestCards]);
