@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { createRequire } from "node:module";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import test from "node:test";
-import { chromium } from "playwright";
+import { chromium, type Page } from "playwright";
 
 async function harness() {
   const require = createRequire(new URL("../../package.json", import.meta.url));
@@ -61,22 +61,31 @@ async function harness() {
   return `<html><body><div id="root"></div><script>${script.replaceAll("</script","<\\/script")}</script></body></html>`;
 }
 
+async function expectAcknowledgedSaveWithRefreshError(page: Page, kind: "common" | "master") {
+  const alert = page.getByRole("alert").filter({ hasText: /^Failed to load inventory\.$/ });
+  await alert.waitFor({ state: "visible" });
+  const state = await page.evaluate("detail.snapshot()");
+  assert.ok(state.marks.some((mark: string[]) => mark[0] === kind));
+  assert.equal(state.calls.length, 1);
+}
+
 test("rendered roll and catalog detail saves",async context=>{
   const html=await harness(),browser=await chromium.launch({headless:true});
-  const scenario=async(name:string,run:(page:Awaited<ReturnType<typeof browser.newPage>>)=>Promise<void>)=>context.test(name,async()=>{
+  const scenario=async(name:string,run:(page:Page)=>Promise<void>)=>context.test(name,async()=>{
     const page=await browser.newPage();page.setDefaultTimeout(5000);const errors:string[]=[];page.on("pageerror",e=>errors.push(e.message));
     try{await page.setContent(html);await page.evaluate("detail.render()");await run(page);assert.deepEqual(errors,[]);}finally{await page.close();}
   });
   try {
     await scenario("catalog-only refresh failure is reported after confirmed save",async page=>{
       await page.evaluate("detail.failure('CATALOG');detail.start('master');detail.finish(0)");
-      const state=await page.evaluate("detail.snapshot()");assert.equal(state.error,"Failed to load inventory.");assert.ok(state.marks.some((m:string[])=>m[0]==="master"));
+      await expectAcknowledgedSaveWithRefreshError(page, "master");
     });
     await scenario("common and catalog share a synchronous submission lock",async page=>{
       await page.evaluate("detail.start('common');detail.start('master')");
       assert.equal((await page.evaluate("detail.snapshot()")).calls.length,1);await page.evaluate("detail.finish(0)");
     });
-    for(const kind of ["common","master"]) {
+    for(const kind of ["common","master"] as const) {
+      const saveButtonName = kind === "common" ? "Save roll" : "Save catalog";
       await scenario(`${kind}: same-event duplicate sends one write`,async page=>{
         await page.evaluate(`detail.double('${kind}')`);
         await page.waitForFunction("detail.snapshot().calls.length>0");
@@ -89,14 +98,15 @@ test("rendered roll and catalog detail saves",async context=>{
       });
       await scenario(`${kind}: committed save survives refresh rejection`,async page=>{
         await page.evaluate(`detail.failure('throw');detail.start('${kind}');detail.finish(0)`);
-        const state=await page.evaluate("detail.snapshot()");assert.equal(state.error,"Failed to load inventory.");
-        assert.ok(state.marks.some((m:string[])=>m[0]===kind));
-        await page.evaluate(`detail.start('${kind}')`);assert.equal((await page.evaluate("detail.snapshot()")).calls.length,1);
+        await expectAcknowledgedSaveWithRefreshError(page, kind);
+        await page.getByRole("button", { name: saveButtonName }).click();
+        assert.equal((await page.evaluate("detail.snapshot()")).calls.length, 1);
       });
       await scenario(`${kind}: rejected write permits explicit retry`,async page=>{
         await page.evaluate(`detail.start('${kind}');detail.finish(0,true)`);
-        assert.ok((await page.evaluate("detail.snapshot()")).error);
-        await page.evaluate(`detail.start('${kind}');detail.finish(1)`);
+        await page.getByRole("alert").filter({ hasText: /\S/ }).waitFor();
+        await page.getByRole("button", { name: saveButtonName }).click();
+        await page.evaluate("detail.finish(1)");
         assert.equal((await page.evaluate("detail.snapshot()")).calls.length,2);
       });
       for(const props of ["{open:false}","{host:'other'}","{generation:2}"]) {
@@ -109,6 +119,7 @@ test("rendered roll and catalog detail saves",async context=>{
         await scenario(`${kind}: old A completion cannot unlock a new A submission (${reject})`,async page=>{
           await page.evaluate(`detail.save('${kind}');detail.start('${kind}');detail.render({id:'b'});detail.render();detail.old();detail.start('${kind}')`);
           await page.waitForFunction("detail.snapshot().calls.length===2");
+          await page.getByRole("button", { name: saveButtonName, disabled: true }).waitFor();
           await page.evaluate(`detail.finish(0,${reject},false)`);
           const state=await page.evaluate("detail.snapshot()");assert.equal(state.busy,true);assert.deepEqual(state.marks,[]);assert.deepEqual(state.reloads,[]);
           await page.evaluate("detail.finish(1)");
@@ -121,7 +132,7 @@ test("rendered roll and catalog detail saves",async context=>{
       for(const failure of ["ERROR","OFFLINE","CACHED"]) {
         await scenario(`${kind}: ${failure} refresh preserves commit acknowledgement`,async page=>{
           await page.evaluate(`detail.failure('${failure}');detail.start('${kind}');detail.finish(0)`);
-          const state=await page.evaluate("detail.snapshot()");assert.equal(state.error,"Failed to load inventory.");assert.ok(state.marks.some((m:string[])=>m[0]===kind));
+          await expectAcknowledgedSaveWithRefreshError(page, kind);
         });
       }
       await scenario(`${kind}: refresh from a closed view cannot publish errors`,async page=>{
@@ -134,7 +145,8 @@ test("rendered roll and catalog detail saves",async context=>{
         await page.evaluate(`detail.start('${kind}');detail.render({tare:'201',name:'Red'});detail.finish(0)`);
         const state=await page.evaluate("detail.snapshot()");
         assert.ok(!state.marks.some((m:string[])=>m[0]===(kind==="common"?"tare":"unlock")));
-        await page.evaluate(`detail.start('${kind}');detail.finish(1)`);
+        await page.getByRole("button", { name: saveButtonName }).click();
+        await page.evaluate("detail.finish(1)");
         assert.equal((await page.evaluate("detail.snapshot()")).calls.length,2);
       });
       await scenario(`${kind}: Host request carries reviewed target generation`,async page=>{
@@ -146,7 +158,8 @@ test("rendered roll and catalog detail saves",async context=>{
       });
       await scenario(`${kind}: incomplete Host generation fails before invoking`,async page=>{
         await page.evaluate(`detail.render({host:'host',generation:null});detail.start('${kind}')`);
-        await page.waitForFunction("detail.snapshot().error!==null");assert.equal((await page.evaluate("detail.snapshot()")).calls.length,0);
+        await page.getByRole("alert").filter({ hasText: /\S/ }).waitFor();
+        assert.equal((await page.evaluate("detail.snapshot()")).calls.length, 0);
       });
 
     }
