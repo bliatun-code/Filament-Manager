@@ -155,8 +155,8 @@ export default function InventoryPage({
   const loansOnly = activeWorkspaceView === "LOANS";
   const [loanCounts, setLoanCounts] = useState<LoanWorkspaceCounts | null>(null);
   const locationsOnly = activeWorkspaceView === "LOCATIONS";
-  const purchaseQueue = useWishlistQueue();
   const purchasesOnly = activeWorkspaceView === "PURCHASES";
+  const purchaseQueue = useWishlistQueue(purchasesOnly);
   const [rfidCaptureFieldsBySlotId, setRfidCaptureFieldsBySlotId] = useState<
     Record<string, RfidCaptureField[]>
   >({});
@@ -216,6 +216,7 @@ export default function InventoryPage({
     wishlistItems,
     wishlistLoading,
   } = useInventoryPageData({
+    setPurchaseSearchText: purchaseQueue.setWishlistQueueQuery,
     queueQuery: purchasesOnly ? purchaseQueue.query : undefined,
     purchaseIntent: purchasesOnly ? reviewedPurchase : null,
     setRfidCaptureFieldsBySlotId,

@@ -52,6 +52,7 @@ import { matchesWishlistPurchaseTarget } from "./tauri_wishlist_client";
 const stockQueueQuery: PurchaseQueueQuery = { status: "ALL", search: "", offset: 0 };
 
 type InventoryPageDataInput = {
+  setPurchaseSearchText: (text: string) => void;
   queueQuery?: PurchaseQueueQuery;
   purchaseIntent?: Extract<InventoryNavigationIntent, { kind: "PURCHASES" }> | null;
   setRfidCaptureFieldsBySlotId: Dispatch<SetStateAction<Record<string, RfidCaptureField[]>>>;
@@ -116,6 +117,7 @@ function createInventoryDomainSources(): Record<
 }
 
 export function useInventoryPageData({
+  setPurchaseSearchText,
   queueQuery = stockQueueQuery,
   purchaseIntent,
   setRfidCaptureFieldsBySlotId,
@@ -230,6 +232,7 @@ export function useInventoryPageData({
     setLocationsLoading(false);
     setLocationMutationsSupported(false);
     setLocationSource("OFFLINE");
+    setPurchaseSearchText("");
     setQueueResult(null);
     setWishlistItems([]);
     setWishlistLoading(false);
@@ -245,7 +248,7 @@ export function useInventoryPageData({
     setDomainSources(createInventoryDomainSources());
     setClientInventoryUpdatedAt(null);
     setRfidCaptureFieldsBySlotId({});
-  }, [setRfidCaptureFieldsBySlotId]);
+  }, [setPurchaseSearchText, setRfidCaptureFieldsBySlotId]);
 
   const resolveLibrarySyncRole = useCallback(async () => {
     if (!tauriAvailable) {

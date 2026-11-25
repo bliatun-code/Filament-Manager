@@ -168,7 +168,9 @@ product and target. A completed purchase opens Purchases directly for that libra
 Opening and refreshing Purchases reads the queue independently of stock.
 The current Host and local database count the full purchase queue and return
 50 matching rows per page. Filtering and literal case-insensitive search run
-before pagination. A Dashboard handoff sorts the acknowledged order first
+before pagination. The search field updates immediately and requests a page after
+200 ms without typing. Clearing the search or choosing a status takes effect
+immediately. A Dashboard handoff sorts the acknowledged order first
 within the selected filter. Each response reads totals and rows from one
 SQLite snapshot. Older Hosts use their existing recent list. Offline search
 and counts use only saved rows. The Client retains up to 500 visited rows from

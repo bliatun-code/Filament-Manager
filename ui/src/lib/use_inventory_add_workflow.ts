@@ -492,7 +492,7 @@ export function useInventoryAddWorkflow({
     onReconcileReceipt: reconcileWishlistReceipt,
     onStatusChange: handleWishlistStatus,
     onStockItem: handleStockFromWishlist,
-    query: wishlistQueueQuery,
+    query: purchaseQueue.searchText,
     resolvedTheme,
     summary: queuePage?.summary ?? summarizeWishlistQueue(wishlistItems),
     page: queuePage && {offset: queuePage.offset, matched: queuePage.matched, size: PURCHASE_PAGE_SIZE, select: purchaseQueue.setOffset},
