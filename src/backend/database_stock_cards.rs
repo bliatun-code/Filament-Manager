@@ -1,6 +1,6 @@
 use icu_collator::{Collator, CollatorPreferences};
 use icu_locale_core::Locale;
-use rusqlite::{functions::FunctionFlags, params, OptionalExtension};
+use rusqlite::{functions::FunctionFlags, Connection, OptionalExtension};
 use serde::{Deserialize, Serialize};
 
 use super::{
@@ -14,11 +14,30 @@ use super::{
 
 #[derive(Debug, Deserialize, Serialize)]
 pub struct StockCardQuery {
+    pub filters: Option<StockCardFilters>,
     #[serde(default)]
     pub search: String,
     pub locale: Option<String>,
     pub offset: u32,
     pub member_of: Option<String>,
+}
+
+#[derive(Clone, Debug, Default, Deserialize, Serialize)]
+#[serde(default)]
+pub struct StockCardFilters {
+    pub status: Option<String>,
+    pub ownership: Option<String>,
+    pub material: Option<String>,
+    pub vendor: Option<String>,
+    pub location_id: Option<String>,
+    pub low_stock: bool,
+    pub include_options: bool,
+}
+
+#[derive(Debug, Default, Deserialize, Serialize)]
+pub struct StockFilterOptions {
+    materials: std::collections::BTreeSet<String>,
+    vendors: std::collections::BTreeSet<String>,
 }
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -30,6 +49,8 @@ pub struct StockCard {
 
 #[derive(Debug, Deserialize, Serialize)]
 pub struct StockCardPage {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub options: Option<StockFilterOptions>,
     pub cards: Vec<StockCard>,
     pub groups: i64,
     pub visible: i64,
@@ -53,7 +74,15 @@ const STOCK_CARD_GROUPS: &str = "
             s.qr_code,s.rfid_tag,s.owner_name,s.owner_contact,
             CASE WHEN replace(replace(upper(trim(s.ownership_type)), '-', '_'), ' ', '_')='BORROWED_IN'
                  THEN 'borrowed in' ELSE 'owned' END)))
-          AND s.deleted_at IS NULL AND coalesce(upper(trim(s.status)), '') <> 'EMPTY'
+          AND s.deleted_at IS NULL
+          AND CASE WHEN ?6 IS NULL THEN coalesce(upper(trim(s.status)), '') <> 'EMPTY'
+                   ELSE stock_status(s.status)=?6 END
+          AND (?7 IS NULL OR ?7=CASE WHEN replace(replace(upper(trim(s.ownership_type)), '-', '_'), ' ', '_')='BORROWED_IN'
+                                    THEN 'BORROWED_IN' ELSE 'OWNED' END)
+          AND (?8 IS NULL OR m.material=?8) AND (?9 IS NULL OR m.vendor=?9)
+          AND (?10 IS NULL OR ?10=s.location_id OR ?10=s.home_location_id)
+          AND (NOT ?11 OR (stock_status(s.status) IN ('IN_STOCK','ASSIGNED') AND
+               stock_is_low(m.material,coalesce(s.remaining_g,CASE WHEN s.initial_weight_g>0 THEN s.initial_weight_g WHEN m.default_weight>0 THEN m.default_weight ELSE 1000 END))))
     ), numbered AS (
         SELECT *, row_number() OVER (PARTITION BY product ORDER BY updated_at DESC, id DESC) AS n
         FROM stock
@@ -69,6 +98,24 @@ const STOCK_CARD_GROUPS: &str = "
     ORDER BY material COLLATE stock_card_order, filament_name COLLATE stock_card_order,
              color_name COLLATE stock_card_order, newest DESC, first_id DESC, product
     LIMIT 96 OFFSET ?1";
+
+fn stock_filter_options(conn: &Connection) -> InventoryResult<StockFilterOptions> {
+    let mut options = StockFilterOptions::default();
+    let mut stmt = conn.prepare("SELECT DISTINCT m.material,m.vendor FROM filament_master_list m
+                WHERE m.id IN (SELECT DISTINCT master_id FROM filament_spools WHERE deleted_at IS NULL)")?;
+    let mut pairs = stmt.query([])?;
+    while let Some(row) = pairs.next()? {
+        let material: String = row.get(0)?;
+        let vendor: String = row.get(1)?;
+        if !material.trim().is_empty() {
+            options.materials.insert(material.trim().to_owned());
+        }
+        if !vendor.trim().is_empty() {
+            options.vendors.insert(vendor.trim().to_owned());
+        }
+    }
+    Ok(options)
+}
 
 impl FilamentDatabase {
     pub fn has_complete_stock_capture(&self) -> InventoryResult<bool> {
@@ -106,6 +153,25 @@ impl FilamentDatabase {
                  FROM filament_spools WHERE deleted_at IS NULL", [], |r| Ok((r.get(0)?,r.get(1)?))
             )?;
         let policy = load_low_stock_policy(conn)?;
+        let filters = query.filters.as_ref();
+        let options = filters
+            .filter(|f| f.include_options)
+            .map(|_| stock_filter_options(conn))
+            .transpose()?;
+        let flags = FunctionFlags::SQLITE_UTF8 | FunctionFlags::SQLITE_DETERMINISTIC;
+        conn.create_scalar_function("stock_status", 1, flags, |ctx| {
+            Ok(super::inventory_domain::SpoolStatus::from_raw(
+                ctx.get::<Option<String>>(0)?.as_deref(),
+            )
+            .as_str()
+            .to_owned())
+        })?;
+        let thresholds = policy.clone();
+        conn.create_scalar_function("stock_is_low", 2, flags, move |ctx| {
+            let grams: f64 = ctx.get(1)?;
+            Ok(grams > 0.0
+                && grams <= thresholds.threshold_for_material(&ctx.get::<String>(0)?) as f64)
+        })?;
         let locale = query
             .locale
             .as_deref()
@@ -122,6 +188,7 @@ impl FilamentDatabase {
 
         let mut select = conn.prepare(&format!("{SPOOL_WITH_MASTER_SELECT} JOIN json_each(?1) page ON page.value=s.id ORDER BY page.key"))?;
         let mut page = StockCardPage {
+            options,
             cards: Vec::new(),
             groups: 0,
             visible: 0,
@@ -134,13 +201,26 @@ impl FilamentDatabase {
         } else {
             (query.offset, 0, 3)
         };
-        let mut groups = stmt.query(params![
-            offset,
-            query.member_of,
+        let parameters = |offset: i64, start: i64, end: i64| {
+            (
+                offset,
+                &query.member_of,
+                start,
+                end,
+                searching,
+                filters.and_then(|f| f.status.as_deref()),
+                filters.and_then(|f| f.ownership.as_deref()),
+                filters.and_then(|f| f.material.as_deref()),
+                filters.and_then(|f| f.vendor.as_deref()),
+                filters.and_then(|f| f.location_id.as_deref()),
+                filters.is_some_and(|f| f.low_stock),
+            )
+        };
+        let mut groups = stmt.query(parameters(
+            i64::from(offset),
             member_offset,
             member_offset + limit,
-            searching
-        ])?;
+        ))?;
         while let Some(group) = groups.next()? {
             let ids: String = group.get(2)?;
             let mut rows = select
@@ -162,9 +242,7 @@ impl FilamentDatabase {
         if offset > 0 && page.cards.is_empty() {
             // An out-of-range offset has no result row to carry the window totals.
             if let Some((groups, visible)) = stmt
-                .query_row(params![0, query.member_of, 0, 0, searching], |row| {
-                    Ok((row.get(3)?, row.get(4)?))
-                })
+                .query_row(parameters(0, 0, 0), |row| Ok((row.get(3)?, row.get(4)?)))
                 .optional()?
             {
                 page.groups = groups;
@@ -179,11 +257,76 @@ impl FilamentDatabase {
 mod tests {
     use super::*;
     #[test]
+    fn filters_cover_the_whole_library_before_grouping_and_keep_global_options() {
+        let db = FilamentDatabase::open(":memory:").unwrap();
+        db.apply_schema().unwrap();
+        db.connection().execute_batch("WITH RECURSIVE n(i) AS (VALUES(1) UNION ALL SELECT i+1 FROM n WHERE i<97)
+            INSERT INTO filament_master_list(id,material,filament_name,color_name,vendor)
+            SELECT printf('m%03d',i),'PLA','Basic',printf('Color %03d',i),'V' FROM n;
+            INSERT INTO filament_spools(id,master_id,status,remaining_g)
+            SELECT id,id,'IN_STOCK',400 FROM filament_master_list WHERE id GLOB 'm[0-9][0-9][0-9]';
+            INSERT INTO filament_master_list(id,material,filament_name,color_name,vendor)
+            VALUES ('special','TPU','Flex','Blue','Rare'), ('unused','Nylon','Unused','Blue','Unused');
+            INSERT INTO filament_spools(id,master_id,status,remaining_g,ownership_type)
+            VALUES ('low','special','IN_USE',50,'BORROWED_IN'), ('high','special','ASSIGNED',600,'BORROWED_IN'),
+            ('empty','special','EMPTY',0,'OWNED');
+            INSERT INTO inventory_locations(id,name,type) VALUES ('home','Shelf','SHELF');
+            UPDATE filament_spools SET home_location_id='home' WHERE id='low';").unwrap();
+        let mut query = StockCardQuery {
+            locale: None,
+            offset: 0,
+            member_of: None,
+            search: String::new(),
+            filters: Some(StockCardFilters {
+                include_options: true,
+                ..Default::default()
+            }),
+        };
+        let first = db.stock_card_page(&query).unwrap();
+        assert_eq!(first.cards.len(), 96);
+        assert!(first
+            .cards
+            .iter()
+            .all(|card| card.rows[0].master.material == "PLA"));
+        let options = first.options.unwrap();
+        assert!(options.materials.contains("TPU") && options.vendors.contains("Rare"));
+        assert!(!options.vendors.contains("Unused"));
+        query.search = "flex blue".into();
+        query.filters = Some(StockCardFilters {
+            status: Some("ASSIGNED".into()),
+            ownership: Some("BORROWED_IN".into()),
+            material: Some("TPU".into()),
+            vendor: Some("Rare".into()),
+            low_stock: true,
+            include_options: true,
+            location_id: Some("home".into()),
+        });
+        let hit = db.stock_card_page(&query).unwrap();
+        assert_eq!(
+            (hit.total, hit.visible, hit.groups, hit.cards[0].remaining),
+            (100, 1, 1, 50.0)
+        );
+        assert_eq!(hit.cards[0].rows[0].spool.id, "low");
+        assert!(hit.options.unwrap().materials.contains("PLA"));
+        query.filters = Some(StockCardFilters {
+            status: Some("EMPTY".into()),
+            ..Default::default()
+        });
+        assert_eq!(
+            db.stock_card_page(&query).unwrap().cards[0].rows[0]
+                .spool
+                .id,
+            "empty"
+        );
+    }
+
+    #[test]
     fn stock_card_totals_cover_members_outside_the_preview() {
         let db = FilamentDatabase::open(":memory:").unwrap();
         db.apply_schema().unwrap();
         let read = || {
             db.stock_card_page(&StockCardQuery {
+                filters: None,
                 search: String::new(),
                 locale: None,
                 offset: 0,
@@ -209,6 +352,7 @@ mod tests {
         );
         let more = db
             .stock_card_page(&StockCardQuery {
+                filters: None,
                 search: String::new(),
                 locale: None,
                 offset: 3,
@@ -237,6 +381,7 @@ mod tests {
         ).unwrap();
         let read = |offset| {
             db.stock_card_page(&StockCardQuery {
+                filters: None,
                 offset,
                 search: String::new(),
                 locale: Some("en-US".into()),
@@ -250,6 +395,7 @@ mod tests {
         assert_eq!((first.groups, second.visible, second.total), (98, 196, 196));
         let search = |terms: &str| {
             db.stock_card_page(&StockCardQuery {
+                filters: None,
                 offset: 0,
                 locale: None,
                 member_of: None,

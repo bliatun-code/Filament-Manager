@@ -407,7 +407,7 @@ export function useInventoryPageData({
       current.clientTargetGeneration !== clientTargetGeneration;
   }, [clientHostBaseUrl, clientLibraryId, clientTargetGeneration]);
 
-  const reloadSpools = useCallback(async (reportResult?: InventoryReloadReporter, onStockLoaded?: InventoryRefreshInput["onStockLoaded"], cards = false, previous?: StockCards, memberOf?: string, searchRequest?: { text: string; current: () => boolean }) => {
+  const reloadSpools = useCallback(async (reportResult?: InventoryReloadReporter, onStockLoaded?: InventoryRefreshInput["onStockLoaded"], cards = false, previous?: StockCards, memberOf?: string, searchRequest?: { text: string; filters?: StockCards["filters"]; current: () => boolean }) => {
     if (!tauriAvailable) {
       reportResult?.("spools", "ERROR");
       reportResult?.("locations", "ERROR");
@@ -420,7 +420,7 @@ export function useInventoryPageData({
         ? {base_url: clientReadOnly ? clientHostBaseUrl : null, expected_library_id: clientLibraryId, target_generation: clientTargetGeneration}
         : null;
       if (target) {
-        const page = await loadStockCards(target, previous, memberOf, searchRequest?.text).catch(() => null);
+        const page = await loadStockCards(target, previous, memberOf, searchRequest?.text, searchRequest?.filters).catch(() => null);
         if (!isCurrent()) return;
         if ((page || searchRequest) && !await isLocationSpoolTargetCurrent(target)) {
           await resolveLibrarySyncRole();

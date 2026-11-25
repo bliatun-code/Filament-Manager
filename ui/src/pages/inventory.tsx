@@ -402,8 +402,7 @@ export default function InventoryPage({
     setRequiresFullStock(false);
     setPendingStockAction(null);
   }, [activeWorkspaceView, locationAuthorityKey]);
-  const requestCards = !requiresFullStock && inventoryView === "CARDS" && !advancedFiltersOpen &&
-    !otherFilterCount && !navigationIntent && !addModalActive && !showRollModal &&
+  const requestCards = !requiresFullStock && inventoryView === "CARDS" && !navigationIntent && !addModalActive && !showRollModal &&
     !recentlyAddedSpoolId && !detailVisualFixture;
   const requestCardsRef = useRef(requestCards);
   useEffect(() => { requestCardsRef.current = requestCards; }, [requestCards]);
@@ -412,9 +411,17 @@ export default function InventoryPage({
       void refreshInventoryData();
     }
   }, [cardPage, requestCards, activeWorkspaceView, librarySyncReady, refreshInventoryData]);
+  const cardFilters = useMemo(() => advancedFiltersOpen || otherFilterCount ? {
+    status: statusFilter === "ALL" ? undefined : statusFilter,
+    ownership: ownershipFilter === "ALL" ? undefined : ownershipFilter,
+    material: materialFilter === "ALL" ? undefined : materialFilter,
+    vendor: vendorFilter === "ALL" ? undefined : vendorFilter,
+    location_id: locationFilter?.id, low_stock: lowStockOnly, include_options: advancedFiltersOpen,
+  } : undefined, [advancedFiltersOpen, otherFilterCount, statusFilter, ownershipFilter, materialFilter,
+    vendorFilter, locationFilter?.id, lowStockOnly]);
   const cardSearch = search.trim();
   const lastCardSearchAt = useRef(-Infinity);
-  const pendingCardSearch = requestCards && cardPage != null && cardPage.search !== cardSearch;
+  const pendingCardSearch = requestCards && cardPage != null && (cardPage.search !== cardSearch || cardPage.filters !== cardFilters);
   useEffect(() => {
     if (!pendingCardSearch || activeWorkspaceView !== "STOCK" || !librarySyncReady) return;
     let current = true;
@@ -422,11 +429,11 @@ export default function InventoryPage({
     const timer = window.setTimeout(() => {
       lastCardSearchAt.current = performance.now();
       void reloadSpools(undefined, undefined, true, undefined, undefined, {
-        text: cardSearch, current: () => current,
+        text: cardSearch, filters: cardFilters, current: () => current,
       });
     }, delay);
     return () => { current = false; window.clearTimeout(timer); };
-  }, [activeWorkspaceView, cardSearch, librarySyncReady, locationAuthorityKey, pendingCardSearch, reloadSpools]);
+  }, [activeWorkspaceView, cardFilters, cardSearch, librarySyncReady, locationAuthorityKey, pendingCardSearch, reloadSpools]);
   const waitingForAllRows = Boolean(cardPage && (!requestCards || pendingCardSearch));
   const cardTotals = useMemo(() => new Map(cardPage?.cards.map(card =>
     [card.rows[0]?.id, {count: card.count, remaining: card.remaining}])), [cardPage]);
@@ -1621,7 +1628,7 @@ export default function InventoryPage({
           inventoryView,
           locationFilter,
           materialFilter,
-          materialOptions,
+          materialOptions: cardPage ? cardPage.options?.materials ?? ["ALL"] : materialOptions,
           onAdvancedFiltersOpenChange: setAdvancedFiltersOpen,
           onInventoryViewChange: setInventoryView,
           onLocationFilterClear: clearLocationFilter,
@@ -1631,7 +1638,7 @@ export default function InventoryPage({
           onVendorFilterChange: setVendorFilter,
           ownershipFilter,
           vendorFilter,
-          vendorOptions,
+          vendorOptions: cardPage ? cardPage.options?.vendors ?? ["ALL"] : vendorOptions,
           visibleInventoryCount: waitingForAllRows ? null : cardPage?.visible ?? visibleInventoryCount,
         }}
         error={activeWorkspaceView === "LOCATIONS" ? locationError ?? error : activeWorkspaceView === "STOCK" ? bulkError ?? error : error}
