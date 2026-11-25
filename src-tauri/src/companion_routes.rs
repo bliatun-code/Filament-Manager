@@ -56,6 +56,7 @@ fn build_router_with_security_config(
         .route("/library/snapshot", get(handle_library_snapshot))
         .route("/library/printer-spool-picker", post(handle_printer_picker_page))
         .route("/library/loan-workspace-counts", get(handle_loan_workspace_counts))
+        .route("/library/purchase-queue", post(handle_purchase_queue_page))
         .route("/library/stock-cards", post(handle_stock_cards))
         .route("/library/location-spools", post(handle_location_spools))
         .route("/library/loan-spool-picker", post(handle_loan_picker_page))

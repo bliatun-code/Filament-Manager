@@ -61,6 +61,7 @@ export type WishlistQueuePanelProps = {
   ) => Promise<boolean>;
   resolvedTheme: ResolvedTheme;
   query: string;
+  page?: { offset: number; matched: number; size: number; select: (offset: number) => void };
   summary: WishlistQueueSummary;
   tauriAvailable: boolean;
   visibleItems: WishlistItemRow[];
@@ -110,6 +111,7 @@ export function WishlistQueuePanel({
   onStatusChange,
   onStockItem,
   query,
+  page,
   resolvedTheme,
   summary,
   tauriAvailable,
@@ -136,7 +138,7 @@ export function WishlistQueuePanel({
   const resultCount = t(
     "wishlist.resultCount",
     "{count, plural, one {# item} other {# items}}",
-    { count: visibleItems.length },
+    { count: page?.matched ?? visibleItems.length },
   );
 
   const openReceipt = (item: WishlistItemRow) => {
@@ -280,12 +282,12 @@ export function WishlistQueuePanel({
           {t("wishlist.loading", "Loading wishlist...")}
         </div>
       ) : null}
-      {!loading && items.length === 0 ? (
+      {!loading && summary.all === 0 ? (
         <div className="surface-subtle border-dashed px-4 py-3 text-xs text-slate-600 dark:text-slate-300">
           {t("wishlist.empty", "No wishlist items yet.")}
         </div>
       ) : null}
-      {!loading && items.length > 0 && visibleItems.length === 0 ? (
+      {!loading && summary.all > 0 && visibleItems.length === 0 ? (
         <div className="surface-subtle border-dashed px-4 py-3 text-xs text-slate-600 dark:text-slate-300">
           {query.trim()
             ? t("wishlist.noSearchResults", "No wishlist items match this search.")
@@ -455,6 +457,15 @@ export function WishlistQueuePanel({
         })}
       </div>
 
+      {page && page.matched > page.size ? (
+        <div className="flex items-center justify-end gap-3">
+          <button type="button" className="btn-secondary" disabled={loading || page.offset === 0}
+            onClick={() => page.select(Math.max(0, page.offset - page.size))}>{t("common.back", "Back")}</button>
+          <span className="tabular-nums">{page.offset + 1}–{page.offset + visibleItems.length} / {page.matched}</span>
+          <button type="button" className="btn-secondary" disabled={loading || page.offset + page.size >= page.matched}
+            onClick={() => page.select(page.offset + page.size)}>{t("common.continue", "Continue")}</button>
+        </div>
+      ) : null}
       {receiptItem ? (
         <WishlistReceiptModal
           busy={busy || receiptSubmitting}

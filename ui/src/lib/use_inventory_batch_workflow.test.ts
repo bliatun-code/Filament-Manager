@@ -17,6 +17,7 @@ async function buildBatchWorkflowHarness() {
     import React, { useState } from "react";
     import { createRoot } from "react-dom/client";
     import { flushSync } from "react-dom";
+    import { useWishlistQueue } from ${file("./use_wishlist_queue.ts")};
     import { useInventoryAddWorkflow } from ${file("./use_inventory_add_workflow.ts")};
     import { InventoryAddModal } from ${file("../components/inventory_add_modal.tsx")};
     import { I18nContext } from ${file("./i18n.ts")};
@@ -59,6 +60,7 @@ async function buildBatchWorkflowHarness() {
       const [selected, setSelectedSpoolId] = useState(null);
       const [recent, setRecentlyAddedSpoolId] = useState(null);
       workflow = useInventoryAddWorkflow({
+        purchaseQueue: useWishlistQueue(),
         canUseClientHostWrite: allow, clientHostBaseUrl: host ? "http://" + host : null,
         clientLibraryId: host ? "library-" + host : "library-local",
         clientReadOnly: Boolean(host), clientTargetGeneration: generation,

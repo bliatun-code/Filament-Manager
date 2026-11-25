@@ -36,7 +36,7 @@ test("Dashboard purchase handoff stays with the reviewed library", async (t) => 
   const replacement = { ...origin, host_base_url: "http://host-b.test", library_id: "library-b", target_generation: 2 };
   const backToA = { ...origin, target_generation: 3 };
 
-  for (const scenario of ["older ordered purchase", "switch after save", "A–B–A after save", "switch on arrival", "A–B–A on arrival", "offline return", "switch before offline return",
+  for (const scenario of ["paged queue", "older ordered purchase", "switch after save", "A–B–A after save", "switch on arrival", "A–B–A on arrival", "offline return", "switch before offline return",
     "refresh cached queue", "refresh without a saved queue", "switch during queue read", "A–B–A during cached read", "receive and open stock"] as const) {
     await t.test(scenario, async () => {
       const page = await browser.newPage();
@@ -57,6 +57,7 @@ test("Dashboard purchase handoff stays with the reviewed library", async (t) => 
           return sample;
         };
         await page.exposeFunction("purchaseInvoke", async (cmd: string, args: {
+          query?: { status: string; search: string; offset: number; reviewed_item_id?: string };
           input?: CreatePayload;
           target?: LibraryReadTarget | WishlistPurchaseTarget;
         } = {}) => {
@@ -84,6 +85,18 @@ test("Dashboard purchase handoff stays with the reviewed library", async (t) => 
             case "fetch_library_sync_snapshot": return snapshot;
             case "fetch_library_sync_spool_detail": return { spool: rows[0], history: [], usage: [] };
             case "fetch_library_sync_spool_snapshot": return { rows, captured_at: snapshot.captured_at };
+            case "get_purchase_queue_page": {
+              if (scenario !== "paged queue") return null;
+              assert.deepEqual(args.target, { base_url: origin.host_base_url, expected_library_id: origin.library_id,
+                target_generation: origin.target_generation });
+              if (queueOffline) throw new Error("Host offline");
+              const q = args.query!;
+              const recent = Array.from({length: 501}, (_, i) => ({ ...saved[0], id: String(i), filament_name: "Receipt " + i, status: "RECEIVED" }));
+              const matching = [saved[0], ...recent].filter(r => (q.status === "ALL" || r.status === q.status) &&
+                r.filament_name.toLowerCase().includes(q.search.toLowerCase()));
+              return { summary: { all:502, onOrder:1, received:501, wishlist:0 }, offset:q.offset,
+                matched:matching.length, rows:matching.slice(q.offset,q.offset+50) };
+            }
             case "fetch_library_sync_wishlist_items": {
               if (!saved.length) return [];
               if (target !== origin) {
@@ -129,7 +142,7 @@ test("Dashboard purchase handoff stays with the reviewed library", async (t) => 
               assert.deepEqual(args.target, origin);
               saved.push({ ...args.input, status: "WISHLIST", id: "host-assigned-id",
                 created_at: snapshot.captured_at, updated_at: snapshot.captured_at });
-              if (scenario === "older ordered purchase") {
+              if (scenario === "older ordered purchase" || scenario === "paged queue") {
                 saved[0].status = "ON_ORDER";
                 saved[0].quantity = 7;
                 return { kind: "REUSED", itemId: saved[0].id, status: "ON_ORDER", match: "MASTER_ID" };
@@ -175,7 +188,22 @@ test("Dashboard purchase handoff stays with the reviewed library", async (t) => 
 
         const queue = page.locator("#inventory-purchases-panel:not([hidden])");
         const notice = "Added to the wishlist. Opening Purchases.";
-        if (scenario === "older ordered purchase") {
+        if (scenario === "paged queue") {
+          await queue.getByText(/Purchased roll/).first().waitFor();
+          assert.equal(await page.locator("#inventory-purchases-tab .inventory-workspace-count").innerText(), "502");
+          await queue.getByRole("button", {name:"Received 501", exact:true}).click();
+          await queue.getByText("1–50 / 501").waitFor();
+          await queue.getByRole("button", {name:"Continue"}).click();
+          await queue.getByText("51–100 / 501").waitFor();
+          await queue.getByRole("searchbox").fill("Receipt 500");
+          await queue.getByText(/Receipt 500/).first().waitFor();
+          assert.ok(!calls.includes("fetch_library_sync_wishlist_items"));
+          queueOffline = true;
+          await queue.getByRole("searchbox").fill("");
+          await page.waitForFunction(() => document.querySelector("#inventory-purchases-tab .inventory-workspace-count")?.textContent === "1");
+          await queue.getByRole("button", {name:"On order 1", exact:true}).click();
+          await queue.getByText(/Cached purchase/).first().waitFor();
+        } else if (scenario === "older ordered purchase") {
           await queue.getByText(/Purchased roll/).first().waitFor();
           assert.equal(await queue.getByText(/Recent receipt/).count(), 0);
           assert.equal(calls.filter(cmd => cmd === "ensure_dashboard_purchase").length, 1);

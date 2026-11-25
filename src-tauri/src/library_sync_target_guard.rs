@@ -7,7 +7,7 @@ use crate::secure_credential_mutation::lock_secure_credential_mutation;
 use crate::state::AppState;
 use crate::{with_db, with_inventory};
 
-#[derive(serde::Deserialize)]
+#[derive(Clone, serde::Deserialize)]
 pub(crate) struct LibraryReadTarget {
     pub(crate) base_url: Option<String>,
     pub(crate) expected_library_id: String,

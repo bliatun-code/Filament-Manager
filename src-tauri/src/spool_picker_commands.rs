@@ -6,6 +6,7 @@ use crate::{
     backend::database_printer_picker::{PrinterPickerPage, PrinterPickerQuery},
     backend::database_result::InventoryResult,
     backend::database_stock_cards::{StockCardPage, StockCardQuery},
+    backend::database_wishlist_queue::{PurchaseQueuePage, PurchaseQueueQuery},
     backend::filament_database::FilamentDatabase,
     companion_models::{
         LOAN_PICKER_CAPABILITY, LOCATION_SPOOLS_CAPABILITY, PRINTER_PICKER_CAPABILITY,
@@ -75,6 +76,39 @@ pub(crate) fn loan_picker_page_blocking(
         "/api/v1/library/loan-spool-picker",
         FilamentDatabase::loan_picker_page,
     )
+}
+
+#[tauri::command]
+pub(crate) async fn get_purchase_queue_page(
+    state: tauri::State<'_, AppState>,
+    query: PurchaseQueueQuery,
+    target: PickerTarget,
+) -> Result<Option<PurchaseQueuePage>, String> {
+    let state = state.inner().clone();
+    run_library_sync_blocking(move || purchase_queue_page_blocking(&state, query, target)).await
+}
+
+pub(crate) fn purchase_queue_page_blocking(
+    state: &AppState,
+    query: PurchaseQueueQuery,
+    target: PickerTarget,
+) -> Result<Option<PurchaseQueuePage>, String> {
+    let page = read_picker_page(
+        state,
+        &query,
+        target.clone(),
+        crate::companion_models::PURCHASE_QUEUE_CAPABILITY,
+        "/api/v1/library/purchase-queue",
+        FilamentDatabase::purchase_queue_page,
+    )?;
+    if let (Some(_), Some(page)) = (&target.base_url, &page) {
+        target.with_database(state, |db| {
+            // A cache storage failure must not hide a successful live read.
+            let _ = db.cache_purchase_queue_page(page);
+            Ok(())
+        })?;
+    }
+    Ok(page)
 }
 
 #[tauri::command]

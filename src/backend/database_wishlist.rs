@@ -13,6 +13,22 @@ use super::database_spool_models::SpoolRow;
 use super::database_wishlist_models::{WishlistItemRow, WishlistReceiptResult};
 use super::purchase_receipt_metadata::PurchaseReceiptMetadata;
 
+pub(crate) fn map_wishlist_item(row: &rusqlite::Row<'_>) -> rusqlite::Result<WishlistItemRow> {
+    Ok(WishlistItemRow {
+        id: row.get(0)?,
+        master_id: row.get(1)?,
+        material: row.get(2)?,
+        filament_name: row.get(3)?,
+        color_name: row.get(4)?,
+        vendor: row.get(5)?,
+        status: row.get(6)?,
+        quantity: row.get(7)?,
+        note: row.get(8)?,
+        created_at: row.get(9)?,
+        updated_at: row.get(10)?,
+    })
+}
+
 pub(crate) fn list_wishlist_items(
     conn: &Connection,
     limit: i64,
@@ -24,21 +40,7 @@ pub(crate) fn list_wishlist_items(
          ORDER BY updated_at DESC, created_at DESC
          LIMIT ?1",
     )?;
-    let rows = stmt.query_map(params![limit], |row| {
-        Ok(WishlistItemRow {
-            id: row.get(0)?,
-            master_id: row.get(1)?,
-            material: row.get(2)?,
-            filament_name: row.get(3)?,
-            color_name: row.get(4)?,
-            vendor: row.get(5)?,
-            status: row.get(6)?,
-            quantity: row.get(7)?,
-            note: row.get(8)?,
-            created_at: row.get(9)?,
-            updated_at: row.get(10)?,
-        })
-    })?;
+    let rows = stmt.query_map(params![limit], map_wishlist_item)?;
     let mut results = Vec::new();
     for row in rows {
         results.push(row?);
@@ -313,21 +315,7 @@ pub(crate) fn wishlist_item_by_id(
          FROM wishlist_items
          WHERE id = ?1",
         params![item_id],
-        |row| {
-            Ok(WishlistItemRow {
-                id: row.get(0)?,
-                master_id: row.get(1)?,
-                material: row.get(2)?,
-                filament_name: row.get(3)?,
-                color_name: row.get(4)?,
-                vendor: row.get(5)?,
-                status: row.get(6)?,
-                quantity: row.get(7)?,
-                note: row.get(8)?,
-                created_at: row.get(9)?,
-                updated_at: row.get(10)?,
-            })
-        },
+        map_wishlist_item,
     )
     .optional()
     .map_err(InventoryError::from)

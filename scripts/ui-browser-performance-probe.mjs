@@ -772,6 +772,7 @@ export function resolveUiBrowserPerformanceInvoke(
       return [];
     case "set_window_title":
     case "set_dock_icon_theme":
+    case "get_purchase_queue_page": // This fixture models a Host with the legacy purchase queue.
     case "set_native_window_theme":
     case "set_desktop_tray_menu_labels":
     case "prepare_desktop_visual_qa_window":

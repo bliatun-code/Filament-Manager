@@ -101,6 +101,7 @@ pub mod database_values;
 pub mod database_wishlist;
 pub mod database_wishlist_facade;
 pub mod database_wishlist_models;
+pub mod database_wishlist_queue;
 pub mod filament_database;
 pub mod filament_master_models;
 pub mod filament_standards;

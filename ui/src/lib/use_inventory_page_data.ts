@@ -45,10 +45,14 @@ import type {
 import type { InventoryLocationRow } from "./tauri_location_client";
 import type { InventorySpool } from "./inventory_list_model";
 
+import { loadPurchaseQueuePage, type PurchaseQueueQuery, type PurchaseQueuePage } from "./purchase_queue_page";
 import type { InventoryNavigationIntent } from "./app_navigation_model";
 import { matchesWishlistPurchaseTarget } from "./tauri_wishlist_client";
 
+const stockQueueQuery: PurchaseQueueQuery = { status: "ALL", search: "", offset: 0 };
+
 type InventoryPageDataInput = {
+  queueQuery?: PurchaseQueueQuery;
   purchaseIntent?: Extract<InventoryNavigationIntent, { kind: "PURCHASES" }> | null;
   setRfidCaptureFieldsBySlotId: Dispatch<SetStateAction<Record<string, RfidCaptureField[]>>>;
   tauriAvailable: boolean;
@@ -112,6 +116,7 @@ function createInventoryDomainSources(): Record<
 }
 
 export function useInventoryPageData({
+  queueQuery = stockQueueQuery,
   purchaseIntent,
   setRfidCaptureFieldsBySlotId,
   tauriAvailable,
@@ -173,6 +178,8 @@ export function useInventoryPageData({
   const [usageLoading, setUsageLoading] = useState(false);
   const [usagePoints, setUsagePoints] = useState<SpoolUsagePointRow[]>([]);
   const [wishlistLoading, setWishlistLoading] = useState(false);
+  const [queueResult, setQueueResult] = useState<{query: PurchaseQueueQuery; page: PurchaseQueuePage} | null>(null);
+  const queuePage = queueResult?.query === queueQuery ? queueResult?.page : undefined;
   const [wishlistItems, setWishlistItems] = useState<WishlistItemRow[]>([]);
   const [activeLoans, setActiveLoans] = useState<ActiveSpoolLoanRow[]>([]);
   const [printerOverview, setPrinterOverview] = useState<PrinterOverviewRow[]>([]);
@@ -223,6 +230,7 @@ export function useInventoryPageData({
     setLocationsLoading(false);
     setLocationMutationsSupported(false);
     setLocationSource("OFFLINE");
+    setQueueResult(null);
     setWishlistItems([]);
     setWishlistLoading(false);
     setActiveLoans([]);
@@ -523,14 +531,20 @@ export function useInventoryPageData({
     const requestId = beginDataRequest("wishlist");
     setWishlistLoading(true);
     try {
-      const result = await loadWishlistItemsSnapshot({
+      const options = {
         reviewedItemId,
         reviewedTarget,
         clientReadOnly,
         clientHostBaseUrl,
         clientLibraryId,
         clientTargetGeneration,
-      });
+      };
+      const target = clientLibraryId && clientTargetGeneration != null && (!clientReadOnly || clientHostBaseUrl)
+        ? { base_url: clientReadOnly ? clientHostBaseUrl : null, expected_library_id: clientLibraryId, target_generation: clientTargetGeneration }
+        : null;
+      const result = target
+        ? await loadPurchaseQueuePage(target, queueQuery, options)
+        : { ...await loadWishlistItemsSnapshot(options), page: null };
       const pairingRejected = checkPairing && result.source !== "LIVE" && clientHostWritePaired &&
         clientHostBaseUrl && clientLibraryId && dataRequestIsCurrent("wishlist", requestId) &&
         await inventoryFallbackPairingRejected(clientHostBaseUrl, clientLibraryId);
@@ -551,6 +565,7 @@ export function useInventoryPageData({
         recordClientInventoryDomainSource("wishlist", "OFFLINE");
         return;
       }
+      setQueueResult(result.page ? {query: queueQuery, page: result.page} : null);
       setWishlistItems(result.rows);
       recordClientInventoryDomainSource("wishlist", result.source);
       reportResult?.("wishlist", result.source);
@@ -560,6 +575,7 @@ export function useInventoryPageData({
         return;
       }
       console.error(wishlistError);
+      if (reportResult) setQueueResult(null);
       if (reportResult && clientReadOnly) {
         setWishlistItems([]);
       }
@@ -573,6 +589,7 @@ export function useInventoryPageData({
       }
     }
   }, [
+    queueQuery,
     reviewedItemId,
     reviewedTarget,
     beginDataRequest,
@@ -942,7 +959,8 @@ export function useInventoryPageData({
     refreshing,
     usageLoading,
     usagePoints,
-    wishlistItems,
+    queuePage,
+    wishlistItems: queueResult && !queuePage ? [] : wishlistItems,
     wishlistLoading,
   };
 }
