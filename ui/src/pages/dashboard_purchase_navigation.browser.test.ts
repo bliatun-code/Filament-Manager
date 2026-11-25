@@ -36,11 +36,12 @@ test("Dashboard purchase handoff stays with the reviewed library", async (t) => 
   const replacement = { ...origin, host_base_url: "http://host-b.test", library_id: "library-b", target_generation: 2 };
   const backToA = { ...origin, target_generation: 3 };
 
-  for (const scenario of ["paged queue", "older ordered purchase", "switch after save", "A–B–A after save", "switch on arrival", "A–B–A on arrival", "offline return", "switch before offline return",
+  for (const scenario of ["paged queue", "A–B–A during search", "older ordered purchase", "switch after save", "A–B–A after save", "switch on arrival", "A–B–A on arrival", "offline return", "switch before offline return",
     "refresh cached queue", "refresh without a saved queue", "switch during queue read", "A–B–A during cached read", "receive and open stock"] as const) {
     await t.test(scenario, async () => {
       const page = await browser.newPage();
       try {
+        if (scenario === "paged queue") await page.clock.install();
         let target = origin;
         let offline = false;
         let queueOffline = scenario === "refresh cached queue" || scenario === "refresh without a saved queue" || scenario === "A–B–A during cached read";
@@ -49,6 +50,7 @@ test("Dashboard purchase handoff stays with the reviewed library", async (t) => 
         let arrivalRead = false;
         let checkedAfterSave = false;
         const calls: string[] = [];
+        const queueSearches: string[] = [];
         const saved: WishlistItemRow[] = [];
         const row = (name: string) => {
           const sample = structuredClone(fixture.spoolRows[0]);
@@ -86,11 +88,19 @@ test("Dashboard purchase handoff stays with the reviewed library", async (t) => 
             case "fetch_library_sync_spool_detail": return { spool: rows[0], history: [], usage: [] };
             case "fetch_library_sync_spool_snapshot": return { rows, captured_at: snapshot.captured_at };
             case "get_purchase_queue_page": {
-              if (scenario !== "paged queue") return null;
-              assert.deepEqual(args.target, { base_url: origin.host_base_url, expected_library_id: origin.library_id,
-                target_generation: origin.target_generation });
-              if (queueOffline) throw new Error("Host offline");
+              if (scenario !== "paged queue" && scenario !== "A–B–A during search") return null;
+              assert.deepEqual(args.target, { base_url: target.host_base_url, expected_library_id: target.library_id,
+                target_generation: target.target_generation });
               const q = args.query!;
+              queueSearches.push(q.search);
+              if (scenario === "A–B–A during search") {
+                if (target === backToA) assert.equal(q.search, "");
+                const name = target === backToA ? "Current purchase" : q.search ? "Obsolete search result" : "Purchased roll";
+                if (q.search) target = backToA;
+                return { summary: {all:1, wishlist:1, onOrder:0, received:0}, matched:1, offset:0,
+                  rows:[{...saved[0], filament_name:name}] };
+              }
+              if (queueOffline) throw new Error("Host offline");
               const recent = Array.from({length: 501}, (_, i) => ({ ...saved[0], id: String(i), filament_name: "Receipt " + i, status: "RECEIVED" }));
               const matching = [saved[0], ...recent].filter(r => (q.status === "ALL" || r.status === q.status) &&
                 r.filament_name.toLowerCase().includes(q.search.toLowerCase()));
@@ -188,18 +198,40 @@ test("Dashboard purchase handoff stays with the reviewed library", async (t) => 
 
         const queue = page.locator("#inventory-purchases-panel:not([hidden])");
         const notice = "Added to the wishlist. Opening Purchases.";
-        if (scenario === "paged queue") {
+        if (scenario === "A–B–A during search") {
+          await queue.getByText(/Purchased roll/).first().waitFor();
+          await queue.getByRole("searchbox").fill("original library search");
+          await queue.getByText(/Current purchase/).first().waitFor();
+          assert.equal(await queue.getByRole("searchbox").inputValue(), "");
+          assert.ok(!await page.evaluate("window.purchasePaints.some(text => text.includes('Obsolete search result'))"));
+        } else if (scenario === "paged queue") {
           await queue.getByText(/Purchased roll/).first().waitFor();
           assert.equal(await page.locator("#inventory-purchases-tab .inventory-workspace-count").innerText(), "502");
           await queue.getByRole("button", {name:"Received 501", exact:true}).click();
           await queue.getByText("1–50 / 501").waitFor();
           await queue.getByRole("button", {name:"Continue"}).click();
           await queue.getByText("51–100 / 501").waitFor();
-          await queue.getByRole("searchbox").fill("Receipt 500");
+          await page.clock.pauseAt(new Date(await page.evaluate(() => Date.now()) + 1000));
+          const search = queue.getByRole("searchbox");
+          queueSearches.length = 0;
+          await search.pressSequentially("Receipt 500");
+          assert.equal(await search.inputValue(), "Receipt 500");
+          assert.deepEqual(queueSearches, []);
+          await page.clock.runFor(200);
           await queue.getByText(/Receipt 500/).first().waitFor();
+          assert.deepEqual(queueSearches, ["Receipt 500"]);
           assert.ok(!calls.includes("fetch_library_sync_wishlist_items"));
+          await search.fill("Receipt 499");
+          await queue.getByRole("button", {name: "All 502", exact: true}).click({force: true});
+          await queue.getByText(/Receipt 499/).first().waitFor();
+          await page.clock.runFor(250);
+          assert.deepEqual(queueSearches, ["Receipt 500", "Receipt 499"]);
+          await search.fill("discarded draft");
           queueOffline = true;
-          await queue.getByRole("searchbox").fill("");
+          await search.fill("");
+          await page.clock.runFor(250);
+          assert.ok(!queueSearches.includes("discarded draft"));
+          await page.clock.resume();
           await page.waitForFunction(() => document.querySelector("#inventory-purchases-tab .inventory-workspace-count")?.textContent === "1");
           await queue.getByRole("button", {name:"On order 1", exact:true}).click();
           await queue.getByText(/Cached purchase/).first().waitFor();
