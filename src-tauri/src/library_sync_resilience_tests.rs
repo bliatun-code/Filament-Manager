@@ -1436,3 +1436,65 @@ async fn real_tcp_client_completes_the_five_fixed_workflows_on_the_host() {
     assert_eq!(client_local_snapshot(&client_db_path), client_local_before);
     host.stop().await;
 }
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn stock_purchase_count_refreshes_the_offline_copy_after_an_order() {
+    use crate::spool_picker_commands::{stock_purchase_count_blocking, PickerTarget};
+    let _guard = RESILIENCE_PROCESS_TEST_LOCK.lock().await;
+    let host_path = temp_db_path("purchase-host");
+    let client_path = temp_db_path("purchase-client");
+    let _files = TestDatabases::new(vec![host_path.clone(), client_path.clone()]);
+    seed_host(&host_path);
+    let host = HostProcess::start(&host_path, 0, 1).await;
+    let url = format!("http://127.0.0.1:{}", host.port());
+    configure_client(&client_path, &url);
+    let client = app_state(
+        &client_path,
+        TrustedLanCompanionRuntime::new(host.port()).with_qa_mode(true),
+    );
+    let generation = pair_client_with_host(&client, &client_path, &url).await;
+    let read = || {
+        let state = client.clone();
+        let target = PickerTarget {
+            base_url: Some(url.clone()),
+            expected_library_id: HOST_LIBRARY_ID.into(),
+            target_generation: generation,
+        };
+        run_blocking(move || stock_purchase_count_blocking(&state, target))
+    };
+    assert_eq!(read().await, Some(0));
+    let db = FilamentDatabase::open(&host_path).unwrap();
+    let host_inventory = InventoryEngine::new(db);
+    host_inventory
+        .create_wishlist_item(CreateWishlistItemInput {
+            id: "new-order".into(),
+            master_id: None,
+            material: "PLA".into(),
+            filament_name: "Silk".into(),
+            color_name: "Blue".into(),
+            vendor: None,
+            quantity: Some(1),
+            note: None,
+        })
+        .unwrap();
+    host_inventory
+        .update_wishlist_item_status(UpdateWishlistStatusInput {
+            item_id: "new-order".into(),
+            status: "ON_ORDER".into(),
+        })
+        .unwrap();
+    assert_eq!(read().await, Some(1));
+    assert_eq!(read().await, Some(1));
+    host.stop().await;
+    let saved = FilamentDatabase::open(&client_path)
+        .unwrap()
+        .get_library_sync_settings()
+        .unwrap()
+        .cached_wishlist
+        .unwrap();
+    assert_eq!(saved.rows.len(), 1);
+    assert!(saved
+        .rows
+        .iter()
+        .any(|row| row.id == "new-order" && row.status == "ON_ORDER"));
+}

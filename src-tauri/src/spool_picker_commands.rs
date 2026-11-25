@@ -6,7 +6,7 @@ use crate::{
     backend::database_printer_picker::{PrinterPickerPage, PrinterPickerQuery},
     backend::database_result::InventoryResult,
     backend::database_stock_cards::{StockCardPage, StockCardQuery},
-    backend::database_wishlist_queue::{PurchaseQueuePage, PurchaseQueueQuery},
+    backend::database_wishlist_queue::{PurchaseQueuePage, PurchaseQueueQuery, StockPurchaseQuery},
     backend::filament_database::FilamentDatabase,
     companion_models::{
         LOAN_PICKER_CAPABILITY, LOCATION_SPOOLS_CAPABILITY, PRINTER_PICKER_CAPABILITY,
@@ -76,6 +76,45 @@ pub(crate) fn loan_picker_page_blocking(
         "/api/v1/library/loan-spool-picker",
         FilamentDatabase::loan_picker_page,
     )
+}
+
+#[tauri::command]
+pub(crate) async fn get_stock_purchase_count(
+    state: tauri::State<'_, AppState>,
+    target: PickerTarget,
+) -> Result<Option<i64>, String> {
+    let state = state.inner().clone();
+    run_library_sync_blocking(move || stock_purchase_count_blocking(&state, target)).await
+}
+
+pub(crate) fn stock_purchase_count_blocking(
+    state: &AppState,
+    target: PickerTarget,
+) -> Result<Option<i64>, String> {
+    if target.base_url.is_none() {
+        return target
+            .with_database(state, FilamentDatabase::stock_purchase_count)
+            .map(Some);
+    }
+    let cached_revision =
+        target.with_database(state, FilamentDatabase::cached_stock_purchase_revision)?;
+    let Some(snapshot) = read_picker_page(
+        state,
+        &StockPurchaseQuery { cached_revision },
+        target.clone(),
+        crate::companion_models::STOCK_PURCHASE_COUNT_CAPABILITY,
+        "/api/v1/library/stock-purchase-count",
+        FilamentDatabase::stock_purchase_snapshot,
+    )?
+    else {
+        return Ok(None);
+    };
+    target.with_database(state, |db| {
+        if let Some(rows) = snapshot.rows {
+            let _ = db.cache_purchase_rows(&rows, snapshot.total, snapshot.revision, true);
+        }
+        Ok(Some(snapshot.total))
+    })
 }
 
 #[tauri::command]

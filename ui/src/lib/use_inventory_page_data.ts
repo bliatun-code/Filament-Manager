@@ -180,8 +180,8 @@ export function useInventoryPageData({
   const [usageLoading, setUsageLoading] = useState(false);
   const [usagePoints, setUsagePoints] = useState<SpoolUsagePointRow[]>([]);
   const [wishlistLoading, setWishlistLoading] = useState(false);
-  const [queueResult, setQueueResult] = useState<{query: PurchaseQueueQuery; page: PurchaseQueuePage} | null>(null);
-  const queuePage = queueResult?.query === queueQuery ? queueResult?.page : undefined;
+  const [queueResult, setQueueResult] = useState<{query: PurchaseQueueQuery; page: PurchaseQueuePage | null; total: number} | null>(null);
+  const queuePage = queueResult?.query === queueQuery ? queueResult?.page ?? undefined : undefined;
   const [wishlistItems, setWishlistItems] = useState<WishlistItemRow[]>([]);
   const [activeLoans, setActiveLoans] = useState<ActiveSpoolLoanRow[]>([]);
   const [printerOverview, setPrinterOverview] = useState<PrinterOverviewRow[]>([]);
@@ -546,8 +546,8 @@ export function useInventoryPageData({
         ? { base_url: clientReadOnly ? clientHostBaseUrl : null, expected_library_id: clientLibraryId, target_generation: clientTargetGeneration }
         : null;
       const result = target
-        ? await loadPurchaseQueuePage(target, queueQuery, options)
-        : { ...await loadWishlistItemsSnapshot(options), page: null };
+        ? await loadPurchaseQueuePage(target, queueQuery, options, queueQuery === stockQueueQuery)
+        : { ...await loadWishlistItemsSnapshot(options), page: null, total: undefined };
       const pairingRejected = checkPairing && result.source !== "LIVE" && clientHostWritePaired &&
         clientHostBaseUrl && clientLibraryId && dataRequestIsCurrent("wishlist", requestId) &&
         await inventoryFallbackPairingRejected(clientHostBaseUrl, clientLibraryId);
@@ -568,7 +568,11 @@ export function useInventoryPageData({
         recordClientInventoryDomainSource("wishlist", "OFFLINE");
         return;
       }
-      setQueueResult(result.page ? {query: queueQuery, page: result.page} : null);
+      setQueueResult({
+        query: queueQuery,
+        page: result.page,
+        total: result.total ?? result.page?.summary.all ?? result.rows.length,
+      });
       setWishlistItems(result.rows);
       recordClientInventoryDomainSource("wishlist", result.source);
       reportResult?.("wishlist", result.source);
@@ -962,8 +966,9 @@ export function useInventoryPageData({
     refreshing,
     usageLoading,
     usagePoints,
+    purchaseCount: queueResult?.query === queueQuery ? queueResult.total : undefined,
     queuePage,
-    wishlistItems: queueResult && !queuePage ? [] : wishlistItems,
+    wishlistItems: queueResult && queueResult.query !== queueQuery ? [] : wishlistItems,
     wishlistLoading,
   };
 }

@@ -1,8 +1,8 @@
-import { getPurchaseQueuePage, type WishlistItemRow } from "./tauri_wishlist_client";
+import { getPurchaseQueuePage, getStockPurchaseCount, type WishlistItemRow } from "./tauri_wishlist_client";
 import { fetchCachedLibrarySyncWishlist, type LibraryReadTarget } from "./tauri_library_sync_client";
 import {
   filterWishlistQueueItems, loadWishlistItemsSnapshot, summarizeWishlistQueue,
-  type WishlistDataSourceOptions, type WishlistQueueSummary, type WishlistStatusFilter,
+  type WishlistDataSourceOptions, type WishlistItemsLoadResult, type WishlistQueueSummary, type WishlistStatusFilter,
 } from "./wishlist_data_source";
 
 export const PURCHASE_PAGE_SIZE = 50;
@@ -20,8 +20,17 @@ function pageOfSavedRows(rows: WishlistItemRow[], query: PurchaseQueueQuery, pin
   return { rows: ordered.slice(offset, offset + PURCHASE_PAGE_SIZE), matched: ordered.length, offset, summary: summarizeWishlistQueue(rows) };
 }
 
-export async function loadPurchaseQueuePage(target: LibraryReadTarget, query: PurchaseQueueQuery, options: WishlistDataSourceOptions) {
+export async function loadPurchaseQueuePage(
+  target: LibraryReadTarget,
+  query: PurchaseQueueQuery,
+  options: WishlistDataSourceOptions,
+  stockCountOnly = false,
+): Promise<WishlistItemsLoadResult & { page: PurchaseQueuePage | null; total?: number }> {
   try {
+    if (stockCountOnly) {
+      const total = await getStockPurchaseCount(target);
+      if (total != null) return { total, rows: [], page: null, source: "LIVE" as const };
+    }
     const page = await getPurchaseQueuePage(target, query, options.reviewedItemId);
     if (page) return { rows: page.rows, page, source: "LIVE" as const };
   } catch (error) {

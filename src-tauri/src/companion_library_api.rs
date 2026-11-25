@@ -67,6 +67,7 @@ pub(super) async fn handle_health(
                     PRINTER_PICKER_CAPABILITY,
                     LOAN_PICKER_CAPABILITY,
                     crate::companion_models::STOCK_CARDS_CAPABILITY,
+                    crate::companion_models::STOCK_PURCHASE_COUNT_CAPABILITY,
                     crate::companion_models::PURCHASE_QUEUE_CAPABILITY,
                     crate::companion_models::DASHBOARD_PURCHASE_CAPABILITY,
                     LOCATION_SPOOLS_CAPABILITY,
@@ -244,6 +245,22 @@ pub(super) async fn handle_loan_picker_page(
             db.loan_picker_page(&query)
                 .map(Json)
                 .map_err(CompanionApiError::from)
+        })
+        .await
+}
+
+pub(super) async fn handle_stock_purchase_count(
+    State(state): State<CompanionApiState>,
+    headers: HeaderMap,
+    Json(query): Json<crate::backend::database_wishlist_queue::StockPurchaseQuery>,
+) -> Result<Json<crate::backend::database_wishlist_queue::StockPurchaseSnapshot>, CompanionApiError>
+{
+    require_allowed_host(&headers, &state.runtime)?;
+    state
+        .run_blocking("stock purchase count", move |state| {
+            Ok(Json(
+                FilamentDatabase::open(&state.db_path)?.stock_purchase_snapshot(&query)?,
+            ))
         })
         .await
 }

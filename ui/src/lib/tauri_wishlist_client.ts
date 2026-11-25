@@ -196,6 +196,10 @@ export async function fetchLibrarySyncWishlistItems(
   });
 }
 
+export function getStockPurchaseCount(target: LibraryReadTarget) {
+  return invoke<number | null>("get_stock_purchase_count", { target });
+}
+
 export function getPurchaseQueuePage(target: LibraryReadTarget, query: PurchaseQueueQuery, reviewedItemId?: string) {
   return invoke<PurchaseQueuePage | null>("get_purchase_queue_page", {
     target, query: { ...query, reviewed_item_id: reviewedItemId },

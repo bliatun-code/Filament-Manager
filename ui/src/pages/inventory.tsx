@@ -212,6 +212,7 @@ export default function InventoryPage({
     spools,
     usageLoading,
     usagePoints,
+    purchaseCount,
     queuePage,
     wishlistItems,
     wishlistLoading,
@@ -1686,7 +1687,7 @@ export default function InventoryPage({
         showRollModal={showRollModal}
         totalInventoryCount={compactBadges ? compactCounts?.stock ?? null : hasCount(domainSources.spools) || detailVisualFixture ? (cardPage?.total ?? spools.length) : null}
         totalLocationCount={loansOnly ? loanCounts?.locations ?? null : hasCount(domainSources.locations) ? selectableInventoryLocations(locations).length : null}
-        totalPurchaseCount={compactBadges ? compactCounts?.purchases ?? null : hasCount(domainSources.wishlist) ? queuePage?.summary.all ?? wishlistItems.length : null}
+        totalPurchaseCount={compactBadges ? compactCounts?.purchases ?? null : hasCount(domainSources.wishlist) ? purchaseCount ?? wishlistItems.length : null}
       />
     </div>
   );

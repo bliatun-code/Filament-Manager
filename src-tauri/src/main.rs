@@ -130,7 +130,6 @@ mod trusted_lan_network_watcher;
 mod trusted_lan_pairing_commands;
 mod trusted_lan_runtime_commands;
 mod trusted_lan_status_commands;
-
 pub(crate) use app_storage::{with_db, with_inventory, with_stats};
 use filament_manager_core::backend;
 #[cfg(target_os = "macos")]
@@ -378,6 +377,7 @@ fn main() {
             printer_read_commands::list_printer_overview,
             spool_picker_commands::get_printer_picker_page,
             spool_picker_commands::get_loan_picker_page,
+            spool_picker_commands::get_stock_purchase_count,
             spool_picker_commands::get_purchase_queue_page,
             spool_picker_commands::get_stock_card_page,
             spool_picker_commands::get_location_spool_page,
