@@ -17,6 +17,24 @@ impl FilamentDatabase {
         list_wishlist_item_rows(self.connection(), limit)
     }
 
+    pub fn wishlist_page_with_reviewed_item(
+        &self,
+        limit: i64,
+        item_id: &str,
+    ) -> InventoryResult<Vec<WishlistItemRow>> {
+        self.with_read_transaction(|db| {
+            let mut rows = db.list_wishlist_items(limit)?;
+            if let Some(index) = rows.iter().position(|row| row.id == item_id) {
+                rows[..=index].rotate_right(1);
+            } else if let Some(item) =
+                super::database_wishlist::wishlist_item_by_id(db.connection(), item_id)?
+            {
+                rows.insert(0, item);
+            }
+            Ok(rows)
+        })
+    }
+
     pub fn ensure_dashboard_purchase(
         &self,
         item: &WishlistItemRow,
@@ -141,6 +159,23 @@ mod dashboard_purchase_tests {
             .unwrap()
             .iter()
             .all(|r| r.status == "RECEIVED"));
+        let page = db.list_wishlist_items(500).unwrap();
+        let pinned = db.wishlist_page_with_reviewed_item(500, "old").unwrap();
+        assert_eq!(pinned.len(), 501);
+        assert_eq!(pinned[0].id, "old");
+        assert_eq!(pinned[0].quantity, 7);
+        assert!(pinned[1..].iter().zip(&page).all(|(a, b)| a.id == b.id));
+        let present = db
+            .wishlist_page_with_reviewed_item(500, &page[10].id)
+            .unwrap();
+        assert_eq!(present.len(), 500);
+        assert_eq!(present[0].id, page[10].id);
+        assert_eq!(
+            db.wishlist_page_with_reviewed_item(500, "deleted")
+                .unwrap()
+                .len(),
+            500
+        );
         let expected = DashboardPurchaseResult::Reused {
             item_id: "old".into(),
             status: "ON_ORDER".into(),

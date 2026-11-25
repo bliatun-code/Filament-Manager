@@ -108,7 +108,7 @@ pub(super) async fn handle_list_wishlist_items(
         .run_blocking("wishlist list", move |state| {
             state
                 .service
-                .list_wishlist_items(limit)
+                .list_wishlist_items(limit, None)
                 .map_err(CompanionApiError::from)
         })
         .await?;

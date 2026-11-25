@@ -66,6 +66,7 @@ type DashboardPageProps = {
     status: "WISHLIST" | "ON_ORDER",
     notice?: "CREATED" | "REUSED",
     purchaseTarget?: WishlistPurchaseTarget,
+    reviewedItemId?: string,
   ) => void;
 };
 
@@ -396,7 +397,7 @@ function DashboardContent({
         confirmPurchase(item.id, target);
         if (!dashboardMounted.current) return;
         setActionMessage(dashboardPurchaseNotice(result.kind, t));
-        onOpenPurchases?.(result.status, result.kind, target);
+        onOpenPurchases?.(result.status, result.kind, target, result.itemId);
       } catch (purchaseError) {
         if (purchaseError instanceof Error && purchaseError.message === DASHBOARD_PURCHASE_TARGET_CHANGED) {
           await refreshDashboard();

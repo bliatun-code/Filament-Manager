@@ -166,6 +166,9 @@ clients receive the same item ID. Older Hosts require an update for this Dashboa
 shortcut. Manual purchase entry uses the ordinary create operation. Overlapping clicks share a request only for the same
 product and target. A completed purchase opens Purchases directly for that library.
 Opening and refreshing Purchases reads the queue independently of stock.
+A Dashboard handoff puts the acknowledged order first. If it falls outside
+the regular page, the current Host or local database reads that one extra row
+by ID in the same snapshot. The paired Client saves the returned page for offline use.
 
 Inventory and Purchases read the default purchase currency in the background.
 Local libraries read one SQLite setting. Current Hosts return the currency code

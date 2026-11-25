@@ -148,6 +148,8 @@ export default function InventoryPage({
   const [error, setError] = useState<string | null>(null);
   const [activeWorkspaceView, setActiveWorkspaceView] =
     useState<InventoryWorkspaceView>(initialWorkspaceView);
+  const [reviewedPurchase, setReviewedPurchase] =
+    useState<Extract<InventoryNavigationIntent, { kind: "PURCHASES" }> | null>(null);
   const pendingLoanNavigation = navigationIntent?.kind === "LOANS";
   const loansOnly = activeWorkspaceView === "LOANS";
   const [loanCounts, setLoanCounts] = useState<LoanWorkspaceCounts | null>(null);
@@ -211,6 +213,7 @@ export default function InventoryPage({
     wishlistItems,
     wishlistLoading,
   } = useInventoryPageData({
+    purchaseIntent: purchasesOnly ? reviewedPurchase : null,
     setRfidCaptureFieldsBySlotId,
     tauriAvailable: tauri,
     t,
@@ -490,6 +493,7 @@ export default function InventoryPage({
           return;
         }
       }
+      setReviewedPurchase(navigationIntent);
       resetPurchaseQueue(navigationIntent.status);
       openPurchaseQueue();
       if (navigationIntent.notice) setInfoMessage(dashboardPurchaseNotice(navigationIntent.notice, t));
@@ -1646,7 +1650,10 @@ export default function InventoryPage({
           rows: locations,
           source: locationSource,
         }}
-        onActiveViewChange={setActiveWorkspaceView}
+        onActiveViewChange={(view) => {
+          if (view !== "PURCHASES") setReviewedPurchase(null);
+          setActiveWorkspaceView(view);
+        }}
         onRetryLoadError={retryInventoryPageLoad}
         purchaseQueueProps={purchaseQueueProps}
         headerActionsProps={{

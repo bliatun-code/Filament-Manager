@@ -485,12 +485,13 @@ fn fetch_library_sync_wishlist_items_blocking(
     )?;
 
     let limit = input.limit.unwrap_or(500).clamp(1, 2_500);
+    let mut path = format!("/api/v1/library/wishlist?limit={limit}");
+    if let Some(id) = &input.reviewed_item_id {
+        path.push_str("&reviewed_item_id=");
+        path.push_str(&crate::library_sync_command_support::encode_library_sync_path_segment(id));
+    }
     let primary_rows: Result<Vec<WishlistItemRow>, String> =
-        get_library_sync_host_json_authenticated_for_target(
-            state,
-            &format!("/api/v1/library/wishlist?limit={limit}"),
-            &target,
-        );
+        get_library_sync_host_json_authenticated_for_target(state, &path, &target);
     match primary_rows {
         Ok(rows) => {
             with_current_library_sync_target(state, &target, |engine| {
@@ -771,6 +772,7 @@ mod tests {
         let wishlist = fetch_library_sync_wishlist_items_blocking(
             &state,
             LibrarySyncWishlistListInput {
+                reviewed_item_id: None,
                 expected_target_generation: None,
                 base_url,
                 expected_library_id,

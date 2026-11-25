@@ -11,6 +11,7 @@ import { buildUiBrowserPerformanceFixture, resolveUiBrowserPerformanceInvoke } f
 import type { LibraryReadTarget, WishlistItemRow, WishlistPurchaseTarget } from "../lib/tauri_client";
 
 type CreatePayload = Pick<WishlistItemRow, "master_id" | "material" | "filament_name" | "color_name" | "vendor" | "quantity" | "note"> & {
+  reviewed_item_id?: string;
   expected_library_id: string;
   expected_target_generation: number;
   target_generation?: number;
@@ -35,7 +36,7 @@ test("Dashboard purchase handoff stays with the reviewed library", async (t) => 
   const replacement = { ...origin, host_base_url: "http://host-b.test", library_id: "library-b", target_generation: 2 };
   const backToA = { ...origin, target_generation: 3 };
 
-  for (const scenario of ["switch after save", "A–B–A after save", "switch on arrival", "A–B–A on arrival", "offline return", "switch before offline return",
+  for (const scenario of ["older ordered purchase", "switch after save", "A–B–A after save", "switch on arrival", "A–B–A on arrival", "offline return", "switch before offline return",
     "refresh cached queue", "refresh without a saved queue", "switch during queue read", "A–B–A during cached read", "receive and open stock"] as const) {
     await t.test(scenario, async () => {
       const page = await browser.newPage();
@@ -85,9 +86,19 @@ test("Dashboard purchase handoff stays with the reviewed library", async (t) => 
             case "fetch_library_sync_spool_snapshot": return { rows, captured_at: snapshot.captured_at };
             case "fetch_library_sync_wishlist_items": {
               if (!saved.length) return [];
-              if (target !== origin) return [{ ...saved[0], filament_name: "Replacement purchase" }];
+              if (target !== origin) {
+                assert.equal(args.input?.reviewed_item_id, undefined);
+                return [{ ...saved[0], filament_name: "Replacement purchase" }];
+              }
+              if (scenario === "older ordered purchase") {
+                const recent = Array.from({ length: 500 }, (_, index) => ({
+                  ...saved[0], id: String(index), filament_name: "Recent receipt", status: "RECEIVED",
+                }));
+                return args.input?.reviewed_item_id === saved[0].id ? [saved[0], ...recent] : recent;
+              }
               if (scenario === "switch during queue read") {
                 assert.equal(args.input?.expected_target_generation, origin.target_generation);
+                assert.equal(args.input?.reviewed_item_id, saved[0].id);
                 target = replacement;
                 return [{ ...saved[0], filament_name: "Obsolete purchase" }];
               }
@@ -118,6 +129,11 @@ test("Dashboard purchase handoff stays with the reviewed library", async (t) => 
               assert.deepEqual(args.target, origin);
               saved.push({ ...args.input, status: "WISHLIST", id: "host-assigned-id",
                 created_at: snapshot.captured_at, updated_at: snapshot.captured_at });
+              if (scenario === "older ordered purchase") {
+                saved[0].status = "ON_ORDER";
+                saved[0].quantity = 7;
+                return { kind: "REUSED", itemId: saved[0].id, status: "ON_ORDER", match: "MASTER_ID" };
+              }
               if (scenario === "switch after save" || scenario === "A–B–A after save") target = replacement;
               if (scenario === "A–B–A after save") target = backToA;
               return {kind:"CREATED", itemId:"host-assigned-id", status:"WISHLIST"};
@@ -159,7 +175,11 @@ test("Dashboard purchase handoff stays with the reviewed library", async (t) => 
 
         const queue = page.locator("#inventory-purchases-panel:not([hidden])");
         const notice = "Added to the wishlist. Opening Purchases.";
-        if (scenario === "switch during queue read" || scenario === "A–B–A during cached read") {
+        if (scenario === "older ordered purchase") {
+          await queue.getByText(/Purchased roll/).first().waitFor();
+          assert.equal(await queue.getByText(/Recent receipt/).count(), 0);
+          assert.equal(calls.filter(cmd => cmd === "ensure_dashboard_purchase").length, 1);
+        } else if (scenario === "switch during queue read" || scenario === "A–B–A during cached read") {
           await queue.getByText(/Replacement purchase/).first().waitFor();
           assert.ok(!await page.evaluate("window.purchasePaints.some(text => text.includes('Obsolete purchase'))"));
           assert.equal(calls.filter(cmd => cmd === "fetch_library_sync_spool_snapshot").length, 0);

@@ -467,7 +467,7 @@ pub(super) async fn handle_library_catalog_masters(
 pub(super) async fn handle_library_wishlist_items(
     State(state): State<CompanionApiState>,
     headers: HeaderMap,
-    Query(query): Query<PaginationQuery>,
+    Query(query): Query<crate::companion_models::WishlistPageQuery>,
 ) -> Result<Json<Vec<WishlistItemRow>>, CompanionApiError> {
     require_allowed_host(&headers, &state.runtime)?;
     let limit = query.limit.unwrap_or(500).clamp(1, 2_000);
@@ -475,7 +475,7 @@ pub(super) async fn handle_library_wishlist_items(
         .run_blocking("library wishlist list", move |state| {
             state
                 .service
-                .list_wishlist_items(limit)
+                .list_wishlist_items(limit, query.reviewed_item_id.as_deref())
                 .map_err(CompanionApiError::from)
         })
         .await?;

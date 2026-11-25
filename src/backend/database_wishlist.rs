@@ -303,7 +303,7 @@ fn read_wishlist_receipt_request(
         .map_err(|error| InventoryError::Db(error.to_string()))
 }
 
-fn wishlist_item_by_id(
+pub(crate) fn wishlist_item_by_id(
     conn: &Connection,
     item_id: &str,
 ) -> InventoryResult<Option<WishlistItemRow>> {
