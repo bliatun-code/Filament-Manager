@@ -418,10 +418,14 @@ export default function InventoryPage({
   } : undefined, [advancedFiltersOpen, otherFilterCount, statusFilter, ownershipFilter, materialFilter,
     vendorFilter, locationFilter?.id, lowStockOnly]);
   const cardSearch = search.trim();
-  const stockViewRef = useRef({ requestCards, search: cardSearch, filters: cardFilters });
+  const cardRequest = useMemo(() => requestCards && (
+    cardSearch || cardFilters ? { search: cardSearch, filters: cardFilters } : true
+  ), [requestCards, cardSearch, cardFilters]);
+  const hasCardPage = cardPage != null;
+  const stockViewRef = useRef({ cardRequest, hasCardPage });
   useEffect(() => {
-    stockViewRef.current = { requestCards, search: cardSearch, filters: cardFilters };
-  }, [requestCards, cardSearch, cardFilters]);
+    stockViewRef.current = { cardRequest, hasCardPage };
+  }, [cardRequest, hasCardPage]);
   const lastCardSearchAt = useRef(-Infinity);
   const pendingCardSearch = requestCards && cardPage != null && (cardPage.search !== cardSearch || cardPage.filters !== cardFilters);
   const loadingLocationStock = Boolean(locationFilter && (loading || refreshing));
@@ -448,8 +452,10 @@ export default function InventoryPage({
     if (!tauri || !librarySyncReady || pendingPurchaseNavigation || loansOnly || pendingLoanNavigation) return;
     let current = true;
     const handoff = pendingLocationStock.current;
-    const { requestCards: useCards, search, filters } = stockViewRef.current;
-    const cardPage = useCards && !handoff?.spoolId && (handoff ? { search, filters } : true);
+    const view = stockViewRef.current;
+    // A retained card page belongs to the current library. A new target starts
+    // fresh unless the user explicitly opened its shelf.
+    const cardPage = !handoff?.spoolId && (handoff || view.hasCardPage ? view.cardRequest : Boolean(view.cardRequest));
     void refreshInventoryData({ purchasesOnly, locationsOnly, cardPage, onStockLoaded: handoff ? async rows => {
       if (!current || pendingLocationStock.current !== handoff) return;
       try {
@@ -483,10 +489,10 @@ export default function InventoryPage({
     if (loansOnly) return;
     void refreshInventoryData({
       // Explicit Client refresh also renews the complete offline inventory.
-      purchasesOnly, locationsOnly, cardPage: requestCards && !clientReadOnly,
+      purchasesOnly, locationsOnly, cardPage: !clientReadOnly && cardRequest,
       selectedSpoolId: showRollModal ? selectedSpoolId : null,
     });
-  }, [requestCards, clientReadOnly, loansOnly, purchasesOnly, locationsOnly, refreshInventoryData, selectedSpoolId, showRollModal]);
+  }, [cardRequest, clientReadOnly, loansOnly, purchasesOnly, locationsOnly, refreshInventoryData, selectedSpoolId, showRollModal]);
 
   const retryInventoryPageLoad = useCallback(() => {
     if (!librarySyncReady) {

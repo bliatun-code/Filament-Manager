@@ -182,6 +182,8 @@ async function checkStockCards({page, state, fixture, calls, fallback, openWorks
   let mode = "live";
   let revision = 1;
   let purchaseCount = 1;
+  let searchedRoll = hidden;
+  let failLocalPrinters = false;
   const delayedFilter = deferred();
   const filterStarted = deferred();
   const slowSearch = deferred();
@@ -194,6 +196,9 @@ async function checkStockCards({page, state, fixture, calls, fallback, openWorks
   });
   state.invoke = (command,payload) => {
     switch (command) {
+      case "list_printer_overview":
+        if (failLocalPrinters) throw Error("[loan-regression] Local printer read interrupted");
+        return [];
       case "get_library_sync_page_status": return status;
       case "fetch_library_sync_catalog_masters": return fixture.catalogRows;
       case "get_loan_workspace_counts": return {stock:10, locations:0, loans:2, purchases:0};
@@ -225,7 +230,7 @@ async function checkStockCards({page, state, fixture, calls, fallback, openWorks
         if (search === "slow") { searchStarted.resolve(); return slowSearch.promise; }
         if (search) {
           const hit = search === "Hidden search match";
-          return {cards:hit ? [{count:1,remaining:300,rows:[hidden]}] : [],
+          return {cards:hit ? [{count:1,remaining:300,rows:[searchedRoll]}] : [],
             total:10, visible:Number(hit), groups:Number(hit), borrowed:0, revisions:[revision,1]};
         }
         reads.push(offset);
@@ -281,6 +286,18 @@ async function checkStockCards({page, state, fixture, calls, fallback, openWorks
   delayedFilter.resolve({cards:[],total:10, visible:0, groups:0, borrowed:0, revisions:[revision,1]});
   await panel.getByText(/8 spools/).waitFor();
   assert.ok(!calls.some(c => c.command === "fetch_library_sync_spool_snapshot" || c.command === "get_stock_purchase_count"));
+  await searchBox.fill("Hidden search match");
+  await panel.getByRole("heading", {name: /Hidden search match/}).waitFor();
+  await page.locator("#inventory-locations-tab").click();
+  await page.locator("#inventory-locations-panel").waitFor();
+  searchedRoll = {...hidden, master: {...hidden.master, filament_name: "Updated hidden search match"}};
+  calls.length = 0;
+  await page.locator("#inventory-stock-tab").click();
+  await panel.getByRole("heading", {name: /Updated hidden search match/}).waitFor();
+  const returnedPages = calls.filter(call => call.command === "get_stock_card_page");
+  assert.deepEqual(returnedPages.map(call => call.payload.query.search), ["Hidden search match"]);
+  assert.ok(returnedPages[0].payload.query.filters.include_options);
+  assert.ok(!calls.some(call => call.command === "fetch_library_sync_spool_snapshot"));
   await searchBox.fill("generation");
   await waitForStart(generationRead);
   Object.assign(status, {library_id:"cards-b", host_base_url:"https://cards-b.invalid", target_generation:4});
@@ -327,6 +344,24 @@ async function checkStockCards({page, state, fixture, calls, fallback, openWorks
   await page.getByRole("button",{name:"More filters",exact:true}).click();
   await panel.getByRole("heading",{name:/Hidden search match/}).waitFor();
   assert.ok(calls.some(c => c.command === "fetch_library_sync_spool_snapshot"));
+
+  mode = "live";
+  Object.assign(status, {mode: "STANDALONE", host_base_url: null, client_auth_paired: false});
+  target.base_url = null;
+  failLocalPrinters = true;
+  await openWorkspace();
+  await page.locator("#inventory-stock-tab").click();
+  await panel.getByText(/8 spools/).waitFor();
+  await searchBox.fill("Hidden search match");
+  await panel.getByRole("heading", {name: /Updated hidden search match/}).waitFor();
+  failLocalPrinters = false;
+  searchedRoll = {...hidden, master: {...hidden.master, filament_name: "Refreshed hidden search match"}};
+  calls.length = 0;
+  await page.getByRole("button", {name: "Refresh", exact: true}).click();
+  await panel.getByRole("heading", {name: /Refreshed hidden search match/}).waitFor();
+  assert.deepEqual(calls.filter(call => call.command === "get_stock_card_page")
+    .map(call => call.payload.query.search), ["Hidden search match"]);
+  assert.ok(!calls.some(call => call.command === "list_spools"));
 }
 
 async function checkLegacyLocation({ page, state, fixture, calls, fallback, openWorkspace }) {
