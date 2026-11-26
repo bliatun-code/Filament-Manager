@@ -31,7 +31,9 @@ offline Clients use the full stock reader and the existing local filter.
 Current Hosts also filter individual rolls by status, ownership, material,
 vendor, location and low-stock policy before grouping. Opening the filter panel
 requests distinct materials and vendors from the whole stock in the same read
-transaction. Older Hosts and offline Clients filter the complete live or saved
+transaction. Additional product and roll pages reuse those choices while the
+Host, library, target generation, inventory revision and catalog revision match.
+A revision change restarts pagination with fresh choices. Older Hosts and offline Clients filter the complete live or saved
 list. Open inventory from a linked shelf passes the location and search text
 to the first card-page read. Returning to a filtered card view in the same
 library and refreshing a local card view reuse the active search and filters. Opening an individual shelf roll still checks its

@@ -181,6 +181,7 @@ async function checkStockCards({page, state, fixture, calls, fallback, openWorks
   const reads = [];
   let mode = "live";
   let revision = 1;
+  let catalogRevision = 1;
   let purchaseCount = 1;
   let searchedRoll = hidden;
   let failLocalPrinters = false;
@@ -221,7 +222,7 @@ async function checkStockCards({page, state, fixture, calls, fallback, openWorks
         if (mode === "legacy" || (mode === "cards-only" && payload.query.search) || (mode === "search-only" && payload.query.filters)) return null;
         if (mode === "offline") throw Error("[loan-regression] Host disconnected");
         const {member_of,offset,search,filters}=payload.query;
-        const options = filters?.include_options ? {materials:["PLA","TPU"],vendors:["Generic","Rare vendor"]} : undefined;
+        const options = filters?.include_options ? {materials:["PLA","TPU"],vendors:["Generic", catalogRevision === 1 ? "Rare vendor" : "New vendor"]} : undefined;
         if (filters?.vendor === "Rare vendor") { filterStarted.resolve(); return delayedFilter.promise; }
         if (search === "generation") {
           if (payload.target.target_generation === 3) { generationRead.resolve(); return oldGeneration.promise; }
@@ -236,7 +237,7 @@ async function checkStockCards({page, state, fixture, calls, fallback, openWorks
         reads.push(offset);
         const cards = offset === 1 && !member_of ? [{count:1,remaining:300,rows:[later]}] :
           [{count:8,remaining:4000,rows:member_of ? members.slice(offset) : members.slice(0,3)}];
-        return {cards, options, total:10, visible:10, groups:3, borrowed:0, revisions:[revision,1]};
+        return {cards, options, total:10, visible:10, groups:3, borrowed:0, revisions:[revision,catalogRevision]};
       }
       default: return fallback(command,payload);
     }
@@ -298,6 +299,22 @@ async function checkStockCards({page, state, fixture, calls, fallback, openWorks
   assert.deepEqual(returnedPages.map(call => call.payload.query.search), ["Hidden search match"]);
   assert.ok(returnedPages[0].payload.query.filters.include_options);
   assert.ok(!calls.some(call => call.command === "fetch_library_sync_spool_snapshot"));
+  await searchBox.fill("");
+  await panel.getByText(/8 spools/).waitFor();
+  const moreGroups = panel.getByRole("button", {name:"Show more", exact:true});
+  calls.length = 0;
+  await panel.getByRole("button", {name:/Show all/}).click();
+  await panel.locator(".inventory-roll-row").nth(7).waitFor();
+  await moreGroups.click();
+  await panel.getByRole("heading", {name:/Dialog b/}).waitFor();
+  await page.getByRole("button", {name:"Rare vendor", exact:true}).waitFor();
+  catalogRevision++;
+  await moreGroups.click();
+  await page.getByRole("button", {name:"New vendor", exact:true}).waitFor();
+  assert.equal(await page.getByRole("button", {name:"Rare vendor", exact:true}).count(), 0);
+  assert.deepEqual(calls.filter(call => call.command === "get_stock_card_page")
+    .map(({payload: {query}}) => [query.offset, query.filters.include_options]),
+    [[3, false], [1, false], [2, false], [0, true]]);
   await searchBox.fill("generation");
   await waitForStart(generationRead);
   Object.assign(status, {library_id:"cards-b", host_base_url:"https://cards-b.invalid", target_generation:4});
