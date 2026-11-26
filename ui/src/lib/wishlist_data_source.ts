@@ -420,11 +420,9 @@ export async function deleteWishlistEntry(
   const deleteLocalWishlistItem = dependencies.deleteLocalWishlistItem ?? deleteWishlistItem;
 
   if (options.clientReadOnly) {
-    const hostTarget = requireClientHostWriteTarget(
-      options,
-      missingWishlistHostTargetMessage,
-    );
-    await deleteHostWishlistItem(hostTarget.baseUrl, hostTarget.libraryId, itemId);
+    const hostTarget = resolveClientHostCacheTarget(options);
+    if (!hostTarget) throw createAppError("common.invalid_request");
+    await deleteHostWishlistItem(hostTarget, itemId);
     return;
   }
 

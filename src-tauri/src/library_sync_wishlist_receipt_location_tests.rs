@@ -441,3 +441,54 @@ fn queued_receipt_after_a_b_a_sends_no_request() {
     }
     assert!(host.finish().is_empty());
 }
+
+#[test]
+fn queued_purchase_deletion_after_a_b_a_sends_no_request() {
+    let mut host = ReceiptTestHost::start();
+    let (_directory, state) = client(&host.base_url, true);
+    let db = FilamentDatabase::open(&state.db_path).unwrap();
+    let original = db.get_library_sync_settings().unwrap();
+    let deletion = LibrarySyncDeleteWishlistItemInput {
+        base_url: host.base_url.clone(),
+        expected_library_id: LIBRARY_ID.into(),
+        expected_target_generation: original.target_generation,
+        item_id: "order".into(),
+    };
+    let mut other = original.clone();
+    other.library_id = "other-library".into();
+    other.host_base_url = Some("http://other.local:4278".into());
+    db.save_library_sync_settings(&other).unwrap();
+    db.save_library_sync_settings(&original).unwrap();
+    let result = delete_library_sync_host_wishlist_item_blocking(&state, deletion);
+    assert_eq!(host.finish(), Vec::new());
+    assert_eq!(
+        library_sync_host_error_code(&result.unwrap_err()).as_deref(),
+        Some("common.invalid_request")
+    );
+}
+
+#[test]
+fn confirmed_purchase_deletion_sends_one_delete_to_legacy_host() {
+    let mut host = ReceiptTestHost::start();
+    let (_directory, state) = client(&host.base_url, true);
+    let db = FilamentDatabase::open(&state.db_path).unwrap();
+    let deletion = LibrarySyncDeleteWishlistItemInput {
+        base_url: host.base_url.clone(),
+        expected_library_id: LIBRARY_ID.into(),
+        expected_target_generation: db.get_library_sync_page_status().unwrap().target_generation,
+        item_id: "order/one".into(),
+    };
+    delete_library_sync_host_wishlist_item_blocking(&state, deletion).unwrap();
+    let writes: Vec<_> = host
+        .finish()
+        .into_iter()
+        .filter(|(line, _)| line.starts_with("POST "))
+        .collect();
+    assert_eq!(
+        writes,
+        vec![(
+            "POST /api/v1/wishlist/order%2Fone/delete HTTP/1.1".into(),
+            "{}".into()
+        )]
+    );
+}

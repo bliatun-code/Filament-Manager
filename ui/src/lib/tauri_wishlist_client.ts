@@ -165,14 +165,14 @@ export async function deleteWishlistItem(itemId: string) {
 }
 
 export async function deleteLibrarySyncHostWishlistItem(
-  baseUrl: string,
-  expectedLibraryId: string | null | undefined,
+  target: ClientHostCacheTarget,
   itemId: string,
 ) {
   return invoke<void>("delete_library_sync_host_wishlist_item", {
     input: {
-      base_url: baseUrl,
-      expected_library_id: expectedLibraryId ?? null,
+      base_url: target.baseUrl,
+      expected_library_id: target.libraryId,
+      expected_target_generation: target.targetGeneration,
       item_id: itemId,
     },
   });
