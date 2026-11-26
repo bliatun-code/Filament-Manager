@@ -49,6 +49,9 @@ offline path. Reading a card page preserves the last complete capture and its
 timestamp. An explicit refresh of Stock on a paired Client renews that complete
 offline inventory.
 
+List view filters individual rolls in inventory order. Product grouping and sorting
+run when the card view needs them.
+
 The 10,000-spool contract renders at most 200 list rows or 96 card groups at
 once. Complete pagination is separately covered by
 `ui/src/lib/spool_data_source.test.ts`, including the 10,000-row case with

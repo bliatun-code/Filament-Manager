@@ -101,8 +101,8 @@ export function useInventoryFilters(
     ],
   );
   const groupedSpools = useMemo<SpoolGroup[]>(
-    () => groupInventorySpools(filteredSpools),
-    [filteredSpools],
+    () => inventoryView === "CARDS" ? groupInventorySpools(filteredSpools) : [],
+    [filteredSpools, inventoryView],
   );
   const otherFilterCount = [
     statusFilter !== "ALL",

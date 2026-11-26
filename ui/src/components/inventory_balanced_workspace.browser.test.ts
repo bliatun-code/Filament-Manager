@@ -53,7 +53,26 @@ test("balanced inventory preserves per-roll weights, filtering, selection and co
      await page.getByRole("button",{name:"Done selecting",exact:true}).click();
      await page.getByRole("button",{name:"List view",exact:true}).click();assert.equal(await page.locator(".inventory-list-row").count(),12);
      await page.screenshot({path:resolve(out,"en-1440-dark-liste.png"),fullPage:true});
+     const groupCount = page.locator("output[data-product-groups]");
+     assert.equal(await groupCount.getAttribute("data-product-groups"), "0");
+     const search = page.getByRole("searchbox");
+     await search.fill("ABS Black");
+     const listRefs = page.locator(".inventory-list-reference");
+     await page.waitForFunction(() => document.querySelectorAll(".inventory-list-reference").length === 3);
+     const filteredOrder = await listRefs.allTextContents();
+     assert.deepEqual(filteredOrder, ["#a44954", "#3fc0da", "#248216"]);
+     assert.equal(await groupCount.getAttribute("data-product-groups"), "0");
+     await page.getByRole("button", {name:"Card view", exact:true}).click();
+     assert.equal(await cards.count(), 2);
+     assert.equal(await groupCount.getAttribute("data-product-groups"), "2");
+     assert.equal(await black.locator(".inventory-roll-row").count(), 2);
+     await page.getByRole("button", {name:"List view", exact:true}).click();
+     assert.deepEqual(await listRefs.allTextContents(), filteredOrder);
+     assert.equal(await groupCount.getAttribute("data-product-groups"), "0");
+     await search.fill("");
+     await page.waitForFunction(() => document.querySelectorAll(".inventory-list-reference").length === 12);
      await page.getByRole("button",{name:"Card view",exact:true}).click();
+     assert.equal(await cards.count(), 10);
      const menu=black.locator(".inventory-product-menu");assert.equal(await menu.locator("button").count(),0);await menu.locator("summary").press("Enter");await menu.getByRole("button").first().press("Enter");await page.waitForFunction(()=>document.querySelector("output")?.getAttribute("data-selected-roll")==="spool_a44954");
     }
     await page.locator("#inventory-loans-tab").click();await page.locator(".inventory-loan-table").waitFor();
