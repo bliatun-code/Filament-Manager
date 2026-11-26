@@ -9,6 +9,19 @@ type FilamentSpoolVisualProps = {
 
 const { circle, front, rear, frontFace, rearFace, bodyClip, threadLayers, wireProfiles, windows, hubWindows, spokes } = filamentSpoolGeometry;
 
+const rings = {
+  rearEdge: circle(rear + .035, 1),
+  rearOuterRim: circle(rear, .96),
+  rearInnerRim: circle(rear, .905),
+  frontEdge: circle(front + .04, 1),
+  frontOuterRim: circle(front, .967),
+  frontInnerRim: circle(front, .925),
+  windowRim: circle(front, .87),
+  hubFace: circle(front, .33),
+  hubOpening: circle(front - .007, .245),
+  hubRim: circle(front, .255),
+};
+
 // Constant neutral lighting supports comparison; the neighbouring flat swatch
 // retains the stored colour without simulated lighting or inferred material finish.
 export const FilamentSpoolVisual = memo(function FilamentSpoolVisual({ color, className }: FilamentSpoolVisualProps) {
@@ -52,26 +65,26 @@ export const FilamentSpoolVisual = memo(function FilamentSpoolVisual({ color, cl
       <clipPath id={`${id}-body`}><path d={bodyClip}/></clipPath>
     </defs>
     <ellipse cx="104" cy="202" rx="79" ry="12" fill={url("shadow")}/>
-    <path d={circle(rear + .035, 1)} fill="#070c10" stroke="#020508" strokeWidth="1.4"/>
+    <path d={rings.rearEdge} fill="#070c10" stroke="#020508" strokeWidth="1.4"/>
     <path d={rearFace} fill={url("face")} stroke={url("rim")} strokeWidth="2"/>
-    <path d={circle(rear, .96)} fill="none" stroke="#58646e" strokeOpacity=".55" strokeWidth=".8"/>
-    <path d={circle(rear, .905)} fill="none" stroke="#070d12" strokeWidth="2.4"/>
+    <path d={rings.rearOuterRim} fill="none" stroke="#58646e" strokeOpacity=".55" strokeWidth=".8"/>
+    <path d={rings.rearInnerRim} fill="none" stroke="#070d12" strokeWidth="2.4"/>
     <g clipPath={url("body")}>
       <path d={bodyClip} fill={url(spec.kind === "solid" ? "volume" : "multicolor")}/>
       {threadLayers.map((d,i)=><path key={i} d={d} fill={url(`wire-${i}`)} />)}
       {spec.kind!=="solid" ? <path d={threadLayers[2]} fill={url("wire-shine")}/> : null}
       <rect x="20" y="10" width="160" height="195" fill={url("axial")}/>
     </g>
-    <path d={circle(front + .04, 1)} fill="#060b10" stroke="#070c10" strokeWidth="2.2"/>
+    <path d={rings.frontEdge} fill="#060b10" stroke="#070c10" strokeWidth="2.2"/>
     <path d={frontFace} fill={url("face")} stroke={url("rim")} strokeWidth="1.35"/>
-    <path d={circle(front, .967)} fill="none" stroke="#84919b" strokeOpacity=".26" strokeWidth=".6"/>
-    <path d={circle(front, .925)} fill="none" stroke="#050a0e" strokeWidth="1.1"/>
+    <path d={rings.frontOuterRim} fill="none" stroke="#84919b" strokeOpacity=".26" strokeWidth=".6"/>
+    <path d={rings.frontInnerRim} fill="none" stroke="#050a0e" strokeWidth="1.1"/>
     {windows.map((d, i) => <path key={i} d={d} fill="#03080c" stroke="#26323a" strokeWidth=".65"/>)}
     {hubWindows.map((d,i)=><path key={i} d={d} fill="#05090c" stroke="#273139" strokeWidth=".5"/>)}
     {spokes.map((d, i) => <path key={i} d={d} fill="none" stroke="#56616a" strokeOpacity=".2" strokeWidth=".8"/>)}
-    <path d={circle(front, .87)} fill="none" stroke="#4d5b66" strokeOpacity=".4" strokeWidth=".6"/>
-    <path d={circle(front, .33)} fill={url("face")} stroke="#46535e" strokeWidth=".7"/>
-    <path d={circle(front - .007, .245)} fill="#02070a" stroke="#0b1218" strokeWidth="1.1"/>
-    <path d={circle(front, .255)} fill="none" stroke="#61727f" strokeOpacity=".4" strokeWidth=".6"/>
+    <path d={rings.windowRim} fill="none" stroke="#4d5b66" strokeOpacity=".4" strokeWidth=".6"/>
+    <path d={rings.hubFace} fill={url("face")} stroke="#46535e" strokeWidth=".7"/>
+    <path d={rings.hubOpening} fill="#02070a" stroke="#0b1218" strokeWidth="1.1"/>
+    <path d={rings.hubRim} fill="none" stroke="#61727f" strokeOpacity=".4" strokeWidth=".6"/>
   </svg>;
 });
