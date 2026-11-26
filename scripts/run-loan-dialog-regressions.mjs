@@ -172,12 +172,15 @@ async function checkWorkspaceOffline({ page, state, fixture, calls, fallback, op
 }
 
 async function checkStockCards({page, state, fixture, calls, fallback, openWorkspace}) {
-  const target = {base_url: "https://cards.invalid", expected_library_id: "cards", target_generation: 3};
+  const target = {base_url: "http://cards.local:4278", expected_library_id: "cards", target_generation: 3};
   const status = {mode:"CLIENT", host_base_url:target.base_url, library_id:"cards", target_generation:3,
     client_auth_paired:true};
   const first = fixture.spoolRows[0], later = fixture.spoolRows[1];
   const hidden = {...later, master: {...later.master, filament_name: "Hidden search match"}, spool: {...later.spool, id: "hidden-roll"}};
   const members = Array.from({length: 8}, (_, i) => ({...first, spool:{...first.spool,id:"card-member-" + i}}));
+  const cachedMembers = Array.from({length: 105}, (_, index) => ({
+    ...hidden, spool: {...hidden.spool, id: `cached-${index.toString().padStart(6, "0")}`},
+  }));
   const reads = [];
   let mode = "live";
   let revision = 1;
@@ -211,9 +214,10 @@ async function checkStockCards({page, state, fixture, calls, fallback, openWorks
       case "fetch_library_sync_spool_snapshot":
         if (mode === "offline") throw Error("[loan-regression] Host disconnected");
         return {rows:[...members,later,hidden],captured_at:"2026-01-01"};
+      case "fetch_library_sync_spool_detail": throw Error("[loan-regression] Host disconnected");
       case "fetch_cached_library_sync_spools":
         assert.deepEqual(payload.input,target);
-        return {rows:[hidden],captured_at:"2026-01-01"};
+        return {rows:cachedMembers,captured_at:"2026-01-01"};
       case "get_stock_purchase_count":
         assert.deepEqual(payload.target,target);
         return purchaseCount;
@@ -268,6 +272,17 @@ async function checkStockCards({page, state, fixture, calls, fallback, openWorks
   await panel.getByRole("heading", {name: /Dialog b/}).waitFor();
   assert.equal(reads.length, readsBeforeRegistration, "Closing registration must retain the loaded card pages");
   assert.ok(!calls.some(c=>c.command==="fetch_library_sync_spool_snapshot"));
+  const menu = panel.locator(".inventory-product-menu").first();
+  const summary = menu.locator("summary");
+  assert.equal(await menu.locator("button").count(), 0);
+  await summary.press("Enter");
+  const moreMenuRolls = menu.getByRole("button", {name: "Show more", exact: true});
+  await moreMenuRolls.press("Enter");
+  const fourth = menu.getByRole("button", {name: /Open roll/}).nth(3);
+  await fourth.waitFor();
+  assert.equal(await fourth.evaluate(button => document.activeElement === button), true);
+  await summary.press("Enter");
+  await fourth.waitFor({state: "detached"});
   const searchBox = page.getByPlaceholder(/Search by material/i);
   calls.length = 0;
   await searchBox.fill("slow");
@@ -346,6 +361,34 @@ async function checkStockCards({page, state, fixture, calls, fallback, openWorks
     await panel.getByRole("button",{name:"Reset filters",exact:true}).click();
     await panel.getByRole("heading",{name:/Hidden search match/}).waitFor();
     assert.equal(calls.filter(c => c.command === "fetch_library_sync_spool_snapshot").length, spoolReads);
+    if (mode === "offline") {
+      const cachedMenu = panel.locator(".inventory-product-menu");
+      const summary = cachedMenu.locator("summary");
+      const rollButtons = cachedMenu.getByRole("button", {name: /Open roll/});
+      const readsBeforeMenu = calls.length;
+      await summary.press("Enter");
+      await rollButtons.nth(99).waitFor();
+      assert.equal(await rollButtons.count(), 100);
+      await cachedMenu.getByRole("button", {name: "Show more", exact: true}).press("Enter");
+      await rollButtons.nth(104).waitFor();
+      assert.equal(await rollButtons.nth(100).evaluate(button => document.activeElement === button), true);
+      await summary.press("Enter");
+      await cachedMenu.locator("button").first().waitFor({state:"detached"});
+      await summary.press("Enter");
+      await rollButtons.nth(99).waitFor();
+      assert.equal(await rollButtons.count(), 100);
+      assert.ok(!calls.slice(readsBeforeMenu).some(c => ["get_stock_card_page", "fetch_cached_library_sync_spools",
+        "fetch_library_sync_spool_snapshot"].includes(c.command)));
+      await cachedMenu.getByRole("button", {name: "Show more", exact: true}).press("Enter");
+      const chosen = cachedMenu.getByRole("button", {name: /Open roll/}).nth(100);
+      const reference = (await chosen.innerText()).split("#").at(-1);
+      await chosen.press("Enter");
+      const dialog = page.getByRole("dialog", {name: /Selected roll:.*Hidden search match/});
+      await dialog.waitFor();
+      await dialog.getByRole("button", {name:"Close", exact:true}).first().click();
+      assert.ok(calls.some(c => c.command === "fetch_library_sync_spool_detail" &&
+        c.payload.input.spool_id === `cached-${reference}`));
+    }
   }
   assert.ok(calls.some(c=>c.command==="fetch_cached_library_sync_spools"));
   mode = "live";

@@ -54,7 +54,7 @@ test("balanced inventory preserves per-roll weights, filtering, selection and co
      await page.getByRole("button",{name:"List view",exact:true}).click();assert.equal(await page.locator(".inventory-list-row").count(),12);
      await page.screenshot({path:resolve(out,"en-1440-dark-liste.png"),fullPage:true});
      await page.getByRole("button",{name:"Card view",exact:true}).click();
-     const menu=black.locator(".inventory-product-menu");await menu.locator("summary").click();await menu.getByRole("button").first().click();await page.waitForFunction(()=>document.querySelector("output")?.getAttribute("data-selected-roll")==="spool_a44954");
+     const menu=black.locator(".inventory-product-menu");assert.equal(await menu.locator("button").count(),0);await menu.locator("summary").press("Enter");await menu.getByRole("button").first().press("Enter");await page.waitForFunction(()=>document.querySelector("output")?.getAttribute("data-selected-roll")==="spool_a44954");
     }
     await page.locator("#inventory-loans-tab").click();await page.locator(".inventory-loan-table").waitFor();
     assert.equal(await page.locator(".inventory-loan-table tbody tr").count(),5);

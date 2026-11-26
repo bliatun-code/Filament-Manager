@@ -22,7 +22,8 @@ bundle sizes.
 | Dashboard revisit | The fixture exercises 250 cached-snapshot clones. A revisit paints the saved view before starting background reads. |
 
 The default Inventory card view reads up to 96 product groups with three spool
-previews per card. Counts and weights cover the whole group. More groups and
+previews per card. Closed roll menus render only their summary. Opening a menu
+shows up to 100 loaded rolls, with further choices available on demand. Counts and weights cover the whole group. More groups and
 up to 100 more members of one group can be requested separately. A changed
 inventory or catalog revision restarts paging. Free-text card search matches
 all terms on each spool before grouping and paging. Typing refreshes the card
