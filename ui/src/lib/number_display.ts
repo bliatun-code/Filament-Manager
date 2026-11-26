@@ -1,4 +1,5 @@
 import { formatLocaleNumber } from "../../../src-tauri/companion_browser/locale_format.js";
+import { intlLocaleFor } from "../../../src-tauri/companion_browser/supported_locales.js";
 
 export type NumberDisplayLocale = string | null | undefined;
 
@@ -36,18 +37,25 @@ export function formatDisplayPercent(
   });
 }
 
+const gramUnit = { style: "unit", unit: "gram", unitDisplay: "short" } as const;
+let lastGramFormat: { locale: string; formatter: Intl.NumberFormat } | undefined;
+
 export function formatDisplayGrams(
   grams: number,
   locale: NumberDisplayLocale = DEFAULT_NUMBER_DISPLAY_LOCALE,
-  options: Intl.NumberFormatOptions = {},
+  options?: Intl.NumberFormatOptions,
 ): string {
-  return formatDisplayNumber(grams, locale, {
-    maximumFractionDigits: 1,
-    ...options,
-    style: "unit",
-    unit: "gram",
-    unitDisplay: "short",
-  });
+  if (options) {
+    return formatDisplayNumber(grams, locale, { maximumFractionDigits: 1, ...options, ...gramUnit });
+  }
+  const language = displayLocale(locale);
+  if (lastGramFormat?.locale !== language) {
+    lastGramFormat = {
+      locale: language,
+      formatter: new Intl.NumberFormat(intlLocaleFor(language), { maximumFractionDigits: 1, ...gramUnit }),
+    };
+  }
+  return lastGramFormat.formatter.format(Number(grams));
 }
 
 export function formatDisplayKilograms(
