@@ -57,7 +57,7 @@ function Preview({theme}:{theme:ThemeMode}) {
  <InventorySpoolCollection addSpoolDisabled={false} bulkSelectionActive={bulk} bulkSelectionDisabled={false} filteredSpools={f.filteredSpools} groupedSpools={f.groupedSpools} inventoryView={f.inventoryView} loading={false} onAddSpool={()=>{}} onBulkSelectionChange={(id,checked)=>setSelected(old=>{const next=new Set(old);if(checked)next.add(id);else next.delete(id);return next;})} onResetFilters={f.resetFilters} onSelectRoll={setRoll} recentlyAddedSpoolId={null} resolvedTheme={theme==="light"?"light":"dark"} selectedSpoolId={roll} selectedBulkSpoolIds={selected} totalSpoolCount={59}/></>:view==="LOANS"?<section style={{marginTop:24}}><div className="inventory-loan-summary"><span>{t("loans.history","Loan history")}</span><span>5</span></div><LoanHistoryTable loans={loans} busy={false} onReturn={setReturnLoan}/></section>:<p>{view}</p>}
  </>}
  <LoanReturnModal busy={false} error={null} loan={returnLoan} grams={grams} note={note} onClose={()=>setReturnLoan(null)} onConfirm={()=>Object.assign(window,{returnConfirmed:true})} onGramsChange={setGrams} onNoteChange={setNote}/>
- <output className="sr-only" data-selection={selected.size} data-selected-roll={roll}/>
+ <output className="sr-only" data-product-groups={f.groupedSpools.length} data-selection={selected.size} data-selected-roll={roll}/>
  </main></>;
 }
 export async function mountInventoryWorkspacePreview(locale:Locale="nb",theme:ThemeMode="dark") {
