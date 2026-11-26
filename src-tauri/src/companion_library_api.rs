@@ -1,7 +1,7 @@
 use crate::backend::database_loan_picker::{LoanPickerPage, LoanPickerQuery};
 use crate::backend::database_location_spools::{LocationSpoolPage, LocationSpoolQuery};
 use crate::backend::database_printer_picker::{PrinterPickerPage, PrinterPickerQuery};
-use crate::backend::database_stock_cards::{StockCardPage, StockCardQuery};
+use crate::backend::database_stock_cards::StockCardQuery;
 use crate::backend::filament_database::{
     FilamentDatabase, FilamentMasterCatalogRow, FilamentStandardsSnapshot, LibrarySyncSettingsRow,
     PrinterOverviewRow, SpoolLoanDetailsRow, SpoolLoanRow, SpoolWithMasterRow, WishlistItemRow,
@@ -287,13 +287,12 @@ pub(super) async fn handle_stock_cards(
     State(state): State<CompanionApiState>,
     headers: HeaderMap,
     Json(query): Json<StockCardQuery>,
-) -> Result<Json<StockCardPage>, CompanionApiError> {
+) -> Result<axum::response::Response, CompanionApiError> {
     require_allowed_host(&headers, &state.runtime)?;
     state
         .run_blocking("stock cards", move |state| {
-            Ok(Json(
-                FilamentDatabase::open(&state.db_path)?.stock_card_page(&query)?,
-            ))
+            let page = FilamentDatabase::open(&state.db_path)?.stock_card_page(&query)?;
+            crate::companion_payload::stock_page::stock_page_response(&headers, &page)
         })
         .await
 }

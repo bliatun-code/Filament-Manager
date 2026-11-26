@@ -1,3 +1,5 @@
+pub(crate) mod stock_page;
+
 use crate::companion_assets::CachedCompanionAsset;
 use crate::companion_error::CompanionApiError;
 use crate::state::TrustedLanCompanionRuntime;

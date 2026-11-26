@@ -917,7 +917,7 @@ fn is_compressible_content_type(content_type: &str) -> bool {
         || content_type.starts_with("image/svg+xml")
 }
 
-fn gzip_bytes(content: &[u8]) -> Option<Vec<u8>> {
+pub(crate) fn gzip_bytes(content: &[u8]) -> Option<Vec<u8>> {
     let mut encoder = GzEncoder::new(Vec::new(), Compression::fast());
     encoder.write_all(content).ok()?;
     encoder.finish().ok()

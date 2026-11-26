@@ -1472,8 +1472,11 @@ fn post_library_sync_host_write_json<T: serde::Serialize>(
     let request_body = serde_json::to_string(payload)
         .map_err(|error| format!("Failed to encode desktop sync write payload: {error}"))?;
     send_verified_library_sync_request(peer, timeout, "Desktop sync write request", |client| {
-        client
-            .post(&request_url)
+        let mut request = client.post(&request_url);
+        if path == crate::companion_payload::stock_page::STOCK_PAGE_PATH {
+            request = request.header(reqwest::header::ACCEPT_ENCODING, "gzip");
+        }
+        request
             .header(HOST, host_header.as_str())
             .header(ORIGIN, base_url)
             .header(reqwest::header::COOKIE, cookie_header.as_str())
@@ -1556,11 +1559,20 @@ pub(crate) fn perform_library_sync_host_write_and_parse_for_target<
         ));
     }
 
-    let body_text = response
-        .text()
-        .map_err(|error| format!("Desktop sync write response could not be read: {error}"))?;
-    let parsed = serde_json::from_str(&body_text)
-        .map_err(|error| format!("Desktop sync write returned invalid JSON: {error}"))?;
+    let parsed = if path == crate::companion_payload::stock_page::STOCK_PAGE_PATH
+        && response
+            .headers()
+            .get(reqwest::header::CONTENT_ENCODING)
+            .is_some_and(|value| value.as_bytes().eq_ignore_ascii_case(b"gzip"))
+    {
+        crate::companion_payload::stock_page::decode_gzip_page(response)?
+    } else {
+        let body_text = response
+            .text()
+            .map_err(|error| format!("Desktop sync write response could not be read: {error}"))?;
+        serde_json::from_str(&body_text)
+            .map_err(|error| format!("Desktop sync write returned invalid JSON: {error}"))?
+    };
     ensure_library_sync_target_current(state, target)?;
     Ok(parsed)
 }

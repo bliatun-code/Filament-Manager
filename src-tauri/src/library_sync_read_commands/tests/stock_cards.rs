@@ -65,6 +65,9 @@ fn check_card_target(filter: bool, list_rows: bool) {
         ],
         move |request| {
             if request.starts_with(POST) {
+                assert!(request
+                    .lines()
+                    .any(|line| line.eq_ignore_ascii_case("accept-encoding: gzip")));
                 posts += 1;
                 if posts == 2 {
                     let db = FilamentDatabase::open(rx.recv().unwrap()).unwrap();
