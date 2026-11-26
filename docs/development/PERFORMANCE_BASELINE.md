@@ -33,7 +33,8 @@ vendor, location and low-stock policy before grouping. Opening the filter panel
 requests distinct materials and vendors from the whole stock in the same read
 transaction. Older Hosts and offline Clients filter the complete live or saved
 list. Open inventory from a linked shelf passes the location and search text
-to the first card-page read. Opening an individual shelf roll still checks its
+to the first card-page read. Returning to a filtered card view in the same
+library and refreshing a local card view reuse the active search and filters. Opening an individual shelf roll still checks its
 placement against stock from the reviewed library and generation.
 Opening and closing Add spool keeps the loaded cards and reads the
 registration catalog on demand. A successful registration refreshes stock
