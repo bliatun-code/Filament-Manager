@@ -185,7 +185,7 @@ pub(crate) fn stock_card_page_blocking(
         } else {
             crate::companion_models::STOCK_CARD_SEARCH_CAPABILITY
         },
-        "/api/v1/library/stock-cards",
+        crate::companion_payload::stock_page::STOCK_PAGE_PATH,
         FilamentDatabase::stock_card_page,
     )
 }
