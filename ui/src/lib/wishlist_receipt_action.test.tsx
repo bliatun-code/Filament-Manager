@@ -176,7 +176,7 @@ test("wishlist writes preserve receipt contracts and own their React lifecycle",
         assert.deepEqual(commands, [{
           command: host ? "receive_library_sync_host_wishlist_item" : "receive_wishlist_item",
           payload: { input: {
-            ...(host ? { base_url: "http://paired-host", expected_library_id: "library-paired-host" } : {}),
+            ...(host ? { base_url: "http://paired-host", expected_library_id: "library-paired-host", expected_target_generation: 1 } : {}),
             item_id: "wish-white", quantity: 2, home_location: "QA Dry box", purchase_metadata: metadata,
           } },
         }]);
@@ -231,12 +231,12 @@ test("wishlist writes preserve receipt contracts and own their React lifecycle",
       assert.deepEqual(state.reloads, []);
       const original = (await page.evaluate("wishlistLifecycle.commands()"))[0].payload.input;
       await page.reload();
-      await page.evaluate("wishlistLifecycle.render({}); wishlistLifecycle.start(['receive'], {quantity:1})");
+      await page.evaluate("wishlistLifecycle.render({generation:3}); wishlistLifecycle.start(['receive'], {quantity:1})");
       await page.waitForFunction("wishlistLifecycle.settled(0)");
       assert.equal(await page.evaluate("wishlistLifecycle.commandCount()"), 0);
       await page.evaluate("wishlistLifecycle.start()");
       await waitForCommands(page, 1);
-      assert.deepEqual((await page.evaluate("wishlistLifecycle.commands()"))[0].payload.input, { ...original, retry: true });
+      assert.deepEqual((await page.evaluate("wishlistLifecycle.commands()"))[0].payload.input, { ...original, expected_target_generation: 3, retry: true });
       await finish(page, 0, 1);
       assert.equal((await page.evaluate("wishlistLifecycle.snapshot()")).operations[1].result, true);
       await page.evaluate("wishlistLifecycle.start()");

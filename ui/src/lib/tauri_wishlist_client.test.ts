@@ -3,9 +3,11 @@ import test from "node:test";
 
 import { buildLibrarySyncHostWishlistReceiptPayload } from "./tauri_wishlist_client";
 
+const target = { baseUrl: "http://host", libraryId: "library-1", targetGeneration: 7 };
+
 test("wishlist receipt host payload omits untouched purchase metadata", () => {
   assert.deepEqual(
-    buildLibrarySyncHostWishlistReceiptPayload("http://host", "library-1", {
+    buildLibrarySyncHostWishlistReceiptPayload(target, {
       item_id: "wishlist-1",
       quantity: 2,
     }),
@@ -13,6 +15,7 @@ test("wishlist receipt host payload omits untouched purchase metadata", () => {
       input: {
         base_url: "http://host",
         expected_library_id: "library-1",
+        expected_target_generation: 7,
         item_id: "wishlist-1",
         quantity: 2,
       },
@@ -30,7 +33,7 @@ test("wishlist receipt host payload preserves explicit metadata clearing", () =>
   };
 
   assert.deepEqual(
-    buildLibrarySyncHostWishlistReceiptPayload("http://host", null, {
+    buildLibrarySyncHostWishlistReceiptPayload(target, {
       item_id: "wishlist-1",
       quantity: 1,
       purchase_metadata: purchaseMetadata,
@@ -41,7 +44,7 @@ test("wishlist receipt host payload preserves explicit metadata clearing", () =>
 
 test("wishlist receipt host payload carries location atomically and preserves null", () => {
   for (const homeLocation of ["QA Dry box", null]) {
-    const payload = buildLibrarySyncHostWishlistReceiptPayload("http://host", "library-1", {
+    const payload = buildLibrarySyncHostWishlistReceiptPayload(target, {
       item_id: "wishlist-1",
       quantity: 2,
       home_location: homeLocation,

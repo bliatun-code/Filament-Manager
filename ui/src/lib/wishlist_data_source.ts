@@ -1,3 +1,4 @@
+import { createAppError } from "./error_text";
 import {
   createLibrarySyncHostWishlistItem,
   createWishlistItem,
@@ -398,13 +399,10 @@ export async function receiveWishlistEntry(
     dependencies.receiveLocalWishlistItem ?? receiveWishlistItem;
 
   if (options.clientReadOnly) {
-    const hostTarget = requireClientHostWriteTarget(
-      options,
-      missingWishlistHostTargetMessage,
-    );
+    const hostTarget = resolveClientHostCacheTarget(options);
+    if (!hostTarget) throw createAppError("wishlist.receive.not_sent");
     return receiveHostWishlistItem(
-      hostTarget.baseUrl,
-      hostTarget.libraryId,
+      hostTarget,
       options.retry ? { ...input, retry: true } : input,
     );
   }
