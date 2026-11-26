@@ -238,6 +238,11 @@ async function checkStockCards({page, state, fixture, calls, fallback, openWorks
           return {cards:hit ? [{count:1,remaining:300,rows:[searchedRoll]}] : [],
             total:10, visible:Number(hit), groups:Number(hit), borrowed:0, revisions:[revision,1]};
         }
+        if (filters?.list_rows) {
+          const rows = Array.from({length: 201}, (_, i) => ({...first, spool: {...first.spool, id: "list-" + i}}));
+          return {cards:rows.slice(offset,offset+200).map(row => ({count:1,remaining:500,rows:[row]})),
+            total:201, visible:201, groups:201, borrowed:0, revisions:[revision,catalogRevision]};
+        }
         reads.push(offset);
         const cards = offset === 1 && !member_of ? [{count:1,remaining:300,rows:[later]}] :
           [{count:8,remaining:4000,rows:member_of ? members.slice(offset) : members.slice(0,3)}];
@@ -284,6 +289,18 @@ async function checkStockCards({page, state, fixture, calls, fallback, openWorks
   await summary.press("Enter");
   await fourth.waitFor({state: "detached"});
   const searchBox = page.getByPlaceholder(/Search by material/i);
+  calls.length = 0;
+  await page.getByRole("button", {name: "List view", exact: true}).click();
+  const listRows = panel.locator(".inventory-list-row");
+  await listRows.nth(199).waitFor();
+  assert.equal(await listRows.count(), 200);
+  await panel.getByRole("button", {name: "Show more", exact: true}).click();
+  await listRows.nth(200).waitFor();
+  assert.equal(await panel.getByRole("button", {name: "Show more", exact: true}).count(), 0);
+  assert.deepEqual(calls.filter(c => c.command === "get_stock_card_page").map(c => c.payload.query.offset), [0,200]);
+  assert.ok(!calls.some(c => ["list_spools","fetch_library_sync_spool_snapshot","fetch_cached_library_sync_spools"].includes(c.command)));
+  await page.getByRole("button", {name: "Card view", exact: true}).click();
+  await panel.getByText(/8 spools/).waitFor();
   calls.length = 0;
   await searchBox.fill("slow");
   await waitForStart(searchStarted);
@@ -404,6 +421,21 @@ async function checkStockCards({page, state, fixture, calls, fallback, openWorks
   await page.getByRole("button",{name:"More filters",exact:true}).click();
   await panel.getByRole("heading",{name:/Hidden search match/}).waitFor();
   assert.ok(calls.some(c => c.command === "fetch_library_sync_spool_snapshot"));
+
+  for (const fallbackMode of ["search-only", "offline"]) {
+    mode = "live";
+    await openWorkspace();
+    await page.locator("#inventory-stock-tab").click();
+    await panel.getByText(/8 spools/).waitFor();
+    mode = fallbackMode;
+    calls.length = 0;
+    await page.getByRole("button", {name: "List view", exact: true}).click();
+    const expectedRows = fallbackMode === "offline" ? cachedMembers.length : members.length + 2;
+    await panel.locator(".inventory-list-row").nth(expectedRows - 1).waitFor();
+    assert.equal(await panel.locator(".inventory-list-row").count(), expectedRows);
+    assert.ok(calls.some(c => c.command === "fetch_library_sync_spool_snapshot"));
+    assert.equal(calls.some(c => c.command === "fetch_cached_library_sync_spools"), fallbackMode === "offline");
+  }
 
   mode = "live";
   Object.assign(status, {mode: "STANDALONE", host_base_url: null, client_auth_paired: false});

@@ -176,7 +176,9 @@ pub(crate) fn stock_card_page_blocking(
         state,
         &query,
         target,
-        if query.filters.is_some() {
+        if query.filters.as_ref().is_some_and(|f| f.list_rows) {
+            crate::companion_models::STOCK_LIST_CAPABILITY
+        } else if query.filters.is_some() {
             crate::companion_models::STOCK_CARD_FILTER_CAPABILITY
         } else if query.search.trim().is_empty() {
             crate::companion_models::STOCK_CARDS_CAPABILITY
