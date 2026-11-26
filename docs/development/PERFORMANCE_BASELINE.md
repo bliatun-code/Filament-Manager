@@ -32,7 +32,10 @@ Current Hosts also filter individual rolls by status, ownership, material,
 vendor, location and low-stock policy before grouping. Opening the filter panel
 requests distinct materials and vendors from the whole stock in the same read
 transaction. Older Hosts and offline Clients filter the complete live or saved
-list. Opening and closing Add spool keeps the loaded cards and reads the
+list. Open inventory from a linked shelf passes the location and search text
+to the first card-page read. Opening an individual shelf roll still checks its
+placement against stock from the reviewed library and generation.
+Opening and closing Add spool keeps the loaded cards and reads the
 registration catalog on demand. A successful registration refreshes stock
 so the new roll can be opened. List view, labels and selection use the
 complete stock so they cover every matching roll.

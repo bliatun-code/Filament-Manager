@@ -535,6 +535,9 @@ async function checkLocationRollHandoff({ page, state, fixture, calls, fallback,
   replacement.master.filament_name = "New generation roll";
   const started = deferred(), response = deferred();
   let delayRead = false;
+  let cardMode = "live";
+  const cardQueries = [];
+  const cardStarted = deferred(), oldCards = deferred();
   const snapshots = [];
   const detailReads = [];
   state.invoke = (command, payload) => {
@@ -547,9 +550,23 @@ async function checkLocationRollHandoff({ page, state, fixture, calls, fallback,
       case "fetch_library_sync_printer_overview": return [];
       case "fetch_library_sync_wishlist_items": return [];
       case "get_location_spool_page": return { rows: [reviewed], total: 1, matches: 1, revisions: [1, 1] };
+      case "get_stock_card_page":
+        if (!payload.query.filters?.location_id) return null;
+        cardQueries.push(payload.query);
+        assert.equal(payload.target.target_generation, current.target_generation);
+        if (cardMode === "delayed") {
+          cardStarted.resolve();
+          return oldCards.promise;
+        }
+        if (cardMode === "legacy") return null;
+        if (cardMode === "offline") throw Error("Host disconnected");
+        return {cards:[{count:1, remaining:500, rows:[reviewed]}], total:2, visible:1,
+          groups:1, borrowed:0, revisions:[1,1]};
+      case "fetch_cached_library_sync_spools": return {rows:[reviewed], captured_at:"2026-01-01"};
       case "fetch_library_sync_spool_snapshot": {
         const generation = payload.input.target_generation;
         snapshots.push(generation);
+        if (cardMode === "offline") throw Error("Host disconnected");
         if (delayRead && generation === host.target_generation) {
           started.resolve();
           return response.promise;
@@ -574,6 +591,23 @@ async function checkLocationRollHandoff({ page, state, fixture, calls, fallback,
     await roll.waitFor();
   };
 
+  for (cardMode of ["live", "legacy", "offline"]) {
+    await openShelf();
+    await panel.getByRole("searchbox").fill("Dialog a");
+    await roll.waitFor();
+    calls.length = 0;
+    await panel.getByRole("button", {name: "Open inventory", exact: true}).click();
+    await page.getByRole("heading", {name: /Dialog a/}).waitFor();
+    await page.waitForFunction(() => document.activeElement?.id === "inventory-location-filter-chip");
+    assert.equal(cardQueries.at(-1)?.filters.location_id, location.id);
+    assert.equal(cardQueries.at(-1)?.search, "Dialog a");
+    assert.equal(calls.filter(c => c.command === "get_stock_card_page").length, 1);
+    assert.equal(calls.some(c => c.command === "fetch_library_sync_spool_snapshot"), cardMode !== "live");
+    assert.equal(calls.some(c => c.command === "fetch_cached_library_sync_spools"), cardMode === "offline");
+  }
+  snapshots.length = 0;
+  calls.length = 0;
+  cardMode = "live";
   await openShelf();
   await panel.getByRole("button", { name: "Back", exact: true }).click();
   await page.waitForFunction(() => document.activeElement?.getAttribute("aria-label") === "Handoff shelf: 1 connected roll");
@@ -607,6 +641,25 @@ async function checkLocationRollHandoff({ page, state, fixture, calls, fallback,
   assert.equal(await page.locator("#inventory-location-filter-chip").count(), 0);
   assert.deepEqual(detailReads, []);
   assert.deepEqual(snapshots, [21, 21, 23]);
+
+  cardMode = "delayed";
+  await openShelf();
+  await panel.getByRole("button", {name: "Open inventory", exact: true}).click();
+  await waitForStart(cardStarted);
+  current = { ...host, host_base_url: "http://shelf-b.local:4278", library_id: "B", target_generation: 24 };
+  current = { ...host, target_generation: 25 };
+  const obsolete = {...reviewed, master: {...reviewed.master, filament_name: "Obsolete shelf card"}};
+  await page.evaluate(() => {
+    window.obsoleteShelfCardSeen = false;
+    new MutationObserver(() => {
+      if (document.body.innerText.includes("Obsolete shelf card")) window.obsoleteShelfCardSeen = true;
+    }).observe(document.body, {childList:true, subtree:true, characterData:true});
+  });
+  oldCards.resolve({cards:[{count:1, remaining:500, rows:[obsolete]}], total:1, visible:1,
+    groups:1, borrowed:0, revisions:[1,1]});
+  await page.getByRole("heading", {name: /New generation roll/}).waitFor();
+  assert.equal(await page.locator("#inventory-location-filter-chip").count(), 0);
+  assert.equal(await page.evaluate(() => window.obsoleteShelfCardSeen), false);
 }
 
 async function checkWorkspaceWrites({ page, state, fixture, calls, fallback, openWorkspace }) {
@@ -1038,7 +1091,7 @@ async function main() {
       ["loan workspace badges and stock on demand after lending and returning", checkWorkspaceWrites, true],
       ["Locations rejects an A–B–A read and opens the linked offline rolls on click", checkLinkedLocations, true],
       ["Location pages and search stay within the shelf and reject an old Host generation", checkLocationPages, true],
-      ["A shelf roll opens its detail only on the reviewed Host generation", checkLocationRollHandoff, true],
+      ["Shelf links preserve the filter, keyboard focus and reviewed Host generation", checkLocationRollHandoff, true],
       ["Stock pages search beyond previews, discard stale results and filter the offline copy", checkStockCards, true],
       ["An older Host supplies the complete stock for the selected location on demand", checkLegacyLocation, true],
       ["offline loan rows and badges reject a late A–B–A read", checkWorkspaceOffline, true],

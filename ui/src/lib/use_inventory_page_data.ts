@@ -72,7 +72,7 @@ export type InventoryReloadReporter = (
 type InventoryRefreshInput = {
   onStockLoaded?: (rows: InventorySpool[]) => void;
   selectedSpoolId?: string | null;
-  cardPage?: boolean;
+  cardPage?: boolean | Pick<StockCards, "search" | "filters">;
   purchasesOnly?: boolean;
   locationsOnly?: boolean;
 };
@@ -407,7 +407,14 @@ export function useInventoryPageData({
       current.clientTargetGeneration !== clientTargetGeneration;
   }, [clientHostBaseUrl, clientLibraryId, clientTargetGeneration]);
 
-  const reloadSpools = useCallback(async (reportResult?: InventoryReloadReporter, onStockLoaded?: InventoryRefreshInput["onStockLoaded"], cards = false, previous?: StockCards, memberOf?: string, searchRequest?: { text: string; filters?: StockCards["filters"]; current: () => boolean }) => {
+  const reloadSpools = useCallback(async (
+    reportResult?: InventoryReloadReporter,
+    onStockLoaded?: InventoryRefreshInput["onStockLoaded"],
+    cards: InventoryRefreshInput["cardPage"] = false,
+    previous?: StockCards,
+    memberOf?: string,
+    searchRequest?: { text: string; filters?: StockCards["filters"]; current: () => boolean },
+  ) => {
     if (!tauriAvailable) {
       reportResult?.("spools", "ERROR");
       reportResult?.("locations", "ERROR");
@@ -419,21 +426,32 @@ export function useInventoryPageData({
       const target = cards && clientLibraryId && clientTargetGeneration != null && (!clientReadOnly || clientHostBaseUrl)
         ? {base_url: clientReadOnly ? clientHostBaseUrl : null, expected_library_id: clientLibraryId, target_generation: clientTargetGeneration}
         : null;
+      const initialQuery = typeof cards === "object" ? cards : undefined;
       if (target) {
-        const page = await loadStockCards(target, previous, memberOf, searchRequest?.text, searchRequest?.filters).catch(() => null);
+        const page = await loadStockCards(
+          target, previous, memberOf,
+          searchRequest?.text ?? initialQuery?.search,
+          searchRequest?.filters ?? initialQuery?.filters,
+        ).catch(() => null);
         if (!isCurrent()) return;
-        if ((page || searchRequest) && !await isLocationSpoolTargetCurrent(target)) {
+        if ((page || searchRequest || initialQuery) && !await isLocationSpoolTargetCurrent(target)) {
           await resolveLibrarySyncRole();
           return;
         }
         if (!isCurrent()) return;
         if (page) {
           setCardPage(page);
-          setSpools(page.cards.flatMap(card => card.rows));
+          const rows = page.cards.flatMap(card => card.rows);
+          setSpools(rows);
           clientInventorySourceRef.current = "LIVE";
           setClientInventoryUpdatedAt(null);
           recordClientInventoryDomainSource("spools", "LIVE");
           if (!previous && !searchRequest) await reloadLocations(undefined, reportResult, false);
+          if (!isCurrent()) {
+            reportResult?.("spools", "SUPERSEDED");
+            return;
+          }
+          onStockLoaded?.(rows);
           reportResult?.("spools", "LIVE");
           return;
         }
@@ -449,7 +467,7 @@ export function useInventoryPageData({
         clientHostBaseUrl && clientLibraryId &&
         await inventoryFallbackPairingRejected(clientHostBaseUrl, clientLibraryId);
       // Another window can switch the persisted target while a live or fallback read is in flight.
-      const targetChanged = isCurrent() && (target && searchRequest
+      const targetChanged = isCurrent() && (target && (searchRequest || initialQuery)
         ? !await isLocationSpoolTargetCurrent(target)
         : clientReadOnly && await clientReadTargetChanged());
       if (!isCurrent()) {

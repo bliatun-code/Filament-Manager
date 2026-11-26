@@ -404,8 +404,6 @@ export default function InventoryPage({
   }, [activeWorkspaceView, locationAuthorityKey]);
   const requestCards = !requiresFullStock && inventoryView === "CARDS" && !navigationIntent && !showRollModal &&
     !recentlyAddedSpoolId && !detailVisualFixture;
-  const requestCardsRef = useRef(requestCards);
-  useEffect(() => { requestCardsRef.current = requestCards; }, [requestCards]);
   useEffect(() => {
     if (cardPage && !requestCards && activeWorkspaceView === "STOCK" && librarySyncReady) {
       void refreshInventoryData();
@@ -420,10 +418,15 @@ export default function InventoryPage({
   } : undefined, [advancedFiltersOpen, otherFilterCount, statusFilter, ownershipFilter, materialFilter,
     vendorFilter, locationFilter?.id, lowStockOnly]);
   const cardSearch = search.trim();
+  const stockViewRef = useRef({ requestCards, search: cardSearch, filters: cardFilters });
+  useEffect(() => {
+    stockViewRef.current = { requestCards, search: cardSearch, filters: cardFilters };
+  }, [requestCards, cardSearch, cardFilters]);
   const lastCardSearchAt = useRef(-Infinity);
   const pendingCardSearch = requestCards && cardPage != null && (cardPage.search !== cardSearch || cardPage.filters !== cardFilters);
+  const loadingLocationStock = Boolean(locationFilter && (loading || refreshing));
   useEffect(() => {
-    if (!pendingCardSearch || activeWorkspaceView !== "STOCK" || !librarySyncReady) return;
+    if (loadingLocationStock || !pendingCardSearch || activeWorkspaceView !== "STOCK" || !librarySyncReady) return;
     let current = true;
     const delay = cardSearch ? Math.max(0, 100 - (performance.now() - lastCardSearchAt.current)) : 0;
     const timer = window.setTimeout(() => {
@@ -433,19 +436,21 @@ export default function InventoryPage({
       });
     }, delay);
     return () => { current = false; window.clearTimeout(timer); };
-  }, [activeWorkspaceView, cardFilters, cardSearch, librarySyncReady, locationAuthorityKey, pendingCardSearch, reloadSpools]);
+  }, [activeWorkspaceView, cardFilters, cardSearch, librarySyncReady, locationAuthorityKey, pendingCardSearch, reloadSpools, loadingLocationStock]);
   const waitingForAllRows = Boolean(cardPage && (!requestCards || pendingCardSearch));
   const cardTotals = useMemo(() => new Map(cardPage?.cards.map(card =>
     [card.rows[0]?.id, {count: card.count, remaining: card.remaining}])), [cardPage]);
   const pendingPurchaseNavigation = navigationIntent?.kind === "PURCHASES" && !purchasesOnly;
   useEffect(() => {
-    const handoff = pendingLocationStock.current;
-    if (handoff && (activeWorkspaceView !== "STOCK" || handoff.authority !== locationAuthorityKey)) {
+    if (activeWorkspaceView !== "STOCK" || pendingLocationStock.current?.authority !== locationAuthorityKey) {
       pendingLocationStock.current = null;
     }
     if (!tauri || !librarySyncReady || pendingPurchaseNavigation || loansOnly || pendingLoanNavigation) return;
     let current = true;
-    void refreshInventoryData({ purchasesOnly, locationsOnly, cardPage: requestCardsRef.current && !handoff, onStockLoaded: handoff ? async rows => {
+    const handoff = pendingLocationStock.current;
+    const { requestCards: useCards, search, filters } = stockViewRef.current;
+    const cardPage = useCards && !handoff?.spoolId && (handoff ? { search, filters } : true);
+    void refreshInventoryData({ purchasesOnly, locationsOnly, cardPage, onStockLoaded: handoff ? async rows => {
       if (!current || pendingLocationStock.current !== handoff) return;
       try {
         const sameTarget = await isLocationSpoolTargetCurrent(handoff.target);
