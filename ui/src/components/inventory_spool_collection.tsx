@@ -220,7 +220,7 @@ export function InventorySpoolCollection({
     visibleSpoolCount: filteredSpools.length,
   });
 
-  const representedCount = cardPage
+  const representedCount = cardPage && inventoryView === "LIST" ? filteredSpools.length : cardPage
     ? groupedSpools.reduce((total, group) => total + (cardPage.totals.get(group.rolls[0].id)?.count ?? 0), 0)
     : collectionWindow.representedSpoolCount;
 
@@ -311,7 +311,7 @@ export function InventorySpoolCollection({
               </div>
             </article>;
           })
-        : collectionWindow.filteredSpools.map(roll => {
+        : (cardPage ? filteredSpools : collectionWindow.filteredSpools).map(roll => {
             const listButtonState = selectedSpoolId === roll.id ? "selected" : roll.id === recentlyAddedSpoolId ? "recent" : "default";
             return <div key={roll.id} className="inventory-list-line">
               {bulkSelectionActive ? <InventoryBulkSpoolSelectionCheckbox

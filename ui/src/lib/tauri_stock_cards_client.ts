@@ -3,7 +3,7 @@ import type { LibraryReadTarget } from "./tauri_library_sync_client";
 import type { SpoolWithMasterRow } from "./tauri_inventory_client";
 
 export type StockCardFilters = {
-  status?: string; ownership?: string; material?: string; vendor?: string;
+  list_rows?: boolean; status?: string; ownership?: string; material?: string; vendor?: string;
   location_id?: string; low_stock: boolean; include_options: boolean;
 };
 

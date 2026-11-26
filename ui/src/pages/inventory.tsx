@@ -80,6 +80,7 @@ import { isTauri } from "../lib/tauri_client";
 
 const LoanOutModal = lazy(() => import("../components/loan_out_modal").then(module => ({ default: module.LoanOutModal })));
 
+const defaultListFilters = { list_rows: true, low_stock: false, include_options: false };
 const LoansPage = lazy(() => import("./loans"));
 type LocationPanelComponent = typeof import("../components/inventory_location_spools_panel").InventoryLocationSpoolsPanel;
 
@@ -402,7 +403,7 @@ export default function InventoryPage({
     setRequiresFullStock(false);
     setPendingStockAction(null);
   }, [activeWorkspaceView, locationAuthorityKey]);
-  const requestCards = !requiresFullStock && inventoryView === "CARDS" && !navigationIntent && !showRollModal &&
+  const requestCards = !requiresFullStock && !navigationIntent && !showRollModal &&
     !recentlyAddedSpoolId && !detailVisualFixture;
   useEffect(() => {
     if (cardPage && !requestCards && activeWorkspaceView === "STOCK" && librarySyncReady) {
@@ -410,12 +411,13 @@ export default function InventoryPage({
     }
   }, [cardPage, requestCards, activeWorkspaceView, librarySyncReady, refreshInventoryData]);
   const cardFilters = useMemo(() => advancedFiltersOpen || otherFilterCount ? {
+    list_rows: inventoryView === "LIST" || undefined,
     status: statusFilter === "ALL" ? undefined : statusFilter,
     ownership: ownershipFilter === "ALL" ? undefined : ownershipFilter,
     material: materialFilter === "ALL" ? undefined : materialFilter,
     vendor: vendorFilter === "ALL" ? undefined : vendorFilter,
     location_id: locationFilter?.id, low_stock: lowStockOnly, include_options: advancedFiltersOpen,
-  } : undefined, [advancedFiltersOpen, otherFilterCount, statusFilter, ownershipFilter, materialFilter,
+  } : inventoryView === "LIST" ? defaultListFilters : undefined, [inventoryView, advancedFiltersOpen, otherFilterCount, statusFilter, ownershipFilter, materialFilter,
     vendorFilter, locationFilter?.id, lowStockOnly]);
   const cardSearch = search.trim();
   const cardRequest = useMemo(() => requestCards && (
@@ -455,7 +457,9 @@ export default function InventoryPage({
     const view = stockViewRef.current;
     // A retained card page belongs to the current library. A new target starts
     // fresh unless the user explicitly opened its shelf.
-    const cardPage = !handoff?.spoolId && (handoff || view.hasCardPage ? view.cardRequest : Boolean(view.cardRequest));
+    const initialPage = typeof view.cardRequest === "object" && view.cardRequest.filters?.list_rows
+      ? { search: "", filters: defaultListFilters } : Boolean(view.cardRequest);
+    const cardPage = !handoff?.spoolId && (handoff || view.hasCardPage ? view.cardRequest : initialPage);
     void refreshInventoryData({ purchasesOnly, locationsOnly, cardPage, onStockLoaded: handoff ? async rows => {
       if (!current || pendingLocationStock.current !== handoff) return;
       try {
