@@ -1,4 +1,4 @@
-import { useEffect, useId, useMemo, useState } from "react";
+import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { PageHeaderButton } from "./page_header_button";
 import { inlineStatusSignalClass } from "../lib/chip_styles";
 import { formatPlacementLabel } from "../lib/display_format";
@@ -78,6 +78,45 @@ function OwnershipChip({
       {formatInventoryOwnershipLabel(t, ownershipType)}
     </span>
   );
+}
+
+function StockRollMenu({ group, count, moreRolls, onSelectRoll }: {
+  group: SpoolGroup;
+  count: number;
+  moreRolls?: (id: string) => void;
+  onSelectRoll: (id: string) => void;
+}) {
+  const { t } = useI18n();
+  const [limit, setLimit] = useState(0);
+  const details = useRef<HTMLDetailsElement>(null);
+  const focusIndex = useRef<number | null>(null);
+  const visible = Math.min(limit, group.rolls.length);
+  useLayoutEffect(() => {
+    const index = focusIndex.current;
+    if (index === null || index >= visible) return;
+    focusIndex.current = null;
+    if (details.current?.open && (details.current.contains(document.activeElement) || document.activeElement === document.body)) {
+      details.current.querySelectorAll<HTMLButtonElement>("div > button")[index]?.focus();
+    }
+  }, [visible]);
+
+  return <details className="inventory-product-menu" ref={details} onToggle={event => {
+    if (!event.currentTarget.open) focusIndex.current = null;
+    setLimit(event.currentTarget.open ? 100 : 0);
+  }}>
+    <summary aria-label={`${t("common.actions", "Actions")} · ${formatInventoryDisplayTitle(group.material, group.filamentName, group.colorName)}`}>⋮</summary>
+    {limit > 0 && <div>
+      {group.rolls.slice(0, visible).map(roll => <button key={roll.id} type="button" onClick={() => {
+        if (details.current) details.current.open = false;
+        onSelectRoll(roll.id);
+      }}>{t("inventory.openCreatedRoll", "Open roll")} · {formatRollReference(roll)}</button>)}
+      {visible < count && <button type="button" onClick={() => {
+        focusIndex.current = visible;
+        setLimit(visible + 100);
+        if (visible === group.rolls.length) moreRolls?.(group.rolls[0].id);
+      }}>{t("inventory.showMoreHistory", "Show more")}</button>}
+    </div>}
+  </details>;
 }
 
 function RemainingMeter({
@@ -233,19 +272,7 @@ export function InventorySpoolCollection({
                       <OwnershipChip ownershipType={group.ownershipType} t={t} />
                     </div>
                   </div>
-                  <details className="inventory-product-menu">
-                    <summary aria-label={`${t("common.actions", "Actions")} · ${formatInventoryDisplayTitle(group.material, group.filamentName, group.colorName)}`}>⋮</summary>
-                    <div>{group.rolls.map(roll => <button key={roll.id} type="button" onClick={event => {
-                      event.currentTarget.closest("details")?.removeAttribute("open");
-                      onSelectRoll(roll.id);
-                    }}>{t("inventory.openCreatedRoll", "Open roll")} · {formatRollReference(roll)}</button>)}
-                      {cardPage && group.rolls.length < rollCount ? (
-                        <button type="button" onClick={() => cardPage.moreRolls(group.rolls[0].id)}>
-                          {t("inventory.showMoreHistory", "Show more")}
-                        </button>
-                      ) : null}
-                    </div>
-                  </details>
+                  <StockRollMenu group={group} count={rollCount} moreRolls={cardPage?.moreRolls} onSelectRoll={onSelectRoll} />
                 </header>
                 {rollCount > 1 ? <div className="inventory-product-total">
                   {rollCount} {t("inventory.spoolResults", "spools")} · {formatGrams(stats?.remaining ?? group.totalRemaining, "dash", locale)}
