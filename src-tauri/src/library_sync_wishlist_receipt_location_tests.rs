@@ -180,10 +180,15 @@ fn client(base_url: &str, authenticated: bool) -> (TestDirectory, AppState) {
     (directory, state)
 }
 
-fn input(base_url: &str, home_location: Option<&str>) -> LibrarySyncReceiveWishlistItemInput {
+fn input(
+    base_url: &str,
+    generation: u64,
+    home_location: Option<&str>,
+) -> LibrarySyncReceiveWishlistItemInput {
     LibrarySyncReceiveWishlistItemInput {
         base_url: base_url.to_string(),
-        expected_library_id: Some(LIBRARY_ID.into()),
+        expected_library_id: LIBRARY_ID.into(),
+        expected_target_generation: generation,
         item_id: "order".into(),
         quantity: 1,
         request_id: None,
@@ -191,6 +196,21 @@ fn input(base_url: &str, home_location: Option<&str>) -> LibrarySyncReceiveWishl
         purchase_metadata: None,
         home_location: home_location.map(str::to_string),
     }
+}
+
+fn reviewed_input(
+    state: &AppState,
+    home_location: Option<&str>,
+) -> LibrarySyncReceiveWishlistItemInput {
+    let status = FilamentDatabase::open(&state.db_path)
+        .unwrap()
+        .get_library_sync_page_status()
+        .unwrap();
+    input(
+        &status.host_base_url.unwrap(),
+        status.target_generation,
+        home_location,
+    )
 }
 
 #[test]
@@ -225,7 +245,7 @@ fn older_host_rejects_receipt_location_before_authentication_or_mutation() {
     let (_directory, state) = client(&host.base_url, false);
     let error = receive_library_sync_host_wishlist_item_blocking(
         &state,
-        input(&host.base_url, Some("  Receipt shelf  ")),
+        reviewed_input(&state, Some("  Receipt shelf  ")),
     )
     .unwrap_err();
     let error: serde_json::Value = serde_json::from_str(&error).unwrap();
@@ -246,7 +266,7 @@ fn older_host_still_receives_omitted_or_blank_locations_once() {
         let (_directory, state) = client(&host.base_url, true);
         let result = receive_library_sync_host_wishlist_item_blocking(
             &state,
-            input(&host.base_url, location),
+            reviewed_input(&state, location),
         )
         .unwrap();
         assert_eq!(result.spool_ids, vec!["host-received-spool"]);
@@ -268,7 +288,7 @@ fn older_host_still_receives_omitted_or_blank_locations_once() {
 fn capable_host_receipt_payload_preserves_trimmed_location() {
     assert_eq!(
         host_wishlist_receipt_payload_for_capabilities(
-            &input("http://test.local", Some("  Shelf A  ")),
+            &input("http://test.local", 1, Some("  Shelf A  ")),
             &[WISHLIST_RECEIPT_LOCATION_CAPABILITY.to_string()]
         )
         .unwrap(),
@@ -280,12 +300,12 @@ fn capable_host_receipt_payload_preserves_trimmed_location() {
 fn keyed_desktop_receipt_still_works_with_an_older_host_but_cannot_retry_there() {
     let mut host = ReceiptTestHost::start();
     let (_directory, state) = client(&host.base_url, true);
-    let mut first = input(&host.base_url, None);
+    let mut first = reviewed_input(&state, None);
     first.request_id = Some("known-attempt".to_string());
     let receipt = receive_library_sync_host_wishlist_item_blocking(&state, first).unwrap();
     assert_eq!(receipt.spool_ids, ["host-received-spool"]);
 
-    let mut repeated = input(&host.base_url, None);
+    let mut repeated = reviewed_input(&state, None);
     repeated.request_id = Some("known-attempt".to_string());
     repeated.retry = true;
     let error = receive_library_sync_host_wishlist_item_blocking(&state, repeated).unwrap_err();
@@ -318,7 +338,7 @@ fn uncertain_desktop_receipt_reports_if_the_host_received_a_key() {
         };
         let mut host = ReceiptTestHost::start_with_receipt_behavior(api, true);
         let (_directory, state) = client(&host.base_url, true);
-        let mut request = input(&host.base_url, None);
+        let mut request = reviewed_input(&state, None);
         request.request_id = Some("lost-receipt".to_string());
         let error = receive_library_sync_host_wishlist_item_blocking(&state, request).unwrap_err();
         assert_eq!(
@@ -354,8 +374,8 @@ fn uncertain_desktop_receipt_reports_if_the_host_received_a_key() {
 fn a_stale_receipt_target_is_classified_as_not_sent() {
     let mut host = ReceiptTestHost::start();
     let (_directory, state) = client(&host.base_url, true);
-    let mut request = input(&host.base_url, None);
-    request.expected_library_id = Some("previous-library".to_string());
+    let mut request = reviewed_input(&state, None);
+    request.expected_library_id = "previous-library".into();
     request.request_id = Some("not-sent-receipt".to_string());
     let error = receive_library_sync_host_wishlist_item_blocking(&state, request).unwrap_err();
     assert_eq!(
@@ -370,7 +390,7 @@ fn downgrading_after_health_does_not_fall_back_to_a_keyless_receipt() {
     let mut host =
         ReceiptTestHost::start_with_receipt_behavior(ReceiptHostApi::DowngradedAfterHealth, false);
     let (_directory, state) = client(&host.base_url, true);
-    let mut request = input(&host.base_url, None);
+    let mut request = reviewed_input(&state, None);
     request.request_id = Some("protected-during-downgrade".to_string());
     let error = receive_library_sync_host_wishlist_item_blocking(&state, request).unwrap_err();
     assert_eq!(
@@ -388,4 +408,36 @@ fn downgrading_after_health_does_not_fall_back_to_a_keyless_receipt() {
         serde_json::from_str::<serde_json::Value>(&requests[1].1).unwrap(),
         serde_json::json!({ "quantity": 1, "request_id": "protected-during-downgrade" }),
     );
+}
+
+#[test]
+fn queued_receipt_after_a_b_a_sends_no_request() {
+    let mut host = ReceiptTestHost::start_with_receipt_behavior(ReceiptHostApi::Keyed, false);
+    let (_directory, state) = client(&host.base_url, true);
+    let db = FilamentDatabase::open(&state.db_path).unwrap();
+    let original = db.get_library_sync_settings().unwrap();
+    let queued = |retry| {
+        let mut request = input(&host.base_url, original.target_generation, None);
+        request.request_id = Some("queued-receipt-a-b-a".into());
+        request.retry = retry;
+        request
+    };
+    let mut other = original.clone();
+    other.library_id = "other-library".into();
+    other.host_base_url = Some("http://other.local:4278".into());
+    db.save_library_sync_settings(&other).unwrap();
+    db.save_library_sync_settings(&original).unwrap();
+    assert_ne!(
+        original.target_generation,
+        db.get_library_sync_page_status().unwrap().target_generation
+    );
+    for retry in [false, true] {
+        let error =
+            receive_library_sync_host_wishlist_item_blocking(&state, queued(retry)).unwrap_err();
+        assert_eq!(
+            library_sync_host_error_code(&error).as_deref(),
+            Some("wishlist.receive.not_sent")
+        );
+    }
+    assert!(host.finish().is_empty());
 }

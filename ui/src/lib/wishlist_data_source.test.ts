@@ -519,9 +519,11 @@ test("receiveWishlistEntry uses the same quantity contract for host and local wr
   };
   const hostResult = await receiveWishlistEntry(
     { item_id: "wish-host", quantity: 2, purchase_metadata: purchaseMetadata, home_location: "QA Dry box" },
-    { clientReadOnly: true, clientHostBaseUrl: "http://host", clientLibraryId: "library-1" },
+    { clientReadOnly: true, clientHostBaseUrl: "http://host", clientLibraryId: "library-1", clientTargetGeneration: 7 },
     {
-      receiveHostWishlistItem: async (baseUrl, _libraryId, input) => {
+      receiveHostWishlistItem: async (target, input) => {
+        assert.equal(target.targetGeneration, 7);
+        const baseUrl = target.baseUrl;
         hostCalls.push({ baseUrl, input });
         return {
           spool_ids: ["spool-1", "spool-2"],
@@ -569,7 +571,7 @@ test("wishlist receipt Host rejection never writes to the local shadow library",
   let localCalls = 0;
   await assert.rejects(receiveWishlistEntry(
     { item_id: "wish-host", quantity: 1, home_location: "QA Dry box" },
-    { clientReadOnly: true, clientHostBaseUrl: "http://host", clientLibraryId: "library-1" },
+    { clientReadOnly: true, clientHostBaseUrl: "http://host", clientLibraryId: "library-1", clientTargetGeneration: 7 },
     {
       receiveHostWishlistItem: async () => { throw new Error("Host capability unavailable"); },
       receiveLocalWishlistItem: async () => {
@@ -606,9 +608,9 @@ test("wishlist host mutations reject missing client host details", async () => {
     () =>
       receiveWishlistEntry(
         { item_id: "wish-1", quantity: 1 },
-        { clientReadOnly: true, clientHostBaseUrl: "", clientLibraryId: "library-1" },
+        { clientReadOnly: true, clientHostBaseUrl: "http://host", clientLibraryId: "library-1" },
       ),
-    /Host connection details/,
+    /wishlist\.receive\.not_sent/,
   );
   await assert.rejects(
     () =>

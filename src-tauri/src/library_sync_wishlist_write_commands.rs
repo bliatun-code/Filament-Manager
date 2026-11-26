@@ -141,9 +141,16 @@ pub(crate) fn receive_library_sync_host_wishlist_item_blocking(
             error
         }
     };
-    let host_input = library_sync_host_input(&input.base_url, input.expected_library_id.as_deref());
-    let (_, health, target) =
-        prepare_library_sync_host_write(state, &host_input).map_err(not_sent)?;
+    if input.expected_library_id.trim().is_empty() {
+        return Err(not_sent(coded_command_error("common.invalid_request")));
+    }
+    let host_input = library_sync_host_input(&input.base_url, Some(&input.expected_library_id));
+    let (_, health, target) = prepare_library_sync_host_write_for_generation(
+        state,
+        &host_input,
+        Some(input.expected_target_generation),
+    )
+    .map_err(not_sent)?;
     let item_id = input.item_id.trim();
     if item_id.is_empty() {
         return Err("Wishlist item id is required.".to_string());
@@ -304,7 +311,8 @@ mod tests {
             host_wishlist_receipt_payload_for_capabilities(
                 &LibrarySyncReceiveWishlistItemInput {
                     base_url: "http://host.local".to_string(),
-                    expected_library_id: None,
+                    expected_library_id: "library".into(),
+                    expected_target_generation: 1,
                     item_id: "order".to_string(),
                     quantity,
                     request_id: None,

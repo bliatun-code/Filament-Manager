@@ -1,3 +1,4 @@
+import type { ClientHostCacheTarget } from "./host_write_target";
 import { invoke } from "./tauri_invoke";
 import type { PurchaseQueuePage, PurchaseQueueQuery } from "./purchase_queue_page";
 import type { LibraryReadTarget, LibrarySyncPageStatus } from "./tauri_library_sync_client";
@@ -114,25 +115,24 @@ export async function receiveWishlistItem(input: ReceiveWishlistItemInput) {
 }
 
 export async function receiveLibrarySyncHostWishlistItem(
-  baseUrl: string,
-  expectedLibraryId: string | null | undefined,
+  target: ClientHostCacheTarget,
   input: ReceiveHostWishlistItemInput,
 ) {
   return invoke<WishlistReceiptResult>(
     "receive_library_sync_host_wishlist_item",
-    buildLibrarySyncHostWishlistReceiptPayload(baseUrl, expectedLibraryId, input),
+    buildLibrarySyncHostWishlistReceiptPayload(target, input),
   );
 }
 
 export function buildLibrarySyncHostWishlistReceiptPayload(
-  baseUrl: string,
-  expectedLibraryId: string | null | undefined,
+  target: ClientHostCacheTarget,
   input: ReceiveHostWishlistItemInput,
 ) {
   return {
     input: {
-      base_url: baseUrl,
-      expected_library_id: expectedLibraryId ?? null,
+      base_url: target.baseUrl,
+      expected_library_id: target.libraryId,
+      expected_target_generation: target.targetGeneration,
       item_id: input.item_id,
       quantity: input.quantity,
       ...(input.request_id === undefined ? {} : { request_id: input.request_id }),

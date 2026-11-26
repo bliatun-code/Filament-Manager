@@ -1288,7 +1288,8 @@ async fn real_tcp_client_completes_the_five_fixed_workflows_on_the_host() {
                 &state,
                 LibrarySyncReceiveWishlistItemInput {
                     base_url,
-                    expected_library_id: Some(HOST_LIBRARY_ID.to_string()),
+                    expected_library_id: HOST_LIBRARY_ID.to_string(),
+                    expected_target_generation: target_generation,
                     item_id: HOST_WISHLIST_ID.to_string(),
                     quantity: 2,
                     request_id: Some("resilience-wishlist-receipt".to_string()),
@@ -1313,7 +1314,8 @@ async fn real_tcp_client_completes_the_five_fixed_workflows_on_the_host() {
                 &state,
                 LibrarySyncReceiveWishlistItemInput {
                     base_url,
-                    expected_library_id: Some(HOST_LIBRARY_ID.to_string()),
+                    expected_library_id: HOST_LIBRARY_ID.to_string(),
+                    expected_target_generation: target_generation,
                     item_id: HOST_WISHLIST_ID.to_string(),
                     quantity: 2,
                     request_id: Some("resilience-wishlist-receipt".to_string()),

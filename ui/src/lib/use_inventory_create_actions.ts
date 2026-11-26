@@ -682,7 +682,7 @@ export function useInventoryCreateActions({
       attempt = pending;
       const receipt = await receiveWishlistEntry(
         { ...input, request_id: attempt.requestId },
-        { ...hostWriteTarget, retry: attempt.retry },
+        { ...hostWriteTarget, clientTargetGeneration, retry: attempt.retry },
       );
       if (!isConfirmedWishlistReceipt(receipt, quantity)) {
         throw createAppError(clientReadOnly
