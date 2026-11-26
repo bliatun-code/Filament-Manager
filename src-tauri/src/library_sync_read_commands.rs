@@ -50,8 +50,17 @@ fn fetch_library_sync_spool_detail_blocking(
     state: &AppState,
     input: LibrarySyncSpoolDetailInput,
 ) -> Result<CompanionSpoolDetail, String> {
-    let host_input = library_sync_host_input(&input.base_url, input.expected_library_id.as_deref());
-    let (_, _, target) = prepare_library_sync_host_checked(state, &host_input)?;
+    if input.expected_library_id.trim().is_empty() {
+        return Err(crate::app_error::coded_command_error(
+            "common.invalid_request",
+        ));
+    }
+    let host_input = library_sync_host_input(&input.base_url, Some(&input.expected_library_id));
+    let (_, _, target) = prepare_library_sync_host_write_for_generation(
+        state,
+        &host_input,
+        Some(input.target_generation),
+    )?;
 
     let spool_id = input.spool_id.trim();
     if spool_id.is_empty() {
@@ -654,6 +663,7 @@ mod tests {
     mod location_spools;
     mod printer_picker;
     mod purchase_queue;
+    mod spool_detail;
     mod spool_snapshot;
     mod stock_cards;
     mod wishlist_purchase;

@@ -785,7 +785,7 @@ export function useInventoryPageData({
     setDetailUnavailable(false);
     if (
       clientReadOnly &&
-      (!clientHostBaseUrl?.trim() || !clientLibraryId?.trim())
+      (!clientHostBaseUrl?.trim() || !clientLibraryId?.trim() || clientTargetGeneration == null)
     ) {
       if (reportResult) {
         setHistoryRows([]);

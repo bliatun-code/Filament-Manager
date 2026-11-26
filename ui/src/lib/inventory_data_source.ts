@@ -16,10 +16,7 @@ import {
   loadSpoolSnapshot,
   type loadSpoolRowsPage,
 } from "./spool_data_source";
-import {
-  resolveClientHostCacheTarget,
-  resolveClientHostTarget,
-} from "./host_write_target";
+import { resolveClientHostCacheTarget } from "./host_write_target";
 import {
   normalizeSpoolWithMasterRow,
   normalizeSpoolWithMasterRows,
@@ -209,7 +206,7 @@ export async function loadInventorySpoolDetail(
   const { clientReadOnly, spoolId, historyLimit = 80, usageLimit = 500 } = options;
 
   if (clientReadOnly) {
-    const hostTarget = resolveClientHostTarget(options);
+    const hostTarget = resolveClientHostCacheTarget(options);
     if (!hostTarget) {
       return {
         historyRows: [],
@@ -218,8 +215,7 @@ export async function loadInventorySpoolDetail(
     }
 
     const detail = await fetchHostSpoolDetail(
-      hostTarget.baseUrl,
-      hostTarget.libraryId,
+      hostTarget,
       spoolId,
       historyLimit,
       usageLimit,
