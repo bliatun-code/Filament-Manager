@@ -28,6 +28,7 @@ export const FilamentSpoolVisual = memo(function FilamentSpoolVisual({ color, cl
   const id = useId().replace(/:/g, "");
   const rgb = hexToRgb(color) ?? [135, 146, 158];
   const spec = parseSwatchSpec(color);
+  const isSolid = spec.kind === "solid";
   const base = `rgb(${rgb.join(" ")})`;
   const url = (name: string) => `url(#${id}-${name})`;
   const litColor = (diffuse: number, sheen: number) =>
@@ -43,22 +44,28 @@ export const FilamentSpoolVisual = memo(function FilamentSpoolVisual({ color, cl
       <linearGradient id={`${id}-axial`}>
         <stop stopColor="#000" stopOpacity=".47"/><stop offset=".28" stopColor="#000" stopOpacity="0"/><stop offset=".72" stopColor="#000" stopOpacity="0"/><stop offset="1" stopColor="#000" stopOpacity=".3"/>
       </linearGradient>
-      <linearGradient id={`${id}-volume`} gradientUnits="userSpaceOnUse" x1="0" y1="12" x2="0" y2="204">
-        <stop stopColor={litColor(.61,.01)}/><stop offset=".25" stopColor={litColor(.98,.06)}/><stop offset=".48" stopColor={litColor(.87,.02)}/><stop offset=".75" stopColor={litColor(.55,.01)}/><stop offset="1" stopColor={litColor(.24,.005)}/>
-      </linearGradient>
+      {isSolid && (
+        <linearGradient id={`${id}-volume`} gradientUnits="userSpaceOnUse" x1="0" y1="12" x2="0" y2="204">
+          <stop stopColor={litColor(.61,.01)}/><stop offset=".25" stopColor={litColor(.98,.06)}/><stop offset=".48" stopColor={litColor(.87,.02)}/><stop offset=".75" stopColor={litColor(.55,.01)}/><stop offset="1" stopColor={litColor(.24,.005)}/>
+        </linearGradient>
+      )}
       {wireProfiles.map((profile,i)=><linearGradient key={i} id={`${id}-wire-${i}`} gradientUnits="userSpaceOnUse" x1="0" y1="12" x2="0" y2="204">
         {profile.stops.map((stop,j)=><stop key={j} offset={stop.offset}
-          stopColor={spec.kind==="solid" ? litColor(stop.diffuse,stop.sheen) : "#000"}
-          stopOpacity={spec.kind==="solid" ? 1 : 1-stop.diffuse}/>) }
+          stopColor={isSolid ? litColor(stop.diffuse,stop.sheen) : "#000"}
+          stopOpacity={isSolid ? 1 : 1-stop.diffuse}/>) }
       </linearGradient>)}
-      <linearGradient id={`${id}-wire-shine`} gradientUnits="userSpaceOnUse" x1="0" y1="12" x2="0" y2="204">
-        {wireProfiles[2].stops.map((stop,i)=><stop key={i} offset={stop.offset} stopColor="#fff" stopOpacity={stop.sheen}/>) }
-      </linearGradient>
-      <linearGradient id={`${id}-multicolor`} gradientUnits="userSpaceOnUse" x1="75" y1="70" x2="158" y2="90">
-        {spec.colors.flatMap((c, i) => spec.kind === "multi"
-          ? [<stop key={`${i}-a`} offset={i / spec.colors.length} stopColor={c}/>, <stop key={`${i}-b`} offset={(i + 1) / spec.colors.length} stopColor={c}/>]
-          : [<stop key={i} offset={spec.colors.length === 1 ? 0 : i / (spec.colors.length - 1)} stopColor={c}/>])}
-      </linearGradient>
+      {!isSolid && (
+        <linearGradient id={`${id}-wire-shine`} gradientUnits="userSpaceOnUse" x1="0" y1="12" x2="0" y2="204">
+          {wireProfiles[2].stops.map((stop,i)=><stop key={i} offset={stop.offset} stopColor="#fff" stopOpacity={stop.sheen}/>) }
+        </linearGradient>
+      )}
+      {!isSolid && (
+        <linearGradient id={`${id}-multicolor`} gradientUnits="userSpaceOnUse" x1="75" y1="70" x2="158" y2="90">
+          {spec.colors.flatMap((c, i) => spec.kind === "multi"
+            ? [<stop key={`${i}-a`} offset={i / spec.colors.length} stopColor={c}/>, <stop key={`${i}-b`} offset={(i + 1) / spec.colors.length} stopColor={c}/>]
+            : [<stop key={i} offset={spec.colors.length === 1 ? 0 : i / (spec.colors.length - 1)} stopColor={c}/>])}
+        </linearGradient>
+      )}
       <radialGradient id={`${id}-shadow`}>
         <stop stopColor="#000" stopOpacity=".58"/><stop offset="1" stopColor="#000" stopOpacity="0"/>
       </radialGradient>
@@ -70,9 +77,9 @@ export const FilamentSpoolVisual = memo(function FilamentSpoolVisual({ color, cl
     <path d={rings.rearOuterRim} fill="none" stroke="#58646e" strokeOpacity=".55" strokeWidth=".8"/>
     <path d={rings.rearInnerRim} fill="none" stroke="#070d12" strokeWidth="2.4"/>
     <g clipPath={url("body")}>
-      <path d={bodyClip} fill={url(spec.kind === "solid" ? "volume" : "multicolor")}/>
+      <path d={bodyClip} fill={url(isSolid ? "volume" : "multicolor")}/>
       {threadLayers.map((d,i)=><path key={i} d={d} fill={url(`wire-${i}`)} />)}
-      {spec.kind!=="solid" ? <path d={threadLayers[2]} fill={url("wire-shine")}/> : null}
+      {!isSolid ? <path d={threadLayers[2]} fill={url("wire-shine")}/> : null}
       <rect x="20" y="10" width="160" height="195" fill={url("axial")}/>
     </g>
     <path d={rings.frontEdge} fill="#060b10" stroke="#070c10" strokeWidth="2.2"/>

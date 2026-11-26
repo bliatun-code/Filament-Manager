@@ -30,6 +30,7 @@ export const FilamentSpoolVisual = memo(function FilamentSpoolVisual({ color, cl
     const id = useId().replace(/:/g, "");
     const rgb = hexToRgb(color) ?? [135, 146, 158];
     const spec = parseSwatchSpec(color);
+    const isSolid = spec.kind === "solid";
     const base = `rgb(${rgb.join(" ")})`;
     const url = (name) => `url(#${id}-${name})`;
     const litColor = (diffuse, sheen) => `rgb(${rgb.map(value => Math.round(Math.min(255, value * diffuse + (255 - value) * sheen))).join(" ")})`;
@@ -49,17 +50,17 @@ export const FilamentSpoolVisual = memo(function FilamentSpoolVisual({ color, cl
                 svgElement("stop", { offset: ".28", stopColor: "#000", stopOpacity: "0" }),
                 svgElement("stop", { offset: ".72", stopColor: "#000", stopOpacity: "0" }),
                 svgElement("stop", { offset: "1", stopColor: "#000", stopOpacity: ".3" })),
-            svgElement("linearGradient", { id: `${id}-volume`, gradientUnits: "userSpaceOnUse", x1: "0", y1: "12", x2: "0", y2: "204" },
+            isSolid && (svgElement("linearGradient", { id: `${id}-volume`, gradientUnits: "userSpaceOnUse", x1: "0", y1: "12", x2: "0", y2: "204" },
                 svgElement("stop", { stopColor: litColor(.61, .01) }),
                 svgElement("stop", { offset: ".25", stopColor: litColor(.98, .06) }),
                 svgElement("stop", { offset: ".48", stopColor: litColor(.87, .02) }),
                 svgElement("stop", { offset: ".75", stopColor: litColor(.55, .01) }),
-                svgElement("stop", { offset: "1", stopColor: litColor(.24, .005) })),
-            wireProfiles.map((profile, i) => svgElement("linearGradient", { key: i, id: `${id}-wire-${i}`, gradientUnits: "userSpaceOnUse", x1: "0", y1: "12", x2: "0", y2: "204" }, profile.stops.map((stop, j) => svgElement("stop", { key: j, offset: stop.offset, stopColor: spec.kind === "solid" ? litColor(stop.diffuse, stop.sheen) : "#000", stopOpacity: spec.kind === "solid" ? 1 : 1 - stop.diffuse })))),
-            svgElement("linearGradient", { id: `${id}-wire-shine`, gradientUnits: "userSpaceOnUse", x1: "0", y1: "12", x2: "0", y2: "204" }, wireProfiles[2].stops.map((stop, i) => svgElement("stop", { key: i, offset: stop.offset, stopColor: "#fff", stopOpacity: stop.sheen }))),
-            svgElement("linearGradient", { id: `${id}-multicolor`, gradientUnits: "userSpaceOnUse", x1: "75", y1: "70", x2: "158", y2: "90" }, spec.colors.flatMap((c, i) => spec.kind === "multi"
+                svgElement("stop", { offset: "1", stopColor: litColor(.24, .005) }))),
+            wireProfiles.map((profile, i) => svgElement("linearGradient", { key: i, id: `${id}-wire-${i}`, gradientUnits: "userSpaceOnUse", x1: "0", y1: "12", x2: "0", y2: "204" }, profile.stops.map((stop, j) => svgElement("stop", { key: j, offset: stop.offset, stopColor: isSolid ? litColor(stop.diffuse, stop.sheen) : "#000", stopOpacity: isSolid ? 1 : 1 - stop.diffuse })))),
+            !isSolid && (svgElement("linearGradient", { id: `${id}-wire-shine`, gradientUnits: "userSpaceOnUse", x1: "0", y1: "12", x2: "0", y2: "204" }, wireProfiles[2].stops.map((stop, i) => svgElement("stop", { key: i, offset: stop.offset, stopColor: "#fff", stopOpacity: stop.sheen })))),
+            !isSolid && (svgElement("linearGradient", { id: `${id}-multicolor`, gradientUnits: "userSpaceOnUse", x1: "75", y1: "70", x2: "158", y2: "90" }, spec.colors.flatMap((c, i) => spec.kind === "multi"
                 ? [svgElement("stop", { key: `${i}-a`, offset: i / spec.colors.length, stopColor: c }), svgElement("stop", { key: `${i}-b`, offset: (i + 1) / spec.colors.length, stopColor: c })]
-                : [svgElement("stop", { key: i, offset: spec.colors.length === 1 ? 0 : i / (spec.colors.length - 1), stopColor: c })])),
+                : [svgElement("stop", { key: i, offset: spec.colors.length === 1 ? 0 : i / (spec.colors.length - 1), stopColor: c })]))),
             svgElement("radialGradient", { id: `${id}-shadow` },
                 svgElement("stop", { stopColor: "#000", stopOpacity: ".58" }),
                 svgElement("stop", { offset: "1", stopColor: "#000", stopOpacity: "0" })),
@@ -71,9 +72,9 @@ export const FilamentSpoolVisual = memo(function FilamentSpoolVisual({ color, cl
         svgElement("path", { d: rings.rearOuterRim, fill: "none", stroke: "#58646e", strokeOpacity: ".55", strokeWidth: ".8" }),
         svgElement("path", { d: rings.rearInnerRim, fill: "none", stroke: "#070d12", strokeWidth: "2.4" }),
         svgElement("g", { clipPath: url("body") },
-            svgElement("path", { d: bodyClip, fill: url(spec.kind === "solid" ? "volume" : "multicolor") }),
+            svgElement("path", { d: bodyClip, fill: url(isSolid ? "volume" : "multicolor") }),
             threadLayers.map((d, i) => svgElement("path", { key: i, d: d, fill: url(`wire-${i}`) })),
-            spec.kind !== "solid" ? svgElement("path", { d: threadLayers[2], fill: url("wire-shine") }) : null,
+            !isSolid ? svgElement("path", { d: threadLayers[2], fill: url("wire-shine") }) : null,
             svgElement("rect", { x: "20", y: "10", width: "160", height: "195", fill: url("axial") })),
         svgElement("path", { d: rings.frontEdge, fill: "#060b10", stroke: "#070c10", strokeWidth: "2.2" }),
         svgElement("path", { d: frontFace, fill: url("face"), stroke: url("rim"), strokeWidth: "1.35" }),
