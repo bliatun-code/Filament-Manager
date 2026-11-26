@@ -22,10 +22,11 @@ pub(crate) fn stock_page_response(
         (header::CONTENT_TYPE, "application/json"),
         (header::VARY, "Accept-Encoding"),
     ];
-    if (1024..=MAX_COMPRESSIBLE_BYTES).contains(&json.len()) && accepts_gzip(headers) {
-        if let Some(encoded) = gzip_bytes(&json).filter(|bytes| bytes.len() < json.len()) {
-            return Ok((common, [(header::CONTENT_ENCODING, "gzip")], encoded).into_response());
-        }
+    if (1024..=MAX_COMPRESSIBLE_BYTES).contains(&json.len())
+        && accepts_gzip(headers)
+        && let Some(encoded) = gzip_bytes(&json).filter(|bytes| bytes.len() < json.len())
+    {
+        return Ok((common, [(header::CONTENT_ENCODING, "gzip")], encoded).into_response());
     }
     Ok((common, json).into_response())
 }
