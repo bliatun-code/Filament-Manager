@@ -67,7 +67,8 @@ pub(crate) struct LibrarySyncStatisticsPeriodInput {
 #[derive(Deserialize)]
 pub(crate) struct LibrarySyncSpoolDetailInput {
     pub(crate) base_url: String,
-    pub(crate) expected_library_id: Option<String>,
+    pub(crate) expected_library_id: String,
+    pub(crate) target_generation: u64,
     pub(crate) spool_id: String,
     pub(crate) history_limit: Option<i64>,
     pub(crate) usage_limit: Option<i64>,

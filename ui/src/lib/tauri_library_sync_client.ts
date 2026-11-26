@@ -1,3 +1,4 @@
+import type { ClientHostCacheTarget } from "./host_write_target";
 import { invoke } from "./tauri_invoke";
 import type {
   CompanionSpoolDetail,
@@ -290,16 +291,16 @@ export async function fetchLibrarySyncSpools(
 }
 
 export async function fetchLibrarySyncSpoolDetail(
-  baseUrl: string,
-  expectedLibraryId?: string | null,
-  spoolId?: string,
+  target: ClientHostCacheTarget,
+  spoolId: string,
   historyLimit = 80,
   usageLimit = 500,
 ) {
   return invoke<CompanionSpoolDetail>("fetch_library_sync_spool_detail", {
     input: {
-      base_url: baseUrl,
-      expected_library_id: expectedLibraryId ?? null,
+      base_url: target.baseUrl,
+      expected_library_id: target.libraryId,
+      target_generation: target.targetGeneration,
       spool_id: spoolId,
       history_limit: historyLimit,
       usage_limit: usageLimit,

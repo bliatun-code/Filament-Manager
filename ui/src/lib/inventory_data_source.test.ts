@@ -202,8 +202,9 @@ test("loadInventorySpools rethrows local load failures", async () => {
 test("loadInventorySpoolDetail loads client history and usage with one host detail request", async () => {
   const calls: Array<{
     baseUrl: string;
-    libraryId: string | null | undefined;
-    spoolId: string | undefined;
+    libraryId: string;
+    targetGeneration: number;
+    spoolId: string;
     historyLimit: number;
     usageLimit: number;
   }> = [];
@@ -212,11 +213,12 @@ test("loadInventorySpoolDetail loads client history and usage with one host deta
       clientReadOnly: true,
       clientHostBaseUrl: "http://host",
       clientLibraryId: "library-1",
+      clientTargetGeneration: 7,
       spoolId: "spool-1",
     },
     {
-      fetchHostSpoolDetail: async (baseUrl, libraryId, spoolId, historyLimit, usageLimit) => {
-        calls.push({ baseUrl, libraryId, spoolId, historyLimit, usageLimit });
+      fetchHostSpoolDetail: async (target, spoolId, historyLimit, usageLimit) => {
+        calls.push({ ...target, spoolId, historyLimit, usageLimit });
         return {
           spool: spoolRow("spool-1"),
           history: [
@@ -253,6 +255,7 @@ test("loadInventorySpoolDetail loads client history and usage with one host deta
     {
       baseUrl: "http://host",
       libraryId: "library-1",
+      targetGeneration: 7,
       spoolId: "spool-1",
       historyLimit: 80,
       usageLimit: 500,
@@ -263,30 +266,35 @@ test("loadInventorySpoolDetail loads client history and usage with one host deta
 });
 
 test("loadInventorySpoolDetail avoids local detail fallback when client host details are incomplete", async () => {
-  const result = await loadInventorySpoolDetail(
-    {
-      clientReadOnly: true,
-      clientHostBaseUrl: " ",
-      clientLibraryId: "library-1",
-      spoolId: "spool-1",
-    },
-    {
-      fetchHostSpoolDetail: async () => {
-        throw new Error("host detail should not load without a complete target");
+  for (const target of [
+    { clientHostBaseUrl: " ", clientTargetGeneration: 1 },
+    { clientHostBaseUrl: "http://host", clientTargetGeneration: null },
+  ]) {
+    const result = await loadInventorySpoolDetail(
+      {
+        clientReadOnly: true,
+        ...target,
+        clientLibraryId: "library-1",
+        spoolId: "spool-1",
       },
-      listLocalHistory: async () => {
-        throw new Error("local history should not load in client mode");
+      {
+        fetchHostSpoolDetail: async () => {
+          throw new Error("host detail should not load without a complete target");
+        },
+        listLocalHistory: async () => {
+          throw new Error("local history should not load in client mode");
+        },
+        listLocalUsage: async () => {
+          throw new Error("local usage should not load in client mode");
+        },
       },
-      listLocalUsage: async () => {
-        throw new Error("local usage should not load in client mode");
-      },
-    },
-  );
+    );
 
-  assert.deepEqual(result, {
-    historyRows: [],
-    usagePoints: [],
-  });
+    assert.deepEqual(result, {
+      historyRows: [],
+      usagePoints: [],
+    });
+  }
 });
 
 test("loadInventorySpoolDetail loads local history and usage together outside client mode", async () => {

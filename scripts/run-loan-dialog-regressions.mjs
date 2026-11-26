@@ -702,6 +702,7 @@ async function checkLocationRollHandoff({ page, state, fixture, calls, fallback,
         return { rows: [roll], captured_at: "2026-01-01" };
       }
       case "fetch_library_sync_spool_detail":
+        assert.equal(payload.input.target_generation, current.target_generation);
         detailReads.push(payload.input.spool_id);
         return { spool: reviewed, history: [], usage: [] };
       default: return fallback(command, payload);
