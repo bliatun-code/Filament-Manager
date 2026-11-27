@@ -29,6 +29,9 @@ import { useResolvedTheme } from "../lib/theme_mode";
 
 type SlotCatalogOnboardingModalProps = {
   busy: boolean;
+  recovery?: "legacy" | "atomic" | null;
+  error?: string | null;
+  onOpenInventory?: () => void;
   currentSlot?: PrinterAmsSlotRow | null;
   currentLiveTray?: BambuLiveObservedTray | null;
   locale: Locale;
@@ -46,7 +49,7 @@ type SlotCatalogOnboardingModalProps = {
 const INITIAL_WEIGHT_ERROR_ID = "slot-catalog-onboarding-initial-weight-error";
 
 export function SlotCatalogOnboardingModal({
-  busy,
+  busy, recovery, error, onOpenInventory,
   currentSlot,
   currentLiveTray,
   locale,
@@ -73,7 +76,7 @@ export function SlotCatalogOnboardingModal({
     ? t("printers.addBorrowedCatalogRollAndSaveRfid", "Add borrowed-in + save RFID")
     : t("printers.addCatalogRollAndSaveRfid", "Add + save RFID");
   const slotAlreadyAssigned = Boolean((currentSlot ?? prompt.slot).spool_id);
-  const saveDisabled = saveState.disabled;
+  const saveDisabled = busy || (!recovery && saveState.disabled);
   const initialWeightInvalid = parsePositiveWeight(prompt.initialWeight) === null;
   const initialWeightErrorMessage = initialWeightInvalid
     ? t("inventory.error.invalidWeight", "Weight value is invalid.")
@@ -131,7 +134,11 @@ export function SlotCatalogOnboardingModal({
         />
 
         <div className="space-y-4 px-6 py-6">
-          {slotAlreadyAssigned ? (
+          {error && <div role="alert"><ModalNotice tone="warning">{error}</ModalNotice></div>}
+          {recovery && <ModalNotice tone="warning">{recovery === "atomic"
+            ? t("inventory.bambuBatchUncertain", "We could not confirm whether this batch was saved. Continue the same batch to check or finish it without creating duplicates.")
+            : <>{t("common.status", "Status")} · {t("common.unknown", "Unknown")} <ModalActionButton type="button" onClick={onOpenInventory}>{t("dashboard.openInventory", "Open inventory")}</ModalActionButton></>}</ModalNotice>}
+          {!recovery && slotAlreadyAssigned ? (
             <ModalNotice tone="warning">
               {t(
                 "printers.slotOnboardingOccupied",
@@ -178,6 +185,7 @@ export function SlotCatalogOnboardingModal({
             </ModalDetailGrid>
           </div>
 
+          <fieldset disabled={busy || Boolean(recovery)} className="space-y-4">
           <ModalFactCard
             padding="none"
             surface="plain"
@@ -283,7 +291,8 @@ export function SlotCatalogOnboardingModal({
             </ModalFormField>
           </div>
 
-          {saveBlockMessage ? (
+          </fieldset>
+          {!recovery && saveBlockMessage ? (
             <ModalFactCard className="text-sm leading-6 text-slate-600 dark:text-slate-300">
               {saveBlockMessage}
             </ModalFactCard>
@@ -303,7 +312,8 @@ export function SlotCatalogOnboardingModal({
               onClick={onSave}
               disabled={saveDisabled}
             >
-              {primaryActionLabel}
+              {recovery === "atomic" ? t("inventory.bambuBatchContinue", "Continue same batch")
+                : recovery === "legacy" ? t("inventory.bambuBatchNew", "Start new batch") : primaryActionLabel}
             </ModalActionButton>
           </div>
         </div>

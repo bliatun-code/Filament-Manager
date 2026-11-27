@@ -153,7 +153,7 @@ impl SyntheticHost {
                 let post = request_line == "POST /api/v1/spools/catalog-batch HTTP/1.1";
                 let (status, body) = if health {
                     ("200 OK", serde_json::json!({"ok":true,"api_version":"v1",
-                        "capabilities": if capable { vec![CATALOG_SPOOL_BATCH_CAPABILITY] } else { vec![] },
+                        "capabilities": if capable { vec![CATALOG_SPOOL_BATCH_CAPABILITY, crate::companion_models::AMS_REGISTRATION_CAPABILITY] } else { vec![] },
                         "auth_mode":"pairing-session","access_mode":"trusted-lan", "library_id":LIBRARY_ID,
                         "device_name":"Synthetic batch Host","sync_mode":"HOST"}).to_string())
                 } else if post {
@@ -255,6 +255,7 @@ fn input(host: &SyntheticHost, generation: u64) -> LibrarySyncCatalogSpoolBatchI
         expected_library_id: LIBRARY_ID.into(),
         expected_target_generation: generation,
         batch: CatalogSpoolBatchInput {
+            ams_assignment: None,
             batch_id: "lost-response-batch".into(),
             master_ids: vec![host.master_id.clone(), host.master_id.clone()],
             initial_weight_g: 850,
@@ -542,4 +543,36 @@ fn catalog_batch_committed_receipt_survives_target_change_during_best_effort_ref
         .unwrap();
     assert!(settings.cached_spools.is_none());
     assert!(settings.last_validation_message.is_none());
+}
+
+#[test]
+fn ams_registration_lost_tcp_response_recovers_the_same_assigned_roll() {
+    let _lock = NETWORK_TEST_LOCK.lock().unwrap();
+    let mut host = SyntheticHost::start(true, true);
+    let (_dir, client_state, generation) = client(&host, true);
+    let db = FilamentDatabase::open(&host.db_path).unwrap();
+    db.upsert_printer_with_ams("p", "P1S", "Printer", 1, 4)
+        .unwrap();
+    db.save_bambu_live_integration("p",&serde_json::from_value(serde_json::json!({"enabled":true,"observed_state":{"online":true,"mqtt_connected":true,"trays":[{"tray_index":0,"loaded":true,"tray_uuid":"TAG"}]}})).unwrap()).unwrap();
+    let request = || {
+        let mut cmd = input(&host, generation);
+        cmd.batch.master_ids.truncate(1);
+        cmd.batch.ams_assignment = Some(serde_json::from_value(serde_json::json!({"printer_id":"p","slot_id":"p_ams_1_slot_1","rfid_tag":"TAG","observed_at":"2026-01-01T00:00:00Z"})).unwrap());
+        cmd
+    };
+    let send = || create_library_sync_host_catalog_spool_batch_blocking(&client_state, request());
+    assert!(send().is_err());
+    let committed = snapshot(host.db_path.to_str().unwrap());
+    let receipt = send().unwrap();
+    assert_eq!(snapshot(host.db_path.to_str().unwrap()), committed);
+    let (id, tag): (String,String) = db.connection().query_row("SELECT s.spool_id,f.rfid_tag FROM ams_slots s JOIN filament_spools f ON f.id=s.spool_id WHERE s.id='p_ams_1_slot_1'",[],|r|Ok((r.get(0)?,r.get(1)?))).unwrap();
+    assert_eq!(receipt.spool_ids, vec![id]);
+    assert_eq!(tag, "TAG");
+    let posts: Vec<_> = host
+        .finish()
+        .into_iter()
+        .filter(|(line, _)| line.starts_with("POST "))
+        .collect();
+    assert_eq!(posts.len(), 2);
+    assert_eq!(posts[0], posts[1]);
 }

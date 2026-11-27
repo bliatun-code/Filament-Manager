@@ -33,7 +33,8 @@ async function buildPrinterWeightHarness() {
     let options = { current: "A", host: null, library: "library-A", generation: 1,
       ready: true, tauri: true, ams: false, confirmed: false, cached: false };
     window.__TAURI__ = { invoke: (command, payload) => {
-      if (!["operate_printer_slot", "operate_library_sync_host_printer_slot", "accept_bambu_live_weight_estimate",
+      if (command === "supports_library_sync_host_ams_registration") return Promise.resolve(!options.legacy);
+      if (!["create_catalog_spool_batch","create_library_sync_host_catalog_spool_batch","create_library_sync_host_spool","operate_printer_slot", "operate_library_sync_host_printer_slot", "accept_bambu_live_weight_estimate",
         "update_library_sync_host_spool_rfid_tag", "assign_library_sync_host_printer_slot"].includes(command)) {
         return Promise.reject(new Error("Unexpected non-atomic write: " + command));
       }
@@ -67,7 +68,7 @@ async function buildPrinterWeightHarness() {
       for (const row of spools) row.spool.remaining_g = confirmed && row.spool.id === current ? 400 : 500;
       if (confirmed) Object.assign(currentSlot,{spool_remaining_g:400,live_can_unload_without_weighing:true});
       const integrations = ams ? { "printer-1": { enabled: true, observed_state: {
-        online: true, mqtt_connected: true, trays: [{ tray_index: 0, loaded: true,
+        online: true, mqtt_connected: true, trays: [{ tray_index: 0, loaded: true, observed_rfid_tag: rfid ? "TAG" : null,
           match_status: "clear_match", matched_inventory_mode: "exact_rfid",
           matched_inventory_spool_id: current, remaining_grams: 400,
           remaining_percent: 40, tray_weight_g: 1000 }],
@@ -79,14 +80,14 @@ async function buildPrinterWeightHarness() {
       workflow = usePrinterSlotInteractions({
         bambuLiveIntegrations: integrations, busy, canUseClientHostWrite: allow,
         clientHostBaseUrl: host ? "http://" + host : null,
-        clientLibraryId: host ? library : null, clientPrinterSource: cached ? "CACHED" : "LIVE",
+        clientLibraryId: library, clientPrinterSource: cached ? "CACHED" : "LIVE",
         clientReadOnly: Boolean(host), clientTargetGeneration: generation,
         ensureLocalWriteAllowed: allow, librarySyncReady: ready, locale: "en",
         printers: [{ printer: { id: "printer-1", model: "P1S", name: "QA" }, slots: [currentSlot] }],
         reloadData, setBusy: trackBusy, setError: trackError, setInfo: trackInfo,
         spools: compact ? [] : spools, tauri, t,
       });
-      snapshot = () => ({ busy, error, info, options: workflow.allowedSpoolsForSlot(current).length, currentRoll: workflow.findSpoolById(current)?.spool.id, rfidPrompt: workflow.rfidOverridePrompt?.spool.spool.id ?? null, prompt: workflow.incomingWeightPrompt });
+      snapshot = () => ({ busy, error, info, options: workflow.allowedSpoolsForSlot(current).length, currentRoll: workflow.findSpoolById(current)?.spool.id, catalogOpen: Boolean(workflow.slotCatalogOnboardingPrompt), recovery: workflow.catalogRecovery, rfidPrompt: workflow.rfidOverridePrompt?.spool.spool.id ?? null, prompt: workflow.incomingWeightPrompt });
       return <I18nContext.Provider value={i18n}>
         <button onClick={() => workflow.openEmptySlotWeightDialog("printer-1", currentSlot)}>Unload</button>
         <button onClick={() => workflow.openWeightPromptForDraft({id:"printer-1"}, currentSlot,
@@ -105,6 +106,16 @@ async function buildPrinterWeightHarness() {
       render: patch => { options = { ...options, ...patch }; flushSync(() => root.render(<Harness {...options} />)); },
       reset: () => flushSync(() => workflow.resetPrinterInteractionState()),
       unmount: () => flushSync(() => root.unmount()), save, accept,
+      openCatalog: () => flushSync(() => workflow.createLiveBambuCatalogSpool(
+        {printer:{id:"printer-1"}}, currentSlot, {loaded:true, observed_rfid_tag:"TAG"},
+        { id:"master", filament_name:"PLA", color_name:"Blue", default_weight:750 })),
+      captureCatalog: () => { retained = workflow.handleCreateLiveBambuCatalogSpool; },
+      saveCatalog: (twice = false) => {
+        const save = retained;
+        save().finally(() => { settled += 1; });
+        if (twice) save().finally(() => { settled += 1; });
+      },
+      completeBatch: index => writes[index].resolve({batch_id:(writes[index].payload.input.batch ?? writes[index].payload.input).batch_id,spool_ids:["committed"]}),
       openRfid: () => flushSync(() => workflow.openRfidOverrideDialog(
         {printer:{id:"printer-1"}}, currentSlot, {loaded:true, observed_rfid_tag:"TAG"})),
       captureRfid: () => {
@@ -122,7 +133,7 @@ async function buildPrinterWeightHarness() {
           cancel: old.cancelIncomingWeightDialog };
       },
       invokeRetained: action => flushSync(() => retained[action]()),
-      completeWrite: index => writes[index].resolve(),
+      completeWrite: (index,value) => writes[index].resolve(value),
       rejectWrite: (index, code = "printers.slot_operation_stale") =>
         writes[index].reject(JSON.stringify({ code, safe_detail: "private diagnostic text", diagnostic_id: "internal-id" })),
       completeRead: index => reads[index].resolve(),
@@ -199,6 +210,81 @@ test("rendered printer weight operations keep the original roll and session", as
       await page.evaluate("printerWeight.captureRfid()");
     };
 
+    async function openCatalog(page: Page, legacy = false) {
+      // Use a real storage origin so recovery survives a dialog remount.
+      await page.route("http://localhost/ams-test", route => route.fulfill({contentType:"text/html", body:'<div id="root"></div>'}));
+      await page.goto("http://localhost/ams-test");
+      await page.addScriptTag({content:script});
+      await page.evaluate(`printerWeight.render({host:'a',current:null,rfid:true,legacy:${legacy}}); printerWeight.openCatalog(); printerWeight.captureCatalog()`);
+    }
+    await scenario("AMS double click sends once and a lost response retries the immutable batch", async page => {
+      await openCatalog(page);
+      await page.evaluate("printerWeight.saveCatalog(true)");
+      await page.waitForFunction("printerWeight.snapshot().writes.length === 1");
+      await page.evaluate("printerWeight.rejectWrite(0,'common.internal')");
+      await page.waitForFunction("printerWeight.snapshot().settled === 2");
+      await page.evaluate("printerWeight.reset(); printerWeight.openCatalog(); printerWeight.captureCatalog(); printerWeight.saveCatalog()");
+      await page.waitForFunction("printerWeight.snapshot().writes.length === 2");
+      const state = await page.evaluate("printerWeight.snapshot()");
+      assert.deepEqual(state.writes[1],state.writes[0]);
+      assert.equal(state.writes[0].command,"create_library_sync_host_catalog_spool_batch");
+      await page.evaluate("printerWeight.completeBatch(1)");
+      await page.waitForFunction("printerWeight.snapshot().reads === 1");
+      await page.evaluate("printerWeight.completeRead(0)");
+      await page.waitForFunction("!printerWeight.snapshot().busy");
+      assert.equal((await page.evaluate("printerWeight.snapshot()")).catalogOpen,false);
+    });
+    await scenario("local AMS registration uses the reviewed library and a single batch", async page => {
+      await openCatalog(page);
+      await page.evaluate("printerWeight.render({host:null,generation:2,ams:true});printerWeight.openCatalog();printerWeight.captureCatalog();printerWeight.saveCatalog(true)");
+      await page.waitForFunction("printerWeight.snapshot().writes.length === 1");
+      const { writes } = await page.evaluate("printerWeight.snapshot()");
+      assert.equal(writes[0].command, "create_catalog_spool_batch");
+      assert.equal(writes[0].payload.expectedLibraryId, "library-A");
+      assert.equal(writes[0].payload.expectedTargetGeneration, 2);
+      await page.evaluate("printerWeight.completeBatch(0)");
+      await page.waitForFunction("printerWeight.snapshot().reads === 1");
+    });
+    await scenario("an older Host completes creation, RFID and assignment in order", async page => {
+      await openCatalog(page, true);
+      await page.evaluate("printerWeight.saveCatalog()");
+      await page.waitForFunction("printerWeight.snapshot().writes.length === 1");
+      await page.evaluate("printerWeight.completeWrite(0, 'legacy-spool')");
+      await page.waitForFunction("printerWeight.snapshot().writes.length === 2");
+      await page.evaluate("printerWeight.completeWrite(1)");
+      await page.waitForFunction("printerWeight.snapshot().writes.length === 3");
+      await page.evaluate("printerWeight.completeWrite(2)");
+      await page.waitForFunction("printerWeight.snapshot().reads === 1");
+      const { writes } = await page.evaluate("printerWeight.snapshot()");
+      assert.deepEqual(writes.map((w: { command: string }) => w.command),
+        ["create_library_sync_host_spool", "update_library_sync_host_spool_rfid_tag", "assign_library_sync_host_printer_slot"]);
+    });
+    await scenario("AMS ignores A–B–A before confirmation and after an in-flight commit", async page => {
+      await openCatalog(page);
+      await switchAwayAndBack(page);
+      await page.evaluate("printerWeight.saveCatalog()");
+      assert.equal((await page.evaluate("printerWeight.snapshot()")).writes.length,0);
+      await page.evaluate("printerWeight.openCatalog(); printerWeight.captureCatalog(); printerWeight.saveCatalog()");
+      await page.waitForFunction("printerWeight.snapshot().writes.length === 1");
+      await page.evaluate("printerWeight.render({host:'b',generation:4});printerWeight.render({host:'a',generation:5});printerWeight.openCatalog();printerWeight.completeBatch(0)");
+      await page.waitForFunction("printerWeight.snapshot().settled === 2");
+      const state = await page.evaluate("printerWeight.snapshot()");
+      assert.equal(state.reads,0);
+      assert.equal(state.catalogOpen,true);
+      assert.equal(state.info,null);
+    });
+    await scenario("an older Host with an uncertain create cannot receive a second create", async page => {
+      await openCatalog(page,true);
+      await page.evaluate("printerWeight.saveCatalog(true)");
+      await page.waitForFunction("printerWeight.snapshot().writes.length === 1");
+      await page.evaluate("printerWeight.rejectWrite(0,'common.internal')");
+      await page.waitForFunction("printerWeight.snapshot().settled === 2");
+      await page.evaluate("printerWeight.reset(); printerWeight.openCatalog(); printerWeight.captureCatalog(); printerWeight.saveCatalog()");
+      await page.waitForFunction("printerWeight.snapshot().settled === 3");
+      const state = await page.evaluate("printerWeight.snapshot()");
+      assert.equal(state.recovery.legacy,true);
+      assert.deepEqual(state.writes.map((w:{command:string})=>w.command),["create_library_sync_host_spool"]);
+    });
     for (const action of ["manual", "candidate"] as const) {
       await scenario(action + " ignores confirmation retained across A–B–A", async page => {
         await startRfid(page, action);

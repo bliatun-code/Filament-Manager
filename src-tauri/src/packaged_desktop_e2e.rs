@@ -547,6 +547,7 @@ mod tests {
         let batch_id = format!("{run_id}-catalog-batch");
         PackagedDesktopBatchEvidence {
             request: CatalogSpoolBatchInput {
+                ams_assignment: None,
                 batch_id: batch_id.clone(),
                 master_ids: vec!["qa-master".to_string(); 2],
                 initial_weight_g: 640,

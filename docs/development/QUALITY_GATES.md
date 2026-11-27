@@ -167,6 +167,14 @@ run-specific marker, and database path all agree. Unix artifacts use owner-only
 database is removed after the run and is never uploaded with the private smoke
 logs.
 
+With `catalog-ams-registration-v1`, AMS catalog registration commits the new
+spool, RFID, slot assignment and retry receipt in one inventory transaction.
+A repeated request returns the original spool even if the slot is now occupied.
+The `ams_registration` Rust tests cover rollback and loss of the HTTP response
+after commit. Printer interaction tests cover repeated clicks and Host changes.
+Older Hosts use the guarded multi-step flow. After an uncertain write, the
+operator checks inventory before explicitly starting another registration.
+
 The same installed executable also creates a two-roll borrowed catalog batch
 with repeated master IDs. The second launch reuses the saved request and must
 return exactly the original ordered receipt. Independent SQLite checks require

@@ -53,7 +53,7 @@ function isColorfulNonBambuSpool(
   );
 }
 
-export default function PrintersPage() {
+export default function PrintersPage({ onOpenInventory }: { onOpenInventory?: () => void } = {}) {
   const { t, locale } = useI18n();
   const resolvedTheme = useResolvedTheme();
   const tauri = isTauri();
@@ -305,7 +305,7 @@ export default function PrintersPage() {
     setOpenDropdownSlotId,
     setOutgoingWeightValue,
     closeRfidOverrideDialog,
-    setSlotCatalogOnboardingPrompt,
+    closeCatalogDialog, acknowledgeLegacyRegistration, catalogRecovery,
     setSlotCatalogOwnershipType,
     setSlotDraft,
     slotCatalogOnboardingPrompt,
@@ -890,7 +890,10 @@ export default function PrintersPage() {
           }
           locale={locale}
           prompt={slotCatalogOnboardingPrompt}
-          onClose={() => setSlotCatalogOnboardingPrompt(null)}
+          onClose={closeCatalogDialog}
+          recovery={catalogRecovery ? (catalogRecovery.legacy ? "legacy" : "atomic") : null}
+          error={error}
+          onOpenInventory={onOpenInventory}
           onBorrowedFromContactChange={(value) =>
             updateSlotCatalogOnboardingPrompt({ borrowedFromContact: value })
           }
@@ -907,7 +910,7 @@ export default function PrintersPage() {
             updateSlotCatalogOnboardingPrompt({ location: value })
           }
           onOwnershipTypeChange={setSlotCatalogOwnershipType}
-          onSave={() => void handleCreateLiveBambuCatalogSpool()}
+          onSave={catalogRecovery?.legacy ? acknowledgeLegacyRegistration : handleCreateLiveBambuCatalogSpool}
         />
       ) : null}
 

@@ -20,6 +20,7 @@ fn local_catalog_batch_rejects_client_role_and_stale_library_or_generation_befor
         library_sync_auth: LibrarySyncRuntimeAuth::new(),
     };
     let input = || CatalogSpoolBatchInput {
+        ams_assignment: None,
         batch_id: "must-not-write".into(),
         master_ids: vec!["missing-master".into()],
         initial_weight_g: 1000,

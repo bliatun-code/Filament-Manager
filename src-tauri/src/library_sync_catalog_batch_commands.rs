@@ -38,10 +38,39 @@ pub(crate) async fn create_library_sync_host_catalog_spool_batch(
     .await
 }
 
-pub(crate) fn create_library_sync_host_catalog_spool_batch_blocking(
+#[tauri::command]
+pub(crate) async fn supports_library_sync_host_ams_registration(
+    state: tauri::State<'_, AppState>,
+    input: LibrarySyncCatalogSpoolBatchInput,
+) -> Result<bool, String> {
+    let state = state.inner().clone();
+    run_library_sync_blocking(move || {
+        supports_library_sync_host_ams_registration_blocking(&state, input)
+    })
+    .await
+}
+
+fn supports_library_sync_host_ams_registration_blocking(
     state: &AppState,
     input: LibrarySyncCatalogSpoolBatchInput,
-) -> Result<CatalogSpoolBatchReceipt, String> {
+) -> Result<bool, String> {
+    let (health, _) = reviewed_batch_host(state, &input)?;
+    Ok(health
+        .capabilities
+        .iter()
+        .any(|cap| cap == crate::companion_models::AMS_REGISTRATION_CAPABILITY))
+}
+
+fn reviewed_batch_host(
+    state: &AppState,
+    input: &LibrarySyncCatalogSpoolBatchInput,
+) -> Result<
+    (
+        crate::trusted_lan_health::CompanionHealthCheckResponse,
+        crate::library_sync_target_guard::LibrarySyncTargetGuard,
+    ),
+    String,
+> {
     let base_url = normalize_library_sync_base_url(&input.base_url)?;
     if input.expected_library_id.is_empty() {
         return Err(coded_command_error("common.invalid_request"));
@@ -51,16 +80,23 @@ pub(crate) fn create_library_sync_host_catalog_spool_batch_blocking(
         return Err(coded_command_error("common.invalid_request"));
     }
     let (health, target) = verify_library_sync_target(target)?;
-    if !health
-        .capabilities
-        .iter()
-        .any(|value| value == CATALOG_SPOOL_BATCH_CAPABILITY)
-    {
-        // No authentication or mutation has been attempted. An older Host must
-        // never fall back to a sequence of individual spool writes.
+    ensure_library_sync_target_current(state, &target)?;
+    Ok((health, target))
+}
+
+pub(crate) fn create_library_sync_host_catalog_spool_batch_blocking(
+    state: &AppState,
+    input: LibrarySyncCatalogSpoolBatchInput,
+) -> Result<CatalogSpoolBatchReceipt, String> {
+    let (health, target) = reviewed_batch_host(state, &input)?;
+    let required = if input.batch.ams_assignment.is_some() {
+        crate::companion_models::AMS_REGISTRATION_CAPABILITY
+    } else {
+        CATALOG_SPOOL_BATCH_CAPABILITY
+    };
+    if !health.capabilities.iter().any(|value| value == required) {
         return Err(coded_command_error("inventory.batch.host_unsupported"));
     }
-    ensure_library_sync_target_current(state, &target)?;
     let receipt: CatalogSpoolBatchReceipt = perform_library_sync_host_write_and_parse_for_target(
         state,
         "/api/v1/spools/catalog-batch",
@@ -85,6 +121,9 @@ pub(crate) fn create_library_sync_host_catalog_spool_batch_blocking(
 
     // The receipt proves the transaction committed. Cache/status refreshes are
     // scoped and best effort; failure must not turn it into a failed write.
+    if input.batch.ams_assignment.is_some() {
+        crate::library_sync_cache_refresh::refresh_library_sync_printer_cache(state, &target);
+    }
     refresh_library_sync_spool_cache(state, &target);
     if input
         .batch

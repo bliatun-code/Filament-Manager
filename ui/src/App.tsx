@@ -346,7 +346,7 @@ export default function App() {
         return <InventoryPage initialWorkspaceView="LOANS" onOpenPrinters={() => navigateToPage("printers")}
           onNavigationGuardChange={handleInventoryNavigationGuardChange} />;
       case "printers":
-        return <PrintersPage />;
+        return <PrintersPage onOpenInventory={() => navigateToPage("inventory")} />;
       case "statistics":
         return (
           <StatisticsPage
