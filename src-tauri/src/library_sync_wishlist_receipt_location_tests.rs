@@ -492,3 +492,72 @@ fn confirmed_purchase_deletion_sends_one_delete_to_legacy_host() {
         )]
     );
 }
+
+#[test]
+fn purchase_create_and_status_require_current_generation_on_legacy_host() {
+    let mut host = ReceiptTestHost::start();
+    let (_directory, state) = client(&host.base_url, true);
+    let db = FilamentDatabase::open(&state.db_path).unwrap();
+    let original = db.get_library_sync_settings().unwrap();
+    let mut other = original.clone();
+    other.library_id = "other-library".into();
+    other.host_base_url = Some("http://other.local:4278".into());
+    db.save_library_sync_settings(&other).unwrap();
+    db.save_library_sync_settings(&original).unwrap();
+    let current = db.get_library_sync_page_status().unwrap().target_generation;
+    for generation in [original.target_generation, current] {
+        let create = LibrarySyncCreateWishlistItemInput {
+            base_url: host.base_url.clone(),
+            expected_library_id: LIBRARY_ID.into(),
+            expected_target_generation: generation,
+            master_id: None,
+            vendor: "Test".into(),
+            material: "PLA".into(),
+            filament_name: "Basic".into(),
+            color_name: "White".into(),
+            quantity: Some(1),
+            note: None,
+        };
+        let status = LibrarySyncUpdateWishlistStatusInput {
+            base_url: host.base_url.clone(),
+            expected_library_id: LIBRARY_ID.into(),
+            expected_target_generation: generation,
+            item_id: "order/one".into(),
+            status: "ON_ORDER".into(),
+        };
+        for result in [
+            create_library_sync_host_wishlist_item_blocking(&state, create),
+            update_library_sync_host_wishlist_item_status_blocking(&state, status),
+        ] {
+            if generation == current {
+                result.unwrap();
+            } else {
+                assert_eq!(
+                    library_sync_host_error_code(&result.unwrap_err()).as_deref(),
+                    Some("common.invalid_request")
+                );
+            }
+        }
+    }
+    let requests = host.finish();
+    assert_eq!(
+        requests
+            .iter()
+            .filter(|(line, _)| line.starts_with("GET /api/v1/health "))
+            .count(),
+        2
+    );
+    let posts: Vec<_> = requests
+        .into_iter()
+        .filter(|(line, _)| line.starts_with("POST "))
+        .collect();
+    assert_eq!(posts.len(), 2);
+    assert_eq!(posts[0].0, "POST /api/v1/wishlist HTTP/1.1");
+    assert_eq!(
+        posts[1],
+        (
+            "POST /api/v1/wishlist/order%2Fone/status HTTP/1.1".into(),
+            r#"{"status":"ON_ORDER"}"#.into()
+        )
+    );
+}

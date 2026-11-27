@@ -457,22 +457,23 @@ function wishlistInput(overrides: Partial<CreateWishlistItemInput> = {}): Create
 test("createWishlistEntry routes client writes to the host", async () => {
   const calls: Array<{
     baseUrl: string;
-    libraryId: string | null | undefined;
+    libraryId: string;
+    targetGeneration: number;
     input: CreateWishlistItemInput;
   }> = [];
   const input = wishlistInput();
 
   await createWishlistEntry(
     input,
-    { clientReadOnly: true, clientHostBaseUrl: "http://host", clientLibraryId: "library-1" },
+    { clientReadOnly: true, clientHostBaseUrl: "http://host", clientLibraryId: "library-1", clientTargetGeneration: 7 },
     {
-      createHostWishlistItem: async (baseUrl, libraryId, createInput) => {
-        calls.push({ baseUrl, libraryId, input: createInput });
+      createHostWishlistItem: async (target, createInput) => {
+        calls.push({ ...target, input: createInput });
       },
     },
   );
 
-  assert.deepEqual(calls, [{ baseUrl: "http://host", libraryId: "library-1", input }]);
+  assert.deepEqual(calls, [{ baseUrl: "http://host", libraryId: "library-1", targetGeneration: 7, input }]);
 });
 
 test("createWishlistEntry uses local writes outside client mode", async () => {
@@ -493,19 +494,19 @@ test("createWishlistEntry uses local writes outside client mode", async () => {
 });
 
 test("updateWishlistEntryStatus routes status changes to the host", async () => {
-  const calls: Array<{ baseUrl: string; itemId: string; status: string }> = [];
+  const calls: Array<{ baseUrl: string; libraryId: string; targetGeneration: number; itemId: string; status: string }> = [];
 
   await updateWishlistEntryStatus(
     { item_id: "wish-1", status: "RECEIVED" },
-    { clientReadOnly: true, clientHostBaseUrl: "http://host", clientLibraryId: "library-1" },
+    { clientReadOnly: true, clientHostBaseUrl: "http://host", clientLibraryId: "library-1", clientTargetGeneration: 7 },
     {
-      updateHostWishlistItemStatus: async (baseUrl, _libraryId, input) => {
-        calls.push({ baseUrl, itemId: input.item_id, status: input.status });
+      updateHostWishlistItemStatus: async (target, input) => {
+        calls.push({ ...target, itemId: input.item_id, status: input.status });
       },
     },
   );
 
-  assert.deepEqual(calls, [{ baseUrl: "http://host", itemId: "wish-1", status: "RECEIVED" }]);
+  assert.deepEqual(calls, [{ baseUrl: "http://host", libraryId: "library-1", targetGeneration: 7, itemId: "wish-1", status: "RECEIVED" }]);
 });
 
 test("receiveWishlistEntry uses the same quantity contract for host and local writes", async () => {
@@ -602,7 +603,7 @@ test("deleteWishlistEntry routes deletes to the host", async () => {
 test("wishlist host mutations reject missing client host details", async () => {
   await assert.rejects(
     () => createWishlistEntry(wishlistInput(), { clientReadOnly: true, clientHostBaseUrl: "" }),
-    /Host connection details/,
+    /common\.invalid_request/,
   );
   await assert.rejects(
     () =>
@@ -618,7 +619,7 @@ test("wishlist host mutations reject missing client host details", async () => {
         { item_id: "wish-1", status: "RECEIVED" },
         { clientReadOnly: true, clientHostBaseUrl: "http://host", clientLibraryId: " " },
       ),
-    /Host connection details/,
+    /common\.invalid_request/,
   );
   await assert.rejects(
     () =>
@@ -629,4 +630,28 @@ test("wishlist host mutations reject missing client host details", async () => {
       }),
     /common\.invalid_request/,
   );
+});
+
+test("paired purchase writes require the displayed generation and honor a reviewed target", async () => {
+  const options = { clientReadOnly: true, clientHostBaseUrl: "http://host", clientLibraryId: "library" };
+  const unexpected = async () => { throw new Error("unexpected write"); };
+  const dependencies = {
+    createHostWishlistItem: unexpected, createLocalWishlistItem: unexpected,
+    updateHostWishlistItemStatus: unexpected, updateLocalWishlistItemStatus: unexpected,
+  };
+  await assert.rejects(createWishlistEntry(wishlistInput(), options, dependencies), /common\.invalid_request/);
+  await assert.rejects(updateWishlistEntryStatus({ item_id: "one", status: "ON_ORDER" }, options, dependencies), /common\.invalid_request/);
+  await assert.rejects(createWishlistEntry(wishlistInput(), {
+    ...options, clientTargetGeneration: 3,
+    reviewedTarget: { mode: "CLIENT", host_base_url: "http://host", library_id: "library", target_generation: 1 },
+  }, dependencies), /common\.invalid_request/);
+});
+
+test("an explicitly reviewed purchase target supplies the generation for creation", async () => {
+  const reviewedTarget = { mode: "CLIENT", host_base_url: "http://host", library_id: "library", target_generation: 4 };
+  const calls: number[] = [];
+  await createWishlistEntry(wishlistInput(), {
+    clientReadOnly: true, clientHostBaseUrl: "http://host", clientLibraryId: "library", reviewedTarget,
+  }, { createHostWishlistItem: async target => { calls.push(target.targetGeneration); } });
+  assert.deepEqual(calls, [4]);
 });

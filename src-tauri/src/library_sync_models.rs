@@ -274,9 +274,9 @@ pub(crate) struct LibrarySyncCreateSpoolInput {
 
 #[derive(Deserialize)]
 pub(crate) struct LibrarySyncCreateWishlistItemInput {
-    pub(crate) expected_target_generation: Option<u64>,
+    pub(crate) expected_target_generation: u64,
     pub(crate) base_url: String,
-    pub(crate) expected_library_id: Option<String>,
+    pub(crate) expected_library_id: String,
     pub(crate) master_id: Option<String>,
     pub(crate) vendor: String,
     pub(crate) material: String,
@@ -288,8 +288,9 @@ pub(crate) struct LibrarySyncCreateWishlistItemInput {
 
 #[derive(Deserialize)]
 pub(crate) struct LibrarySyncUpdateWishlistStatusInput {
+    pub(crate) expected_target_generation: u64,
     pub(crate) base_url: String,
-    pub(crate) expected_library_id: Option<String>,
+    pub(crate) expected_library_id: String,
     pub(crate) item_id: String,
     pub(crate) status: String,
 }

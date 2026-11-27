@@ -519,7 +519,7 @@ export function useInventoryCreateActions({
           quantity: 1,
           note: null,
         },
-        hostWriteTarget,
+        { ...hostWriteTarget, clientTargetGeneration },
       );
       if (!isCurrent()) return;
       await reloadWishlist();
@@ -559,7 +559,7 @@ export function useInventoryCreateActions({
           item_id: itemId,
           status,
         },
-        hostWriteTarget,
+        { ...hostWriteTarget, clientTargetGeneration },
       );
       if (!isCurrent()) return;
       await reloadWishlist();

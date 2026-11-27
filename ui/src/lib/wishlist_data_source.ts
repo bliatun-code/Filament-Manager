@@ -7,6 +7,7 @@ import {
   fetchCachedLibrarySyncWishlist,
   fetchLibrarySyncWishlistItems,
   listWishlistItems,
+  matchesWishlistPurchaseTarget,
   receiveLibrarySyncHostWishlistItem,
   receiveWishlistItem,
   updateLibrarySyncHostWishlistItemStatus,
@@ -20,7 +21,6 @@ import {
   type WishlistPurchaseTarget,
 } from "./tauri_client";
 import {
-  requireClientHostWriteTarget,
   resolveClientHostCacheTarget,
   resolveClientHostTarget,
 } from "./host_write_target";
@@ -88,8 +88,11 @@ type WishlistDataSourceDependencies = {
   deleteLocalWishlistItem?: typeof deleteWishlistItem;
 };
 
-const missingWishlistHostTargetMessage =
-  "Host connection details are missing for this wishlist action.";
+function requireWishlistHostTarget(options: WishlistDataSourceOptions) {
+  const target = resolveClientHostCacheTarget(options);
+  if (!target) throw createAppError("common.invalid_request");
+  return target;
+}
 
 type WishlistItemsInternalLoadResult = {
   result: WishlistItemsLoadResult;
@@ -355,11 +358,19 @@ export async function createWishlistEntry(
   const createLocalWishlistItem = dependencies.createLocalWishlistItem ?? createWishlistItem;
 
   if (options.clientReadOnly) {
-    const hostTarget = requireClientHostWriteTarget(
-      options,
-      missingWishlistHostTargetMessage,
-    );
-    await createHostWishlistItem(hostTarget.baseUrl, hostTarget.libraryId, input, options.reviewedTarget?.target_generation);
+    const hostTarget = requireWishlistHostTarget({
+      ...options,
+      clientTargetGeneration: options.clientTargetGeneration ?? options.reviewedTarget?.target_generation,
+    });
+    if (options.reviewedTarget && !matchesWishlistPurchaseTarget({
+      mode: "CLIENT",
+      host_base_url: hostTarget.baseUrl,
+      library_id: hostTarget.libraryId,
+      target_generation: hostTarget.targetGeneration,
+    }, options.reviewedTarget)) {
+      throw createAppError("common.invalid_request");
+    }
+    await createHostWishlistItem(hostTarget, input);
     return;
   }
 
@@ -377,11 +388,7 @@ export async function updateWishlistEntryStatus(
     dependencies.updateLocalWishlistItemStatus ?? updateWishlistItemStatus;
 
   if (options.clientReadOnly) {
-    const hostTarget = requireClientHostWriteTarget(
-      options,
-      missingWishlistHostTargetMessage,
-    );
-    await updateHostWishlistItemStatus(hostTarget.baseUrl, hostTarget.libraryId, input);
+    await updateHostWishlistItemStatus(requireWishlistHostTarget(options), input);
     return;
   }
 
@@ -420,9 +427,7 @@ export async function deleteWishlistEntry(
   const deleteLocalWishlistItem = dependencies.deleteLocalWishlistItem ?? deleteWishlistItem;
 
   if (options.clientReadOnly) {
-    const hostTarget = resolveClientHostCacheTarget(options);
-    if (!hostTarget) throw createAppError("common.invalid_request");
-    await deleteHostWishlistItem(hostTarget, itemId);
+    await deleteHostWishlistItem(requireWishlistHostTarget(options), itemId);
     return;
   }
 
