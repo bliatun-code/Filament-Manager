@@ -389,88 +389,79 @@ fn list_filament_price_groups(
                   s.id",
     )?;
     let rows = statement.query_map([], map_group_spool)?;
-    let mut grouped: BTreeMap<String, Vec<StoredGroupSpool>> = BTreeMap::new();
+    let mut grouped: BTreeMap<String, FilamentPriceGroup> = BTreeMap::new();
     for row in rows {
-        let spool = row?;
+        let row = row?;
         let key = filament_price_group_key_for_master(
-            &spool.vendor,
-            &spool.material,
-            &spool.filament_name,
-            spool.nominal_weight_g,
-            &spool.master_id,
+            &row.vendor,
+            &row.material,
+            &row.filament_name,
+            row.nominal_weight_g,
+            &row.master_id,
         );
-        grouped.entry(key).or_default().push(spool);
-    }
-
-    let mut groups = Vec::with_capacity(grouped.len());
-    for (group_key, rows) in grouped {
-        let first = rows.first().expect("grouped spool rows cannot be empty");
-        let mut group = FilamentPriceGroup {
-            group_key: group_key.clone(),
-            vendor: canonical_vendor_display_component(&first.vendor),
-            material: first.material.clone(),
-            filament_name: first.filament_name.clone(),
-            nominal_weight_g: first.nominal_weight_g,
-            spool_count: 0,
-            owned_spool_count: 0,
-            borrowed_in_spool_count: 0,
-            missing_price_count: 0,
-            missing_currency_count: 0,
-            manual_price_count: 0,
-            standard_batch_price_count: 0,
-            locked_count: 0,
-            standard: None,
-            spools: Vec::with_capacity(rows.len()),
-        };
-        group.standard = standards
-            .get(&group_key)
-            .filter(|s| standard_matches_group(s, &group))
-            .cloned();
-        for row in rows {
-            group.spool_count += 1;
-            let is_historical = is_historical_status(&row.status);
-            if OwnershipType::from_raw(Some(&row.ownership_type)).is_borrowed_in() {
-                group.borrowed_in_spool_count += 1;
-            } else if !is_historical {
-                group.owned_spool_count += 1;
-            }
-            if row.purchase_price.is_none() {
-                group.missing_price_count += 1;
-            }
-            if normalized_existing_currency(row.purchase_currency.as_deref()).is_err()
-                || normalized_existing_currency(row.purchase_currency.as_deref())
-                    .ok()
-                    .flatten()
-                    .is_none()
-            {
-                group.missing_currency_count += 1;
-            }
-            if row.purchase_price.is_some() {
-                if row.purchase_price_source.as_deref()
-                    == Some(PURCHASE_PRICE_SOURCE_STANDARD_BATCH)
-                {
-                    group.standard_batch_price_count += 1;
-                } else {
-                    group.manual_price_count += 1;
-                }
-            }
-            if row.purchase_price_batch_locked {
-                group.locked_count += 1;
-            }
-            group.spools.push(FilamentPriceGroupSpool {
-                spool_id: row.spool_id,
-                master_id: row.master_id,
-                color_name: row.color_name,
-                status: row.status,
-                ownership_type: row.ownership_type,
-                purchase_price: row.purchase_price,
-                purchase_currency: row.purchase_currency,
-                purchase_price_source: row.purchase_price_source,
-                purchase_price_batch_locked: row.purchase_price_batch_locked,
-            });
+        let group = grouped.entry(key).or_insert_with_key(|group_key| {
+            let mut group = FilamentPriceGroup {
+                group_key: group_key.clone(),
+                vendor: canonical_vendor_display_component(&row.vendor),
+                material: row.material.clone(),
+                filament_name: row.filament_name.clone(),
+                nominal_weight_g: row.nominal_weight_g,
+                spool_count: 0,
+                owned_spool_count: 0,
+                borrowed_in_spool_count: 0,
+                missing_price_count: 0,
+                missing_currency_count: 0,
+                manual_price_count: 0,
+                standard_batch_price_count: 0,
+                locked_count: 0,
+                standard: None,
+                spools: Vec::new(),
+            };
+            group.standard = standards
+                .get(group_key)
+                .filter(|s| standard_matches_group(s, &group))
+                .cloned();
+            group
+        });
+        group.spool_count += 1;
+        let is_historical = is_historical_status(&row.status);
+        if OwnershipType::from_raw(Some(&row.ownership_type)).is_borrowed_in() {
+            group.borrowed_in_spool_count += 1;
+        } else if !is_historical {
+            group.owned_spool_count += 1;
         }
-        groups.push(group);
+        if row.purchase_price.is_none() {
+            group.missing_price_count += 1;
+        }
+        if !matches!(
+            normalized_existing_currency(row.purchase_currency.as_deref()),
+            Ok(Some(_))
+        ) {
+            group.missing_currency_count += 1;
+        }
+        if row.purchase_price.is_some() {
+            if row.purchase_price_source.as_deref() == Some(PURCHASE_PRICE_SOURCE_STANDARD_BATCH) {
+                group.standard_batch_price_count += 1;
+            } else {
+                group.manual_price_count += 1;
+            }
+        }
+        if row.purchase_price_batch_locked {
+            group.locked_count += 1;
+        }
+        group.spools.push(FilamentPriceGroupSpool {
+            spool_id: row.spool_id,
+            master_id: row.master_id,
+            color_name: row.color_name,
+            status: row.status,
+            ownership_type: row.ownership_type,
+            purchase_price: row.purchase_price,
+            purchase_currency: row.purchase_currency,
+            purchase_price_source: row.purchase_price_source,
+            purchase_price_batch_locked: row.purchase_price_batch_locked,
+        });
     }
+    let mut groups: Vec<_> = grouped.into_values().collect();
     groups.sort_by(|left, right| {
         left.vendor
             .to_lowercase()
