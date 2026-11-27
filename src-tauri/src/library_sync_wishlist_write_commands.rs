@@ -17,7 +17,7 @@ use crate::library_sync_command_support::{
     trimmed_non_empty,
 };
 use crate::library_sync_host_client::{
-    library_sync_host_error_code, perform_library_sync_host_write,
+    library_sync_host_error_code, perform_library_sync_host_write_and_parse,
     perform_library_sync_host_write_and_parse_for_target,
 };
 use crate::library_sync_location_commands::refresh_location_cache_best_effort;
@@ -25,7 +25,9 @@ use crate::library_sync_models::{
     LibrarySyncCreateWishlistItemInput, LibrarySyncDeleteWishlistItemInput,
     LibrarySyncReceiveWishlistItemInput, LibrarySyncUpdateWishlistStatusInput,
 };
-use crate::library_sync_target_guard::ensure_library_sync_target_current;
+use crate::library_sync_target_guard::{
+    ensure_library_sync_target_current, LibrarySyncTargetGuard,
+};
 use crate::state::AppState;
 use std::time::Duration;
 
@@ -34,7 +36,7 @@ fn purchase_write_target(
     base_url: &str,
     library_id: &str,
     generation: u64,
-) -> Result<crate::library_sync_target_guard::LibrarySyncTargetGuard, String> {
+) -> Result<LibrarySyncTargetGuard, String> {
     if library_id.trim().is_empty() {
         return Err(coded_command_error("common.invalid_request"));
     }
@@ -42,6 +44,29 @@ fn purchase_write_target(
     let (_, _, target) =
         prepare_library_sync_host_write_for_generation(state, &input, Some(generation))?;
     Ok(target)
+}
+
+fn write_purchase_and_refresh(
+    state: &AppState,
+    target: &LibrarySyncTargetGuard,
+    path: &str,
+    payload: &serde_json::Value,
+    message: &str,
+) -> Result<(), String> {
+    #[derive(serde::Deserialize)]
+    struct PurchaseAcknowledgment {
+        ok: bool,
+    }
+    let acknowledgment: PurchaseAcknowledgment =
+        perform_library_sync_host_write_and_parse(state, path, payload, target)?;
+    if !acknowledgment.ok {
+        return Err(coded_command_error("common.internal"));
+    }
+
+    // Once the Host confirms the write, local bookkeeping cannot undo it.
+    refresh_library_sync_wishlist_cache(state, target);
+    let _ = save_library_sync_success(state, target, message, None);
+    Ok(())
 }
 
 #[tauri::command]
@@ -67,8 +92,9 @@ pub(crate) fn create_library_sync_host_wishlist_item_blocking(
         input.expected_target_generation,
     )?;
 
-    perform_library_sync_host_write(
+    write_purchase_and_refresh(
         state,
+        &target,
         "/api/v1/wishlist",
         &serde_json::json!({
             "master_id": trimmed_non_empty(input.master_id.as_deref()),
@@ -79,12 +105,8 @@ pub(crate) fn create_library_sync_host_wishlist_item_blocking(
             "quantity": input.quantity,
             "note": trimmed_non_empty(input.note.as_deref()),
         }),
-        &target,
-    )?;
-
-    refresh_library_sync_wishlist_cache(state, &target);
-    save_library_sync_success(state, &target, "Host wishlist item created.", None)?;
-    Ok(())
+        "Host wishlist item created.",
+    )
 }
 
 #[tauri::command]
@@ -115,16 +137,13 @@ fn update_library_sync_host_wishlist_item_status_blocking(
     )?;
 
     let item_id = encode_library_sync_path_segment(item_id);
-    perform_library_sync_host_write(
+    write_purchase_and_refresh(
         state,
+        &target,
         &format!("/api/v1/wishlist/{item_id}/status"),
         &serde_json::json!({ "status": input.status.trim() }),
-        &target,
-    )?;
-
-    refresh_library_sync_wishlist_cache(state, &target);
-    save_library_sync_success(state, &target, "Host wishlist item updated.", None)?;
-    Ok(())
+        "Host wishlist item updated.",
+    )
 }
 
 #[tauri::command]
@@ -302,16 +321,13 @@ fn delete_library_sync_host_wishlist_item_blocking(
     )?;
 
     let item_id = encode_library_sync_path_segment(item_id);
-    perform_library_sync_host_write(
+    write_purchase_and_refresh(
         state,
+        &target,
         &format!("/api/v1/wishlist/{item_id}/delete"),
         &serde_json::json!({}),
-        &target,
-    )?;
-
-    refresh_library_sync_wishlist_cache(state, &target);
-    save_library_sync_success(state, &target, "Host wishlist item deleted.", None)?;
-    Ok(())
+        "Host wishlist item deleted.",
+    )
 }
 
 #[cfg(test)]
