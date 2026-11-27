@@ -29,18 +29,6 @@ use crate::library_sync_target_guard::ensure_library_sync_target_current;
 use crate::state::AppState;
 use std::time::Duration;
 
-#[tauri::command]
-pub(crate) async fn create_library_sync_host_wishlist_item(
-    state: tauri::State<'_, AppState>,
-    input: LibrarySyncCreateWishlistItemInput,
-) -> Result<(), String> {
-    let state = state.inner().clone();
-    run_library_sync_blocking(move || {
-        create_library_sync_host_wishlist_item_blocking(&state, input)
-    })
-    .await
-}
-
 fn purchase_write_target(
     state: &AppState,
     base_url: &str,
@@ -54,6 +42,18 @@ fn purchase_write_target(
     let (_, _, target) =
         prepare_library_sync_host_write_for_generation(state, &input, Some(generation))?;
     Ok(target)
+}
+
+#[tauri::command]
+pub(crate) async fn create_library_sync_host_wishlist_item(
+    state: tauri::State<'_, AppState>,
+    input: LibrarySyncCreateWishlistItemInput,
+) -> Result<(), String> {
+    let state = state.inner().clone();
+    run_library_sync_blocking(move || {
+        create_library_sync_host_wishlist_item_blocking(&state, input)
+    })
+    .await
 }
 
 pub(crate) fn create_library_sync_host_wishlist_item_blocking(
