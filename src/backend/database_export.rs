@@ -1,7 +1,6 @@
 use rusqlite::Connection;
 
-use super::database_loan_models::SpoolLoanDetailsRow;
-use super::database_loan_queries::list_spool_loans_for_direction;
+use super::database_loan_queries::visit_spool_loans_for_direction;
 use super::database_result::InventoryResult;
 use super::database_spool_models::SpoolWithMasterRow;
 use super::database_spool_queries::list_all_spools_with_master;
@@ -22,8 +21,29 @@ pub(crate) fn export_loans_csv_for_direction(
     include_returned: bool,
     direction: Option<&str>,
 ) -> InventoryResult<String> {
-    let rows = list_spool_loans_for_direction(conn, 20_000, include_returned, direction)?;
-    export_loans_csv(&rows)
+    let mut output = String::from(
+        "loan_id,spool_id,direction,counterparty,grams_out,lent_at,returned_at,returned_grams,consumed_grams,material,filament,color,vendor,status\n",
+    );
+    visit_spool_loans_for_direction(conn, None, include_returned, direction, |row| {
+        output.push_str(&format!(
+            "{},{},{},{},{},{},{},{},{},{},{},{},{},{}\n",
+            escape_csv(&row.loan.id),
+            escape_csv(&row.loan.spool_id),
+            escape_csv(&row.loan.loan_direction),
+            escape_csv(&row.loan.counterparty_name),
+            row.loan.grams_out,
+            escape_csv(&row.loan.lent_at),
+            escape_csv(row.loan.returned_at.as_deref().unwrap_or("")),
+            row.loan.returned_grams.unwrap_or(0),
+            row.loan.consumed_grams.unwrap_or(0),
+            escape_csv(row.material.as_deref().unwrap_or("")),
+            escape_csv(row.filament_name.as_deref().unwrap_or("")),
+            escape_csv(row.color_name.as_deref().unwrap_or("")),
+            escape_csv(row.vendor.as_deref().unwrap_or("")),
+            escape_csv(row.spool_status.as_deref().unwrap_or("")),
+        ));
+    })?;
+    Ok(output)
 }
 
 pub(crate) fn export_spools_csv(rows: &[SpoolWithMasterRow]) -> InventoryResult<String> {
@@ -130,30 +150,4 @@ pub(crate) fn export_spools_json(rows: &[SpoolWithMasterRow]) -> InventoryResult
             "Could not serialize inventory export: {error}"
         ))
     })
-}
-
-pub(crate) fn export_loans_csv(rows: &[SpoolLoanDetailsRow]) -> InventoryResult<String> {
-    let mut output = String::from(
-        "loan_id,spool_id,direction,counterparty,grams_out,lent_at,returned_at,returned_grams,consumed_grams,material,filament,color,vendor,status\n",
-    );
-    for row in rows {
-        output.push_str(&format!(
-            "{},{},{},{},{},{},{},{},{},{},{},{},{},{}\n",
-            escape_csv(&row.loan.id),
-            escape_csv(&row.loan.spool_id),
-            escape_csv(&row.loan.loan_direction),
-            escape_csv(&row.loan.counterparty_name),
-            row.loan.grams_out,
-            escape_csv(&row.loan.lent_at),
-            escape_csv(row.loan.returned_at.as_deref().unwrap_or("")),
-            row.loan.returned_grams.unwrap_or(0),
-            row.loan.consumed_grams.unwrap_or(0),
-            escape_csv(row.material.as_deref().unwrap_or("")),
-            escape_csv(row.filament_name.as_deref().unwrap_or("")),
-            escape_csv(row.color_name.as_deref().unwrap_or("")),
-            escape_csv(row.vendor.as_deref().unwrap_or("")),
-            escape_csv(row.spool_status.as_deref().unwrap_or("")),
-        ));
-    }
-    Ok(output)
 }

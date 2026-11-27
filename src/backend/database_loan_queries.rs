@@ -185,6 +185,20 @@ pub(crate) fn list_spool_loans_for_direction(
     include_returned: bool,
     direction: Option<&str>,
 ) -> InventoryResult<Vec<SpoolLoanDetailsRow>> {
+    let mut output = Vec::new();
+    visit_spool_loans_for_direction(conn, Some(limit), include_returned, direction, |row| {
+        output.push(row)
+    })?;
+    Ok(output)
+}
+
+pub(crate) fn visit_spool_loans_for_direction(
+    conn: &Connection,
+    limit: Option<i64>,
+    include_returned: bool,
+    direction: Option<&str>,
+    mut visit: impl FnMut(SpoolLoanDetailsRow),
+) -> InventoryResult<()> {
     let direction_clause = match normalize_loan_direction_filter(direction).as_str() {
         "INBOUND" => format!("{LOAN_DIRECTION_SELECT_SQL_L} = 'INBOUND'"),
         "ALL" => "1 = 1".to_string(),
@@ -215,7 +229,7 @@ pub(crate) fn list_spool_loans_for_direction(
         direction_clause, status_clause
     ))?;
 
-    let rows = stmt.query_map(params![limit], |row| {
+    let rows = stmt.query_map(params![limit.unwrap_or(-1)], |row| {
         let spool_status_raw: Option<String> = row.get(16)?;
         Ok(SpoolLoanDetailsRow {
             loan: map_spool_loan_row_at(row, 0)?,
@@ -232,9 +246,8 @@ pub(crate) fn list_spool_loans_for_direction(
         })
     })?;
 
-    let mut output = Vec::new();
     for row in rows {
-        output.push(row?);
+        visit(row?);
     }
-    Ok(output)
+    Ok(())
 }
