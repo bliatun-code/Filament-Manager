@@ -89,18 +89,12 @@ pub(crate) async fn refresh_trusted_lan_binding_once(state: &AppState) -> Result
     let persisted_address = current_address.clone();
     let settings = tauri::async_runtime::spawn_blocking(move || {
         with_db(&database_state, |db| {
-            let mut settings = db.get_trusted_lan_settings()?;
-            let matches_observed_config = settings.enabled
-                && settings.selected_interface_name.as_deref() == Some(interface_name.as_str())
-                && settings.selected_interface_address.as_deref()
-                    == Some(previous_address.as_str());
-            if !matches_observed_config {
-                return Ok(None);
-            }
-            settings.selected_interface_name = Some(persisted_name);
-            settings.selected_interface_address = Some(persisted_address);
-            db.save_trusted_lan_settings(&settings)?;
-            Ok(Some(settings))
+            db.refresh_trusted_lan_interface(
+                &interface_name,
+                &previous_address,
+                persisted_name,
+                persisted_address,
+            )
         })
     })
     .await

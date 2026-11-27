@@ -19,7 +19,7 @@ use super::database_trusted_lan_settings::{
 
 impl FilamentDatabase {
     pub fn get_trusted_lan_settings(&self) -> InventoryResult<TrustedLanSettingsRow> {
-        get_trusted_lan_setting_rows(self.connection())
+        self.with_read_transaction(|db| get_trusted_lan_setting_rows(db.connection()))
     }
 
     pub fn save_trusted_lan_settings(
@@ -27,6 +27,28 @@ impl FilamentDatabase {
         settings: &TrustedLanSettingsRow,
     ) -> InventoryResult<()> {
         self.with_inventory_transaction(|conn| save_trusted_lan_setting_rows(conn, settings))
+    }
+
+    pub fn refresh_trusted_lan_interface(
+        &self,
+        observed_name: &str,
+        observed_address: &str,
+        new_name: String,
+        new_address: String,
+    ) -> InventoryResult<Option<TrustedLanSettingsRow>> {
+        self.with_inventory_transaction(|conn| {
+            let mut settings = get_trusted_lan_setting_rows(conn)?;
+            if !settings.enabled
+                || settings.selected_interface_name.as_deref() != Some(observed_name)
+                || settings.selected_interface_address.as_deref() != Some(observed_address)
+            {
+                return Ok(None);
+            }
+            settings.selected_interface_name = Some(new_name);
+            settings.selected_interface_address = Some(new_address);
+            save_trusted_lan_setting_rows(conn, &settings)?;
+            Ok(Some(settings))
+        })
     }
 
     pub fn create_trusted_lan_pairing(
