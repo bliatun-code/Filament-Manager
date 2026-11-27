@@ -2,19 +2,8 @@ use rusqlite::Connection;
 
 use super::database_loan_queries::visit_spool_loans_for_direction;
 use super::database_result::InventoryResult;
-use super::database_spool_models::SpoolWithMasterRow;
-use super::database_spool_queries::list_all_spools_with_master;
+use super::database_spool_queries::visit_spools_with_master;
 use super::database_text::escape_csv;
-
-pub(crate) fn export_inventory_spools_csv(conn: &Connection) -> InventoryResult<String> {
-    let rows = list_all_spools_with_master(conn)?;
-    export_spools_csv(&rows)
-}
-
-pub(crate) fn export_inventory_spools_json(conn: &Connection) -> InventoryResult<String> {
-    let rows = list_all_spools_with_master(conn)?;
-    export_spools_json(&rows)
-}
 
 pub(crate) fn export_loans_csv_for_direction(
     conn: &Connection,
@@ -46,11 +35,11 @@ pub(crate) fn export_loans_csv_for_direction(
     Ok(output)
 }
 
-pub(crate) fn export_spools_csv(rows: &[SpoolWithMasterRow]) -> InventoryResult<String> {
+pub(crate) fn export_inventory_spools_csv(conn: &Connection) -> InventoryResult<String> {
     let mut output = String::from(
         "spool_id,material,filament_name,color_name,vendor,status,ownership_type,owner_name,owner_contact,ownership_note,initial_weight_g,current_weight_g,remaining_g,spool_tare_weight_g,location,location_id,location_name,location_type,home_location_id,home_location_name,home_location_type,qr_code,purchase_price,purchase_currency,purchase_date,batch_code,supplier_reference,purchase_price_batch_locked,purchase_price_source\n",
     );
-    for entry in rows {
+    visit_spools_with_master(conn, i64::MAX, 0, |entry| {
         let purchase_price = entry
             .spool
             .purchase_price
@@ -104,15 +93,15 @@ pub(crate) fn export_spools_csv(rows: &[SpoolWithMasterRow]) -> InventoryResult<
         ];
         output.push_str(&fields.join(","));
         output.push('\n');
-    }
+        Ok(())
+    })?;
     Ok(output)
 }
 
-pub(crate) fn export_spools_json(rows: &[SpoolWithMasterRow]) -> InventoryResult<String> {
-    let output = rows
-        .iter()
-        .map(|entry| {
-            serde_json::json!({
+pub(crate) fn export_inventory_spools_json(conn: &Connection) -> InventoryResult<String> {
+    let mut output = String::from("[");
+    visit_spools_with_master(conn, i64::MAX, 0, |entry| {
+        let value = serde_json::json!({
                 "spool_id": entry.spool.id,
                 "material": entry.master.material,
                 "filament_name": entry.master.filament_name,
@@ -142,12 +131,13 @@ pub(crate) fn export_spools_json(rows: &[SpoolWithMasterRow]) -> InventoryResult
                 "supplier_reference": entry.spool.supplier_reference,
                 "purchase_price_batch_locked": entry.spool.purchase_price_batch_locked,
                 "purchase_price_source": entry.spool.purchase_price_source,
-            })
-        })
-        .collect::<Vec<_>>();
-    serde_json::to_string(&output).map_err(|error| {
-        super::database_result::InventoryError::Db(format!(
-            "Could not serialize inventory export: {error}"
-        ))
-    })
+        });
+        if output.len() > 1 {
+            output.push(',');
+        }
+        output.push_str(&value.to_string());
+        Ok(())
+    })?;
+    output.push(']');
+    Ok(output)
 }

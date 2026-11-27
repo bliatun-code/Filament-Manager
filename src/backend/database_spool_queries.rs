@@ -121,6 +121,20 @@ pub(crate) fn list_spools_with_master(
     limit: i64,
     offset: i64,
 ) -> InventoryResult<Vec<SpoolWithMasterRow>> {
+    let mut results = Vec::new();
+    visit_spools_with_master(conn, limit, offset, |spool| {
+        results.push(spool);
+        Ok(())
+    })?;
+    Ok(results)
+}
+
+pub(crate) fn visit_spools_with_master(
+    conn: &Connection,
+    limit: i64,
+    offset: i64,
+    mut visit: impl FnMut(SpoolWithMasterRow) -> InventoryResult<()>,
+) -> InventoryResult<()> {
     let mut stmt = conn.prepare(&format!(
         "{SPOOL_WITH_MASTER_SELECT} WHERE s.deleted_at IS NULL
          ORDER BY s.updated_at DESC, s.id DESC LIMIT ?1 OFFSET ?2"
@@ -128,11 +142,10 @@ pub(crate) fn list_spools_with_master(
 
     let rows = stmt.query_map(params![limit, offset], map_spool_with_master_row)?;
 
-    let mut results = Vec::new();
     for row in rows {
-        results.push(row?);
+        visit(row?)?;
     }
-    Ok(results)
+    Ok(())
 }
 
 pub(crate) fn list_all_spools_with_master(
