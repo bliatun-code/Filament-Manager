@@ -43,14 +43,11 @@ impl FilamentDatabase {
     }
 
     pub fn get_library_sync_page_status(&self) -> InventoryResult<LibrarySyncPageStatusRow> {
-        let transaction = self.connection().unchecked_transaction()?;
-        let status = get_library_sync_page_status(&transaction)?;
-        transaction.commit()?;
-        Ok(status)
+        self.with_read_transaction(|db| get_library_sync_page_status(db.connection()))
     }
 
     pub fn get_library_sync_settings(&self) -> InventoryResult<LibrarySyncSettingsRow> {
-        get_library_sync_setting_rows(self.connection())
+        self.with_read_transaction(|db| get_library_sync_setting_rows(db.connection()))
     }
 
     pub fn get_library_sync_settings_for_domains(
@@ -66,20 +63,14 @@ impl FilamentDatabase {
         expected_generation: Option<u64>,
         fetched_snapshot_at: Option<&str>,
     ) -> InventoryResult<LibrarySyncSettingsRow> {
-        let read = |db: &Self| {
+        self.with_read_transaction(|db| {
             super::database_library_sync_settings::read_library_sync_settings(
                 db.connection(),
                 Some(domains),
                 expected_generation,
                 fetched_snapshot_at,
             )
-        };
-        if self.connection().is_autocommit() {
-            self.with_read_transaction(read)
-        } else {
-            // Companion already holds a read transaction across the entire Host snapshot.
-            read(self)
-        }
+        })
     }
 
     pub fn save_library_sync_settings(

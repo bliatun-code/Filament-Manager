@@ -76,6 +76,10 @@ impl FilamentDatabase {
         &self,
         operation: impl FnOnce(&Self) -> InventoryResult<T>,
     ) -> InventoryResult<T> {
+        // A caller collecting a larger snapshot already owns the transaction.
+        if !self.conn.is_autocommit() {
+            return operation(self);
+        }
         let transaction = Transaction::new_unchecked(&self.conn, TransactionBehavior::Deferred)?;
         let output = operation(self)?;
         transaction.commit()?;
