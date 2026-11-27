@@ -139,6 +139,7 @@ pub(crate) struct LibrarySyncUpdateSpoolRfidTagInput {
 #[derive(Deserialize)]
 pub(crate) struct LibrarySyncAssignPrinterSlotInput {
     pub(crate) base_url: String,
+    pub(crate) expected_target_generation: Option<u64>,
     pub(crate) expected_library_id: Option<String>,
     pub(crate) printer_id: String,
     pub(crate) slot_id: String,

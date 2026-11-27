@@ -533,7 +533,7 @@ fn save_rfid(state: &AppState, base: &str, generation: Option<u64>) -> Result<()
 }
 
 #[test]
-fn reviewed_rfid_rejects_old_generation_before_network() {
+fn reviewed_rfid_and_slot_assignment_reject_old_generation_before_network() {
     let listener = TcpListener::bind("127.0.0.1:0").unwrap();
     listener.set_nonblocking(true).unwrap();
     let base = format!("http://{}", listener.local_addr().unwrap());
@@ -547,6 +547,17 @@ fn reviewed_rfid_rejects_old_generation_before_network() {
     assert!(save_rfid(&state, &base, Some(generation))
         .unwrap_err()
         .contains("common.invalid_request"));
+    let assignment = serde_json::from_value(serde_json::json!({
+        "base_url":base,"expected_library_id":"library-test","expected_target_generation":generation,
+        "printer_id":"p","slot_id":"slot","spool_id":"spool / one"
+    })).unwrap();
+    assert!(
+        crate::library_sync_printer_write_commands::assign_library_sync_host_printer_slot_blocking(
+            &state, assignment
+        )
+        .unwrap_err()
+        .contains("common.invalid_request")
+    );
     assert_eq!(
         listener.accept().unwrap_err().kind(),
         std::io::ErrorKind::WouldBlock
