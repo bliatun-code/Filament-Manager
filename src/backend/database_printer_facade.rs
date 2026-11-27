@@ -58,14 +58,14 @@ impl FilamentDatabase {
     }
 
     pub fn list_printer_overview(&self) -> InventoryResult<Vec<PrinterOverviewRow>> {
-        list_printer_overview_rows(self.connection())
+        self.with_read_transaction(|db| list_printer_overview_rows(db.connection()))
     }
 
     pub fn get_printer_overview(
         &self,
         printer_id: &str,
     ) -> InventoryResult<Option<PrinterOverviewRow>> {
-        get_printer_overview_row(self.connection(), printer_id)
+        self.with_read_transaction(|db| get_printer_overview_row(db.connection(), printer_id))
     }
 
     pub fn assign_spool_to_ams_slot(
