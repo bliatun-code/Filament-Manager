@@ -1,3 +1,5 @@
+import { createInventorySpoolFromMaster, updateInventorySpoolRfidTag } from "./spool_writes";
+import { buildSlotCatalogOnboardingPostCreateWrites } from "./printer_slot_model";
 import {
   acceptBambuLiveWeightEstimate,
   acceptLibrarySyncHostBambuLiveWeightEstimate,
@@ -10,6 +12,8 @@ import {
   updateLibrarySyncHostSpoolWeight,
   updateSpoolWeight,
   type AssignPrinterSlotInput,
+  type CreateSpoolInput,
+  type PrinterAmsSlotRow,
   type AcceptBambuLiveWeightEstimateInput,
   type PrinterSlotOperationInput,
 } from "./tauri_client";
@@ -24,6 +28,7 @@ export type PrinterSlotWriteTarget = {
   clientReadOnly: boolean;
   clientHostBaseUrl: string | null;
   clientLibraryId: string | null;
+  clientTargetGeneration?: number | null;
 };
 
 type PrinterSlotWriteDependencies = {
@@ -94,11 +99,24 @@ export async function writePrinterSlotAssignment(
       target,
       "Host connection details are missing for this printer action.",
     );
-    await assignHostPrinterSlot(hostTarget.baseUrl, hostTarget.libraryId, input);
+    await assignHostPrinterSlot(hostTarget.baseUrl, hostTarget.libraryId, input, target.clientTargetGeneration ?? undefined);
     return;
   }
 
   await assignLocalPrinterSlot(input);
+}
+
+export async function registerPrinterSlotCatalogSpool(
+  target: PrinterSlotWriteTarget & { clientTargetGeneration: number | null },
+  spool: CreateSpoolInput,
+  observation: { printerId: string; slot: PrinterAmsSlotRow; observedRfid: string; rfidObservedAt: string },
+) {
+  const createdSpoolId = await createInventorySpoolFromMaster(spool, target);
+  const { rfidInput, assignInput } = buildSlotCatalogOnboardingPostCreateWrites({
+    ...observation, createdSpoolId,
+  });
+  await updateInventorySpoolRfidTag(rfidInput, target);
+  await writePrinterSlotAssignment(target, assignInput);
 }
 
 export async function writePreparedMeasuredWeightUpdate(

@@ -455,11 +455,13 @@ export async function assignLibrarySyncHostPrinterSlot(
   baseUrl: string,
   expectedLibraryId: string | null | undefined,
   input: AssignPrinterSlotInput,
+  expectedTargetGeneration?: number,
 ) {
   return invoke<void>("assign_library_sync_host_printer_slot", {
     input: {
       base_url: baseUrl,
       expected_library_id: expectedLibraryId ?? null,
+      ...(expectedTargetGeneration === undefined ? {} : { expected_target_generation: expectedTargetGeneration }),
       printer_id: input.printer_id,
       slot_id: input.slot_id,
       spool_id: input.spool_id ?? null,

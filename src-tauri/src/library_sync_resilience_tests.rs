@@ -1035,6 +1035,7 @@ async fn real_tcp_client_completes_the_five_fixed_workflows_on_the_host() {
                 &state,
                 LibrarySyncAssignPrinterSlotInput {
                     base_url,
+                    expected_target_generation: Some(target_generation),
                     expected_library_id: Some(HOST_LIBRARY_ID.to_string()),
                     printer_id: HOST_PRINTER_ID.to_string(),
                     slot_id: HOST_SLOT_ID.to_string(),

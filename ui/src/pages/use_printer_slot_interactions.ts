@@ -29,7 +29,6 @@ import {
   buildSavedRfidPrinterSlotAssignment,
   buildSlotCatalogOnboardingOpenState,
   buildSlotCatalogOnboardingCreateRequest,
-  buildSlotCatalogOnboardingPostCreateWrites,
   buildSlotCatalogOnboardingPrompt,
   buildSlotSwapDraft,
   isSpoolAllowedForSlot,
@@ -42,6 +41,7 @@ import {
   type SlotSwapDraft,
 } from "../lib/printer_slot_model";
 import {
+  registerPrinterSlotCatalogSpool,
   writeAcceptedBambuLiveWeightEstimate,
   writePrinterSlotAssignment,
   writePrinterSlotOperation,
@@ -54,7 +54,6 @@ import {
 import { sortSpoolsAlphabetically } from "../lib/spool_sort";
 import type { NormalizedSpoolWithMasterRow } from "../lib/spool_row_normalization";
 import {
-  createInventorySpoolFromMaster,
   updateInventorySpoolRfidTag,
 } from "../lib/spool_writes";
 import type {
@@ -1023,31 +1022,10 @@ export function usePrinterSlotInteractions({
     setError(null);
     setInfo(null);
     try {
-      const createdSpoolId = await createInventorySpoolFromMaster(request.input, {
-        clientReadOnly,
-        clientHostBaseUrl,
-        clientLibraryId,
-        clientTargetGeneration,
-      });
-      const postCreateWrites = buildSlotCatalogOnboardingPostCreateWrites({
-        printerId,
-        slot: slotForWrite,
-        createdSpoolId,
-        observedRfid,
-        rfidObservedAt: rfidObservedAt ?? new Date().toISOString(),
-      });
-      await updateInventorySpoolRfidTag(postCreateWrites.rfidInput, {
-        clientReadOnly,
-        clientHostBaseUrl,
-        clientLibraryId,
-      });
-      await writePrinterSlotAssignment(
-        {
-          clientReadOnly,
-          clientHostBaseUrl,
-          clientLibraryId,
-        },
-        postCreateWrites.assignInput,
+      await registerPrinterSlotCatalogSpool(
+        { clientReadOnly, clientHostBaseUrl, clientLibraryId, clientTargetGeneration },
+        request.input,
+        { printerId, slot: slotForWrite, observedRfid, rfidObservedAt: rfidObservedAt ?? new Date().toISOString() },
       );
       await reloadData();
       setSlotCatalogOnboardingPrompt(null);

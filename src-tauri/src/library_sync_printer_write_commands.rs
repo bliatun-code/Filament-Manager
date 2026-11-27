@@ -37,7 +37,11 @@ pub(crate) fn assign_library_sync_host_printer_slot_blocking(
     input: LibrarySyncAssignPrinterSlotInput,
 ) -> Result<(), String> {
     let host_input = library_sync_host_input(&input.base_url, input.expected_library_id.as_deref());
-    let (_, _, target) = prepare_library_sync_host_write(state, &host_input)?;
+    let (_, _, target) = prepare_library_sync_host_write_for_generation(
+        state,
+        &host_input,
+        input.expected_target_generation,
+    )?;
 
     let printer_id = input.printer_id.trim();
     let slot_id = input.slot_id.trim();
