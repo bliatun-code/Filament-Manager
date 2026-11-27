@@ -15,7 +15,7 @@ impl FilamentDatabase {
     }
 
     pub fn get_filament_standards(&self) -> InventoryResult<FilamentStandardsSnapshot> {
-        get_filament_standards(self.connection())
+        self.with_read_transaction(|db| get_filament_standards(db.connection()))
     }
 
     pub fn save_filament_standards(
