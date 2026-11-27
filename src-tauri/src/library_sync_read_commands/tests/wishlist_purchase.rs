@@ -97,6 +97,54 @@ fn local_dashboard_purchase_rechecks_its_library_under_the_write_gate() {
     std::fs::remove_file(path).unwrap();
 }
 
+#[test]
+fn local_purchase_deletion_requires_the_confirmed_library_and_generation() {
+    use crate::inventory_create_commands::create_local_wishlist_item;
+    use crate::inventory_wishlist_commands::delete_local_wishlist_item;
+
+    let (state, path) = fake_host_state("http://example.invalid");
+    let db = FilamentDatabase::open(&path).unwrap();
+    let client = db.get_library_sync_settings().unwrap();
+    let mut local = client.clone();
+    local.mode = "STANDALONE".into();
+    local.host_base_url = None;
+    db.save_library_sync_settings(&local).unwrap();
+    let target = || {
+        serde_json::from_value(
+            serde_json::to_value(db.get_library_sync_page_status().unwrap()).unwrap(),
+        )
+        .unwrap()
+    };
+
+    for mode in ["STANDALONE", "HOST"] {
+        local.mode = mode.into();
+        db.save_library_sync_settings(&local).unwrap();
+        let reviewed = target();
+        create_local_wishlist_item(&state, suggestion(), Some(&reviewed)).unwrap();
+        let order = db.list_wishlist_items(10).unwrap().remove(0).id;
+
+        let mut other = local.clone();
+        other.library_id = "other-local-library".into();
+        db.save_library_sync_settings(&other).unwrap();
+        assert!(delete_local_wishlist_item(&state, &order, &reviewed)
+            .unwrap_err()
+            .contains("common.invalid_request"));
+        db.save_library_sync_settings(&client).unwrap();
+        assert!(delete_local_wishlist_item(&state, &order, &target())
+            .unwrap_err()
+            .contains("common.forbidden"));
+        db.save_library_sync_settings(&local).unwrap();
+        assert!(delete_local_wishlist_item(&state, &order, &reviewed)
+            .unwrap_err()
+            .contains("common.invalid_request"));
+        assert_eq!(db.list_wishlist_items(10).unwrap()[0].id, order);
+        delete_local_wishlist_item(&state, &order, &target()).unwrap();
+        assert!(db.list_wishlist_items(10).unwrap().is_empty());
+    }
+    drop(db);
+    std::fs::remove_file(path).unwrap();
+}
+
 fn suggestion() -> crate::backend::inventory_engine::CreateWishlistItemInput {
     serde_json::from_value(json!({
         "id":"suggestion", "material":"PLA","filament_name":"Silk","color_name":"Blue"

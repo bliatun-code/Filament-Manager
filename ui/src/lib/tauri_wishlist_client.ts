@@ -158,8 +158,8 @@ export async function updateLibrarySyncHostWishlistItemStatus(
   });
 }
 
-export async function deleteWishlistItem(itemId: string) {
-  return invoke<void>("delete_wishlist_item", { itemId });
+export async function deleteWishlistItem(itemId: string, expectedTarget: WishlistPurchaseTarget) {
+  return invoke<void>("delete_wishlist_item", { itemId, expectedTarget });
 }
 
 export async function deleteLibrarySyncHostWishlistItem(

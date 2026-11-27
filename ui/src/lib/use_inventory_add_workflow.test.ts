@@ -32,7 +32,7 @@ async function buildWorkflowHarness() {
     const writes = [], reads = [], opened = [];
     let openAvailable = true, workflow, snapshot, clearFeedback, settledCreates = 0;
     window.__TAURI__ = { invoke: (command, payload) => {
-      if (command === "delete_library_sync_host_wishlist_item") {
+      if (command === "delete_library_sync_host_wishlist_item" || command === "delete_wishlist_item") {
         writes.push({ command, payload });
         return Promise.resolve();
       }
@@ -49,7 +49,7 @@ async function buildWorkflowHarness() {
     const reloadSpools = () => new Promise(resolve => reads.push(resolve));
     const reloadWishlist = async () => {};
     const allow = () => true, ignore = () => {};
-    function Harness({ host = null, generation = 1 }) {
+    function Harness({ host = null, generation = 1, localMode = "STANDALONE" }) {
       const [error, setError] = useState(null);
       const [infoMessage, setInfoMessage] = useState(null);
       clearFeedback = () => setInfoMessage(null);
@@ -57,7 +57,8 @@ async function buildWorkflowHarness() {
         purchaseQueue: useWishlistQueue(),
         canUseClientHostWrite: allow,
         clientHostBaseUrl: host ? "http://" + host : null,
-        clientLibraryId: host ? "library-" + host : null,
+        libraryMode: host ? "CLIENT" : localMode,
+        clientLibraryId: host ? "library-" + host : "local-library",
         clientReadOnly: Boolean(host), clientTargetGeneration: generation,
         defaultPurchaseCurrency: "", ensureLocalWriteAllowed: allow,
         error, infoMessage, librarySyncReady: true,
@@ -172,6 +173,27 @@ test("real registration modal keeps a durable receipt and explicit safe next act
           base_url: "http://a", expected_library_id: "library-a", expected_target_generation: 3, item_id: "same-order",
         } } }],
       });
+    });
+
+    await scenario("a local delete carries the library the user confirmed after a role change", async page => {
+      const result = await page.evaluate(`(async () => {
+        const api = registrationWorkflow;
+        api.render({ generation: 1 });
+        api.requestRemoval("order");
+        const oldDelete = api.deleteAction();
+        api.render({ host: "paired", generation: 2 });
+        api.render({ localMode: "HOST", generation: 3 });
+        await oldDelete("order");
+        await api.deleteAction()("order");
+        api.requestRemoval("order");
+        await api.deleteAction()("order");
+        return api.snapshot().writes;
+      })()`);
+      assert.deepEqual(result, [{ command: "delete_wishlist_item", payload: {
+        itemId: "order", expectedTarget: {
+          mode: "HOST", library_id: "local-library", host_base_url: null, target_generation: 3,
+        },
+      } }]);
     });
 
     await scenario("busy controls freeze; committed receipt survives feedback expiry and failed Open lookup", async page => {

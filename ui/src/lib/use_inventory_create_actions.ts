@@ -76,6 +76,7 @@ type InventoryCreateActionsInput = {
   clientLibraryId: string | null;
   clientReadOnly: boolean;
   clientTargetGeneration: number | null;
+  libraryMode: string | null;
   confirmWishlistRemoveId: string | null;
   createMode: InventoryCreateMode;
   createSessionId: number;
@@ -120,6 +121,7 @@ export function useInventoryCreateActions({
   clientLibraryId,
   clientReadOnly,
   clientTargetGeneration,
+  libraryMode,
   confirmWishlistRemoveId,
   createMode,
   createSessionId,
@@ -168,7 +170,7 @@ export function useInventoryCreateActions({
     ) : null,
   } : null;
   const registrationScopeKey = JSON.stringify([
-    clientReadOnly, clientHostBaseUrl, clientLibraryId, clientTargetGeneration, createSessionId,
+    clientReadOnly, clientHostBaseUrl, clientLibraryId, clientTargetGeneration, libraryMode, createSessionId,
   ]);
   const registrationScopeRef = useRef<{ key: string; inFlight: boolean; completed: boolean } | null>(null);
   useLayoutEffect(() => {
@@ -588,7 +590,7 @@ export function useInventoryCreateActions({
     setConfirmWishlistRemoveId(null);
     setInfoMessage(null);
     try {
-      await deleteWishlistEntry(itemId, { ...hostWriteTarget, clientTargetGeneration });
+      await deleteWishlistEntry(itemId, { ...hostWriteTarget, clientTargetGeneration, libraryMode });
       if (!isCurrent()) return;
       await reloadWishlist();
     } catch (deleteError) {
