@@ -5900,3 +5900,26 @@ fn trusted_lan_refresh_respects_reconfigured_and_disabled_interfaces() {
     assert!(refresh("192.0.2.2").is_none());
     assert!(!db.get_trusted_lan_settings().unwrap().enabled);
 }
+
+#[test]
+fn simultaneous_credential_profile_initialization_returns_one_identity() {
+    let path = temp_db_path("concurrent-credential-profile");
+    let db = FilamentDatabase::open(&path).unwrap();
+    db.apply_schema().unwrap();
+    let barrier = std::sync::Barrier::new(8);
+    std::thread::scope(|scope| {
+        let threads: Vec<_> = (0..8)
+            .map(|_| {
+                scope.spawn(|| {
+                    let db = FilamentDatabase::open(&path).unwrap();
+                    barrier.wait();
+                    db.get_or_create_credential_store_profile_id().unwrap()
+                })
+            })
+            .collect();
+        let ids: Vec<_> = threads.into_iter().map(|t| t.join().unwrap()).collect();
+        assert!(ids.iter().all(|id| id == &ids[0]));
+    });
+    drop(db);
+    std::fs::remove_file(path).unwrap();
+}

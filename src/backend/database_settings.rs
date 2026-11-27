@@ -37,21 +37,22 @@ pub(crate) fn get_setting(conn: &Connection, key: &str) -> InventoryResult<Optio
 pub(crate) fn get_or_create_credential_store_profile_id(
     conn: &Connection,
 ) -> InventoryResult<String> {
-    let transaction = conn.unchecked_transaction()?;
-    let profile_id = match get_setting(&transaction, CREDENTIAL_STORE_PROFILE_ID_SETTING_KEY)? {
-        Some(profile_id) => validate_credential_store_profile_id(profile_id)?,
-        None => {
-            let profile_id = new_credential_store_profile_id();
-            set_setting(
-                &transaction,
-                CREDENTIAL_STORE_PROFILE_ID_SETTING_KEY,
-                &profile_id,
-            )?;
-            profile_id
-        }
-    };
-    transaction.commit()?;
-    Ok(profile_id)
+    if let Some(profile_id) = get_setting(conn, CREDENTIAL_STORE_PROFILE_ID_SETTING_KEY)? {
+        return validate_credential_store_profile_id(profile_id);
+    }
+    conn.execute(
+        "INSERT INTO settings (key, value) VALUES (?1, ?2) ON CONFLICT(key) DO NOTHING",
+        params![
+            CREDENTIAL_STORE_PROFILE_ID_SETTING_KEY,
+            new_credential_store_profile_id()
+        ],
+    )?;
+    let stored = conn.query_row(
+        "SELECT value FROM settings WHERE key = ?1",
+        [CREDENTIAL_STORE_PROFILE_ID_SETTING_KEY],
+        |row| row.get(0),
+    )?;
+    validate_credential_store_profile_id(stored)
 }
 
 pub(crate) fn credential_store_profile_migration_completed(
