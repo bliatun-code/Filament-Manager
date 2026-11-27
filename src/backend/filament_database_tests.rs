@@ -5877,3 +5877,26 @@ fn full_and_compact_sync_settings_share_an_existing_snapshot() {
     drop((db, writer));
     std::fs::remove_file(path).unwrap();
 }
+
+#[test]
+fn trusted_lan_refresh_respects_reconfigured_and_disabled_interfaces() {
+    let db = FilamentDatabase::open(":memory:").unwrap();
+    db.apply_schema().unwrap();
+    let mut settings = TrustedLanSettingsRow {
+        enabled: true,
+        listen_port: 19432,
+        selected_interface_name: Some("en0".into()),
+        selected_interface_address: Some("192.0.2.2".into()),
+    };
+    db.save_trusted_lan_settings(&settings).unwrap();
+    let refresh = |addr| {
+        db.refresh_trusted_lan_interface("en0", addr, "en0".into(), "192.0.2.3".into())
+            .unwrap()
+    };
+    assert!(refresh("192.0.2.1").is_none());
+    assert_eq!(refresh("192.0.2.2").unwrap().listen_port, 19432);
+    settings.enabled = false;
+    db.save_trusted_lan_settings(&settings).unwrap();
+    assert!(refresh("192.0.2.2").is_none());
+    assert!(!db.get_trusted_lan_settings().unwrap().enabled);
+}
