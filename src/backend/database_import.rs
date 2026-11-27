@@ -577,6 +577,14 @@ fn parse_inventory_spools_csv_inner(content: &str) -> InventoryResult<Vec<Invent
 
     let mut output = Vec::new();
     for (index, values) in records.enumerate() {
+        if values.len() != headers.len() {
+            return Err(InventoryError::Db(format!(
+                "Inventory CSV record {} contains {} fields for {} columns",
+                index + 2,
+                values.len(),
+                headers.len()
+            )));
+        }
         output.push(InventoryImportRow {
             spool_id: csv_field(&headers, &values, &["spool_id", "id", "spoolid"])
                 .unwrap_or("")
@@ -1180,6 +1188,16 @@ mod tests {
                 matches!(error, InventoryError::InvalidOperation { code: actual, .. } if actual == code)
             );
         }
+    }
+
+    #[test]
+    fn truncated_inventory_records_cannot_clear_existing_purchase_metadata() {
+        let header = "spool_id,material,filament_name,color_name,purchase_currency";
+        for row in ["a,PLA,Basic,Red", "a,PLA,Basic,Red,NOK,extra"] {
+            let content = format!("{header}\na,PLA,Basic,Red,NOK\n{row}");
+            assert!(parse_inventory_spools_csv(&content).is_err());
+        }
+        assert!(parse_inventory_spools_csv(&format!("{header}\na,PLA,Basic,Red,")).is_ok());
     }
 
     #[test]
