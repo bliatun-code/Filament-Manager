@@ -46,40 +46,28 @@ pub(crate) fn insert_printer_live_event_unless_recent_duplicate(
 
     let window_seconds = dedupe_window_seconds.max(1);
     let window_modifier = format!("-{window_seconds} seconds");
-    let mut stmt = conn.prepare(
-        "SELECT payload_json
-         FROM printer_live_events
-         WHERE printer_id = ?1
-           AND event_type = ?2
-           AND created_at >= datetime('now', ?3)
-         ORDER BY created_at DESC
-         LIMIT 50",
-    )?;
-    let recent_payloads = stmt.query_map(
+    let payload = serde_json::to_string(payload_json)
+        .map_err(|error| InventoryError::Db(error.to_string()))?;
+    let inserted = conn.execute(
+        "INSERT INTO printer_live_events (id, printer_id, event_type, payload_json, created_at)
+         SELECT ?1, ?2, ?3, ?4, datetime('now')
+         WHERE NOT EXISTS (
+             SELECT 1 FROM printer_live_events
+             WHERE printer_id = ?2 AND event_type = ?3
+               AND created_at >= datetime('now', ?5)
+               AND CASE WHEN json_valid(payload_json)
+                        THEN json_extract(payload_json, '$.dedupe_key') END = ?6
+         )",
         params![
+            new_id(),
             normalized_printer_id,
             normalized_event_type,
-            window_modifier
+            payload,
+            window_modifier,
+            normalized_dedupe_key
         ],
-        |row| row.get::<_, String>(0),
     )?;
-
-    for payload in recent_payloads {
-        let payload = payload?;
-        let Ok(value) = serde_json::from_str::<Value>(&payload) else {
-            continue;
-        };
-        if value
-            .get("dedupe_key")
-            .and_then(Value::as_str)
-            .is_some_and(|value| value == normalized_dedupe_key)
-        {
-            return Ok(false);
-        }
-    }
-
-    insert_printer_live_event(conn, printer_id, event_type, payload_json)?;
-    Ok(true)
+    Ok(inserted != 0)
 }
 
 fn normalize_live_event_identity<'a>(
@@ -307,5 +295,44 @@ mod weight_review_tests {
             None,
             "a short burst is not confirmation"
         );
+    }
+}
+
+#[cfg(test)]
+mod deduplication_tests {
+    use super::*;
+
+    #[test]
+    fn live_event_deduplication_covers_the_whole_time_window() {
+        let conn = Connection::open_in_memory().unwrap();
+        conn.execute_batch("CREATE TABLE printer_live_events (id TEXT PRIMARY KEY, printer_id TEXT, event_type TEXT, payload_json TEXT, created_at TEXT);
+        INSERT INTO printer_live_events VALUES('malformed','p','sensor','{',datetime('now'));").unwrap();
+        let record = |key: &str| {
+            insert_printer_live_event_unless_recent_duplicate(
+                &conn,
+                "p",
+                "sensor",
+                &serde_json::json!({"dedupe_key":key}),
+                key,
+                300,
+            )
+            .unwrap()
+        };
+        assert!(record("observation"));
+        conn.execute(
+            "UPDATE printer_live_events SET created_at=datetime('now','-10 seconds')",
+            [],
+        )
+        .unwrap();
+        for i in 0..60 {
+            assert!(record(&i.to_string()));
+        }
+        assert!(!record("observation"));
+        conn.execute(
+            "UPDATE printer_live_events SET created_at=datetime('now','-1 hour')",
+            [],
+        )
+        .unwrap();
+        assert!(record("observation"));
     }
 }
