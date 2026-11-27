@@ -174,6 +174,14 @@ fn loan_dialogs_send_one_post_each_on_a_stable_host_and_none_after_health_switch
                 "captured_at":capture}).to_string();
             db.connection().execute("INSERT OR REPLACE INTO settings(key,value) VALUES ('library_sync_cached_spools_json',?1)",
                 [&saved]).unwrap();
+            // The Host can still confirm the loan when Client status storage is unavailable.
+            db.connection()
+                .execute_batch(
+                    "CREATE TRIGGER reject_validation BEFORE INSERT ON settings
+                 WHEN NEW.key = 'library_sync_last_checked_at'
+                 BEGIN SELECT RAISE(ABORT, 'validation unavailable'); END;",
+                )
+                .unwrap();
             tx.send(path.clone()).unwrap();
             let result = action.submit(
                 &state,

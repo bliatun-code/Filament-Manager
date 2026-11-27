@@ -130,7 +130,7 @@ pub(crate) fn return_library_sync_host_loan_blocking(
         cache_acknowledged_roll(state, &target, receipt, input.inbound);
     }
     refresh_library_sync_loan_cache(state, &target);
-    save_library_sync_success(state, &target, "Host loan updated.", None)?;
+    let _ = save_library_sync_success(state, &target, "Host loan updated.", None);
     Ok(())
 }
 
@@ -190,7 +190,7 @@ pub(crate) fn lend_library_sync_host_spool_blocking(
     }
     refresh_library_sync_loan_cache(state, &target);
     refresh_library_sync_printer_cache(state, &target);
-    save_library_sync_success(state, &target, "Host loan-out write completed.", None)?;
+    let _ = save_library_sync_success(state, &target, "Host loan-out write completed.", None);
 
     Ok(())
 }
