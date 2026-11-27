@@ -5923,3 +5923,30 @@ fn simultaneous_credential_profile_initialization_returns_one_identity() {
     drop(db);
     std::fs::remove_file(path).unwrap();
 }
+
+#[test]
+fn printer_overviews_keep_configuration_and_slots_on_one_snapshot() {
+    let path = temp_db_path("printer-overview-snapshot");
+    let db = FilamentDatabase::open(&path).unwrap();
+    db.connection()
+        .execute_batch("PRAGMA journal_mode=WAL")
+        .unwrap();
+    db.apply_schema().unwrap();
+    db.upsert_printer_with_ams("p", "P1S", "Original", 1, 4)
+        .unwrap();
+    let writer = FilamentDatabase::open(&path).unwrap();
+    db.with_read_transaction(|reader| {
+        let before = reader.get_printer_overview("p")?.unwrap();
+        writer.upsert_printer_with_ams("p", "P1S", "Replacement", 2, 4)?;
+        let listed = reader.list_printer_overview()?.remove(0);
+        assert_eq!(listed.printer.name, before.printer.name);
+        assert_eq!(listed.slots.len(), before.slots.len());
+        Ok(())
+    })
+    .unwrap();
+    let latest = db.get_printer_overview("p").unwrap().unwrap();
+    assert_eq!(latest.printer.name, "Replacement");
+    assert_eq!(latest.slots.len(), 9);
+    drop((writer, db));
+    std::fs::remove_file(path).unwrap();
+}
