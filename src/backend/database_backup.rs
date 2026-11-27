@@ -48,13 +48,13 @@ fn parse_full_backup_content_inner(content: &str) -> InventoryResult<ParsedFullB
             message: "Backup content is empty".to_string(),
         });
     }
-    let parsed: Value =
+    let mut parsed: Value =
         serde_json::from_str(normalized).map_err(|error| InventoryError::InvalidOperation {
             code: "document.json_invalid",
             message: error.to_string(),
         })?;
     let root = parsed
-        .as_object()
+        .as_object_mut()
         .ok_or_else(|| InventoryError::Db("Backup root must be a JSON object".to_string()))?;
     let format = root
         .get("format")
@@ -67,33 +67,36 @@ fn parse_full_backup_content_inner(content: &str) -> InventoryResult<ParsedFullB
         });
     }
 
+    let format = format.to_string();
     let schema_version = optional_schema_version(root)?;
     validate_optional_app_version(root)?;
 
-    let raw_tables = root
-        .get("tables")
-        .and_then(Value::as_object)
-        .ok_or_else(|| InventoryError::Db("Backup tables object is missing".to_string()))?;
+    let Some(Value::Object(raw_tables)) = root.remove("tables") else {
+        return Err(InventoryError::Db(
+            "Backup tables object is missing".to_string(),
+        ));
+    };
     let mut tables = BTreeMap::new();
-
     for (table_name, raw_rows) in raw_tables {
-        let rows = raw_rows.as_array().ok_or_else(|| {
-            InventoryError::Db(format!("Backup table `{table_name}` must be an array"))
-        })?;
+        let Value::Array(rows) = raw_rows else {
+            return Err(InventoryError::Db(format!(
+                "Backup table `{table_name}` must be an array"
+            )));
+        };
         let mut table_rows = Vec::with_capacity(rows.len());
         for row in rows {
-            let object = row.as_object().ok_or_else(|| {
-                InventoryError::Db(format!(
+            let Value::Object(object) = row else {
+                return Err(InventoryError::Db(format!(
                     "Backup row for `{table_name}` must be a JSON object"
-                ))
-            })?;
-            table_rows.push(object.clone());
+                )));
+            };
+            table_rows.push(object);
         }
-        tables.insert(table_name.clone(), table_rows);
+        tables.insert(table_name, table_rows);
     }
 
     Ok(ParsedFullBackup {
-        format: format.to_string(),
+        format,
         schema_version,
         tables,
     })
@@ -346,7 +349,8 @@ fn insert_portable_backup_row(
         .iter()
         .map(|column| json_value_to_sql(row.get(column).unwrap_or(&Value::Null)))
         .collect();
-    conn.execute(&sql, rusqlite::params_from_iter(values.iter()))?;
+    conn.prepare_cached(&sql)?
+        .execute(rusqlite::params_from_iter(values.iter()))?;
     Ok(())
 }
 
