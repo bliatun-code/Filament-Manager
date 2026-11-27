@@ -2732,6 +2732,24 @@ fn export_loans_csv_defaults_to_outbound_without_recursing() {
         assert!(inbound_csv.contains(",borrowed_in_1,INBOUND,Carla,"));
         assert!(!inbound_csv.contains(",owned_out_1,OUTBOUND,Alice,"));
 
+        db.connection()
+            .execute_batch(
+                "WITH RECURSIVE ids(n) AS (
+            VALUES(1) UNION ALL SELECT n+1 FROM ids WHERE n < 20000
+        ) INSERT INTO spool_loans(id, spool_id, borrower_name, grams_out, loan_status, returned_at)
+          SELECT 'history-' || n, 'owned_out_1', 'Test', 10, 'RETURNED', datetime('now') FROM ids",
+            )
+            .map_err(|error| error.to_string())?;
+        let history = db
+            .export_loans_csv(true)
+            .map_err(|error| error.to_string())?;
+        assert_eq!(
+            history.lines().count(),
+            20002,
+            "header plus every outbound loan"
+        );
+        assert!(!history.contains("borrowed_in_1"));
+
         Ok(())
     })();
 
