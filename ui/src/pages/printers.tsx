@@ -304,7 +304,7 @@ export default function PrintersPage() {
     setIncomingWeightValue,
     setOpenDropdownSlotId,
     setOutgoingWeightValue,
-    setRfidOverridePrompt,
+    closeRfidOverrideDialog,
     setSlotCatalogOnboardingPrompt,
     setSlotCatalogOwnershipType,
     setSlotDraft,
@@ -869,7 +869,7 @@ export default function PrintersPage() {
           busy={busy}
           locale={locale}
           prompt={rfidOverridePrompt}
-          onClose={() => setRfidOverridePrompt(null)}
+          onClose={closeRfidOverrideDialog}
           onSave={() => void handleSaveOverrideRfid()}
         />
       ) : null}

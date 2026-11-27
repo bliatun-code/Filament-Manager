@@ -33,7 +33,8 @@ async function buildPrinterWeightHarness() {
     let options = { current: "A", host: null, library: "library-A", generation: 1,
       ready: true, tauri: true, ams: false, confirmed: false, cached: false };
     window.__TAURI__ = { invoke: (command, payload) => {
-      if (!["operate_printer_slot", "operate_library_sync_host_printer_slot", "accept_bambu_live_weight_estimate"].includes(command)) {
+      if (!["operate_printer_slot", "operate_library_sync_host_printer_slot", "accept_bambu_live_weight_estimate",
+        "update_library_sync_host_spool_rfid_tag", "assign_library_sync_host_printer_slot"].includes(command)) {
         return Promise.reject(new Error("Unexpected non-atomic write: " + command));
       }
       return new Promise((resolve, reject) => writes.push({ command, payload, resolve, reject }));
@@ -50,13 +51,14 @@ async function buildPrinterWeightHarness() {
     const accept = () => {
       Promise.resolve(workflow.acceptIncomingAmsWeightEstimate()).finally(() => { settled += 1; });
     };
-    function Harness({ current, host, library, generation, ready, tauri, ams, confirmed, cached, compact }) {
+    function Harness({ current, host, library, generation, ready, tauri, ams, confirmed, cached, compact, rfid }) {
       const [busy, setBusy] = useState(false), [error, setError] = useState(null),
         [info, setInfo] = useState(null);
       const trackBusy = useCallback(value => { feedback.push(["busy", value]); setBusy(value); }, []);
       const trackError = useCallback(value => { feedback.push(["error", value]); setError(value); }, []);
       const trackInfo = useCallback(value => { feedback.push(["info", value]); setInfo(value); }, []);
       currentSlot = slot(current);
+      if (rfid) Object.assign(currentSlot, { live_loaded: true, live_observed_rfid_tag: "TAG" });
       if (compact) Object.assign(currentSlot, {
         spool_status: "ASSIGNED", spool_remaining_g: 312,
         assigned_spool_details: { master_id: "master-A", vendor: "eSUN", default_weight: 1000,
@@ -84,7 +86,7 @@ async function buildPrinterWeightHarness() {
         reloadData, setBusy: trackBusy, setError: trackError, setInfo: trackInfo,
         spools: compact ? [] : spools, tauri, t,
       });
-      snapshot = () => ({ busy, error, info, options: workflow.allowedSpoolsForSlot(current).length, currentRoll: workflow.findSpoolById(current)?.spool.id, prompt: workflow.incomingWeightPrompt });
+      snapshot = () => ({ busy, error, info, options: workflow.allowedSpoolsForSlot(current).length, currentRoll: workflow.findSpoolById(current)?.spool.id, rfidPrompt: workflow.rfidOverridePrompt?.spool.spool.id ?? null, prompt: workflow.incomingWeightPrompt });
       return <I18nContext.Provider value={i18n}>
         <button onClick={() => workflow.openEmptySlotWeightDialog("printer-1", currentSlot)}>Unload</button>
         <button onClick={() => workflow.openWeightPromptForDraft({id:"printer-1"}, currentSlot,
@@ -103,6 +105,16 @@ async function buildPrinterWeightHarness() {
       render: patch => { options = { ...options, ...patch }; flushSync(() => root.render(<Harness {...options} />)); },
       reset: () => flushSync(() => workflow.resetPrinterInteractionState()),
       unmount: () => flushSync(() => root.unmount()), save, accept,
+      openRfid: () => flushSync(() => workflow.openRfidOverrideDialog(
+        {printer:{id:"printer-1"}}, currentSlot, {loaded:true, observed_rfid_tag:"TAG"})),
+      captureRfid: () => {
+        const reviewed = workflow, reviewedSlot = currentSlot;
+        const candidate = { ...spools[0], master: { ...spools[0].master, vendor: "Bambu Lab" } };
+        retained = { manual: reviewed.handleSaveOverrideRfid, candidate: () =>
+          reviewed.registerLiveRfidCandidate({printer:{id:"printer-1"}}, reviewedSlot,
+            {loaded:true, observed_rfid_tag:"TAG"}, candidate) };
+      },
+      submitRfid: action => { retained[action]().finally(() => { settled += 1; }); },
       retain: () => {
         const old = workflow, oldSlot = currentSlot;
         retained = { unload: () => old.openEmptySlotWeightDialog("printer-1", oldSlot),
@@ -174,6 +186,71 @@ test("rendered printer weight operations keep the original roll and session", as
         } finally { await page.close(); }
       });
     }
+
+    const rfidCommand = "update_library_sync_host_spool_rfid_tag";
+    const assignmentCommand = "assign_library_sync_host_printer_slot";
+    const switchAwayAndBack = async (page: Page) => {
+      await page.evaluate("printerWeight.render({host:'b',generation:2})");
+      await page.evaluate("printerWeight.render({host:'a',generation:3})");
+    };
+    const startRfid = async (page: Page, action: "manual" | "candidate") => {
+      await page.evaluate(`printerWeight.render({rfid:true, host:'a', current:${action === "manual" ? "'A'" : "null"}})`);
+      if (action === "manual") await page.evaluate("printerWeight.openRfid()");
+      await page.evaluate("printerWeight.captureRfid()");
+    };
+
+    for (const action of ["manual", "candidate"] as const) {
+      await scenario(action + " ignores confirmation retained across A–B–A", async page => {
+        await startRfid(page, action);
+        await switchAwayAndBack(page);
+        await page.evaluate(`printerWeight.submitRfid('${action}')`);
+        await page.waitForFunction("printerWeight.snapshot().settled === 1");
+        const state = await page.evaluate("printerWeight.snapshot()");
+        assert.deepEqual(state.writes, []);
+        assert.equal(state.reads, 0);
+      });
+      await scenario(action + " cannot change the new dialog when an old refresh settles", async page => {
+        await startRfid(page, action);
+        await page.evaluate(`printerWeight.submitRfid('${action}')`);
+        await page.waitForFunction("printerWeight.snapshot().writes.length === 1");
+        await page.evaluate("printerWeight.completeWrite(0)");
+        if (action === "candidate") {
+          await page.waitForFunction("printerWeight.snapshot().writes.length === 2");
+          await page.evaluate("printerWeight.completeWrite(1)");
+        }
+        await page.waitForFunction("printerWeight.snapshot().reads === 1");
+        const original = await page.evaluate("printerWeight.snapshot()");
+        assert.deepEqual(original.writes.map((w: {command:string}) => w.command),
+          action === "candidate" ? [rfidCommand, assignmentCommand] : [rfidCommand]);
+        for (const write of original.writes) {
+          assert.equal(write.payload.input.expected_target_generation, 1);
+          assert.equal(write.payload.input.spool_id, "A");
+        }
+        await switchAwayAndBack(page);
+        await page.evaluate("printerWeight.render({current:'B'}); printerWeight.openRfid(); printerWeight.captureRfid(); printerWeight.submitRfid('manual')");
+        await page.waitForFunction("printerWeight.snapshot().busy");
+        await page.evaluate(action === "manual" ? "printerWeight.completeRead(0)" : "printerWeight.rejectRead(0)");
+        await page.waitForFunction("printerWeight.snapshot().settled === 1");
+        const current = await page.evaluate("printerWeight.snapshot()");
+        assert.equal(current.rfidPrompt, "B");
+        assert.equal(current.busy, true);
+        assert.equal(current.info, null);
+        assert.equal(current.error, null);
+        assert.equal(current.writes.at(-1).payload.input.expected_target_generation, 3);
+      });
+    }
+    await scenario("A–B–A after RFID prevents a suggested AMS assignment", async page => {
+      await startRfid(page, "candidate");
+      await page.evaluate("printerWeight.submitRfid('candidate')");
+      await page.waitForFunction("printerWeight.snapshot().writes.length === 1");
+      await switchAwayAndBack(page);
+      await page.evaluate("printerWeight.completeWrite(0)");
+      await page.waitForFunction("printerWeight.snapshot().settled === 1");
+      const state = await page.evaluate("printerWeight.snapshot()");
+      assert.deepEqual(state.writes.map((w: {command:string}) => w.command), [rfidCommand]);
+      assert.equal(state.reads, 0);
+      assert.equal(state.info, null);
+    });
 
     await scenario("compact manual assignments preserve the weight dialog without supplying replacement candidates", async page => {
       for (const cached of [false, true]) {
