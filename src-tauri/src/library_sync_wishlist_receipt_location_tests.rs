@@ -41,6 +41,14 @@ impl ReceiptTestHost {
     }
 
     fn start_with_receipt_behavior(api: ReceiptHostApi, drop_receipt_response: bool) -> Self {
+        Self::start_with_responses(api, drop_receipt_response, r#"{"ok":true}"#)
+    }
+
+    fn start_with_responses(
+        api: ReceiptHostApi,
+        drop_receipt_response: bool,
+        purchase_response: &'static str,
+    ) -> Self {
         let listener = TcpListener::bind("127.0.0.1:0").unwrap();
         listener.set_nonblocking(true).unwrap();
         let base_url = format!("http://{}", listener.local_addr().unwrap());
@@ -112,6 +120,8 @@ impl ReceiptTestHost {
                         serde_json::json!({"spool_ids":["host-received-spool"],"received_quantity":1,
                             "remaining_quantity":0,"status":"RECEIVED"}).to_string()
                     )
+                } else if request_line.starts_with("POST /api/v1/wishlist") && !keyed_receipt {
+                    ("200 OK", purchase_response.to_string())
                 } else if keyed_receipt {
                     ("404 Not Found", String::new())
                 } else {
@@ -467,6 +477,18 @@ fn queued_purchase_deletion_after_a_b_a_sends_no_request() {
     );
 }
 
+// Simulate a Client that can reach the Host but cannot persist its own sync status.
+fn reject_local_validation_writes(state: &AppState) {
+    rusqlite::Connection::open(&state.db_path)
+        .unwrap()
+        .execute_batch(
+            "CREATE TRIGGER reject_validation BEFORE INSERT ON settings
+         WHEN NEW.key = 'library_sync_last_checked_at'
+         BEGIN SELECT RAISE(ABORT, 'synthetic validation failure'); END;",
+        )
+        .unwrap();
+}
+
 #[test]
 fn confirmed_purchase_deletion_sends_one_delete_to_legacy_host() {
     let mut host = ReceiptTestHost::start();
@@ -478,6 +500,7 @@ fn confirmed_purchase_deletion_sends_one_delete_to_legacy_host() {
         expected_target_generation: db.get_library_sync_page_status().unwrap().target_generation,
         item_id: "order/one".into(),
     };
+    reject_local_validation_writes(&state);
     delete_library_sync_host_wishlist_item_blocking(&state, deletion).unwrap();
     let writes: Vec<_> = host
         .finish()
@@ -505,6 +528,7 @@ fn purchase_create_and_status_require_current_generation_on_legacy_host() {
     db.save_library_sync_settings(&other).unwrap();
     db.save_library_sync_settings(&original).unwrap();
     let current = db.get_library_sync_page_status().unwrap().target_generation;
+    reject_local_validation_writes(&state);
     for generation in [original.target_generation, current] {
         let create = LibrarySyncCreateWishlistItemInput {
             base_url: host.base_url.clone(),
@@ -560,4 +584,33 @@ fn purchase_create_and_status_require_current_generation_on_legacy_host() {
             r#"{"status":"ON_ORDER"}"#.into()
         )
     );
+}
+
+#[test]
+fn unacknowledged_purchase_status_does_not_refresh_or_replay() {
+    for response in [r#"{"ok":false}"#, r#"{"message":"unexpected"}"#] {
+        let mut host =
+            ReceiptTestHost::start_with_responses(ReceiptHostApi::Legacy, false, response);
+        let (_directory, state) = client(&host.base_url, true);
+        let db = FilamentDatabase::open(&state.db_path).unwrap();
+        let status = LibrarySyncUpdateWishlistStatusInput {
+            base_url: host.base_url.clone(),
+            expected_library_id: LIBRARY_ID.into(),
+            expected_target_generation: db
+                .get_library_sync_page_status()
+                .unwrap()
+                .target_generation,
+            item_id: "order".into(),
+            status: "ON_ORDER".into(),
+        };
+        assert!(update_library_sync_host_wishlist_item_status_blocking(&state, status).is_err());
+        let requests: Vec<_> = host.finish().into_iter().map(|(line, _)| line).collect();
+        assert_eq!(
+            requests,
+            [
+                "GET /api/v1/health HTTP/1.1",
+                "POST /api/v1/wishlist/order/status HTTP/1.1"
+            ]
+        );
+    }
 }
