@@ -26,7 +26,7 @@ impl FilamentDatabase {
         &self,
         settings: &TrustedLanSettingsRow,
     ) -> InventoryResult<()> {
-        save_trusted_lan_setting_rows(self.connection(), settings)
+        self.with_inventory_transaction(|conn| save_trusted_lan_setting_rows(conn, settings))
     }
 
     pub fn create_trusted_lan_pairing(

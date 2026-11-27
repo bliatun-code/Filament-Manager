@@ -5772,3 +5772,27 @@ fn host_validation_keeps_known_name_until_target_changes() {
         None
     );
 }
+
+#[test]
+fn trusted_lan_configuration_rolls_back_on_late_storage_error() {
+    let db = FilamentDatabase::open(":memory:").unwrap();
+    db.apply_schema().unwrap();
+    let before = db.get_trusted_lan_settings().unwrap();
+    db.connection()
+        .execute_batch(
+            "CREATE TRIGGER reject_interface BEFORE INSERT ON settings
+        WHEN NEW.key='trusted_lan_interface_address' BEGIN SELECT RAISE(ABORT,'unavailable'); END;",
+        )
+        .unwrap();
+    let updated = TrustedLanSettingsRow {
+        enabled: !before.enabled,
+        listen_port: 12345,
+        selected_interface_name: Some("test".into()),
+        selected_interface_address: Some("192.0.2.2".into()),
+    };
+    assert!(db.save_trusted_lan_settings(&updated).is_err());
+    assert_eq!(
+        serde_json::to_value(db.get_trusted_lan_settings().unwrap()).unwrap(),
+        serde_json::to_value(before).unwrap()
+    );
+}
