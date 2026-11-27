@@ -80,8 +80,8 @@ export function ensureDashboardPurchase(input: CreateWishlistItemInput, target: 
   return invoke<DashboardPurchaseResult>("ensure_dashboard_purchase", { input, target });
 }
 
-export async function createWishlistItem(input: CreateWishlistItemInput, expectedTarget?: WishlistPurchaseTarget) {
-  return invoke<void>("create_wishlist_item", { input, ...(expectedTarget && { expectedTarget }) });
+export async function createWishlistItem(input: CreateWishlistItemInput, expectedTarget: WishlistPurchaseTarget) {
+  return invoke<void>("create_wishlist_item", { input, expectedTarget });
 }
 
 export async function createLibrarySyncHostWishlistItem(
@@ -104,12 +104,12 @@ export async function createLibrarySyncHostWishlistItem(
   });
 }
 
-export async function updateWishlistItemStatus(input: UpdateWishlistStatusInput) {
-  return invoke<void>("update_wishlist_item_status", { input });
+export async function updateWishlistItemStatus(input: UpdateWishlistStatusInput, expectedTarget: WishlistPurchaseTarget) {
+  return invoke<void>("update_wishlist_item_status", { input, expectedTarget });
 }
 
-export async function receiveWishlistItem(input: ReceiveWishlistItemInput) {
-  return invoke<WishlistReceiptResult>("receive_wishlist_item", { input });
+export async function receiveWishlistItem(input: ReceiveWishlistItemInput, expectedTarget: WishlistPurchaseTarget) {
+  return invoke<WishlistReceiptResult>("receive_wishlist_item", { input, expectedTarget });
 }
 
 export async function receiveLibrarySyncHostWishlistItem(

@@ -27,6 +27,7 @@ import {
 import { MAX_WISHLIST_RECEIPT_QUANTITY } from "../../../src-tauri/companion_browser/wishlist_receipt_attempt.js";
 
 export type WishlistDataSourceOptions = {
+  libraryMode?: string | null;
   clientReadOnly?: boolean;
   clientHostBaseUrl?: string | null;
   clientLibraryId?: string | null;
@@ -87,6 +88,18 @@ type WishlistDataSourceDependencies = {
   deleteHostWishlistItem?: typeof deleteLibrarySyncHostWishlistItem;
   deleteLocalWishlistItem?: typeof deleteWishlistItem;
 };
+
+function requireLocalPurchaseTarget(options: WishlistDataSourceOptions): WishlistPurchaseTarget {
+  const { libraryMode, clientLibraryId, clientTargetGeneration } = options;
+  if ((libraryMode !== "STANDALONE" && libraryMode !== "HOST") || !clientLibraryId?.trim() ||
+      clientTargetGeneration == null || !Number.isSafeInteger(clientTargetGeneration) || clientTargetGeneration < 0) {
+    throw createAppError("common.invalid_request");
+  }
+  return {
+    mode: libraryMode, library_id: clientLibraryId, host_base_url: options.clientHostBaseUrl ?? null,
+    target_generation: clientTargetGeneration,
+  };
+}
 
 function requireWishlistHostTarget(options: WishlistDataSourceOptions) {
   const target = resolveClientHostCacheTarget(options);
@@ -374,7 +387,11 @@ export async function createWishlistEntry(
     return;
   }
 
-  await createLocalWishlistItem(input, options.reviewedTarget);
+  const target = requireLocalPurchaseTarget(options);
+  if (options.reviewedTarget && !matchesWishlistPurchaseTarget(target, options.reviewedTarget)) {
+    throw createAppError("common.invalid_request");
+  }
+  await createLocalWishlistItem(input, target);
 }
 
 export async function updateWishlistEntryStatus(
@@ -392,7 +409,7 @@ export async function updateWishlistEntryStatus(
     return;
   }
 
-  await updateLocalWishlistItemStatus(input);
+  await updateLocalWishlistItemStatus(input, requireLocalPurchaseTarget(options));
 }
 
 export async function receiveWishlistEntry(
@@ -414,12 +431,12 @@ export async function receiveWishlistEntry(
     );
   }
 
-  return receiveLocalWishlistItem(input);
+  return receiveLocalWishlistItem(input, requireLocalPurchaseTarget(options));
 }
 
 export async function deleteWishlistEntry(
   itemId: string,
-  options: WishlistDataSourceOptions & { libraryMode?: string | null },
+  options: WishlistDataSourceOptions,
   dependencies: WishlistDataSourceDependencies = {},
 ): Promise<void> {
   const deleteHostWishlistItem =
@@ -431,13 +448,5 @@ export async function deleteWishlistEntry(
     return;
   }
 
-  const { libraryMode, clientLibraryId, clientTargetGeneration } = options;
-  if ((libraryMode !== "STANDALONE" && libraryMode !== "HOST") || !clientLibraryId?.trim() ||
-      clientTargetGeneration == null || !Number.isSafeInteger(clientTargetGeneration) || clientTargetGeneration < 0) {
-    throw createAppError("common.invalid_request");
-  }
-  await deleteLocalWishlistItem(itemId, {
-    mode: libraryMode, library_id: clientLibraryId, host_base_url: options.clientHostBaseUrl ?? null,
-    target_generation: clientTargetGeneration,
-  });
+  await deleteLocalWishlistItem(itemId, requireLocalPurchaseTarget(options));
 }

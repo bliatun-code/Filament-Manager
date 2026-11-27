@@ -1,4 +1,3 @@
-use crate::active_library_gateway::with_authoritative_local_library;
 use crate::backend::filament_database::WishlistReceiptResult;
 use crate::backend::inventory_engine::{ReceiveWishlistItemInput, UpdateWishlistStatusInput};
 use crate::inventory_create_commands::{with_reviewed_local_target, WishlistPurchaseTarget};
@@ -9,8 +8,9 @@ use crate::with_inventory;
 pub(crate) fn update_wishlist_item_status(
     state: tauri::State<'_, AppState>,
     input: UpdateWishlistStatusInput,
+    expected_target: WishlistPurchaseTarget,
 ) -> Result<(), String> {
-    with_authoritative_local_library(&state, || {
+    with_reviewed_local_target(&state, Some(&expected_target), || {
         with_inventory(&state, |engine| engine.update_wishlist_item_status(input))
     })
 }
@@ -19,8 +19,9 @@ pub(crate) fn update_wishlist_item_status(
 pub(crate) fn receive_wishlist_item(
     state: tauri::State<'_, AppState>,
     input: ReceiveWishlistItemInput,
+    expected_target: WishlistPurchaseTarget,
 ) -> Result<WishlistReceiptResult, String> {
-    with_authoritative_local_library(&state, || {
+    with_reviewed_local_target(&state, Some(&expected_target), || {
         with_inventory(&state, |engine| engine.receive_wishlist_item(input))
     })
 }

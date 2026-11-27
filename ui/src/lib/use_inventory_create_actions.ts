@@ -521,7 +521,7 @@ export function useInventoryCreateActions({
           quantity: 1,
           note: null,
         },
-        { ...hostWriteTarget, clientTargetGeneration },
+        { ...hostWriteTarget, clientTargetGeneration, libraryMode },
       );
       if (!isCurrent()) return;
       await reloadWishlist();
@@ -561,7 +561,7 @@ export function useInventoryCreateActions({
           item_id: itemId,
           status,
         },
-        { ...hostWriteTarget, clientTargetGeneration },
+        { ...hostWriteTarget, clientTargetGeneration, libraryMode },
       );
       if (!isCurrent()) return;
       await reloadWishlist();
@@ -684,7 +684,7 @@ export function useInventoryCreateActions({
       attempt = pending;
       const receipt = await receiveWishlistEntry(
         { ...input, request_id: attempt.requestId },
-        { ...hostWriteTarget, clientTargetGeneration, retry: attempt.retry },
+        { ...hostWriteTarget, clientTargetGeneration, libraryMode, retry: attempt.retry },
       );
       if (!isConfirmedWishlistReceipt(receipt, quantity)) {
         throw createAppError(clientReadOnly
