@@ -61,7 +61,7 @@ pub(crate) fn list_spool_history_events(
         "SELECT id, spool_id, event_type, payload_json, created_at
          FROM spool_history_events
          WHERE spool_id = ?1
-         ORDER BY created_at DESC
+         ORDER BY created_at DESC, rowid DESC
          LIMIT ?2",
     )?;
     let rows = stmt.query_map(params![spool_id, limit], |row| {
@@ -91,13 +91,13 @@ pub(crate) fn list_spool_usage_points(
     let mut stmt = conn.prepare(
         "SELECT captured_at, grams, source
          FROM (
-            SELECT id, captured_at, grams, source
+            SELECT rowid AS reading_order, captured_at, grams, source
             FROM weight_readings
             WHERE spool_id = ?1
-            ORDER BY captured_at DESC, id DESC
+            ORDER BY captured_at DESC, reading_order DESC
             LIMIT ?2
          )
-         ORDER BY captured_at ASC, id ASC",
+         ORDER BY captured_at ASC, reading_order ASC",
     )?;
     let rows = stmt.query_map(params![spool_id, limit], |row| {
         Ok(SpoolUsagePointRow {
@@ -112,4 +112,30 @@ pub(crate) fn list_spool_usage_points(
         results.push(row?);
     }
     Ok(results)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn same_second_spool_readings_and_events_keep_recording_order_at_the_limit() {
+        let conn = Connection::open_in_memory().unwrap();
+        conn.execute_batch("CREATE TABLE weight_readings(id TEXT PRIMARY KEY, spool_id TEXT, captured_at TEXT, grams INTEGER, source TEXT);
+            CREATE TABLE spool_history_events(id TEXT PRIMARY KEY, spool_id TEXT, created_at TEXT, event_type TEXT, payload_json TEXT);").unwrap();
+        for (id, grams) in [("z", 900), ("c", 800), ("a", 700)] {
+            conn.execute(
+                "INSERT INTO weight_readings VALUES (?1,'s','2026-01-01 12:00:00',?2,'scale')",
+                params![id, grams],
+            )
+            .unwrap();
+            conn.execute("INSERT INTO spool_history_events VALUES (?1,'s','2026-01-01 12:00:00','WEIGHED','{}')",[id]).unwrap();
+        }
+        let points = list_spool_usage_points(&conn, "s", 2).unwrap();
+        assert_eq!(
+            points.iter().map(|p| p.grams).collect::<Vec<_>>(),
+            [800, 700]
+        );
+        assert_eq!(list_spool_history_events(&conn, "s", 1).unwrap()[0].id, "a");
+    }
 }
