@@ -429,8 +429,17 @@ pub(crate) fn create_library_sync_host_spool_blocking(
     state: &AppState,
     input: LibrarySyncCreateSpoolInput,
 ) -> Result<String, String> {
-    let host_input = library_sync_host_input(&input.base_url, input.expected_library_id.as_deref());
-    let (_, _, target) = prepare_library_sync_host_write(state, &host_input)?;
+    if input.expected_library_id.trim().is_empty() {
+        return Err(crate::app_error::coded_command_error(
+            "common.invalid_request",
+        ));
+    }
+    let host_input = library_sync_host_input(&input.base_url, Some(&input.expected_library_id));
+    let (_, _, target) = prepare_library_sync_host_write_for_generation(
+        state,
+        &host_input,
+        Some(input.expected_target_generation),
+    )?;
 
     let path = library_sync_create_spool_path(
         input.ownership_type.as_deref(),
@@ -460,8 +469,11 @@ pub(crate) fn create_library_sync_host_spool_blocking(
         return Err(response.message);
     }
 
+    if response.spool_id.trim().is_empty() {
+        return Err(crate::app_error::coded_command_error("common.internal"));
+    }
     refresh_library_sync_spool_cache(state, &target);
-    save_library_sync_success(state, &target, &response.message, None)?;
+    let _ = save_library_sync_success(state, &target, &response.message, None);
 
     Ok(response.spool_id)
 }

@@ -25,7 +25,7 @@ import {
   type UpdateSpoolRfidTagInput,
 } from "./tauri_client";
 import { updateActiveLibrarySpoolDetails, type ReviewedLibraryAuthority } from "./tauri_active_library_gateway_client";
-import { requireClientHostWriteTarget } from "./host_write_target";
+import { requireClientHostWriteTarget, resolveClientHostCacheTarget } from "./host_write_target";
 
 export type SpoolWriteTarget = {
   reviewedAuthority?: ReviewedLibraryAuthority;
@@ -68,8 +68,9 @@ export async function createInventorySpoolFromMaster(
   const createLocalSpool = dependencies.createLocalSpool ?? createSpool;
 
   if (target.clientReadOnly) {
-    const hostTarget = requireClientHostWriteTarget(target, missingSpoolHostTargetMessage);
-    return createHostSpool(hostTarget.baseUrl, hostTarget.libraryId, input);
+    const hostTarget = resolveClientHostCacheTarget(target);
+    if (!hostTarget) throw new Error(missingSpoolHostTargetMessage);
+    return createHostSpool(hostTarget.baseUrl, hostTarget.libraryId, input, hostTarget.targetGeneration);
   }
 
   await createLocalSpool(input);
@@ -86,8 +87,9 @@ export async function createManualInventorySpool(
     dependencies.createLocalManualSpool ?? createManualSpool;
 
   if (target.clientReadOnly) {
-    const hostTarget = requireClientHostWriteTarget(target, missingSpoolHostTargetMessage);
-    return createHostSpool(hostTarget.baseUrl, hostTarget.libraryId, input);
+    const hostTarget = resolveClientHostCacheTarget(target);
+    if (!hostTarget) throw new Error(missingSpoolHostTargetMessage);
+    return createHostSpool(hostTarget.baseUrl, hostTarget.libraryId, input, hostTarget.targetGeneration);
   }
 
   await createLocalManualSpool(input);
