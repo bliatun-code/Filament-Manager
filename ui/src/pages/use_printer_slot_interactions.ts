@@ -57,6 +57,8 @@ import {
   updateInventorySpoolRfidTag,
 } from "../lib/spool_writes";
 import type {
+  AssignPrinterSlotInput,
+  UpdateSpoolRfidTagInput,
   BambuLiveIntegrationEntry,
   BambuLiveObservedTray,
   MasterCatalogRow,
@@ -131,6 +133,8 @@ export function usePrinterSlotInteractions({
     useState<SlotRfidOverridePrompt | null>(null);
   const [slotCatalogOnboardingPrompt, setSlotCatalogOnboardingPrompt] =
     useState<SlotCatalogOnboardingPrompt | null>(null);
+  const rfidOperationRef = useRef<symbol | null>(null);
+  const rfidPromptRef = useRef<SlotRfidOverridePrompt | null>(null);
   const weightOperationRef = useRef<symbol | null>(null);
   const weightPromptRef = useRef<IncomingWeightPrompt | null>(null);
   const mountedRef = useRef(false);
@@ -152,7 +156,9 @@ export function usePrinterSlotInteractions({
 
   const resetPrinterInteractionState = useCallback(() => {
     weightPromptRef.current = null;
-    if (weightOperationRef.current) {
+    rfidPromptRef.current = null;
+    if (weightOperationRef.current || rfidOperationRef.current) {
+      rfidOperationRef.current = null;
       weightOperationRef.current = null;
       setBusy(false);
     }
@@ -174,6 +180,8 @@ export function usePrinterSlotInteractions({
     setInfo(null);
     return () => {
       mountedRef.current = false;
+      rfidOperationRef.current = null;
+      rfidPromptRef.current = null;
       weightOperationRef.current = null;
       weightPromptRef.current = null;
     };
@@ -321,16 +329,17 @@ export function usePrinterSlotInteractions({
       slot: PrinterAmsSlotRow,
       liveTray: BambuLiveObservedTray,
     ) => {
+      if (!mountedRef.current || scopeRef.current !== scope || busy || rfidOperationRef.current) return;
       const spool = findSpoolById(slot.spool_id);
       if (!spool) {
         return;
       }
       const liveConfig = bambuLiveIntegrations[printer.printer.id] ?? null;
-      setRfidOverridePrompt(
-        buildRfidOverridePrompt(printer, slot, spool, liveTray, liveConfig),
-      );
+      const prompt = buildRfidOverridePrompt(printer, slot, spool, liveTray, liveConfig);
+      rfidPromptRef.current = prompt;
+      setRfidOverridePrompt(prompt);
     },
-    [bambuLiveIntegrations, findSpoolById],
+    [bambuLiveIntegrations, busy, findSpoolById, scope],
   );
 
   const setSlotDraft = useCallback((slotId: string, next: SlotSwapDraft) => {
@@ -613,16 +622,71 @@ export function usePrinterSlotInteractions({
     setError, t,
   ]);
 
+  const canStartRfidWrite = useCallback(() => (
+    mountedRef.current && scopeRef.current === scope && tauri && librarySyncReady &&
+    !busy && !rfidOperationRef.current &&
+    (clientReadOnly ? clientTargetGeneration != null && canUseClientHostWrite() : ensureLocalWriteAllowed())
+  ), [scope, tauri, librarySyncReady, busy, clientReadOnly, clientTargetGeneration, canUseClientHostWrite, ensureLocalWriteAllowed]);
+
+  const closeRfidOverrideDialog = useCallback(() => {
+    if (scopeRef.current !== scope || rfidPromptRef.current !== rfidOverridePrompt || rfidOperationRef.current) return;
+    rfidPromptRef.current = null;
+    setRfidOverridePrompt(null);
+  }, [scope, rfidOverridePrompt]);
+
+  const saveExistingSpoolRfid = useCallback(async (
+    input: UpdateSpoolRfidTagInput,
+    assignment: AssignPrinterSlotInput | null,
+    prompt: SlotRfidOverridePrompt | null,
+  ) => {
+    const operation = Symbol("printer-rfid");
+    rfidOperationRef.current = operation;
+    const isCurrent = () => mountedRef.current && scopeRef.current === scope &&
+      rfidOperationRef.current === operation;
+    const target = { clientReadOnly, clientHostBaseUrl, clientLibraryId, clientTargetGeneration };
+    let rfidSaved = false;
+    setBusy(true);
+    setError(null);
+    setInfo(null);
+    try {
+      await updateInventorySpoolRfidTag(input, target);
+      rfidSaved = true;
+      if (!isCurrent()) return;
+      if (assignment) {
+        await writePrinterSlotAssignment(target, assignment);
+        if (!isCurrent()) return;
+      }
+      if (prompt && rfidPromptRef.current === prompt) {
+        rfidPromptRef.current = null;
+        setRfidOverridePrompt(null);
+      }
+      setInfo(assignment
+        ? t("printers.liveRfidRegisteredAndAssigned", "RFID saved and the suggested roll was assigned to this slot.")
+        : t("inventory.rfidSaved", "RFID tag saved on the selected roll."));
+      try {
+        await reloadData();
+      } catch (refreshError) {
+        console.error(refreshError);
+        if (isCurrent()) setError(t("printers.error.load", "Failed to load printer overview."));
+      }
+    } catch (writeError) {
+      if (isCurrent()) {
+        const message = rfidSaved
+          ? t("printers.error.updateSlot", "Failed to update printer slot.")
+          : t("inventory.error.saveRfid", "Failed to save RFID tag.");
+        if (rfidSaved) setInfo(t("inventory.rfidSaved", "RFID tag saved on the selected roll."));
+        setError(commandErrorText(writeError, message));
+      }
+    } finally {
+      if (isCurrent()) {
+        rfidOperationRef.current = null;
+        setBusy(false);
+      }
+    }
+  }, [scope, clientReadOnly, clientHostBaseUrl, clientLibraryId, clientTargetGeneration, reloadData, setBusy, setError, setInfo, t]);
+
   const handleSaveOverrideRfid = useCallback(async () => {
-    if (!rfidOverridePrompt || !tauri || busy) {
-      return;
-    }
-    if (!clientReadOnly && !ensureLocalWriteAllowed()) {
-      return;
-    }
-    if (clientReadOnly && !canUseClientHostWrite()) {
-      return;
-    }
+    if (!rfidOverridePrompt || rfidPromptRef.current !== rfidOverridePrompt || !canStartRfidWrite()) return;
     const observedRfid = liveTrayIdentity(rfidOverridePrompt.liveTray);
     if (!observedRfid) {
       setError(
@@ -633,49 +697,12 @@ export function usePrinterSlotInteractions({
       );
       return;
     }
-    setBusy(true);
-    setError(null);
-    setInfo(null);
-    try {
-      const updateInput = {
-        spool_id: rfidOverridePrompt.spool.spool.id,
-        rfid_tag: observedRfid,
-        rfid_observed_at: rfidOverridePrompt.observedAt ?? new Date().toISOString(),
-      };
-      await updateInventorySpoolRfidTag(updateInput, {
-        clientReadOnly,
-        clientHostBaseUrl,
-        clientLibraryId,
-      });
-      await reloadData();
-      setRfidOverridePrompt(null);
-      setInfo(t("inventory.rfidSaved", "RFID tag saved on the selected roll."));
-    } catch (saveError) {
-      console.error(saveError);
-      setError(
-        commandErrorText(
-          saveError,
-          t("inventory.error.saveRfid", "Failed to save RFID tag."),
-        ),
-      );
-    } finally {
-      setBusy(false);
-    }
-  }, [
-    busy,
-    canUseClientHostWrite,
-    clientHostBaseUrl,
-    clientLibraryId,
-    clientReadOnly,
-    ensureLocalWriteAllowed,
-    reloadData,
-    rfidOverridePrompt,
-    setBusy,
-    setError,
-    setInfo,
-    tauri,
-    t,
-  ]);
+    await saveExistingSpoolRfid({
+      spool_id: rfidOverridePrompt.spool.spool.id,
+      rfid_tag: observedRfid,
+      rfid_observed_at: rfidOverridePrompt.observedAt ?? new Date().toISOString(),
+    }, null, rfidOverridePrompt);
+  }, [rfidOverridePrompt, canStartRfidWrite, saveExistingSpoolRfid, setError, t]);
 
   const registerLiveRfidCandidate = useCallback(
     async (
@@ -684,15 +711,7 @@ export function usePrinterSlotInteractions({
       liveTray: BambuLiveObservedTray,
       row: SpoolWithMasterRow,
     ) => {
-      if (!tauri || busy) {
-        return;
-      }
-      if (!clientReadOnly && !ensureLocalWriteAllowed()) {
-        return;
-      }
-      if (clientReadOnly && !canUseClientHostWrite()) {
-        return;
-      }
+      if (!canStartRfidWrite()) return;
       const currentSlot = findPrinterSlotById(printers, printer.printer.id, slot.slot_id);
       const { tray: currentLiveTray } = findLiveTrayForSlot(
         printer.printer.id,
@@ -764,83 +783,18 @@ export function usePrinterSlotInteractions({
       const observedRfid = registrationState.observedRfid;
       const slotForSafety = registrationState.slot;
 
-      setBusy(true);
-      setError(null);
-      setInfo(null);
-      try {
-        await updateInventorySpoolRfidTag(
-          {
-            spool_id: row.spool.id,
-            rfid_tag: observedRfid,
-            rfid_observed_at:
-              resolveLiveRfidObservedAt({
-                liveTray,
-                currentLiveTray,
-                observedAtFallback:
-                  bambuLiveIntegrations[printer.printer.id]?.observed_state?.last_seen_at ??
-                  new Date().toISOString(),
-              }) ?? new Date().toISOString(),
-          },
-          {
-            clientReadOnly,
-            clientHostBaseUrl,
-            clientLibraryId,
-          },
-        );
-
-        if (!slotForSafety.spool_id) {
-          await writePrinterSlotAssignment(
-            {
-              clientReadOnly,
-              clientHostBaseUrl,
-              clientLibraryId,
-            },
-            buildSavedRfidPrinterSlotAssignment(
-              printer.printer.id,
-              slotForSafety,
-              row.spool.id,
-            ),
-          );
-        }
-
-        await reloadData();
-        setInfo(
-          slotForSafety.spool_id
-            ? t("inventory.rfidSaved", "RFID tag saved on the selected roll.")
-            : t(
-                "printers.liveRfidRegisteredAndAssigned",
-                "RFID saved and the suggested roll was assigned to this slot.",
-              ),
-        );
-      } catch (saveError) {
-        console.error(saveError);
-        setError(
-          commandErrorText(
-            saveError,
-            t("inventory.error.saveRfid", "Failed to save RFID tag."),
-          ),
-        );
-      } finally {
-        setBusy(false);
-      }
+      const assignment = slotForSafety.spool_id ? null :
+        buildSavedRfidPrinterSlotAssignment(printer.printer.id, slotForSafety, row.spool.id);
+      await saveExistingSpoolRfid({
+        spool_id: row.spool.id,
+        rfid_tag: observedRfid,
+        rfid_observed_at: resolveLiveRfidObservedAt({
+          liveTray, currentLiveTray,
+          observedAtFallback: bambuLiveIntegrations[printer.printer.id]?.observed_state?.last_seen_at ?? new Date().toISOString(),
+        }) ?? new Date().toISOString(),
+      }, assignment, null);
     },
-    [
-      bambuLiveIntegrations,
-      busy,
-      canUseClientHostWrite,
-      clientHostBaseUrl,
-      clientLibraryId,
-      clientReadOnly,
-      ensureLocalWriteAllowed,
-      findLiveTrayForSlot,
-      printers,
-      reloadData,
-      setBusy,
-      setError,
-      setInfo,
-      tauri,
-      t,
-    ],
+    [bambuLiveIntegrations, canStartRfidWrite, findLiveTrayForSlot, printers, saveExistingSpoolRfid, setError, t],
   );
 
   const createLiveBambuCatalogSpool = useCallback(
@@ -1136,7 +1090,7 @@ export function usePrinterSlotInteractions({
     setIncomingWeightValue,
     setOpenDropdownSlotId,
     setOutgoingWeightValue,
-    setRfidOverridePrompt,
+    closeRfidOverrideDialog,
     setSlotCatalogOnboardingPrompt,
     setSlotCatalogOwnershipType,
     setSlotDraft,
