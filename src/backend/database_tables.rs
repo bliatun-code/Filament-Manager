@@ -76,8 +76,15 @@ pub(crate) fn portable_backup_row(
     mut row: Map<String, Value>,
 ) -> Option<Map<String, Value>> {
     match table {
-        "trusted_lan_pairings" | "trusted_lan_paired_browsers" | "sync_queue" => return None,
-        "settings" if !is_portable_backup_setting_row(&row) => return None,
+        table if full_backup_table_is_entirely_local(table) => return None,
+        "settings"
+            if !row
+                .get("key")
+                .and_then(Value::as_str)
+                .is_some_and(is_portable_backup_setting_key) =>
+        {
+            return None
+        }
         "printers" => {
             // These legacy columns contain device-local connection material and
             // must never travel with a portable library backup.
@@ -89,12 +96,16 @@ pub(crate) fn portable_backup_row(
     Some(row)
 }
 
-fn is_portable_backup_setting_row(row: &Map<String, Value>) -> bool {
-    let Some(key) = row.get("key").and_then(Value::as_str).map(str::trim) else {
-        return false;
-    };
+pub(crate) fn full_backup_table_is_entirely_local(table: &str) -> bool {
     matches!(
-        key,
+        table,
+        "trusted_lan_pairings" | "trusted_lan_paired_browsers" | "sync_queue"
+    )
+}
+
+pub(crate) fn is_portable_backup_setting_key(key: &str) -> bool {
+    matches!(
+        key.trim(),
         "active_printer_id"
             | "default_purchase_currency"
             | "filament_price_standards_json"
