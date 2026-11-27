@@ -52,7 +52,7 @@ impl FilamentDatabase {
         printer_id: &str,
         config: &BambuLiveIntegrationRow,
     ) -> InventoryResult<()> {
-        save_bambu_live_integration_row(self.connection(), printer_id, config)
+        self.save_bambu_live_integration_atomically(printer_id, config)
     }
 
     /// Saves one integration as a single SQLite transaction.
@@ -65,10 +65,9 @@ impl FilamentDatabase {
         printer_id: &str,
         config: &BambuLiveIntegrationRow,
     ) -> InventoryResult<()> {
-        let transaction = self.connection().unchecked_transaction()?;
-        save_bambu_live_integration_row(&transaction, printer_id, config)?;
-        transaction.commit()?;
-        Ok(())
+        self.with_inventory_transaction(|conn| {
+            save_bambu_live_integration_row(conn, printer_id, config)
+        })
     }
 
     /// Saves a live integration only while its owning printer still exists.
@@ -92,7 +91,7 @@ impl FilamentDatabase {
     }
 
     pub fn delete_bambu_live_integration(&self, printer_id: &str) -> InventoryResult<()> {
-        delete_bambu_live_integration_row(self.connection(), printer_id)
+        self.with_inventory_transaction(|conn| delete_bambu_live_integration_row(conn, printer_id))
     }
 
     pub fn list_bambu_live_integrations(

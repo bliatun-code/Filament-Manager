@@ -1407,6 +1407,21 @@ fn bambu_live_setting_changes_increment_printer_revision_once() {
             .map_err(|error| error.to_string())?
             .printers;
 
+        let reject_revision =
+            "CREATE TRIGGER reject_printer_revision BEFORE UPDATE ON library_domain_revisions
+            WHEN NEW.domain='printers' BEGIN SELECT RAISE(ABORT, 'revision unavailable'); END;";
+        db.connection().execute_batch(reject_revision).unwrap();
+        assert!(db
+            .save_bambu_live_integration("printer_1", &config)
+            .is_err());
+        assert!(db
+            .get_setting("bambu_live_integration:printer_1")
+            .unwrap()
+            .is_none());
+        db.connection()
+            .execute_batch("DROP TRIGGER reject_printer_revision")
+            .unwrap();
+
         db.save_bambu_live_integration("printer_1", &config)
             .map_err(|error| error.to_string())?;
         let stored_payload = db
@@ -1437,6 +1452,15 @@ fn bambu_live_setting_changes_increment_printer_revision_once() {
             "saving identical live state must not wake clients"
         );
 
+        db.connection().execute_batch(reject_revision).unwrap();
+        assert!(db.delete_bambu_live_integration("printer_1").is_err());
+        assert!(db
+            .get_setting("bambu_live_integration:printer_1")
+            .unwrap()
+            .is_some());
+        db.connection()
+            .execute_batch("DROP TRIGGER reject_printer_revision")
+            .unwrap();
         db.delete_bambu_live_integration("printer_1")
             .map_err(|error| error.to_string())?;
         assert_eq!(
