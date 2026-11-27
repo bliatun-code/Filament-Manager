@@ -42,6 +42,7 @@ type InventoryAddWorkflowInput = {
   clientLibraryId: string | null;
   clientReadOnly: boolean;
   clientTargetGeneration: number | null;
+  libraryMode: string | null;
   defaultPurchaseCurrency: string;
   ensureLocalWriteAllowed: () => boolean;
   error: string | null;
@@ -71,6 +72,7 @@ export function useInventoryAddWorkflow({
   clientLibraryId,
   clientReadOnly,
   clientTargetGeneration,
+  libraryMode,
   defaultPurchaseCurrency,
   ensureLocalWriteAllowed,
   error,
@@ -97,7 +99,7 @@ export function useInventoryAddWorkflow({
   const [showAddModal, setShowAddModal] = useState(false);
   const [entryPurpose, setEntryPurpose] = useState<InventoryEntryPurpose>("STOCK");
   const authorityKey = JSON.stringify([
-    clientReadOnly, clientHostBaseUrl, clientLibraryId, clientTargetGeneration,
+    clientReadOnly, clientHostBaseUrl, clientLibraryId, clientTargetGeneration, libraryMode,
   ]);
   const [createSession, updateCreateSession] = useReducer(
     inventoryCreateSessionReducer, authorityKey, newInventoryCreateSession,
@@ -272,6 +274,7 @@ export function useInventoryAddWorkflow({
     clientReadOnly,
     confirmWishlistRemoveId,
     clientTargetGeneration,
+    libraryMode,
     createSessionId: createSession.sessionId,
     createMode,
     ensureLocalWriteAllowed,

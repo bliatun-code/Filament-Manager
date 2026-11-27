@@ -354,6 +354,7 @@ export default function InventoryPage({
     setMasters,
     switchToManageMode,
   } = useInventoryAddWorkflow({
+    libraryMode: libraryStatus?.mode ?? null,
     purchaseQueue,
     queuePage,
     canUseClientHostWrite,

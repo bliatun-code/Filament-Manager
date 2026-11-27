@@ -419,7 +419,7 @@ export async function receiveWishlistEntry(
 
 export async function deleteWishlistEntry(
   itemId: string,
-  options: WishlistDataSourceOptions = {},
+  options: WishlistDataSourceOptions & { libraryMode?: string | null },
   dependencies: WishlistDataSourceDependencies = {},
 ): Promise<void> {
   const deleteHostWishlistItem =
@@ -431,5 +431,13 @@ export async function deleteWishlistEntry(
     return;
   }
 
-  await deleteLocalWishlistItem(itemId);
+  const { libraryMode, clientLibraryId, clientTargetGeneration } = options;
+  if ((libraryMode !== "STANDALONE" && libraryMode !== "HOST") || !clientLibraryId?.trim() ||
+      clientTargetGeneration == null || !Number.isSafeInteger(clientTargetGeneration) || clientTargetGeneration < 0) {
+    throw createAppError("common.invalid_request");
+  }
+  await deleteLocalWishlistItem(itemId, {
+    mode: libraryMode, library_id: clientLibraryId, host_base_url: options.clientHostBaseUrl ?? null,
+    target_generation: clientTargetGeneration,
+  });
 }
