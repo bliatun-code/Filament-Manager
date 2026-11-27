@@ -257,7 +257,8 @@ pub(crate) struct LibrarySyncDomainRevisionsResponse {
 #[derive(Deserialize)]
 pub(crate) struct LibrarySyncCreateSpoolInput {
     pub(crate) base_url: String,
-    pub(crate) expected_library_id: Option<String>,
+    pub(crate) expected_library_id: String,
+    pub(crate) expected_target_generation: u64,
     pub(crate) master_id: Option<String>,
     pub(crate) material: Option<String>,
     pub(crate) filament_name: Option<String>,

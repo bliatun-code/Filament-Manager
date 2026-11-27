@@ -153,7 +153,7 @@ export function useInventoryCreateActions({
   tauriAvailable,
   t,
 }: InventoryCreateActionsInput) {
-  const hostWriteTarget = { clientReadOnly, clientHostBaseUrl, clientLibraryId };
+  const hostWriteTarget = { clientReadOnly, clientHostBaseUrl, clientLibraryId, clientTargetGeneration };
   const batchController = useMemo(() => batchControllerFor({
     clientReadOnly, clientHostBaseUrl, clientLibraryId, clientTargetGeneration,
   }), [clientReadOnly, clientHostBaseUrl, clientLibraryId, clientTargetGeneration]);
@@ -521,7 +521,7 @@ export function useInventoryCreateActions({
           quantity: 1,
           note: null,
         },
-        { ...hostWriteTarget, clientTargetGeneration, libraryMode },
+        { ...hostWriteTarget, libraryMode },
       );
       if (!isCurrent()) return;
       await reloadWishlist();
@@ -561,7 +561,7 @@ export function useInventoryCreateActions({
           item_id: itemId,
           status,
         },
-        { ...hostWriteTarget, clientTargetGeneration, libraryMode },
+        { ...hostWriteTarget, libraryMode },
       );
       if (!isCurrent()) return;
       await reloadWishlist();
@@ -590,7 +590,7 @@ export function useInventoryCreateActions({
     setConfirmWishlistRemoveId(null);
     setInfoMessage(null);
     try {
-      await deleteWishlistEntry(itemId, { ...hostWriteTarget, clientTargetGeneration, libraryMode });
+      await deleteWishlistEntry(itemId, { ...hostWriteTarget, libraryMode });
       if (!isCurrent()) return;
       await reloadWishlist();
     } catch (deleteError) {
@@ -684,7 +684,7 @@ export function useInventoryCreateActions({
       attempt = pending;
       const receipt = await receiveWishlistEntry(
         { ...input, request_id: attempt.requestId },
-        { ...hostWriteTarget, clientTargetGeneration, libraryMode, retry: attempt.retry },
+        { ...hostWriteTarget, libraryMode, retry: attempt.retry },
       );
       if (!isConfirmedWishlistReceipt(receipt, quantity)) {
         throw createAppError(clientReadOnly

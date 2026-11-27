@@ -943,7 +943,8 @@ async fn real_tcp_client_completes_the_five_fixed_workflows_on_the_host() {
                 &state,
                 LibrarySyncCreateSpoolInput {
                     base_url,
-                    expected_library_id: Some(HOST_LIBRARY_ID.to_string()),
+                    expected_library_id: HOST_LIBRARY_ID.to_string(),
+                    expected_target_generation: target_generation,
                     master_id: None,
                     material: Some("PLA".to_string()),
                     filament_name: Some("Fixed Workflow".to_string()),

@@ -92,11 +92,12 @@ test("buildLibrarySyncHostSpoolCreatePayload forwards catalog ownership to host 
   };
 
   assert.deepEqual(
-    buildLibrarySyncHostSpoolCreatePayload("http://host", "library-1", input),
+    buildLibrarySyncHostSpoolCreatePayload("http://host", "library-1", input, 3),
     {
       input: {
         base_url: "http://host",
         expected_library_id: "library-1",
+        expected_target_generation: 3,
         master_id: "master-1",
         material: null,
         filament_name: null,
@@ -135,12 +136,12 @@ test("buildLibrarySyncHostSpoolCreatePayload forwards manual ownership to host c
   };
 
   assert.equal(
-    buildLibrarySyncHostSpoolCreatePayload("http://host", null, input).input
+    buildLibrarySyncHostSpoolCreatePayload("http://host", "library-1", input, 3).input
       .ownership_type,
     "OWNED",
   );
   assert.equal(
-    buildLibrarySyncHostSpoolCreatePayload("http://host", null, input).input.location,
+    buildLibrarySyncHostSpoolCreatePayload("http://host", "library-1", input, 3).input.location,
     "Shelf A",
   );
 });

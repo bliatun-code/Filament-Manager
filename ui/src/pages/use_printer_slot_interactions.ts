@@ -1027,6 +1027,7 @@ export function usePrinterSlotInteractions({
         clientReadOnly,
         clientHostBaseUrl,
         clientLibraryId,
+        clientTargetGeneration,
       });
       const postCreateWrites = buildSlotCatalogOnboardingPostCreateWrites({
         printerId,
@@ -1076,6 +1077,7 @@ export function usePrinterSlotInteractions({
       clientHostBaseUrl,
       clientLibraryId,
       clientReadOnly,
+      clientTargetGeneration,
       ensureLocalWriteAllowed,
       findLiveTrayForSlot,
       printers,

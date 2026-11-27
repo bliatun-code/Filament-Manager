@@ -62,7 +62,7 @@ test("createInventorySpoolFromMaster routes client writes to the host and return
 
   const createdId = await createInventorySpoolFromMaster(
     masterSpoolInput(),
-    { clientReadOnly: true, clientHostBaseUrl: "http://host", clientLibraryId: "library-1" },
+    { clientReadOnly: true, clientHostBaseUrl: "http://host", clientLibraryId: "library-1", clientTargetGeneration: 3 },
     {
       createHostSpool: async (baseUrl, libraryId, input) => {
         calls.push({ baseUrl, libraryId, input });
@@ -100,7 +100,7 @@ test("createManualInventorySpool routes manual client writes to the host", async
 
   const createdId = await createManualInventorySpool(
     manualSpoolInput(),
-    { clientReadOnly: true, clientHostBaseUrl: "http://host", clientLibraryId: "library-1" },
+    { clientReadOnly: true, clientHostBaseUrl: "http://host", clientLibraryId: "library-1", clientTargetGeneration: 3 },
     {
       createHostSpool: async (baseUrl, _libraryId, input) => {
         calls.push({ baseUrl, input });

@@ -267,8 +267,9 @@ export async function createSpool(input: CreateSpoolInput) {
 
 export function buildLibrarySyncHostSpoolCreatePayload(
   baseUrl: string,
-  expectedLibraryId: string | null | undefined,
+  expectedLibraryId: string,
   input: CreateSpoolInput | CreateManualSpoolInput,
+  expectedGeneration: number,
 ) {
   const normalizedLocation =
     ("location" in input ? input.location : undefined) ??
@@ -277,7 +278,8 @@ export function buildLibrarySyncHostSpoolCreatePayload(
   return {
     input: {
       base_url: baseUrl,
-      expected_library_id: expectedLibraryId ?? null,
+      expected_library_id: expectedLibraryId,
+      expected_target_generation: expectedGeneration,
       master_id: "master_id" in input ? input.master_id ?? null : null,
       material: "material" in input ? input.material : null,
       filament_name: "filament_name" in input ? input.filament_name : null,
@@ -296,12 +298,13 @@ export function buildLibrarySyncHostSpoolCreatePayload(
 
 export async function createLibrarySyncHostSpool(
   baseUrl: string,
-  expectedLibraryId: string | null | undefined,
+  expectedLibraryId: string,
   input: CreateSpoolInput | CreateManualSpoolInput,
+  expectedGeneration: number,
 ) {
   return invoke<string>(
     "create_library_sync_host_spool",
-    buildLibrarySyncHostSpoolCreatePayload(baseUrl, expectedLibraryId, input),
+    buildLibrarySyncHostSpoolCreatePayload(baseUrl, expectedLibraryId, input, expectedGeneration),
   );
 }
 
