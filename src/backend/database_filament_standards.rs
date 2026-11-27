@@ -62,10 +62,17 @@ pub(crate) fn get_filament_standards(
     connection: &Connection,
 ) -> InventoryResult<FilamentStandardsSnapshot> {
     let (mut settings, mut settings_valid) = load_filament_standards_settings(connection)?;
-    if remove_orphaned_price_standards(connection, &mut settings)? {
-        settings_valid = false;
-    }
     let groups = list_filament_price_groups(connection, &settings)?;
+    let valid: std::collections::HashSet<_> = groups
+        .iter()
+        .filter(|group| group.standard.is_some())
+        .map(|group| group.group_key.as_str())
+        .collect();
+    let before = settings.price_standards.len();
+    settings
+        .price_standards
+        .retain(|standard| valid.contains(standard.group_key.as_str()));
+    settings_valid &= settings.price_standards.len() == before;
     Ok(FilamentStandardsSnapshot {
         settings,
         settings_valid,
@@ -78,7 +85,8 @@ pub(crate) fn save_filament_standards(
     settings: FilamentStandardsSettings,
 ) -> InventoryResult<FilamentStandardsSnapshot> {
     let settings = settings.normalized()?;
-    validate_standards_match_authoritative_groups(connection, &settings)?;
+    let groups = list_filament_price_groups(connection, &settings)?;
+    validate_standards_match_authoritative_groups(&groups, &settings)?;
     match settings.default_purchase_currency.as_deref() {
         Some(currency) => set_setting(connection, DEFAULT_PURCHASE_CURRENCY_SETTING_KEY, currency)?,
         None => delete_setting(connection, DEFAULT_PURCHASE_CURRENCY_SETTING_KEY)?,
@@ -98,7 +106,6 @@ pub(crate) fn save_filament_standards(
         &serialized,
     )?;
     bump_library_domain_revision(connection, INVENTORY_REVISION_DOMAIN)?;
-    let groups = list_filament_price_groups(connection, &settings)?;
     Ok(FilamentStandardsSnapshot {
         settings,
         settings_valid: true,
@@ -107,12 +114,12 @@ pub(crate) fn save_filament_standards(
 }
 
 fn validate_standards_match_authoritative_groups(
-    connection: &Connection,
+    groups: &[FilamentPriceGroup],
     settings: &FilamentStandardsSettings,
 ) -> InventoryResult<()> {
-    let authoritative = authoritative_group_map(connection)?;
+    let authoritative: HashMap<_, _> = groups.iter().map(|g| (g.group_key.as_str(), g)).collect();
     for standard in &settings.price_standards {
-        let Some(group) = authoritative.get(&standard.group_key) else {
+        let Some(group) = authoritative.get(standard.group_key.as_str()) else {
             return Err(invalid_batch(
                 "filament_standards.group_missing",
                 format!(
@@ -132,31 +139,6 @@ fn validate_standards_match_authoritative_groups(
         }
     }
     Ok(())
-}
-
-fn remove_orphaned_price_standards(
-    connection: &Connection,
-    settings: &mut FilamentStandardsSettings,
-) -> InventoryResult<bool> {
-    let authoritative = authoritative_group_map(connection)?;
-    let before = settings.price_standards.len();
-    settings.price_standards.retain(|standard| {
-        authoritative
-            .get(&standard.group_key)
-            .is_some_and(|group| standard_matches_group(standard, group))
-    });
-    Ok(settings.price_standards.len() != before)
-}
-
-fn authoritative_group_map(
-    connection: &Connection,
-) -> InventoryResult<HashMap<String, FilamentPriceGroup>> {
-    Ok(
-        list_filament_price_groups(connection, &FilamentStandardsSettings::default())?
-            .into_iter()
-            .map(|group| (group.group_key.clone(), group))
-            .collect(),
-    )
 }
 
 fn standard_matches_group(standard: &FilamentPriceStandard, group: &FilamentPriceGroup) -> bool {
@@ -437,9 +419,13 @@ fn list_filament_price_groups(
             manual_price_count: 0,
             standard_batch_price_count: 0,
             locked_count: 0,
-            standard: standards.get(&group_key).cloned(),
+            standard: None,
             spools: Vec::with_capacity(rows.len()),
         };
+        group.standard = standards
+            .get(&group_key)
+            .filter(|s| standard_matches_group(s, &group))
+            .cloned();
         for row in rows {
             group.spool_count += 1;
             let is_historical = is_historical_status(&row.status);
