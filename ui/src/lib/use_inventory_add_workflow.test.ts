@@ -32,6 +32,10 @@ async function buildWorkflowHarness() {
     const writes = [], reads = [], opened = [];
     let openAvailable = true, workflow, snapshot, clearFeedback, settledCreates = 0;
     window.__TAURI__ = { invoke: (command, payload) => {
+      if (command === "delete_library_sync_host_wishlist_item") {
+        writes.push({ command, payload });
+        return Promise.resolve();
+      }
       if (command === "list_master_catalog") return Promise.resolve(masters);
       if (command === "fetch_library_sync_catalog_masters") return Promise.resolve(masters);
       if (command === "create_spool" || command === "create_manual_spool" ||
@@ -85,6 +89,9 @@ async function buildWorkflowHarness() {
       completeRead: index => reads[index](),
       readCount: () => reads.length,
       settledCreates: () => settledCreates,
+      requestRemoval: id => flushSync(() => workflow.purchaseQueueProps.onRequestDeleteItem(id)),
+      deleteAction: () => workflow.purchaseQueueProps.onDeleteItem,
+      removal: () => workflow.purchaseQueueProps.confirmWishlistRemoveId,
       clearFeedback: () => flushSync(clearFeedback),
       allowOpen: available => { openAvailable = available; },
       callOpen: id => flushSync(() => workflow.modalProps.onOpenCreatedSpool(id)),
@@ -140,6 +147,32 @@ test("real registration modal keeps a durable receipt and explicit safe next act
         } finally { await page.close(); }
       });
     }
+
+    await scenario("deletion confirmation expires when switching libraries and returning to A", async page => {
+      const result = await page.evaluate(`(async () => {
+        const api = registrationWorkflow;
+        api.render({ host: "a", generation: 1 });
+        api.requestRemoval("same-order");
+        const original = api.removal();
+        const staleAction = api.deleteAction();
+        api.render({ host: "b", generation: 2 });
+        const other = api.removal();
+        api.render({ host: "a", generation: 3 });
+        const returned = api.removal();
+        await staleAction("same-order");
+        await api.deleteAction()("same-order");
+        api.requestRemoval("same-order");
+        const renewed = api.removal();
+        await api.deleteAction()("same-order");
+        return { confirmations: [original, other, returned, renewed], writes: api.snapshot().writes };
+      })()`);
+      assert.deepEqual(result, {
+        confirmations: ["same-order", null, null, "same-order"],
+        writes: [{ command: "delete_library_sync_host_wishlist_item", payload: { input: {
+          base_url: "http://a", expected_library_id: "library-a", expected_target_generation: 3, item_id: "same-order",
+        } } }],
+      });
+    });
 
     await scenario("busy controls freeze; committed receipt survives feedback expiry and failed Open lookup", async page => {
       await readyForm(page);

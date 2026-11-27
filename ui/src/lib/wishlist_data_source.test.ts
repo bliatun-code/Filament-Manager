@@ -584,19 +584,19 @@ test("wishlist receipt Host rejection never writes to the local shadow library",
 });
 
 test("deleteWishlistEntry routes deletes to the host", async () => {
-  const calls: Array<{ baseUrl: string; itemId: string }> = [];
+  const calls: unknown[] = [];
 
   await deleteWishlistEntry(
     "wish-1",
-    { clientReadOnly: true, clientHostBaseUrl: "http://host", clientLibraryId: "library-1" },
+    { clientReadOnly: true, clientHostBaseUrl: "http://host", clientLibraryId: "library-1", clientTargetGeneration: 7 },
     {
-      deleteHostWishlistItem: async (baseUrl, _libraryId, itemId) => {
-        calls.push({ baseUrl, itemId });
+      deleteHostWishlistItem: async (target, itemId) => {
+        calls.push({ ...target, itemId });
       },
     },
   );
 
-  assert.deepEqual(calls, [{ baseUrl: "http://host", itemId: "wish-1" }]);
+  assert.deepEqual(calls, [{ baseUrl: "http://host", libraryId: "library-1", targetGeneration: 7, itemId: "wish-1" }]);
 });
 
 test("wishlist host mutations reject missing client host details", async () => {
@@ -625,8 +625,8 @@ test("wishlist host mutations reject missing client host details", async () => {
       deleteWishlistEntry("wish-1", {
         clientReadOnly: true,
         clientHostBaseUrl: "http://host",
-        clientLibraryId: "",
+        clientLibraryId: "library-1",
       }),
-    /Host connection details/,
+    /common\.invalid_request/,
   );
 });

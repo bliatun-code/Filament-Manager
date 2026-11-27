@@ -168,13 +168,18 @@ export function useInventoryAddWorkflow({
   }, [authorityKey, resetBambuBatchInput]);
 
   const {
-    confirmWishlistRemoveId,
+    removeConfirmation,
     resetWishlistQueue,
-    setConfirmWishlistRemoveId,
+    setRemoveConfirmation,
     setWishlistQueueFilter,
     setWishlistQueueQuery,
     query: {status: wishlistQueueFilter, search: wishlistQueueQuery},
   } = purchaseQueue;
+
+  const confirmWishlistRemoveId = removeConfirmation?.authorityKey === authorityKey ? removeConfirmation.itemId : null;
+  const setConfirmWishlistRemoveId = useCallback((itemId: string | null) => {
+    setRemoveConfirmation(itemId === null ? null : { authorityKey, itemId });
+  }, [authorityKey, setRemoveConfirmation]);
 
   const cancelWishlistRemove = useCallback(() => {
     setConfirmWishlistRemoveId(null);

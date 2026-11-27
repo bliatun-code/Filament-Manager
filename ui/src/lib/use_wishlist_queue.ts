@@ -5,7 +5,7 @@ import type { WishlistStatusFilter } from "./wishlist_data_source";
 export function useWishlistQueue(active = true) {
   const [searchText, setSearchText] = useState("");
   const [query, setQuery] = useState<PurchaseQueueQuery>({ status: "WISHLIST", search: "", offset: 0 });
-  const [confirmWishlistRemoveId, setConfirmWishlistRemoveId] = useState<string | null>(null);
+  const [removeConfirmation, setRemoveConfirmation] = useState<{ authorityKey: string; itemId: string } | null>(null);
   useEffect(() => {
     if (!active || searchText === query.search) return;
     const timer = window.setTimeout(() => {
@@ -31,8 +31,8 @@ export function useWishlistQueue(active = true) {
   const resetWishlistQueue = useCallback((status: WishlistStatusFilter = "WISHLIST") => {
     setSearchText("");
     setQuery({ status, search: "", offset: 0 });
-    setConfirmWishlistRemoveId(null);
+    setRemoveConfirmation(null);
   }, []);
-  return { query, searchText, setOffset, confirmWishlistRemoveId, resetWishlistQueue, setConfirmWishlistRemoveId,
+  return { query, searchText, setOffset, removeConfirmation, resetWishlistQueue, setRemoveConfirmation,
     setWishlistQueueFilter, setWishlistQueueQuery };
 }

@@ -314,7 +314,8 @@ pub(crate) struct LibrarySyncReceiveWishlistItemInput {
 #[derive(Deserialize)]
 pub(crate) struct LibrarySyncDeleteWishlistItemInput {
     pub(crate) base_url: String,
-    pub(crate) expected_library_id: Option<String>,
+    pub(crate) expected_library_id: String,
+    pub(crate) expected_target_generation: u64,
     pub(crate) item_id: String,
 }
 

@@ -99,7 +99,7 @@ type InventoryCreateActionsInput = {
   selectedBambuMaster: MasterCatalogRow | null;
   selectedEsunMaster: MasterCatalogRow | null;
   setBusy: Dispatch<SetStateAction<boolean>>;
-  setConfirmWishlistRemoveId: Dispatch<SetStateAction<string | null>>;
+  setConfirmWishlistRemoveId: (itemId: string | null) => void;
   setError: Dispatch<SetStateAction<string | null>>;
   setInfoMessage: Dispatch<SetStateAction<string | null>>;
   setRecentlyAddedSpoolId: Dispatch<SetStateAction<string | null>>;
@@ -588,7 +588,7 @@ export function useInventoryCreateActions({
     setConfirmWishlistRemoveId(null);
     setInfoMessage(null);
     try {
-      await deleteWishlistEntry(itemId, hostWriteTarget);
+      await deleteWishlistEntry(itemId, { ...hostWriteTarget, clientTargetGeneration });
       if (!isCurrent()) return;
       await reloadWishlist();
     } catch (deleteError) {
