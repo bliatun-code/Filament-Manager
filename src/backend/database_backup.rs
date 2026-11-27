@@ -10,6 +10,7 @@ use super::database_schema::{
     CURRENT_SCHEMA_VERSION,
 };
 use super::database_tables::{
+    full_backup_table_is_entirely_local, is_portable_backup_setting_key,
     is_required_full_backup_table, portable_backup_row, FULL_BACKUP_TABLES,
 };
 use super::database_values::{json_value_to_sql, sqlite_value_to_json};
@@ -302,15 +303,16 @@ pub(crate) fn insert_portable_full_backup_rows(
     parsed: &ParsedFullBackup,
 ) -> InventoryResult<()> {
     for table in FULL_BACKUP_TABLES {
+        if full_backup_table_is_entirely_local(table) {
+            continue;
+        }
         let Some(rows) = parsed.tables.get(table) else {
             continue;
         };
         let allowed_columns = table_columns(conn, table)?;
 
         for (row_index, row) in rows.iter().enumerate() {
-            if !full_backup_table_is_entirely_local(table)
-                && !row.keys().any(|column| allowed_columns.contains(column))
-            {
+            if !row.keys().any(|column| allowed_columns.contains(column)) {
                 return Err(unrecognized_backup_row_error(table, row_index));
             }
 
@@ -352,13 +354,6 @@ fn insert_portable_backup_row(
     conn.prepare_cached(&sql)?
         .execute(rusqlite::params_from_iter(values.iter()))?;
     Ok(())
-}
-
-fn full_backup_table_is_entirely_local(table: &str) -> bool {
-    matches!(
-        table,
-        "trusted_lan_pairings" | "trusted_lan_paired_browsers" | "sync_queue"
-    )
 }
 
 fn unrecognized_backup_row_error(table: &str, row_index: usize) -> InventoryError {
@@ -432,6 +427,9 @@ pub(crate) fn export_full_backup_content(conn: &rusqlite::Connection) -> Invento
 }
 
 fn export_table_rows(conn: &rusqlite::Connection, table: &str) -> InventoryResult<Vec<Value>> {
+    if full_backup_table_is_entirely_local(table) {
+        return Ok(Vec::new());
+    }
     let query = format!("SELECT * FROM {table}");
     let mut stmt = conn.prepare(&query)?;
     let columns: Vec<String> = stmt.column_names().map(str::to_owned).collect();
@@ -439,6 +437,15 @@ fn export_table_rows(conn: &rusqlite::Connection, table: &str) -> InventoryResul
     let mut rows = stmt.query([])?;
     let mut output = Vec::new();
     while let Some(row) = rows.next()? {
+        if table == "settings"
+            && !row
+                .get_ref("key")?
+                .as_str()
+                .ok()
+                .is_some_and(is_portable_backup_setting_key)
+        {
+            continue;
+        }
         let mut object = Map::new();
         for (index, column_name) in columns.iter().enumerate() {
             let value = row.get_ref(index)?;
@@ -482,6 +489,23 @@ mod document_error_tests {
             assert!(
                 matches!(error, InventoryError::InvalidOperation { code, .. } if code == expected)
             );
+        }
+    }
+}
+
+#[cfg(test)]
+mod local_backup_tests {
+    use super::*;
+
+    #[test]
+    fn full_backup_skips_local_tables_without_querying_them() {
+        let db = rusqlite::Connection::open_in_memory().unwrap();
+        for table in [
+            "trusted_lan_pairings",
+            "trusted_lan_paired_browsers",
+            "sync_queue",
+        ] {
+            assert!(export_table_rows(&db, table).unwrap().is_empty());
         }
     }
 }
