@@ -118,36 +118,28 @@ where
         });
     }
 
-    match validate_full_backup(normalized) {
-        Ok(validation) => {
-            import_full_backup(normalized)?;
-            return Ok(ImportDataStats {
-                detected_format: "FULL_BACKUP".to_string(),
-                imported_count: validation.total_rows,
-                created_count: 0,
-                updated_count: 0,
-            });
+    let (format, rows) = if normalized.starts_with('{') {
+        // A backup envelope and a wrapped spool list both start with an object.
+        // Keep backup validation errors when a file declares that format.
+        match validate_full_backup(normalized) {
+            Ok(validation) => {
+                import_full_backup(normalized)?;
+                return Ok(ImportDataStats {
+                    detected_format: "FULL_BACKUP".to_string(),
+                    imported_count: validation.total_rows,
+                    created_count: 0,
+                    updated_count: 0,
+                });
+            }
+            Err(error) if declares_full_backup_format(normalized) => return Err(error),
+            Err(_) => ("INVENTORY_JSON", parse_inventory_spools_json(normalized)?),
         }
-        Err(error) if declares_full_backup_format(normalized) => return Err(error),
-        Err(_) => {}
-    }
-
-    match parse_inventory_spools_json(normalized) {
-        Ok(rows) => {
-            let stats = import_inventory_rows(&rows)?;
-            return Ok(import_stats("INVENTORY_JSON", stats));
-        }
-        Err(error) if looks_like_json(normalized) => return Err(error),
-        Err(_) => {}
-    }
-
-    let rows = parse_inventory_spools_csv(normalized)?;
-    let stats = import_inventory_rows(&rows)?;
-    Ok(import_stats("INVENTORY_CSV", stats))
-}
-
-fn looks_like_json(content: &str) -> bool {
-    content.starts_with('{') || content.starts_with('[')
+    } else if normalized.starts_with('[') {
+        ("INVENTORY_JSON", parse_inventory_spools_json(normalized)?)
+    } else {
+        ("INVENTORY_CSV", parse_inventory_spools_csv(normalized)?)
+    };
+    Ok(import_stats(format, import_inventory_rows(&rows)?))
 }
 
 fn declares_full_backup_format(content: &str) -> bool {
@@ -1187,6 +1179,36 @@ mod tests {
             assert!(
                 matches!(error, InventoryError::InvalidOperation { code: actual, .. } if actual == code)
             );
+        }
+    }
+
+    #[test]
+    fn csv_and_array_imports_skip_backup_preflight() {
+        for (format, content) in [
+            (
+                "INVENTORY_CSV",
+                "spool_id,material,filament_name,color_name\nr,PLA,Basic,Gray",
+            ),
+            (
+                "INVENTORY_JSON",
+                r#"[{"spool_id":"r","material":"PLA","filament_name":"Basic","color_name":"Gray"}]"#,
+            ),
+        ] {
+            let result = super::import_data_content(
+                content,
+                |_| panic!("backup validation"),
+                |_| panic!("backup restore"),
+                |rows| {
+                    assert_eq!(rows[0].spool_id, "r");
+                    Ok(super::InventoryImportStats {
+                        imported_count: 1,
+                        created_count: 1,
+                        updated_count: 0,
+                    })
+                },
+            )
+            .unwrap();
+            assert_eq!(result.detected_format, format);
         }
     }
 
