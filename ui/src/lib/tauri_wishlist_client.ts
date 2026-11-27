@@ -85,16 +85,14 @@ export async function createWishlistItem(input: CreateWishlistItemInput, expecte
 }
 
 export async function createLibrarySyncHostWishlistItem(
-  baseUrl: string,
-  expectedLibraryId: string | null | undefined,
+  target: ClientHostCacheTarget,
   input: CreateWishlistItemInput,
-  expectedGeneration?: number | null,
 ) {
   return invoke<void>("create_library_sync_host_wishlist_item", {
     input: {
-      base_url: baseUrl,
-      expected_library_id: expectedLibraryId ?? null,
-      ...(expectedGeneration != null && { expected_target_generation: expectedGeneration }),
+      base_url: target.baseUrl,
+      expected_library_id: target.libraryId,
+      expected_target_generation: target.targetGeneration,
       master_id: input.master_id ?? null,
       vendor: input.vendor,
       material: input.material,
@@ -146,14 +144,14 @@ export function buildLibrarySyncHostWishlistReceiptPayload(
 }
 
 export async function updateLibrarySyncHostWishlistItemStatus(
-  baseUrl: string,
-  expectedLibraryId: string | null | undefined,
+  target: ClientHostCacheTarget,
   input: UpdateWishlistStatusInput,
 ) {
   return invoke<void>("update_library_sync_host_wishlist_item_status", {
     input: {
-      base_url: baseUrl,
-      expected_library_id: expectedLibraryId ?? null,
+      base_url: target.baseUrl,
+      expected_library_id: target.libraryId,
+      expected_target_generation: target.targetGeneration,
       item_id: input.item_id,
       status: input.status,
     },

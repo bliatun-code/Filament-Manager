@@ -11,7 +11,7 @@ use crate::library_sync_cache_refresh::{
     refresh_library_sync_spool_cache, refresh_library_sync_wishlist_cache,
 };
 use crate::library_sync_command_support::{
-    encode_library_sync_path_segment, library_sync_host_input, prepare_library_sync_host_write,
+    encode_library_sync_path_segment, library_sync_host_input,
     prepare_library_sync_host_write_for_generation, purchase_receipt_metadata_has_values,
     require_host_purchase_receipt_metadata_capability, save_library_sync_success,
     trimmed_non_empty,
@@ -29,6 +29,21 @@ use crate::library_sync_target_guard::ensure_library_sync_target_current;
 use crate::state::AppState;
 use std::time::Duration;
 
+fn purchase_write_target(
+    state: &AppState,
+    base_url: &str,
+    library_id: &str,
+    generation: u64,
+) -> Result<crate::library_sync_target_guard::LibrarySyncTargetGuard, String> {
+    if library_id.trim().is_empty() {
+        return Err(coded_command_error("common.invalid_request"));
+    }
+    let input = library_sync_host_input(base_url, Some(library_id));
+    let (_, _, target) =
+        prepare_library_sync_host_write_for_generation(state, &input, Some(generation))?;
+    Ok(target)
+}
+
 #[tauri::command]
 pub(crate) async fn create_library_sync_host_wishlist_item(
     state: tauri::State<'_, AppState>,
@@ -45,10 +60,10 @@ pub(crate) fn create_library_sync_host_wishlist_item_blocking(
     state: &AppState,
     input: LibrarySyncCreateWishlistItemInput,
 ) -> Result<(), String> {
-    let host_input = library_sync_host_input(&input.base_url, input.expected_library_id.as_deref());
-    let (_, _, target) = prepare_library_sync_host_write_for_generation(
+    let target = purchase_write_target(
         state,
-        &host_input,
+        &input.base_url,
+        &input.expected_library_id,
         input.expected_target_generation,
     )?;
 
@@ -88,13 +103,16 @@ fn update_library_sync_host_wishlist_item_status_blocking(
     state: &AppState,
     input: LibrarySyncUpdateWishlistStatusInput,
 ) -> Result<(), String> {
-    let host_input = library_sync_host_input(&input.base_url, input.expected_library_id.as_deref());
-    let (_, _, target) = prepare_library_sync_host_write(state, &host_input)?;
-
     let item_id = input.item_id.trim();
     if item_id.is_empty() {
-        return Err("Wishlist item id is required.".to_string());
+        return Err(coded_command_error("common.invalid_request"));
     }
+    let target = purchase_write_target(
+        state,
+        &input.base_url,
+        &input.expected_library_id,
+        input.expected_target_generation,
+    )?;
 
     let item_id = encode_library_sync_path_segment(item_id);
     perform_library_sync_host_write(
@@ -273,14 +291,14 @@ fn delete_library_sync_host_wishlist_item_blocking(
     input: LibrarySyncDeleteWishlistItemInput,
 ) -> Result<(), String> {
     let item_id = input.item_id.trim();
-    if item_id.is_empty() || input.expected_library_id.trim().is_empty() {
+    if item_id.is_empty() {
         return Err(coded_command_error("common.invalid_request"));
     }
-    let host_input = library_sync_host_input(&input.base_url, Some(&input.expected_library_id));
-    let (_, _, target) = prepare_library_sync_host_write_for_generation(
+    let target = purchase_write_target(
         state,
-        &host_input,
-        Some(input.expected_target_generation),
+        &input.base_url,
+        &input.expected_library_id,
+        input.expected_target_generation,
     )?;
 
     let item_id = encode_library_sync_path_segment(item_id);

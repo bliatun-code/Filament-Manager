@@ -321,6 +321,18 @@ test("wishlist writes preserve receipt contracts and own their React lifecycle",
       assert.equal((await page.evaluate("wishlistLifecycle.snapshot()")).operations[1].result, true);
     });
 
+    for (const kind of ["add", "status"]) {
+      await scenario(`a fresh ${kind} uses the displayed Host generation after returning to A`, async page => {
+        await page.evaluate("wishlistLifecycle.render({}); wishlistLifecycle.render({host:'other-host',generation:2}); wishlistLifecycle.render({generation:3})");
+        await page.evaluate(`wishlistLifecycle.start([${JSON.stringify(kind)}])`);
+        await waitForCommands(page, 1);
+        const [{ payload: { input } }] = await page.evaluate("wishlistLifecycle.commands()");
+        assert.deepEqual([input.base_url, input.expected_library_id, input.expected_target_generation],
+          ["http://paired-host", "library-paired-host", 3]);
+        await finish(page, 0, 0);
+      });
+    }
+
     for (const kind of ["receive", "add", "status", "delete"]) {
       for (const rejected of [false, true]) {
         await scenario(`A→B→A discards stale ${kind} ${rejected ? "rejection" : "success"} without unlocking the new write`, async page => {
