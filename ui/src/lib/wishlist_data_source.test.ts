@@ -482,7 +482,7 @@ test("createWishlistEntry uses local writes outside client mode", async () => {
 
   await createWishlistEntry(
     input,
-    { clientReadOnly: false },
+    { clientReadOnly: false, libraryMode: "STANDALONE", clientLibraryId: "local", clientTargetGeneration: 1 },
     {
       createLocalWishlistItem: async (createInput) => {
         calls.push(createInput);
@@ -551,7 +551,7 @@ test("receiveWishlistEntry uses the same quantity contract for host and local wr
   const localCalls: ReceiveWishlistItemInput[] = [];
   const localResult = await receiveWishlistEntry(
     { item_id: "wish-local", quantity: 1, home_location: "QA Shelf A" },
-    { clientReadOnly: false },
+    { clientReadOnly: false, libraryMode: "STANDALONE", clientLibraryId: "local", clientTargetGeneration: 1 },
     {
       receiveLocalWishlistItem: async (input) => {
         localCalls.push(input);

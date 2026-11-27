@@ -48,8 +48,8 @@ async function buildWishlistHarness() {
         bambuCodeBatch: { creatableRows: [], blockedRows: [] },
         busy, canUseClientHostWrite: () => true,
         clientHostBaseUrl: host ? "http://" + host : null,
-        clientLibraryId: host ? "library-" + host : null,
-        clientReadOnly: Boolean(host), clientTargetGeneration: host ? generation : null,
+        clientLibraryId: host ? "library-" + host : "local", libraryMode: host ? "CLIENT" : "STANDALONE",
+        clientReadOnly: Boolean(host), clientTargetGeneration: generation,
         confirmWishlistRemoveId: item.id, createMode: "manual", createSessionId: session,
         ensureLocalWriteAllowed: () => true,
         manualColorName: "White", manualFilamentName: "PLA Basic", manualHexColor: "#ffffff",
@@ -175,7 +175,7 @@ test("wishlist writes preserve receipt contracts and own their React lifecycle",
         delete commands[0].payload.input.request_id;
         assert.deepEqual(commands, [{
           command: host ? "receive_library_sync_host_wishlist_item" : "receive_wishlist_item",
-          payload: { input: {
+          payload: { ...(host ? {} : { expectedTarget: { mode: "STANDALONE", library_id: "local", host_base_url: null, target_generation: 1 } }), input: {
             ...(host ? { base_url: "http://paired-host", expected_library_id: "library-paired-host", expected_target_generation: 1 } : {}),
             item_id: "wish-white", quantity: 2, home_location: "QA Dry box", purchase_metadata: metadata,
           } },
@@ -214,7 +214,7 @@ test("wishlist writes preserve receipt contracts and own their React lifecycle",
         const commands = await page.evaluate("wishlistLifecycle.commands()");
         assert.match(commands[0].payload.input.request_id, /^[0-9a-f-]{36}$/);
         delete commands[0].payload.input.request_id;
-        assert.deepEqual(commands, [{command:"receive_wishlist_item",payload:{input:{item_id:"wish-white",quantity:2}}}]);
+        assert.deepEqual(commands, [{command:"receive_wishlist_item",payload:{expectedTarget:{ mode: "STANDALONE", library_id: "local", host_base_url: null, target_generation: 1 },input:{item_id:"wish-white",quantity:2}}}]);
       });
     }
 

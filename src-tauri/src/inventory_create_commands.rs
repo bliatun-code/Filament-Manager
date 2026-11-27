@@ -34,9 +34,9 @@ pub(crate) struct WishlistPurchaseTarget {
 pub(crate) fn create_wishlist_item(
     state: tauri::State<'_, AppState>,
     input: CreateWishlistItemInput,
-    expected_target: Option<WishlistPurchaseTarget>,
+    expected_target: WishlistPurchaseTarget,
 ) -> Result<(), String> {
-    create_local_wishlist_item(&state, input, expected_target.as_ref())
+    create_local_wishlist_item(&state, input, Some(&expected_target))
 }
 
 pub(crate) fn create_local_wishlist_item(
