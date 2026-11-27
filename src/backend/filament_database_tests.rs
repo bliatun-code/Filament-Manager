@@ -5814,3 +5814,42 @@ fn trusted_lan_configuration_rolls_back_on_late_storage_error() {
         serde_json::to_value(before).unwrap()
     );
 }
+
+#[test]
+fn full_and_compact_sync_settings_share_an_existing_snapshot() {
+    let path = temp_db_path("sync-settings-snapshot");
+    let db = FilamentDatabase::open(&path).unwrap();
+    db.connection()
+        .execute_batch("PRAGMA journal_mode=WAL")
+        .unwrap();
+    db.apply_schema().unwrap();
+    let current = db.get_library_sync_settings().unwrap();
+    let writer = FilamentDatabase::open(&path).unwrap();
+    let mut replacement = current.clone();
+    replacement.library_id = "replacement-library".into();
+    db.with_read_transaction(|snapshot| {
+        assert_eq!(
+            snapshot.get_library_sync_page_status()?.library_id,
+            current.library_id
+        );
+        writer.save_library_sync_settings(&replacement)?;
+        assert_eq!(
+            snapshot.get_library_sync_settings()?.library_id,
+            current.library_id
+        );
+        assert_eq!(
+            snapshot
+                .get_library_sync_settings_for_domains(&[])?
+                .target_generation,
+            current.target_generation
+        );
+        Ok(())
+    })
+    .unwrap();
+    assert_eq!(
+        db.get_library_sync_settings().unwrap().library_id,
+        replacement.library_id
+    );
+    drop((db, writer));
+    std::fs::remove_file(path).unwrap();
+}
