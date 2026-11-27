@@ -3,6 +3,7 @@ import { createAppError } from "./error_text";
 
 export type CatalogSpoolBatchInput = {
   batch_id: string;
+  ams_assignment?: { printer_id: string; slot_id: string; rfid_tag: string; observed_at: string };
   master_ids: string[];
   initial_weight_g: number;
   ownership_type: "OWNED" | "BORROWED_IN";
@@ -29,6 +30,19 @@ export function catalogSpoolBatchTargetKey(target: CatalogSpoolBatchTarget): str
   return JSON.stringify([target.clientReadOnly ? host : "local", library, generation]);
 }
 
+function hostBatchInput(target: CatalogSpoolBatchTarget, batch: CatalogSpoolBatchInput) {
+  return {
+    base_url: target.clientHostBaseUrl?.trim(),
+    expected_library_id: target.clientLibraryId?.trim(),
+    expected_target_generation: target.clientTargetGeneration,
+    batch,
+  };
+}
+
+export function supportsHostAmsRegistration(target: CatalogSpoolBatchTarget, batch: CatalogSpoolBatchInput) {
+  return invoke<boolean>("supports_library_sync_host_ams_registration", { input: hostBatchInput(target, batch) });
+}
+
 export async function createCatalogSpoolBatch(
   input: CatalogSpoolBatchInput,
   target: CatalogSpoolBatchTarget,
@@ -36,12 +50,7 @@ export async function createCatalogSpoolBatch(
   if (!catalogSpoolBatchTargetKey(target)) throw createAppError("common.forbidden");
   if (target.clientReadOnly) {
     return invoke<CatalogSpoolBatchReceipt>("create_library_sync_host_catalog_spool_batch", {
-      input: {
-        base_url: target.clientHostBaseUrl!.trim(),
-        expected_library_id: target.clientLibraryId!.trim(),
-        expected_target_generation: target.clientTargetGeneration!,
-        batch: input,
-      },
+      input: hostBatchInput(target, input),
     });
   }
   return invoke<CatalogSpoolBatchReceipt>("create_catalog_spool_batch", {

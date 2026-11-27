@@ -1,3 +1,4 @@
+import { amsRegistrationKey, clearAmsRegistration, readAmsRegistration, registerAmsCatalogSpool, type PendingAmsRegistration } from "../lib/ams_catalog_registration";
 import {
   buildAcceptableAmsWeightEstimate,
   canOfferAmsWeightEstimateFromSource,
@@ -41,7 +42,6 @@ import {
   type SlotSwapDraft,
 } from "../lib/printer_slot_model";
 import {
-  registerPrinterSlotCatalogSpool,
   writeAcceptedBambuLiveWeightEstimate,
   writePrinterSlotAssignment,
   writePrinterSlotOperation,
@@ -133,6 +133,9 @@ export function usePrinterSlotInteractions({
     useState<SlotRfidOverridePrompt | null>(null);
   const [slotCatalogOnboardingPrompt, setSlotCatalogOnboardingPrompt] =
     useState<SlotCatalogOnboardingPrompt | null>(null);
+  const catalogDialog = useRef<{ token: symbol; saving: boolean; key: string } | null>(null);
+  const [catalogToken, setCatalogToken] = useState<symbol>();
+  const [catalogRecovery, setCatalogRecovery] = useState<PendingAmsRegistration | null>(null);
   const rfidOperationRef = useRef<symbol | null>(null);
   const rfidPromptRef = useRef<SlotRfidOverridePrompt | null>(null);
   const weightOperationRef = useRef<symbol | null>(null);
@@ -157,11 +160,13 @@ export function usePrinterSlotInteractions({
   const resetPrinterInteractionState = useCallback(() => {
     weightPromptRef.current = null;
     rfidPromptRef.current = null;
-    if (weightOperationRef.current || rfidOperationRef.current) {
+    if (weightOperationRef.current || rfidOperationRef.current || catalogDialog.current?.saving) {
       rfidOperationRef.current = null;
       weightOperationRef.current = null;
       setBusy(false);
     }
+    catalogDialog.current = null;
+    setCatalogRecovery(null);
     setSlotDrafts({});
     setOpenDropdownSlotId(null);
     setIncomingWeightPrompt(null);
@@ -804,7 +809,7 @@ export function usePrinterSlotInteractions({
       liveTray: BambuLiveObservedTray,
       master: MasterCatalogRow,
     ) => {
-      if (!tauri || busy) {
+      if (!tauri || busy || !mountedRef.current || scopeRef.current !== scope || catalogDialog.current?.saving) {
         return false;
       }
       if (!clientReadOnly && !ensureLocalWriteAllowed()) {
@@ -818,11 +823,16 @@ export function usePrinterSlotInteractions({
         printer.printer.id,
         currentSlot ?? slot,
       );
+      const key = amsRegistrationKey({ clientReadOnly, clientHostBaseUrl, clientLibraryId, clientTargetGeneration },
+        printer.printer.id, slot.slot_id, liveTrayIdentity(liveTray));
+      let pending: PendingAmsRegistration | null;
+      try { pending = readAmsRegistration(key); }
+      catch (error) { setError(printerCommandErrorText(error, t("inventory.error.add", "Failed to add filament."), t)); return false; }
       const openState = buildSlotCatalogOnboardingOpenState(slot, liveTray, {
         currentSlot,
         currentLiveTray,
       });
-      if (openState.reason === "missing_rfid") {
+      if (!pending && openState.reason === "missing_rfid") {
         setError(
           t(
             "printers.rfidOverrideNothingToSave",
@@ -831,7 +841,7 @@ export function usePrinterSlotInteractions({
         );
         return false;
       }
-      if (openState.reason === "occupied_slot") {
+      if (!pending && openState.reason === "occupied_slot") {
         setError(
           t(
             "printers.error.createFromCatalogRequiresEmptySlot",
@@ -840,7 +850,7 @@ export function usePrinterSlotInteractions({
         );
         return false;
       }
-      if (openState.reason === "live_slot_unloaded") {
+      if (!pending && openState.reason === "live_slot_unloaded") {
         setError(
           t(
             "printers.error.liveSlotUnloadedBeforeSave",
@@ -849,7 +859,7 @@ export function usePrinterSlotInteractions({
         );
         return false;
       }
-      if (openState.reason === "live_identity_changed") {
+      if (!pending && openState.reason === "live_identity_changed") {
         setError(
           t(
             "printers.error.liveRfidChangedBeforeSave",
@@ -860,13 +870,29 @@ export function usePrinterSlotInteractions({
       }
 
       const liveConfig = bambuLiveIntegrations[printer.printer.id] ?? null;
-      setSlotCatalogOnboardingPrompt(
-        buildSlotCatalogOnboardingPrompt(printer, openState.slot, master, liveTray, liveConfig),
-      );
+      const prompt = buildSlotCatalogOnboardingPrompt(printer, openState.slot, master, liveTray, liveConfig);
+      if (pending && pending.batch.master_ids[0] !== master.id) {
+        setError(t("errors.catalogSpoolBatchConflict", "This batch ID belongs to a different request or library. Check inventory before registering another batch."));
+        return false;
+      }
+      if (pending) {
+        prompt.initialWeight = String(pending.batch.initial_weight_g);
+        prompt.location = pending.batch.location ?? "";
+        prompt.ownershipType = pending.batch.ownership_type;
+        prompt.borrowedFromName = pending.batch.owner_name ?? "";
+        prompt.borrowedFromContact = pending.batch.owner_contact ?? "";
+        prompt.borrowedInNote = pending.batch.ownership_note ?? "";
+      }
+      const token = Symbol();
+      catalogDialog.current = { token, saving: false, key };
+      setCatalogToken(token);
+      setCatalogRecovery(pending);
+      setSlotCatalogOnboardingPrompt(prompt);
       return true;
     },
     [
       bambuLiveIntegrations,
+      scope, clientHostBaseUrl, clientLibraryId, clientTargetGeneration,
       busy,
       canUseClientHostWrite,
       clientReadOnly,
@@ -879,13 +905,29 @@ export function usePrinterSlotInteractions({
     ],
   );
 
+
+  const closeCatalogDialog = useCallback(() => {
+    if (catalogDialog.current?.token !== catalogToken || catalogDialog.current?.saving) return;
+    catalogDialog.current = null;
+    setCatalogRecovery(null);
+    setSlotCatalogOnboardingPrompt(null);
+  }, [catalogToken]);
+
+  const acknowledgeLegacyRegistration = useCallback(() => {
+    const dialog = catalogDialog.current;
+    if (!dialog || dialog.token !== catalogToken || dialog.saving || !catalogRecovery?.legacy) return;
+    try { clearAmsRegistration(dialog.key, catalogRecovery.batch.batch_id); closeCatalogDialog(); }
+    catch (error) { setError(printerCommandErrorText(error, t("inventory.error.add", "Failed to add filament."), t)); }
+  }, [catalogToken, catalogRecovery, closeCatalogDialog, setError, t]);
+
   const updateSlotCatalogOnboardingPrompt = useCallback(
     (patch: Partial<SlotCatalogOnboardingPrompt>) => {
+      if (catalogDialog.current?.token !== catalogToken || catalogDialog.current?.saving || catalogRecovery) return;
       setSlotCatalogOnboardingPrompt((current) =>
         current ? { ...current, ...patch } : current,
       );
     },
-    [],
+    [catalogToken, catalogRecovery],
   );
 
   const setSlotCatalogOwnershipType = useCallback(
@@ -896,7 +938,9 @@ export function usePrinterSlotInteractions({
   );
 
   const handleCreateLiveBambuCatalogSpool = useCallback(async () => {
-    if (!slotCatalogOnboardingPrompt || !tauri || busy) {
+    const dialog = catalogDialog.current;
+    if (!dialog || dialog.token !== catalogToken || dialog.saving || catalogRecovery?.legacy ||
+        !mountedRef.current || scopeRef.current !== scope || !slotCatalogOnboardingPrompt || !tauri || busy) {
       return;
     }
     if (!clientReadOnly && !ensureLocalWriteAllowed()) {
@@ -912,8 +956,8 @@ export function usePrinterSlotInteractions({
     const { tray: currentLiveTray } = findLiveTrayForSlot(printerId, slotForWrite);
     const createRequest = buildSlotCatalogOnboardingCreateRequest(slotCatalogOnboardingPrompt, {
       id: `spool_${Date.now()}`,
-      currentSlot,
-      currentLiveTray,
+      currentSlot: catalogRecovery ? { ...slot, spool_id: null } : currentSlot,
+      currentLiveTray: catalogRecovery ? slotCatalogOnboardingPrompt.liveTray : currentLiveTray,
       observedAtFallback:
         bambuLiveIntegrations[printerId]?.observed_state?.last_seen_at ?? null,
     });
@@ -972,37 +1016,44 @@ export function usePrinterSlotInteractions({
     }
     const { observedRfid, request, rfidObservedAt } = createRequest;
 
+    const current = () => mountedRef.current && scopeRef.current === scope && catalogDialog.current === dialog;
+    let committed = false;
+    dialog.saving = true;
     setBusy(true);
     setError(null);
     setInfo(null);
     try {
-      await registerPrinterSlotCatalogSpool(
+      await registerAmsCatalogSpool(
         { clientReadOnly, clientHostBaseUrl, clientLibraryId, clientTargetGeneration },
         request.input,
         { printerId, slot: slotForWrite, observedRfid, rfidObservedAt: rfidObservedAt ?? new Date().toISOString() },
+        current,
+        catalogRecovery,
       );
-      await reloadData();
+      committed = true;
+      if (!current()) return;
       setSlotCatalogOnboardingPrompt(null);
-      setInfo(
-        t(
-          "printers.liveCatalogCreatedAndAssigned",
-          "{label} was added, RFID was saved, and the roll was assigned to this slot.",
-          { label: request.addedLabel },
-        ),
-      );
-    } catch (createError) {
-      console.error(createError);
-      setError(
-        commandErrorText(
-          createError,
-          t("inventory.error.add", "Failed to add filament."),
-        ),
-      );
+      setCatalogRecovery(null);
+      setInfo(t("printers.liveCatalogCreatedAndAssigned",
+        "{label} was added, RFID was saved, and the roll was assigned to this slot.", { label: request.addedLabel }));
+      try { await reloadData(); }
+      catch { if (current()) setError(t("printers.error.load", "Failed to load printer overview.")); }
+    } catch (error) {
+      if (!current()) return;
+      let failure = error;
+      try { setCatalogRecovery(readAmsRegistration(dialog.key)); }
+      catch (storageError) { failure = storageError; }
+      setError(printerCommandErrorText(failure, t("inventory.error.add", "Failed to add filament."), t));
     } finally {
-      setBusy(false);
+      if (current()) {
+        if (committed) catalogDialog.current = null;
+        dialog.saving = false;
+        setBusy(false);
+      }
     }
     },
     [
+      catalogToken, catalogRecovery, scope,
       bambuLiveIntegrations,
       busy,
       canUseClientHostWrite,
@@ -1091,7 +1142,7 @@ export function usePrinterSlotInteractions({
     setOpenDropdownSlotId,
     setOutgoingWeightValue,
     closeRfidOverrideDialog,
-    setSlotCatalogOnboardingPrompt,
+    closeCatalogDialog, acknowledgeLegacyRegistration, catalogRecovery,
     setSlotCatalogOwnershipType,
     setSlotDraft,
     slotCatalogOnboardingPrompt,

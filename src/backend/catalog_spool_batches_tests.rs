@@ -40,6 +40,7 @@ impl Drop for TestLibrary {
 
 fn input(id: &str, ownership: &str) -> CatalogSpoolBatchInput {
     CatalogSpoolBatchInput {
+        ams_assignment: None,
         batch_id: id.to_string(),
         master_ids: vec!["batch-master-b".to_string(), "batch-master-a".to_string()],
         initial_weight_g: 850,
@@ -547,4 +548,49 @@ fn full_app_reset_clears_batch_receipts_and_creates_a_new_library_identity() {
         db.get_catalog_spool_batch_receipt("before-reset").unwrap(),
         None
     );
+}
+
+#[test]
+fn ams_registration_replays_and_rejects_changed_identity_occupied_slot_and_late_failure() {
+    let library = TestLibrary::new();
+    let db = library.open();
+    db.upsert_printer_with_ams("p", "P1S", "Printer", 1, 4)
+        .unwrap();
+    let config = serde_json::from_value(json!({"enabled":true,"observed_state":{
+        "online":true,"mqtt_connected":true,"trays":[{"tray_index":0,"loaded":true,"tray_uuid":"TAG"}]}})).unwrap();
+    db.save_bambu_live_integration("p", &config).unwrap();
+    let mut request = input("ams-replay", "BORROWED_IN");
+    request.master_ids.truncate(1);
+    request.ams_assignment = Some(CatalogAmsAssignment {
+        printer_id: "p".into(),
+        slot_id: "p_ams_1_slot_1".into(),
+        rfid_tag: "TAG".into(),
+        observed_at: "2026-01-01T00:00:00Z".into(),
+    });
+    let mut wrong = request.clone();
+    wrong.ams_assignment.as_mut().unwrap().rfid_tag = "another-tag".into();
+    let before = state(&db);
+    assert!(db.create_catalog_spool_batch(wrong).is_err());
+    assert_eq!(before, state(&db));
+    db.connection().execute_batch("CREATE TRIGGER refuse_receipt BEFORE INSERT ON catalog_spool_batches BEGIN SELECT RAISE(ABORT,'test'); END;").unwrap();
+    assert!(db.create_catalog_spool_batch(request.clone()).is_err());
+    assert_eq!(before, state(&db));
+    db.connection()
+        .execute_batch("DROP TRIGGER refuse_receipt")
+        .unwrap();
+    let receipt = db.create_catalog_spool_batch(request.clone()).unwrap();
+    let assigned: (String,String) = db.connection().query_row(
+        "SELECT s.spool_id, f.rfid_tag FROM ams_slots s JOIN filament_spools f ON s.spool_id=f.id WHERE s.id='p_ams_1_slot_1'",[],|r|Ok((r.get(0)?,r.get(1)?))).unwrap();
+    assert_eq!(assigned, (receipt.spool_ids[0].clone(), "TAG".to_string()));
+    let committed = state(&db);
+    assert_eq!(
+        library
+            .open()
+            .create_catalog_spool_batch(request.clone())
+            .unwrap(),
+        receipt
+    );
+    request.batch_id = "competing-request".into();
+    assert!(db.create_catalog_spool_batch(request).is_err());
+    assert_eq!(state(&db), committed);
 }

@@ -354,7 +354,10 @@ mod tests {
         for (source, commands) in [
             (
                 include_str!("library_sync_catalog_batch_commands.rs"),
-                &["create_library_sync_host_catalog_spool_batch"][..],
+                &[
+                    "create_library_sync_host_catalog_spool_batch",
+                    "supports_library_sync_host_ams_registration",
+                ][..],
             ),
             (
                 include_str!("library_sync_spool_write_commands.rs"),

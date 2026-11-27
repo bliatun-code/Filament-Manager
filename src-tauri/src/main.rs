@@ -167,8 +167,7 @@ const DOCK_ICON_DARK_BYTES: &[u8] = include_bytes!("../icons/dock-dark.png");
 fn set_dock_icon_theme(app: tauri::AppHandle, theme: String) -> Result<(), String> {
     #[cfg(target_os = "macos")]
     {
-        let normalized = theme.trim().to_lowercase();
-        let icon_bytes = if normalized == "dark" {
+        let icon_bytes = if theme.trim().eq_ignore_ascii_case("dark") {
             DOCK_ICON_DARK_BYTES
         } else {
             DOCK_ICON_LIGHT_BYTES
@@ -406,6 +405,7 @@ fn main() {
             inventory_create_commands::create_spool,
             inventory_catalog_batch_commands::create_catalog_spool_batch,
             library_sync_catalog_batch_commands::create_library_sync_host_catalog_spool_batch,
+            library_sync_catalog_batch_commands::supports_library_sync_host_ams_registration,
             inventory_create_commands::ensure_dashboard_purchase,
             inventory_create_commands::create_wishlist_item,
             inventory_create_commands::create_manual_spool,

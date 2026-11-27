@@ -1629,41 +1629,49 @@ impl InventoryEngine {
             .map(str::to_string)
     }
 
-    pub fn assign_printer_slot(&self, mut input: AssignPrinterSlotInput) -> InventoryResult<()> {
+    pub fn assign_printer_slot(&self, input: AssignPrinterSlotInput) -> InventoryResult<()> {
+        self.db.with_inventory_transaction(|conn| {
+            Self::assign_printer_slot_in_transaction(&self.db, conn, input)
+        })
+    }
+
+    pub(super) fn assign_printer_slot_in_transaction(
+        db: &FilamentDatabase,
+        conn: &rusqlite::Connection,
+        mut input: AssignPrinterSlotInput,
+    ) -> InventoryResult<()> {
         let (effective_override_tray_uuid, effective_override_color_hex, effective_clear) =
-            derive_assign_printer_slot_live_context(&self.db, &input)?;
+            derive_assign_printer_slot_live_context(db, &input)?;
         input.rfid_override_tray_uuid = effective_override_tray_uuid;
         input.rfid_override_color_hex = effective_override_color_hex;
         input.clear_live_cache_before_next_refresh = Some(effective_clear);
 
-        self.db.with_inventory_transaction(|conn| {
-            assign_spool_to_ams_slot_in_transaction(
+        assign_spool_to_ams_slot_in_transaction(
+            conn,
+            &input.printer_id,
+            &input.slot_id,
+            input.spool_id.as_deref(),
+            input.rfid_override_tray_uuid.as_deref(),
+            input.rfid_override_color_hex.as_deref(),
+            effective_clear,
+        )?;
+
+        if let Some(spool_id) = input.spool_id {
+            insert_json_history_event(
                 conn,
-                &input.printer_id,
-                &input.slot_id,
-                input.spool_id.as_deref(),
-                input.rfid_override_tray_uuid.as_deref(),
-                input.rfid_override_color_hex.as_deref(),
-                effective_clear,
+                &spool_id,
+                "ASSIGNED_TO_AMS",
+                json!({
+                    "printer_id": input.printer_id,
+                    "slot_id": input.slot_id,
+                    "rfid_override_tray_uuid": input.rfid_override_tray_uuid,
+                    "rfid_override_color_hex": input.rfid_override_color_hex,
+                    "clear_live_cache_before_next_refresh": input.clear_live_cache_before_next_refresh,
+                }),
             )?;
+        }
 
-            if let Some(spool_id) = input.spool_id {
-                insert_json_history_event(
-                    conn,
-                    &spool_id,
-                    "ASSIGNED_TO_AMS",
-                    json!({
-                        "printer_id": input.printer_id,
-                        "slot_id": input.slot_id,
-                        "rfid_override_tray_uuid": input.rfid_override_tray_uuid,
-                        "rfid_override_color_hex": input.rfid_override_color_hex,
-                        "clear_live_cache_before_next_refresh": input.clear_live_cache_before_next_refresh,
-                    }),
-                )?;
-            }
-
-            Ok(())
-        })
+        Ok(())
     }
 
     pub fn operate_printer_slot(&self, input: PrinterSlotOperationInput) -> InventoryResult<()> {
@@ -2189,7 +2197,7 @@ fn resolve_location_update(
     )?))
 }
 
-fn insert_json_history_event(
+pub(super) fn insert_json_history_event(
     conn: &rusqlite::Connection,
     spool_id: &str,
     event_type: &str,
