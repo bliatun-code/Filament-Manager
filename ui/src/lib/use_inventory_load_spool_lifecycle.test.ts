@@ -292,7 +292,7 @@ test("rendered load dialog keeps its destination and distinguishes writes from r
       await page.waitForFunction("loadLifecycle.commandCount() === 1");
       assert.deepEqual((await page.evaluate("loadLifecycle.commands()"))[0], {
         command: "operate_printer_slot",
-        payload: { input: {
+        payload: { expectedLibraryId: "library-local", expectedTargetGeneration: 0, input: {
           printer_id: "printer", slot_id: "slot-3", expected_current_spool_id: null,
           target_spool_id: "spool-1", outgoing_measured_total_g: null, incoming_measured_total_g: null,
         } },

@@ -37,7 +37,7 @@ export function validatePackagedDesktopBatchEvidence(
   }
 }
 
-async function localTarget(dependencies: PackagedDesktopBatchDependencies) {
+export async function packagedDesktopLocalTarget(dependencies: PackagedDesktopBatchDependencies) {
   const settings = await dependencies.getLibrarySyncSettings();
   if (!settings || settings.mode === "CLIENT" || !settings.library_id?.trim() ||
     !Number.isSafeInteger(settings.target_generation) || (settings.target_generation ?? -1) < 0) {
@@ -57,7 +57,7 @@ export async function createPackagedDesktopBatch(
     initial_weight_g:BATCH_WEIGHT,ownership_type:"BORROWED_IN" as const,
     owner_name:BATCH_OWNER,owner_contact:BATCH_CONTACT,ownership_note:BATCH_NOTE,location:BATCH_LOCATION,
   };
-  const receipt = await dependencies.createCatalogSpoolBatch(request, await localTarget(dependencies));
+  const receipt = await dependencies.createCatalogSpoolBatch(request, await packagedDesktopLocalTarget(dependencies));
   const evidence = { request, receipt };
   validatePackagedDesktopBatchEvidence(evidence, runId);
   await validatePackagedDesktopBatchRows(evidence, dependencies);
@@ -73,7 +73,7 @@ export async function replayPackagedDesktopBatch(
   // Clone the persisted request; do not reconstruct it from current catalog or form state.
   const original = structuredClone(evidence);
   const replay = await dependencies.createCatalogSpoolBatch(
-    structuredClone(original.request), await localTarget(dependencies),
+    structuredClone(original.request), await packagedDesktopLocalTarget(dependencies),
   );
   if (replay.batch_id !== original.receipt.batch_id ||
     JSON.stringify(replay.spool_ids) !== JSON.stringify(original.receipt.spool_ids)) {

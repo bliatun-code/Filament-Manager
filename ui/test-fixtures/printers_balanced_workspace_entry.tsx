@@ -53,7 +53,7 @@ function Workspace({theme,mode,client}:{theme:ThemeMode;mode:string;client:boole
    return null;
  }}});
  const reload=useCallback(async()=>{},[]);
- const workflow=usePrinterSlotInteractions({bambuLiveIntegrations:integrations,busy,canUseClientHostWrite:yes,clientHostBaseUrl:client?"http://qa-host.local":null,clientLibraryId:client?"qa-library":null,clientPrinterSource:"LIVE",clientReadOnly:client,clientTargetGeneration:1,ensureLocalWriteAllowed:yes,librarySyncReady:true,locale,printers,reloadData:reload,setBusy,setError,setInfo,spools,tauri:true,t});
+ const workflow=usePrinterSlotInteractions({bambuLiveIntegrations:integrations,busy,canUseClientHostWrite:yes,clientHostBaseUrl:client?"http://qa-host.local":null,clientLibraryId:client?"qa-library":"local-qa-library",clientPrinterSource:"LIVE",clientReadOnly:client,clientTargetGeneration:1,ensureLocalWriteAllowed:yes,librarySyncReady:true,locale,printers,reloadData:reload,setBusy,setError,setInfo,spools,tauri:true,t});
  return <main className="page-shell printers-balanced-page" style={{maxWidth:"none"}}>
    <nav aria-label={t("app.navigation","Navigation")} style={{display:"flex",gap:"1.4rem",flexWrap:"wrap",paddingBottom:"1rem",borderBottom:"1px solid var(--printer-line)",marginBottom:"1.4rem",fontSize:".85rem"}}><strong>Filament Manager</strong>{["dashboard","inventory","printers","statistics","settings"].map(key=><span key={key} style={{fontWeight:key==="printers"?700:400}}>{t(`nav.${key}`,key)}</span>)}</nav>
    <div className="page-header"><h1 className="page-title">{t("nav.printers","Printers")}</h1><button className="app-primary-action rounded-md px-4 py-2 text-sm" type="button">+ {t("settings.addPrinter","Add printer")}</button></div>

@@ -203,7 +203,9 @@ function mutationHarness(options: {
       assert.equal(input.id, baseConfiguration.printer_id);
       printerCreated = true;
     },
-    async operatePrinterSlot(input) {
+    async operatePrinterSlot(input, libraryId, generation) {
+      assert.equal(libraryId, "local-qa-library");
+      assert.equal(generation, 3);
       events.push("operate_printer_slot");
       operations.push(structuredClone(input));
       assert.equal(input.printer_id, baseConfiguration.printer_id);
@@ -259,6 +261,7 @@ test("packaged desktop mutation uses the real atomic command sequence and replay
     "lend_spool",
     "return_spool_loan",
     "create_printer",
+    "get_library_sync_settings",
     "operate_printer_slot",
     "list_spools",
     "operate_printer_slot",

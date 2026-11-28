@@ -422,7 +422,7 @@ test("rendered printer weight operations keep the original roll and session", as
       assert.match(await page.getByRole("dialog").getByRole("alert").innerText(), /roll in this slot changed/);
       await save(page, 2);
       const { writes } = await page.evaluate("printerWeight.snapshot()");
-      assert.deepEqual(writes, [0, 1].map(() => ({ command: "operate_printer_slot", payload: { input: clearOperation } })));
+      assert.deepEqual(writes, [0, 1].map(() => ({ command: "operate_printer_slot", payload: { expectedLibraryId: "library-A", expectedTargetGeneration: 1, input: clearOperation } })));
       await page.evaluate("printerWeight.completeWrite(1)");
       await page.waitForFunction("printerWeight.snapshot().reads === 1");
       await page.evaluate("printerWeight.completeRead(0)");
@@ -471,7 +471,7 @@ test("rendered printer weight operations keep the original roll and session", as
       const operation = { ...clearOperation, target_spool_id: "A", outgoing_measured_total_g: null,
         incoming_measured_total_g: 600 };
       assert.deepEqual((await page.evaluate("printerWeight.snapshot()")).writes,
-        [0, 1].map(() => ({ command: "operate_printer_slot", payload: { input: operation } })));
+        [0, 1].map(() => ({ command: "operate_printer_slot", payload: { expectedLibraryId: "library-A", expectedTargetGeneration: 1, input: operation } })));
       await page.evaluate("printerWeight.completeWrite(1)");
       await page.waitForFunction("printerWeight.snapshot().reads === 1");
       await page.getByRole("dialog").waitFor({ state: "hidden" });

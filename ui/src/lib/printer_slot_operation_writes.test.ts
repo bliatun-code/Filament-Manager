@@ -65,8 +65,12 @@ test("local measured slot writes preserve one atomic operation", async () => {
     outgoing_measured_total_g: null, incoming_measured_total_g: 600 };
   const calls: PrinterSlotOperationInput[] = [];
   await writePrinterSlotOperation({ ...hostTarget, clientReadOnly: false,
-    clientHostBaseUrl: null, clientLibraryId: null, clientTargetGeneration: null }, measured, {
-    operateLocalPrinterSlot: async input => { calls.push(input); },
+    clientHostBaseUrl: null }, measured, {
+    operateLocalPrinterSlot: async (input, libraryId, generation) => {
+      assert.equal(libraryId, "library-1");
+      assert.equal(generation, 7);
+      calls.push(input);
+    },
     operateHostPrinterSlot: async () => { assert.fail("Local target must not use Host"); },
     recordLocalPrintUsage: async () => { assert.fail("No separate usage write"); },
   });
@@ -84,13 +88,13 @@ test("Tauri slot commands retain explicit null expectations and original target 
   const emptySlot = { ...operation, expected_current_spool_id: null, target_spool_id: "incoming",
     outgoing_measured_total_g: null, incoming_measured_total_g: 1_200 };
   try {
-    await operatePrinterSlot(emptySlot);
+    await operatePrinterSlot(emptySlot, "local", 9);
     await operateLibrarySyncHostPrinterSlot("http://host.local", "library-1", 7, operation);
   } finally {
     globalThis.window = previousWindow;
   }
   assert.deepEqual(calls, [
-    { command: "operate_printer_slot", payload: { input: emptySlot } },
+    { command: "operate_printer_slot", payload: { input: emptySlot, expectedLibraryId: "local", expectedTargetGeneration: 9 } },
     { command: "operate_library_sync_host_printer_slot", payload: { input: {
       base_url: "http://host.local", expected_library_id: "library-1",
       expected_target_generation: 7, operation,
