@@ -606,7 +606,7 @@ export function usePrinterSlotInteractions({
     await runWeightOperation(
       incomingWeightPrompt,
       () => writeAcceptedBambuLiveWeightEstimate(
-        { clientReadOnly, clientHostBaseUrl, clientLibraryId },
+        { clientReadOnly, clientHostBaseUrl, clientLibraryId, clientTargetGeneration },
         {
           printer_id: printer.printer.id,
           slot_id: slot.slot_id,
@@ -623,7 +623,7 @@ export function usePrinterSlotInteractions({
       ),
     );
   }, [
-    canUseClientHostWrite, clientHostBaseUrl, clientLibraryId, clientReadOnly,
+    canUseClientHostWrite, clientHostBaseUrl, clientLibraryId, clientReadOnly, clientTargetGeneration,
     ensureLocalWriteAllowed, findLiveTrayForSlot, findSpoolById,
     incomingWeightPrompt, liveAmsWeightAvailable, printers, runWeightOperation,
     setError, t,

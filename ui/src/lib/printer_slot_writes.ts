@@ -73,16 +73,17 @@ export async function writeAcceptedBambuLiveWeightEstimate(
     dependencies.acceptHostAmsWeightEstimate ?? acceptLibrarySyncHostBambuLiveWeightEstimate;
   const acceptLocal = dependencies.acceptLocalAmsWeightEstimate ?? acceptBambuLiveWeightEstimate;
 
+  const libraryId = target.clientLibraryId?.trim();
+  const generation = target.clientTargetGeneration;
+  if (!libraryId || generation == null || !Number.isSafeInteger(generation) || generation < 0) {
+    throw createAppError("common.invalid_request");
+  }
   if (target.clientReadOnly) {
-    const hostTarget = requireClientHostWriteTarget(
-      target,
-      "Host connection details are missing for this printer action.",
-    );
-    await acceptHost(hostTarget.baseUrl, hostTarget.libraryId, input);
+    const hostTarget = requireClientHostWriteTarget(target, "Host connection details are missing for this printer action.");
+    await acceptHost(hostTarget.baseUrl, libraryId, input, generation);
     return;
   }
-
-  await acceptLocal(input);
+  await acceptLocal(input, libraryId, generation);
 }
 
 export async function writePrinterSlotAssignment(

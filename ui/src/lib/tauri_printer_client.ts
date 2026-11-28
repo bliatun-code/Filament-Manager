@@ -294,20 +294,22 @@ export async function listPrinterOverview() {
 }
 
 export async function acceptBambuLiveWeightEstimate(
-  input: AcceptBambuLiveWeightEstimateInput,
+  input: AcceptBambuLiveWeightEstimateInput, expectedLibraryId: string, expectedTargetGeneration: number,
 ) {
-  return invoke<void>("accept_bambu_live_weight_estimate", { input });
+  return invoke<void>("accept_bambu_live_weight_estimate", { input, expectedLibraryId, expectedTargetGeneration });
 }
 
 export async function acceptLibrarySyncHostBambuLiveWeightEstimate(
   baseUrl: string,
-  expectedLibraryId: string | null | undefined,
+  expectedLibraryId: string,
   input: AcceptBambuLiveWeightEstimateInput,
+  expectedTargetGeneration: number,
 ) {
   return invoke<void>("accept_library_sync_host_bambu_live_weight_estimate", {
     input: {
       base_url: baseUrl,
-      expected_library_id: expectedLibraryId ?? null,
+      expected_library_id: expectedLibraryId,
+      expected_target_generation: expectedTargetGeneration,
       ...input,
     },
   });

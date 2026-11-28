@@ -163,7 +163,8 @@ pub(crate) struct LibrarySyncRecordPrintUsageInput {
 #[derive(Deserialize)]
 pub(crate) struct LibrarySyncAcceptBambuLiveWeightEstimateInput {
     pub(crate) base_url: String,
-    pub(crate) expected_library_id: Option<String>,
+    pub(crate) expected_library_id: String,
+    pub(crate) expected_target_generation: u64,
     pub(crate) printer_id: String,
     pub(crate) slot_id: String,
     pub(crate) spool_id: String,

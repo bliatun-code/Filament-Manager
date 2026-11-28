@@ -17,10 +17,13 @@ pub(crate) fn record_print_usage(
 pub(crate) fn accept_bambu_live_weight_estimate(
     state: tauri::State<'_, AppState>,
     input: AcceptBambuLiveWeightEstimateInput,
+    expected_library_id: String,
+    expected_target_generation: u64,
 ) -> Result<(), String> {
-    with_authoritative_local_library(&state, || {
-        with_inventory(&state, |engine| {
-            engine.accept_bambu_live_weight_estimate(input)
-        })
-    })
+    crate::active_library_gateway::with_reviewed_inventory(
+        &state,
+        &expected_library_id,
+        expected_target_generation,
+        |engine| engine.accept_bambu_live_weight_estimate(input),
+    )
 }
