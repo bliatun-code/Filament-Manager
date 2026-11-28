@@ -1,3 +1,4 @@
+import { registerReviewedSpoolRfid } from "../lib/existing_spool_rfid";
 import { amsRegistrationKey, clearAmsRegistration, readAmsRegistration, registerAmsCatalogSpool, type PendingAmsRegistration } from "../lib/ams_catalog_registration";
 import {
   buildAcceptableAmsWeightEstimate,
@@ -340,11 +341,12 @@ export function usePrinterSlotInteractions({
         return;
       }
       const liveConfig = bambuLiveIntegrations[printer.printer.id] ?? null;
+      setError(null);
       const prompt = buildRfidOverridePrompt(printer, slot, spool, liveTray, liveConfig);
       rfidPromptRef.current = prompt;
       setRfidOverridePrompt(prompt);
     },
-    [bambuLiveIntegrations, busy, findSpoolById, scope],
+    [bambuLiveIntegrations, busy, findSpoolById, scope, setError],
   );
 
   const setSlotDraft = useCallback((slotId: string, next: SlotSwapDraft) => {
@@ -643,23 +645,34 @@ export function usePrinterSlotInteractions({
     input: UpdateSpoolRfidTagInput,
     assignment: AssignPrinterSlotInput | null,
     prompt: SlotRfidOverridePrompt | null,
+    printerId: string, slotId: string, expectedRfid: string | null,
   ) => {
     const operation = Symbol("printer-rfid");
     rfidOperationRef.current = operation;
     const isCurrent = () => mountedRef.current && scopeRef.current === scope &&
       rfidOperationRef.current === operation;
     const target = { clientReadOnly, clientHostBaseUrl, clientLibraryId, clientTargetGeneration };
+    let legacyWrite = false;
     let rfidSaved = false;
     setBusy(true);
     setError(null);
     setInfo(null);
     try {
-      await updateInventorySpoolRfidTag(input, target);
-      rfidSaved = true;
+      const result = await registerReviewedSpoolRfid(target, {
+        spool_id: input.spool_id, expected_rfid: expectedRfid?.trim() || null, assign_empty_slot: Boolean(assignment),
+        observation: { printer_id: printerId, slot_id: slotId, rfid_tag: input.rfid_tag!,
+          observed_at: input.rfid_observed_at ?? new Date().toISOString() },
+      });
       if (!isCurrent()) return;
-      if (assignment) {
-        await writePrinterSlotAssignment(target, assignment);
+      if (result === "legacy") {
+        legacyWrite = true;
+        await updateInventorySpoolRfidTag(input, target);
+        rfidSaved = true;
         if (!isCurrent()) return;
+        if (assignment) {
+          await writePrinterSlotAssignment(target, assignment);
+          if (!isCurrent()) return;
+        }
       }
       if (prompt && rfidPromptRef.current === prompt) {
         rfidPromptRef.current = null;
@@ -679,7 +692,14 @@ export function usePrinterSlotInteractions({
         const message = rfidSaved
           ? t("printers.error.updateSlot", "Failed to update printer slot.")
           : t("inventory.error.saveRfid", "Failed to save RFID tag.");
-        if (rfidSaved) setInfo(t("inventory.rfidSaved", "RFID tag saved on the selected roll."));
+        if (legacyWrite) {
+          // The old Host cannot recover a receipt. Require a fresh review of the slot.
+          rfidPromptRef.current = null;
+          setRfidOverridePrompt(null);
+          const status = rfidSaved ? t("inventory.rfidSaved", "RFID tag saved on the selected roll.")
+            : t("common.unknown", "Unknown");
+          setInfo(status + " · " + t("dashboard.openInventory", "Open inventory"));
+        }
         setError(commandErrorText(writeError, message));
       }
     } finally {
@@ -706,7 +726,7 @@ export function usePrinterSlotInteractions({
       spool_id: rfidOverridePrompt.spool.spool.id,
       rfid_tag: observedRfid,
       rfid_observed_at: rfidOverridePrompt.observedAt ?? new Date().toISOString(),
-    }, null, rfidOverridePrompt);
+    }, null, rfidOverridePrompt, rfidOverridePrompt.printerId, rfidOverridePrompt.slot.slot_id, rfidOverridePrompt.spool.spool.rfid_tag ?? null);
   }, [rfidOverridePrompt, canStartRfidWrite, saveExistingSpoolRfid, setError, t]);
 
   const registerLiveRfidCandidate = useCallback(
@@ -787,6 +807,10 @@ export function usePrinterSlotInteractions({
       }
       const observedRfid = registrationState.observedRfid;
       const slotForSafety = registrationState.slot;
+      if (slotForSafety.spool_id !== slot.spool_id) {
+        setError(t("printers.error.updateSlot", "Failed to update printer slot."));
+        return;
+      }
 
       const assignment = slotForSafety.spool_id ? null :
         buildSavedRfidPrinterSlotAssignment(printer.printer.id, slotForSafety, row.spool.id);
@@ -797,7 +821,7 @@ export function usePrinterSlotInteractions({
           liveTray, currentLiveTray,
           observedAtFallback: bambuLiveIntegrations[printer.printer.id]?.observed_state?.last_seen_at ?? new Date().toISOString(),
         }) ?? new Date().toISOString(),
-      }, assignment, null);
+      }, assignment, null, printer.printer.id, slot.slot_id, row.spool.rfid_tag ?? null);
     },
     [bambuLiveIntegrations, canStartRfidWrite, findLiveTrayForSlot, printers, saveExistingSpoolRfid, setError, t],
   );

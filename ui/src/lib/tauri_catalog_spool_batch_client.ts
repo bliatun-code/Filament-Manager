@@ -30,7 +30,7 @@ export function catalogSpoolBatchTargetKey(target: CatalogSpoolBatchTarget): str
   return JSON.stringify([target.clientReadOnly ? host : "local", library, generation]);
 }
 
-function hostBatchInput(target: CatalogSpoolBatchTarget, batch: CatalogSpoolBatchInput) {
+function hostBatchInput<T>(target: CatalogSpoolBatchTarget, batch: T) {
   return {
     base_url: target.clientHostBaseUrl?.trim(),
     expected_library_id: target.clientLibraryId?.trim(),
@@ -57,5 +57,26 @@ export async function createCatalogSpoolBatch(
     input,
     expectedLibraryId: target.clientLibraryId!.trim(),
     expectedTargetGeneration: target.clientTargetGeneration!,
+  });
+}
+
+export type ExistingSpoolRfidRegistration = {
+  request_id: string;
+  spool_id: string;
+  expected_rfid: string | null;
+  assign_empty_slot: boolean;
+  observation: NonNullable<CatalogSpoolBatchInput["ams_assignment"]>;
+};
+
+// Only a capability check before the POST can return null.
+export async function writeReviewedSpoolRfid(target: CatalogSpoolBatchTarget, registration: ExistingSpoolRfidRegistration) {
+  if (!catalogSpoolBatchTargetKey(target)) throw createAppError("common.invalid_request");
+  if (target.clientReadOnly) {
+    return invoke<CatalogSpoolBatchReceipt | { preflight_error: string } | null>("register_library_sync_host_existing_spool_rfid", {
+      input: hostBatchInput(target, registration),
+    });
+  }
+  return invoke<CatalogSpoolBatchReceipt>("register_existing_spool_rfid", {
+    input: registration, expectedLibraryId: target.clientLibraryId, expectedTargetGeneration: target.clientTargetGeneration,
   });
 }

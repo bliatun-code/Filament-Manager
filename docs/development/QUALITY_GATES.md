@@ -172,6 +172,11 @@ spool, RFID, slot assignment and retry receipt in one inventory transaction.
 A repeated request returns the original spool even if the slot is now occupied.
 The `ams_registration` Rust tests cover rollback and loss of the HTTP response
 after commit. Printer interaction tests cover repeated clicks and Host changes.
+For existing spools, `existing-spool-ams-rfid-v1` checks the reviewed slot,
+observed tag and spool's previous RFID inside the same transaction as the
+history, optional assignment and retry receipt. Manual confirmation of an
+assigned spool only changes RFID. The `existing_rfid` Rust tests cover
+stale reviews, rollback, and a lost HTTP reply.
 Older Hosts use the guarded multi-step flow. After an uncertain write, the
 operator checks inventory before explicitly starting another registration.
 

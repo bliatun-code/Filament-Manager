@@ -159,18 +159,14 @@ const VISUAL_QA_WINDOW_SIZE_ENV_VAR: &str = "FILAMENT_MANAGER_VISUAL_QA_WINDOW_S
 #[cfg(any(test, all(debug_assertions, target_os = "macos")))]
 const VISUAL_QA_WINDOW_EDGE_INSET: f64 = 24.0;
 
-#[cfg(target_os = "macos")]
-const DOCK_ICON_LIGHT_BYTES: &[u8] = include_bytes!("../icons/dock-light.png");
-#[cfg(target_os = "macos")]
-const DOCK_ICON_DARK_BYTES: &[u8] = include_bytes!("../icons/dock-dark.png");
 #[tauri::command]
 fn set_dock_icon_theme(app: tauri::AppHandle, theme: String) -> Result<(), String> {
     #[cfg(target_os = "macos")]
     {
         let icon_bytes = if theme.trim().eq_ignore_ascii_case("dark") {
-            DOCK_ICON_DARK_BYTES
+            include_bytes!("../icons/dock-dark.png").as_slice()
         } else {
-            DOCK_ICON_LIGHT_BYTES
+            include_bytes!("../icons/dock-light.png").as_slice()
         };
         apply_macos_dock_icon(&app, icon_bytes)
     }
@@ -404,6 +400,8 @@ fn main() {
             catalog_commands::esun_fetch_product_detail,
             inventory_create_commands::create_spool,
             inventory_catalog_batch_commands::create_catalog_spool_batch,
+            inventory_catalog_batch_commands::register_existing_spool_rfid,
+            library_sync_catalog_batch_commands::register_library_sync_host_existing_spool_rfid,
             library_sync_catalog_batch_commands::create_library_sync_host_catalog_spool_batch,
             library_sync_catalog_batch_commands::supports_library_sync_host_ams_registration,
             inventory_create_commands::ensure_dashboard_purchase,

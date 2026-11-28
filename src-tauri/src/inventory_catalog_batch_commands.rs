@@ -1,6 +1,7 @@
 use crate::active_library_gateway::with_authoritative_local_library;
 use crate::app_error::coded_command_error;
 use crate::backend::inventory_engine::{CatalogSpoolBatchInput, CatalogSpoolBatchReceipt};
+use crate::backend::inventory_engine::{ExistingSpoolRfidInput, InventoryEngine};
 use crate::state::AppState;
 use crate::with_inventory;
 
@@ -25,6 +26,38 @@ pub(crate) fn create_catalog_spool_batch_for_target(
     expected_library_id: &str,
     expected_target_generation: u64,
 ) -> Result<CatalogSpoolBatchReceipt, String> {
+    with_reviewed_inventory(
+        state,
+        expected_library_id,
+        expected_target_generation,
+        |engine| engine.create_catalog_spool_batch(input),
+    )
+}
+
+#[tauri::command]
+pub(crate) fn register_existing_spool_rfid(
+    state: tauri::State<'_, AppState>,
+    input: ExistingSpoolRfidInput,
+    expected_library_id: String,
+    expected_target_generation: u64,
+) -> Result<CatalogSpoolBatchReceipt, String> {
+    with_reviewed_inventory(
+        &state,
+        &expected_library_id,
+        expected_target_generation,
+        |engine| engine.register_existing_spool_rfid(input),
+    )
+}
+
+fn with_reviewed_inventory(
+    state: &AppState,
+    expected_library_id: &str,
+    expected_target_generation: u64,
+    write: impl FnOnce(
+        InventoryEngine,
+    )
+        -> crate::backend::database_result::InventoryResult<CatalogSpoolBatchReceipt>,
+) -> Result<CatalogSpoolBatchReceipt, String> {
     // The role/identity check and transaction share the same gate as library
     // transitions. A persisted pending request cannot cross a restore or an
     // A -> B -> A transition, even when its original library ID reappears.
@@ -36,7 +69,7 @@ pub(crate) fn create_catalog_spool_batch_for_target(
         {
             return Err(coded_command_error("common.invalid_request"));
         }
-        with_inventory(state, |engine| engine.create_catalog_spool_batch(input))
+        with_inventory(state, write)
     })
 }
 
