@@ -36,6 +36,26 @@ pub(crate) fn with_authoritative_local_library<Output>(
     write()
 }
 
+pub(crate) fn with_reviewed_inventory<T>(
+    state: &AppState,
+    expected_library_id: &str,
+    expected_target_generation: u64,
+    write: impl FnOnce(
+        crate::backend::inventory_engine::InventoryEngine,
+    ) -> crate::backend::database_result::InventoryResult<T>,
+) -> Result<T, String> {
+    let _authority_gate = lock_secure_credential_mutation()?;
+    let status = crate::with_db(state, FilamentDatabase::get_library_sync_page_status)?;
+    require_authoritative_local_mode(&status.mode)?;
+    if expected_library_id.is_empty()
+        || status.library_id != expected_library_id
+        || status.target_generation != expected_target_generation
+    {
+        return Err(coded_command_error("common.invalid_request"));
+    }
+    with_inventory(state, write)
+}
+
 pub(crate) fn require_authoritative_local_mode(mode: &str) -> Result<(), String> {
     match mode.trim().to_ascii_uppercase().as_str() {
         "STANDALONE" | "HOST" => Ok(()),

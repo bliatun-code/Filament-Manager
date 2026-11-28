@@ -183,12 +183,16 @@ impl SyntheticHost {
                     request_line == "POST /api/v1/spools/original-host-roll/delete HTTP/1.1";
                 let purge_post =
                     request_line == "POST /api/v1/spools/original-host-roll/purge HTTP/1.1";
-                let post = slot_post || bulk_post || delete_post || purge_post;
+                let estimate_post = request_line.starts_with("POST /api/v1/printers/")
+                    && request_line.ends_with("/bambu-live-weight-estimate/accept HTTP/1.1");
+                let post = slot_post || bulk_post || delete_post || purge_post || estimate_post;
                 let (status, body) = if health {
                     ("200 OK", serde_json::json!({"ok":true,"api_version":"v1",
                         "capabilities": if capable { vec![PRINTER_SLOT_OPERATIONS_CAPABILITY, crate::companion_models::INVENTORY_BULK_MUTATION_CAPABILITY, crate::companion_models::INVENTORY_MARK_EMPTY_CAPABILITY, crate::companion_models::INVENTORY_ROLL_STATUS_CAPABILITY, crate::companion_models::INVENTORY_ROLL_WEIGHT_CAPABILITY] } else { vec![] },
                         "auth_mode":"pairing-session","access_mode":"trusted-lan", "library_id":LIBRARY_ID,
                         "device_name":"Synthetic slot Host","sync_mode":"HOST"}).to_string())
+                } else if estimate_post {
+                    ("200 OK", acknowledgment.to_string())
                 } else if delete_post || purge_post {
                     let mut value: serde_json::Value = serde_json::from_str(&payload).unwrap();
                     value["spool_id"] = "original-host-roll".into();
@@ -647,3 +651,69 @@ mod roll_weight_tests;
 
 #[path = "library_sync_bulk_selection_tests.rs"]
 mod bulk_selection_tests;
+
+#[test]
+fn ams_estimate_pins_target_before_network_during_health_and_after_confirmation() {
+    use crate::library_sync_models::LibrarySyncAcceptBambuLiveWeightEstimateInput;
+    use crate::library_sync_printer_write_commands::accept_library_sync_host_bambu_live_weight_estimate_blocking as accept;
+    let _serial = NETWORK_TEST_LOCK
+        .lock()
+        .unwrap_or_else(|error| error.into_inner());
+    for phase in ["before", "health", "refresh", "invalid-ack"] {
+        let mut host =
+            SyntheticHost::start(false, serde_json::json!({"ok": phase != "invalid-ack"}));
+        let (_directory, state, generation) = client(&host, true);
+        match phase {
+            "before" => cycle_target(&state.db_path),
+            "health" => host.transition_at(TransitionAt::Health, &state),
+            "refresh" => host.transition_at(TransitionAt::Cache, &state),
+            _ => {}
+        }
+        let input = LibrarySyncAcceptBambuLiveWeightEstimateInput {
+            base_url: host.base_url.clone(),
+            expected_library_id: LIBRARY_ID.into(),
+            expected_target_generation: generation,
+            printer_id: "printer".into(),
+            slot_id: "slot".into(),
+            spool_id: "spool".into(),
+            expected_weight_seen_at: "2026-01-01T00:00:00Z".into(),
+            expected_remaining_grams: 200,
+            expected_current_grams: Some(400),
+        };
+        let result = accept(&state, input);
+        let requests = host.finish();
+        let posts: Vec<_> = requests
+            .iter()
+            .filter(|(line, _)| line.starts_with("POST "))
+            .collect();
+        if phase == "refresh" {
+            result.unwrap();
+            assert_eq!(posts.len(), 1);
+            assert_eq!(posts[0].0,"POST /api/v1/printers/printer/slots/slot/spools/spool/bambu-live-weight-estimate/accept HTTP/1.1");
+            assert_eq!(
+                serde_json::from_str::<serde_json::Value>(&posts[0].1).unwrap(),
+                serde_json::json!({
+                    "expected_weight_seen_at":"2026-01-01T00:00:00Z","expected_remaining_grams":200,"expected_current_grams":400
+                })
+            );
+        } else if phase == "invalid-ack" {
+            assert!(result.unwrap_err().contains("common.internal"));
+            assert_eq!(posts.len(), 1);
+            assert_eq!(requests.last(), posts.first().copied());
+        } else {
+            assert!(result.unwrap_err().contains("common.invalid_request"));
+            assert!(posts.is_empty());
+            if phase == "before" {
+                assert!(requests.is_empty());
+            }
+        }
+        let settings = FilamentDatabase::open(&state.db_path)
+            .unwrap()
+            .get_library_sync_settings()
+            .unwrap();
+        if phase != "invalid-ack" {
+            assert!(settings.target_generation > generation);
+        }
+        assert!(settings.cached_spools.is_none());
+    }
+}

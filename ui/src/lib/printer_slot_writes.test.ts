@@ -23,10 +23,12 @@ test("accepted AMS estimates use the dedicated local command without print usage
   let recordedUsage = false;
 
   await writeAcceptedBambuLiveWeightEstimate(
-    { clientReadOnly: false, clientHostBaseUrl: null, clientLibraryId: null },
+    { clientReadOnly: false, clientHostBaseUrl: null, clientLibraryId: "local", clientTargetGeneration: 2 },
     amsWeightInput,
     {
-      acceptLocalAmsWeightEstimate: async (input) => {
+      acceptLocalAmsWeightEstimate: async (input, library, generation) => {
+        assert.equal(library, "local");
+        assert.equal(generation, 2);
         accepted.push(input);
       },
       recordLocalPrintUsage: async () => {
@@ -50,11 +52,12 @@ test("accepted AMS estimates route client writes to the dedicated host command",
     {
       clientReadOnly: true,
       clientHostBaseUrl: "http://host",
-      clientLibraryId: "library-1",
+      clientLibraryId: "library-1", clientTargetGeneration: 9,
     },
     amsWeightInput,
     {
-      acceptHostAmsWeightEstimate: async (baseUrl, libraryId, input) => {
+      acceptHostAmsWeightEstimate: async (baseUrl, libraryId, input, generation) => {
+        assert.equal(generation, 9);
         accepted.push({ baseUrl, libraryId: libraryId ?? "", input });
       },
     },

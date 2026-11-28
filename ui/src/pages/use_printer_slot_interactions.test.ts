@@ -36,7 +36,7 @@ async function buildPrinterWeightHarness() {
       if (command === "register_library_sync_host_existing_spool_rfid" && options.preflightFailure) return Promise.resolve({ preflight_error: "common.internal" });
       if (command === "register_library_sync_host_existing_spool_rfid" && !options.modernRfid) return Promise.resolve(null);
       if (command === "supports_library_sync_host_ams_registration") return Promise.resolve(!options.legacy);
-      if (!["register_library_sync_host_existing_spool_rfid","register_existing_spool_rfid","create_catalog_spool_batch","create_library_sync_host_catalog_spool_batch","create_library_sync_host_spool","operate_printer_slot", "operate_library_sync_host_printer_slot", "accept_bambu_live_weight_estimate",
+      if (!["register_library_sync_host_existing_spool_rfid","register_existing_spool_rfid","create_catalog_spool_batch","create_library_sync_host_catalog_spool_batch","create_library_sync_host_spool","operate_printer_slot", "operate_library_sync_host_printer_slot", "accept_bambu_live_weight_estimate","accept_library_sync_host_bambu_live_weight_estimate",
         "update_library_sync_host_spool_rfid_tag", "assign_library_sync_host_printer_slot"].includes(command)) {
         return Promise.reject(new Error("Unexpected non-atomic write: " + command));
       }
@@ -496,15 +496,18 @@ test("rendered printer weight operations keep the original roll and session", as
       assert.equal((await page.evaluate("printerWeight.snapshot()")).writes.length, 1);
     });
 
-    await scenario("AMS acceptance and manual Save share the same operation lock", async page => {
-      await page.evaluate("printerWeight.render({ ams: true })");
+    for (const host of [null, "host-A"]) await scenario(`AMS acceptance and manual Save share the same reviewed target and lock on ${host ?? "local"}`, async page => {
+      await page.evaluate(`printerWeight.render({ ams: true, host: ${JSON.stringify(host)}, generation: 5 })`);
       await page.getByRole("button", { name: "Update weight", exact: true }).click();
       await page.getByRole("button", { name: "Use AMS estimate", exact: true }).waitFor();
       await page.evaluate("printerWeight.accept(); printerWeight.accept(); printerWeight.save()");
       await page.waitForFunction("printerWeight.snapshot().busy");
       const { writes } = await page.evaluate("printerWeight.snapshot()");
       assert.equal(writes.length, 1);
-      assert.equal(writes[0].command, "accept_bambu_live_weight_estimate");
+      assert.equal(writes[0].command, host ? "accept_library_sync_host_bambu_live_weight_estimate" : "accept_bambu_live_weight_estimate");
+      const payload = writes[0].payload;
+      assert.equal(host ? payload.input.expected_target_generation : payload.expectedTargetGeneration, 5);
+      assert.equal(host ? payload.input.expected_library_id : payload.expectedLibraryId, "library-A");
       assert.equal(writes[0].payload.input.spool_id, "A");
       assert.equal(writes[0].payload.input.expected_remaining_grams, 400);
       await complete(page);

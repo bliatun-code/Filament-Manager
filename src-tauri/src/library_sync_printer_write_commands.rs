@@ -126,12 +126,21 @@ pub(crate) async fn accept_library_sync_host_bambu_live_weight_estimate(
     .await
 }
 
-fn accept_library_sync_host_bambu_live_weight_estimate_blocking(
+pub(crate) fn accept_library_sync_host_bambu_live_weight_estimate_blocking(
     state: &AppState,
     input: LibrarySyncAcceptBambuLiveWeightEstimateInput,
 ) -> Result<(), String> {
-    let host_input = library_sync_host_input(&input.base_url, input.expected_library_id.as_deref());
-    let (_, _, target) = prepare_library_sync_host_write(state, &host_input)?;
+    if input.expected_library_id.trim().is_empty() {
+        return Err(crate::app_error::coded_command_error(
+            "common.invalid_request",
+        ));
+    }
+    let host_input = library_sync_host_input(&input.base_url, Some(&input.expected_library_id));
+    let (_, _, target) = prepare_library_sync_host_write_for_generation(
+        state,
+        &host_input,
+        Some(input.expected_target_generation),
+    )?;
     let printer_id = input.printer_id.trim();
     let slot_id = input.slot_id.trim();
     let spool_id = input.spool_id.trim();
@@ -149,7 +158,7 @@ fn accept_library_sync_host_bambu_live_weight_estimate_blocking(
         return Err("Weight snapshot values must not be negative.".to_string());
     }
 
-    perform_library_sync_host_write(
+    let acknowledgment: serde_json::Value = perform_library_sync_host_write_and_parse(
         state,
         &bambu_live_weight_estimate_accept_path(printer_id, slot_id, spool_id),
         &bambu_live_weight_estimate_accept_payload(
@@ -160,9 +169,17 @@ fn accept_library_sync_host_bambu_live_weight_estimate_blocking(
         &target,
     )?;
 
+    if acknowledgment
+        .get("ok")
+        .and_then(serde_json::Value::as_bool)
+        != Some(true)
+    {
+        return Err(crate::app_error::coded_command_error("common.internal"));
+    }
+
     refresh_library_sync_printer_cache(state, &target);
     refresh_library_sync_spool_cache(state, &target);
-    save_library_sync_success_without_message(state, &target, None)?;
+    let _ = save_library_sync_success_without_message(state, &target, None);
     Ok(())
 }
 
