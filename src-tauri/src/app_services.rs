@@ -364,6 +364,13 @@ impl CompanionService {
         self.with_authoritative_inventory(|engine| engine.create_manual_spool(input))
     }
 
+    pub fn register_existing_spool_rfid(
+        &self,
+        input: crate::backend::inventory_engine::ExistingSpoolRfidInput,
+    ) -> InventoryResult<CatalogSpoolBatchReceipt> {
+        self.with_authoritative_inventory(|engine| engine.register_existing_spool_rfid(input))
+    }
+
     pub fn create_catalog_spool_batch(
         &self,
         input: CatalogSpoolBatchInput,

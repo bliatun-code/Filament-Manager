@@ -1,4 +1,5 @@
 use crate::app_error::coded_command_error;
+use crate::backend::inventory_engine::ExistingSpoolRfidInput;
 use crate::backend::inventory_engine::{CatalogSpoolBatchInput, CatalogSpoolBatchReceipt};
 use crate::companion_models::CATALOG_SPOOL_BATCH_CAPABILITY;
 use crate::library_sync_blocking_executor::run_library_sync_blocking;
@@ -19,11 +20,11 @@ use crate::state::AppState;
 use serde::Deserialize;
 
 #[derive(Deserialize)]
-pub(crate) struct LibrarySyncCatalogSpoolBatchInput {
+pub(crate) struct LibrarySyncCatalogSpoolBatchInput<T = CatalogSpoolBatchInput> {
     pub(crate) base_url: String,
     pub(crate) expected_library_id: String,
     pub(crate) expected_target_generation: u64,
-    pub(crate) batch: CatalogSpoolBatchInput,
+    pub(crate) batch: T,
 }
 
 #[tauri::command]
@@ -61,9 +62,9 @@ fn supports_library_sync_host_ams_registration_blocking(
         .any(|cap| cap == crate::companion_models::AMS_REGISTRATION_CAPABILITY))
 }
 
-fn reviewed_batch_host(
+fn reviewed_batch_host<T>(
     state: &AppState,
-    input: &LibrarySyncCatalogSpoolBatchInput,
+    input: &LibrarySyncCatalogSpoolBatchInput<T>,
 ) -> Result<
     (
         crate::trusted_lan_health::CompanionHealthCheckResponse,
@@ -138,6 +139,61 @@ pub(crate) fn create_library_sync_host_catalog_spool_batch_blocking(
     }
     let _ = save_library_sync_success(state, &target, "Host catalog spool batch saved.", None);
     Ok(receipt)
+}
+
+#[derive(serde::Serialize)]
+#[serde(untagged)]
+pub(crate) enum HostRfidRegistration {
+    Committed(CatalogSpoolBatchReceipt),
+    PreflightFailure { preflight_error: String },
+    Unsupported,
+}
+
+#[tauri::command]
+pub(crate) async fn register_library_sync_host_existing_spool_rfid(
+    state: tauri::State<'_, AppState>,
+    input: LibrarySyncCatalogSpoolBatchInput<ExistingSpoolRfidInput>,
+) -> Result<HostRfidRegistration, String> {
+    let state = state.inner().clone();
+    run_library_sync_blocking(move || {
+        register_library_sync_host_existing_spool_rfid_blocking(&state, input)
+    })
+    .await
+}
+
+fn register_library_sync_host_existing_spool_rfid_blocking(
+    state: &AppState,
+    input: LibrarySyncCatalogSpoolBatchInput<ExistingSpoolRfidInput>,
+) -> Result<HostRfidRegistration, String> {
+    let (health, target) = match reviewed_batch_host(state, &input) {
+        Ok(reviewed) => reviewed,
+        Err(preflight_error) => {
+            return Ok(HostRfidRegistration::PreflightFailure { preflight_error })
+        }
+    };
+    if !health
+        .capabilities
+        .iter()
+        .any(|v| v == crate::companion_models::EXISTING_SPOOL_RFID_CAPABILITY)
+    {
+        return Ok(HostRfidRegistration::Unsupported);
+    }
+
+    let receipt: CatalogSpoolBatchReceipt = perform_library_sync_host_write_and_parse_for_target(
+        state,
+        "/api/v1/spools/ams-rfid",
+        &input.batch,
+        &target,
+        None,
+    )?;
+    if receipt.batch_id != input.batch.request_id
+        || receipt.spool_ids.as_slice() != [input.batch.spool_id]
+    {
+        return Err(coded_command_error("common.internal"));
+    }
+    crate::library_sync_cache_refresh::refresh_library_sync_printer_cache(state, &target);
+    refresh_library_sync_spool_cache(state, &target);
+    Ok(HostRfidRegistration::Committed(receipt))
 }
 
 #[cfg(test)]

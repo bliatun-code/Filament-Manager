@@ -65,6 +65,7 @@ pub(super) async fn handle_health(
                     CATALOG_REFRESH_JOBS_CAPABILITY,
                     CATALOG_SPOOL_BATCH_CAPABILITY,
                     crate::companion_models::AMS_REGISTRATION_CAPABILITY,
+                    crate::companion_models::EXISTING_SPOOL_RFID_CAPABILITY,
                     PRINTER_PICKER_CAPABILITY,
                     LOAN_PICKER_CAPABILITY,
                     crate::companion_models::STOCK_CARDS_CAPABILITY,

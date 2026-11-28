@@ -33,8 +33,10 @@ async function buildPrinterWeightHarness() {
     let options = { current: "A", host: null, library: "library-A", generation: 1,
       ready: true, tauri: true, ams: false, confirmed: false, cached: false };
     window.__TAURI__ = { invoke: (command, payload) => {
+      if (command === "register_library_sync_host_existing_spool_rfid" && options.preflightFailure) return Promise.resolve({ preflight_error: "common.internal" });
+      if (command === "register_library_sync_host_existing_spool_rfid" && !options.modernRfid) return Promise.resolve(null);
       if (command === "supports_library_sync_host_ams_registration") return Promise.resolve(!options.legacy);
-      if (!["create_catalog_spool_batch","create_library_sync_host_catalog_spool_batch","create_library_sync_host_spool","operate_printer_slot", "operate_library_sync_host_printer_slot", "accept_bambu_live_weight_estimate",
+      if (!["register_library_sync_host_existing_spool_rfid","register_existing_spool_rfid","create_catalog_spool_batch","create_library_sync_host_catalog_spool_batch","create_library_sync_host_spool","operate_printer_slot", "operate_library_sync_host_printer_slot", "accept_bambu_live_weight_estimate",
         "update_library_sync_host_spool_rfid_tag", "assign_library_sync_host_printer_slot"].includes(command)) {
         return Promise.reject(new Error("Unexpected non-atomic write: " + command));
       }
@@ -190,7 +192,8 @@ test("rendered printer weight operations keep the original roll and session", as
         const errors: string[] = [];
         page.on("pageerror", error => errors.push(error.message));
         try {
-          await page.setContent('<div id="root"></div>');
+          await page.route("http://localhost/printer", route => route.fulfill({ contentType: "text/html", body: '<div id="root"></div>' }));
+          await page.goto("http://localhost/printer");
           await page.addScriptTag({ content: script });
           await run(page);
           assert.deepEqual(errors, []);
@@ -285,7 +288,48 @@ test("rendered printer weight operations keep the original roll and session", as
       assert.equal(state.recovery.legacy,true);
       assert.deepEqual(state.writes.map((w:{command:string})=>w.command),["create_library_sync_host_spool"]);
     });
+    await scenario("an offline capability check can reconnect to an older Host and save", async page => {
+      await startRfid(page, "manual");
+      await page.evaluate("printerWeight.render({preflightFailure:true});printerWeight.submitRfid('manual')");
+      await page.waitForFunction("printerWeight.snapshot().settled === 1");
+      await page.evaluate("printerWeight.render({preflightFailure:false});printerWeight.submitRfid('manual')");
+      await page.waitForFunction("printerWeight.snapshot().writes.length === 1");
+      assert.equal((await page.evaluate("printerWeight.snapshot()")).writes[0].command, rfidCommand);
+    });
+    await scenario("local manual confirmation only updates the assigned spool", async page => {
+      await page.evaluate("printerWeight.render({rfid:true,host:null,current:'A'});printerWeight.openRfid();printerWeight.captureRfid();printerWeight.submitRfid('manual')");
+      await page.waitForFunction("printerWeight.snapshot().writes.length === 1");
+      const { command, payload } = (await page.evaluate("printerWeight.snapshot()")).writes[0];
+      assert.equal(command, "register_existing_spool_rfid");
+      assert.equal(payload.input.assign_empty_slot, false);
+      assert.equal(payload.expectedTargetGeneration, 1);
+      await page.evaluate(`printerWeight.completeWrite(0,{batch_id:${JSON.stringify(payload.input.request_id)},spool_ids:["A"]})`);
+      await page.waitForFunction("printerWeight.snapshot().reads === 1");
+    });
     for (const action of ["manual", "candidate"] as const) {
+      await scenario(action + " uses one atomic RFID write and recovers the same request after a lost reply", async page => {
+        await startRfid(page, action);
+        await page.evaluate("printerWeight.render({modernRfid:true})");
+        await page.evaluate(`printerWeight.submitRfid('${action}');printerWeight.submitRfid('${action}')`);
+        await page.waitForFunction("printerWeight.snapshot().writes.length === 1");
+        await page.evaluate("printerWeight.rejectWrite(0,'common.internal')");
+        await page.waitForFunction("printerWeight.snapshot().settled === 2");
+        await startRfid(page, action);
+        await page.evaluate(`printerWeight.submitRfid('${action}')`);
+        await page.waitForFunction("printerWeight.snapshot().writes.length === 2");
+        const { writes } = await page.evaluate("printerWeight.snapshot()");
+        assert.deepEqual(writes[0], writes[1]);
+        assert.equal(writes[0].command, "register_library_sync_host_existing_spool_rfid");
+        const request = writes[0].payload.input.batch;
+        assert.equal(request.assign_empty_slot, action === "candidate");
+        assert.equal(request.spool_id, "A");
+        await switchAwayAndBack(page);
+        await page.evaluate(`printerWeight.completeWrite(1,{batch_id:${JSON.stringify(request.request_id)},spool_ids:["A"]})`);
+        await page.waitForFunction("printerWeight.snapshot().settled === 3");
+        const state = await page.evaluate("printerWeight.snapshot()");
+        assert.equal(state.reads,0);
+        assert.equal(state.info,null);
+      });
       await scenario(action + " ignores confirmation retained across A–B–A", async page => {
         await startRfid(page, action);
         await switchAwayAndBack(page);

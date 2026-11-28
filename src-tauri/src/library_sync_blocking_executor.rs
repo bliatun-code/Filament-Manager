@@ -357,6 +357,7 @@ mod tests {
                 &[
                     "create_library_sync_host_catalog_spool_batch",
                     "supports_library_sync_host_ams_registration",
+                    "register_library_sync_host_existing_spool_rfid",
                 ][..],
             ),
             (

@@ -3,7 +3,9 @@ use super::database_measured_weight::{
     update_measured_total_weight_in_transaction,
 };
 use crate::backend::bambu_live_settings::bambu_live_integration_setting_key;
-pub use crate::backend::catalog_spool_batches::{CatalogSpoolBatchInput, CatalogSpoolBatchReceipt};
+pub use crate::backend::catalog_spool_batches::{
+    CatalogSpoolBatchInput, CatalogSpoolBatchReceipt, ExistingSpoolRfidInput,
+};
 use crate::backend::database_catalog_manual::upsert_manual_master as upsert_manual_master_row;
 use crate::backend::database_events::{
     ensure_scale as ensure_scale_row, insert_spool_history_event as insert_spool_history_event_row,
@@ -614,6 +616,13 @@ impl InventoryEngine {
         input: CatalogSpoolBatchInput,
     ) -> InventoryResult<CatalogSpoolBatchReceipt> {
         self.db.create_catalog_spool_batch(input)
+    }
+
+    pub fn register_existing_spool_rfid(
+        &self,
+        input: ExistingSpoolRfidInput,
+    ) -> InventoryResult<CatalogSpoolBatchReceipt> {
+        self.db.register_existing_spool_rfid(input)
     }
 
     pub fn get_catalog_spool_batch_receipt(

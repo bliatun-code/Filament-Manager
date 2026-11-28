@@ -31,9 +31,18 @@ async fn post_batch(
     session: Option<&AuthenticatedTestSession>,
     payload: &serde_json::Value,
 ) -> (StatusCode, serde_json::Value) {
+    post_registration(router, session, "/api/v1/spools/catalog-batch", payload).await
+}
+
+async fn post_registration(
+    router: &Router,
+    session: Option<&AuthenticatedTestSession>,
+    uri: &str,
+    payload: &serde_json::Value,
+) -> (StatusCode, serde_json::Value) {
     let mut request = Request::builder()
         .method("POST")
-        .uri("/api/v1/spools/catalog-batch")
+        .uri(uri)
         .header("content-type", "application/json")
         .header("host", "127.0.0.1:4278")
         .header("origin", "http://127.0.0.1:4278");
@@ -158,5 +167,27 @@ async fn companion_catalog_batch_auth_and_persisted_role_fail_closed() {
     assert_eq!(snapshot(&db), before);
     drop(router);
     drop(db);
+    std::fs::remove_file(path).unwrap();
+}
+
+#[tokio::test]
+async fn existing_rfid_route_requires_pairing_and_returns_the_review_error() {
+    let path = temp_db_path("existing-rfid-route");
+    seed_db(&path).unwrap();
+    let router = build_router(test_state(&path));
+    let payload = serde_json::json!({
+        "request_id":"existing-rfid-route","spool_id":"spool_1","expected_rfid":null,"assign_empty_slot":true,
+        "observation":{"printer_id":"missing","slot_id":"missing","rfid_tag":"TAG","observed_at":"2026-01-01T00:00:00Z"}
+    });
+    let uri = "/api/v1/spools/ams-rfid";
+    assert_eq!(
+        post_registration(&router, None, uri, &payload).await.0,
+        StatusCode::UNAUTHORIZED
+    );
+    let session = pair_test_session(&router, &path).await.unwrap();
+    let (status, error) = post_registration(&router, Some(&session), uri, &payload).await;
+    assert_eq!(status, StatusCode::BAD_REQUEST);
+    assert_eq!(error["code"], "printers.slot_operation_stale");
+    drop(router);
     std::fs::remove_file(path).unwrap();
 }

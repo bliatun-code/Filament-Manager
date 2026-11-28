@@ -867,6 +867,7 @@ export default function PrintersPage({ onOpenInventory }: { onOpenInventory?: ()
       {rfidOverridePrompt ? (
         <RfidOverrideModal
           busy={busy}
+          error={error}
           locale={locale}
           prompt={rfidOverridePrompt}
           onClose={closeRfidOverrideDialog}

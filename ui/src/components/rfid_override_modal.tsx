@@ -22,6 +22,7 @@ import { InventorySwatchChip } from "./inventory_swatch_chip";
 
 type RfidOverrideModalProps = {
   busy: boolean;
+  error?: string | null;
   locale: Locale;
   prompt: SlotRfidOverridePrompt;
   onClose: () => void;
@@ -30,6 +31,7 @@ type RfidOverrideModalProps = {
 
 export function RfidOverrideModal({
   busy,
+  error,
   locale,
   prompt,
   onClose,
@@ -64,6 +66,7 @@ export function RfidOverrideModal({
         />
 
         <div className="space-y-4 px-6 py-6">
+          {error && <div role="alert"><ModalNotice tone="warning">{error}</ModalNotice></div>}
           <ModalNotice tone="warning">
             {t(
               "printers.rfidOverrideDialogHint",

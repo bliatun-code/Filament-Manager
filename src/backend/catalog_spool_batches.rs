@@ -21,6 +21,16 @@ pub struct CatalogAmsAssignment {
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(deny_unknown_fields)]
+pub struct ExistingSpoolRfidInput {
+    pub request_id: String,
+    pub spool_id: String,
+    pub expected_rfid: Option<String>,
+    pub assign_empty_slot: bool,
+    pub observation: CatalogAmsAssignment,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(deny_unknown_fields)]
 pub struct CatalogSpoolBatchInput {
     pub batch_id: String,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -50,16 +60,7 @@ impl FilamentDatabase {
     ) -> InventoryResult<CatalogSpoolBatchReceipt> {
         let input = normalize_input(input)?;
         let request_json = json_string(&input)?;
-        self.with_inventory_transaction(|conn| {
-            let library_id = get_library_sync_library_id(conn)?;
-            if let Some((saved_library, saved_request, receipt)) =
-                read_receipt(conn, &input.batch_id)?
-            {
-                if saved_library != library_id || saved_request != request_json {
-                    return Err(conflict());
-                }
-                return Ok(receipt);
-            }
+        self.with_spool_receipt(&input.batch_id, &request_json, |conn| {
             validate_input(&input)?;
 
             let mut spool_ids = Vec::with_capacity(input.master_ids.len());
@@ -70,7 +71,9 @@ impl FilamentDatabase {
                     |row| row.get(0),
                 )?;
                 if !master_exists {
-                    return Err(invalid("A catalog batch item no longer exists in this library."));
+                    return Err(invalid(
+                        "A catalog batch item no longer exists in this library.",
+                    ));
                 }
                 let spool_id = format!("spool_{:032x}", rand::random::<u128>());
                 InventoryEngine::create_spool_in_transaction(
@@ -102,44 +105,116 @@ impl FilamentDatabase {
                 spool_ids.push(spool_id);
             }
             if let Some(ams) = &input.ams_assignment {
-                self.finish_catalog_ams_registration(conn, ams, &spool_ids[0])?;
+                self.save_reviewed_ams_rfid(conn, ams, &spool_ids[0], true)?;
+            }
+            Ok(spool_ids)
+        })
+    }
+
+    fn with_spool_receipt(
+        &self,
+        request_id: &str,
+        request: &str,
+        write: impl FnOnce(&Connection) -> InventoryResult<Vec<String>>,
+    ) -> InventoryResult<CatalogSpoolBatchReceipt> {
+        self.with_inventory_transaction(|conn| {
+            let library_id = get_library_sync_library_id(conn)?;
+            if let Some((saved_library, saved_request, receipt)) = read_receipt(conn, request_id)? {
+                if saved_library != library_id || saved_request != request {
+                    return Err(conflict());
+                }
+                return Ok(receipt);
             }
             let receipt = CatalogSpoolBatchReceipt {
-                batch_id: input.batch_id.clone(),
-                spool_ids,
+                batch_id: request_id.into(),
+                spool_ids: write(conn)?,
             };
             conn.execute(
                 "INSERT INTO catalog_spool_batches (batch_id, library_id, request_json, receipt_json)
                  VALUES (?1, ?2, ?3, ?4)",
-                params![input.batch_id, library_id, request_json, json_string(&receipt)?],
+                params![request_id, library_id, request, json_string(&receipt)?],
             )?;
             Ok(receipt)
         })
     }
 
-    fn finish_catalog_ams_registration(
+    pub fn register_existing_spool_rfid(
+        &self,
+        input: ExistingSpoolRfidInput,
+    ) -> InventoryResult<CatalogSpoolBatchReceipt> {
+        let request_id = normalize_batch_id(&input.request_id)?;
+        let request = json_string(&input)?;
+        let ams = &input.observation;
+        if [
+            &ams.printer_id,
+            &ams.slot_id,
+            &ams.rfid_tag,
+            &ams.observed_at,
+            &input.spool_id,
+        ]
+        .iter()
+        .any(|v| v.trim().is_empty())
+        {
+            return Err(invalid("Missing reviewed RFID registration details."));
+        }
+        self.with_spool_receipt(&request_id, &request, |conn| {
+            let current: Option<(Option<String>, String)> = conn.query_row(
+                "SELECT rfid_tag, status FROM filament_spools WHERE id = ?1 AND deleted_at IS NULL",
+                [&input.spool_id], |row| Ok((row.get(0)?, row.get(1)?)),
+            ).optional()?;
+            let (rfid, status) = current.ok_or_else(stale_rfid)?;
+            let saved_tag = rfid.as_deref().map(str::trim).filter(|tag| !tag.is_empty());
+            let status = super::spool_defaults::normalize_spool_status(Some(&status));
+            if saved_tag != input.expected_rfid.as_deref()
+                || (input.assign_empty_slot && saved_tag.is_some())
+                || !matches!(status.as_str(), "ASSIGNED" | "IN_STOCK")
+            {
+                return Err(stale_rfid());
+            }
+            super::database_loan_queries::ensure_spool_not_outbound_loan_locked(
+                conn,
+                &input.spool_id,
+            )?;
+            let elsewhere: bool = conn.query_row(
+                "SELECT EXISTS(SELECT 1 FROM ams_slots WHERE spool_id = ?1 AND id <> ?2)",
+                params![input.spool_id, ams.slot_id],
+                |row| row.get(0),
+            )?;
+            if elsewhere {
+                return Err(stale_rfid());
+            }
+            self.save_reviewed_ams_rfid(conn, ams, &input.spool_id, input.assign_empty_slot)?;
+            Ok(vec![input.spool_id.clone()])
+        })
+    }
+
+    fn save_reviewed_ams_rfid(
         &self,
         conn: &Connection,
         ams: &CatalogAmsAssignment,
         spool_id: &str,
+        assign_empty_slot: bool,
     ) -> InventoryResult<()> {
         use super::inventory_engine::{insert_json_history_event, AssignPrinterSlotInput};
         use super::printer_slot_live_mapping::{bambu_live_slot_matches_tray, is_external_slot_id};
-        let stale = || InventoryError::InvalidOperation {
-            code: "printers.slot_operation_stale",
-            message: "The reviewed AMS slot or RFID has changed.".into(),
-        };
         let slot = self
             .get_printer_overview(&ams.printer_id)?
             .and_then(|printer| printer.slots.into_iter().find(|s| s.slot_id == ams.slot_id))
-            .filter(|s| s.spool_id.is_none())
-            .ok_or_else(stale)?;
+            .filter(|s| {
+                s.spool_id.as_deref()
+                    == if assign_empty_slot {
+                        None
+                    } else {
+                        Some(spool_id)
+                    }
+            })
+            .ok_or_else(stale_rfid)?;
         let live = self
             .list_bambu_live_integrations()?
             .into_iter()
             .find(|entry| entry.printer_id == ams.printer_id && entry.config.enabled)
             .and_then(|entry| entry.config.observed_state)
-            .ok_or_else(stale)?;
+            .ok_or_else(stale_rfid)?;
         let tray = if is_external_slot_id(&slot.ams_id) {
             live.trays
                 .iter()
@@ -155,7 +230,7 @@ impl FilamentDatabase {
                 )
             })
         }
-        .ok_or_else(stale)?;
+        .ok_or_else(stale_rfid)?;
         let tag = tray
             .tray_uuid
             .as_deref()
@@ -163,14 +238,18 @@ impl FilamentDatabase {
             .filter(|s| !s.is_empty())
             .or_else(|| tray.observed_rfid_tag.as_deref().map(str::trim));
         if !tray.loaded || tag != Some(ams.rfid_tag.as_str()) {
-            return Err(stale());
+            return Err(stale_rfid());
         }
         let tag_claimed: bool = conn.query_row(
-            "SELECT EXISTS(SELECT 1 FROM filament_spools WHERE deleted_at IS NULL AND rfid_tag = ?1)",
-            [&ams.rfid_tag], |row| row.get(0),
+            "SELECT EXISTS(SELECT 1 FROM filament_spools WHERE deleted_at IS NULL AND rfid_tag = ?1 AND id <> ?2)",
+            params![ams.rfid_tag, spool_id], |row| row.get(0),
         )?;
         if tag_claimed {
-            return Err(stale());
+            return Err(stale_rfid());
+        }
+        // Reopening the manual dialog after a lost reply may already show the committed tag.
+        if !assign_empty_slot && slot.spool_rfid_tag.as_deref() == Some(ams.rfid_tag.as_str()) {
+            return Ok(());
         }
         super::database_spool_updates::update_spool_rfid_tag(
             conn,
@@ -186,6 +265,9 @@ impl FilamentDatabase {
                 "rfid_tag": ams.rfid_tag, "rfid_observed_at": ams.observed_at
             }),
         )?;
+        if !assign_empty_slot {
+            return Ok(());
+        }
         let input = AssignPrinterSlotInput {
             printer_id: ams.printer_id.clone(),
             slot_id: ams.slot_id.clone(),
@@ -214,6 +296,13 @@ impl FilamentDatabase {
                 })
                 .transpose()
         })
+    }
+}
+
+fn stale_rfid() -> InventoryError {
+    InventoryError::InvalidOperation {
+        code: "printers.slot_operation_stale",
+        message: "The reviewed AMS slot, spool or RFID has changed.".into(),
     }
 }
 

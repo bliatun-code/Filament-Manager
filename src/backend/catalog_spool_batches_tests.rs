@@ -594,3 +594,105 @@ fn ams_registration_replays_and_rejects_changed_identity_occupied_slot_and_late_
     assert!(db.create_catalog_spool_batch(request).is_err());
     assert_eq!(state(&db), committed);
 }
+
+#[test]
+fn existing_rfid_checks_slot_and_both_tags_before_writing_and_replays_without_history() {
+    let library = TestLibrary::new();
+    let db = library.open();
+    let rolls = db
+        .create_catalog_spool_batch(input("seed-rfid", "OWNED"))
+        .unwrap()
+        .spool_ids;
+    db.upsert_printer_with_ams("p", "P1S", "Printer", 1, 4)
+        .unwrap();
+    let slot = "p_ams_1_slot_1";
+    let live = |tag: &str| {
+        let config = serde_json::from_value(json!({"enabled":true,"observed_state":{"online":true,
+            "mqtt_connected":true,"trays":[{"tray_index":0,"loaded":true,"tray_uuid":tag}]}}))
+        .unwrap();
+        db.save_bambu_live_integration("p", &config).unwrap();
+    };
+    let mut request = ExistingSpoolRfidInput {
+        request_id: "reviewed-candidate".into(),
+        spool_id: rolls[0].clone(),
+        expected_rfid: None,
+        assign_empty_slot: true,
+        observation: CatalogAmsAssignment {
+            printer_id: "p".into(),
+            slot_id: slot.into(),
+            rfid_tag: "TAG".into(),
+            observed_at: "2026-01-01T00:00:00Z".into(),
+        },
+    };
+    let reject = |review: &ExistingSpoolRfidInput| {
+        let before = state(&db);
+        assert_code(
+            db.register_existing_spool_rfid(review.clone()).unwrap_err(),
+            "printers.slot_operation_stale",
+        );
+        assert_eq!(state(&db), before);
+    };
+    live("DIFFERENT");
+    reject(&request);
+    live("TAG");
+    db.connection()
+        .execute(
+            "UPDATE ams_slots SET spool_id=?1 WHERE id=?2",
+            params![rolls[1], slot],
+        )
+        .unwrap();
+    reject(&request);
+    db.connection()
+        .execute("UPDATE ams_slots SET spool_id=NULL WHERE id=?1", [slot])
+        .unwrap();
+    db.connection()
+        .execute(
+            "UPDATE filament_spools SET rfid_tag='TAG' WHERE id=?1",
+            [&rolls[1]],
+        )
+        .unwrap();
+    reject(&request);
+    db.connection()
+        .execute(
+            "UPDATE filament_spools SET rfid_tag=NULL WHERE id=?1",
+            [&rolls[1]],
+        )
+        .unwrap();
+    db.connection().execute_batch("CREATE TRIGGER abort_rfid BEFORE INSERT ON catalog_spool_batches BEGIN SELECT RAISE(ABORT,'lost receipt'); END;").unwrap();
+    let before = state(&db);
+    assert!(db.register_existing_spool_rfid(request.clone()).is_err());
+    assert_eq!(state(&db), before);
+    db.connection()
+        .execute_batch("DROP TRIGGER abort_rfid")
+        .unwrap();
+    let verify_commit = |review: &ExistingSpoolRfidInput| {
+        let receipt = db.register_existing_spool_rfid(review.clone()).unwrap();
+        let committed = state(&db);
+        assert_eq!(receipt.spool_ids, vec![rolls[0].clone()]);
+        assert_eq!(
+            library
+                .open()
+                .register_existing_spool_rfid(review.clone())
+                .unwrap(),
+            receipt
+        );
+        assert_eq!(state(&db), committed);
+        let assigned:(String,String) = db.connection().query_row(
+            "SELECT s.spool_id, f.rfid_tag FROM ams_slots s JOIN filament_spools f ON f.id=s.spool_id WHERE s.id=?1",
+            [slot],|r|Ok((r.get(0)?,r.get(1)?))).unwrap();
+        assert_eq!(
+            assigned,
+            (rolls[0].clone(), review.observation.rfid_tag.clone())
+        );
+    };
+    verify_commit(&request);
+    live("NEW");
+    request.request_id = "manual-review".into();
+    request.assign_empty_slot = false;
+    request.observation.rfid_tag = "NEW".into();
+    reject(&request);
+    request.expected_rfid = Some("TAG".into());
+    let events = count(&db, "spool_history_events");
+    verify_commit(&request);
+    assert_eq!(count(&db, "spool_history_events"), events + 1);
+}
