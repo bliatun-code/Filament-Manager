@@ -7625,3 +7625,80 @@ fn printer_rename_protects_existing_location_references_and_user_owned_ids() {
         Some(destination)
     );
 }
+
+#[test]
+fn removing_empty_ams_retires_its_location_and_reports_the_change() {
+    let db = FilamentDatabase::open(":memory:").unwrap();
+    db.apply_schema().unwrap();
+    let engine = InventoryEngine::new(db);
+    let (id, slot, spool, _) = seed_printer_slot_operation_fixture(&engine, "resize").unwrap();
+    let before = engine.db.get_spool_by_id(&spool).unwrap().unwrap();
+    engine
+        .assign_printer_slot(AssignPrinterSlotInput {
+            printer_id: id.clone(),
+            slot_id: slot,
+            spool_id: None,
+            rfid_override_tray_uuid: None,
+            rfid_override_color_hex: None,
+            clear_live_cache_before_next_refresh: None,
+        })
+        .unwrap();
+    let resize = || {
+        engine
+            .save_printer_configuration(CreatePrinterInput {
+                id: id.clone(),
+                model: "P1S".into(),
+                name: "resize printer".into(),
+                ams_units: Some(0),
+                slots_per_ams: Some(1),
+            })
+            .unwrap()
+    };
+    assert!(location_name(&engine.db, before.location_id.as_deref()).is_some());
+    assert!(resize());
+    assert!(!resize());
+    assert!(location_name(&engine.db, before.location_id.as_deref()).is_none());
+    assert_eq!(
+        engine
+            .db
+            .get_spool_by_id(&spool)
+            .unwrap()
+            .unwrap()
+            .location_id,
+        before.home_location_id
+    );
+}
+
+#[test]
+fn deleting_printer_retires_loaded_slot_atomically_and_keeps_referenced_locations() {
+    let db = FilamentDatabase::open(":memory:").unwrap();
+    db.apply_schema().unwrap();
+    let engine = InventoryEngine::new(db);
+    let (id, _, spool, _) = seed_printer_slot_operation_fixture(&engine, "retire").unwrap();
+    let before = engine.db.get_spool_by_id(&spool).unwrap().unwrap();
+    let conn = engine.db.connection();
+    // The assigned location predates a rename performed by an older Host.
+    conn.execute("UPDATE printers SET name='Workshop' WHERE id=?1", [&id])
+        .unwrap();
+    let external = format!("Printer:Workshop:{id}_ext_slot_1");
+    conn.execute(
+        "INSERT INTO inventory_locations (id,name,type) VALUES (?1,?1,'PRINTER_SLOT')",
+        [&external],
+    )
+    .unwrap();
+    conn.execute("INSERT INTO inventory_locations (id,name,type,parent_id) VALUES ('child','Child','GENERIC',?1)", [&external]).unwrap();
+    conn.execute_batch("CREATE TRIGGER reject_slot_cleanup BEFORE DELETE ON inventory_locations BEGIN SELECT RAISE(ABORT,'cleanup failed'); END;").unwrap();
+    let snapshot = printer_slot_operation_snapshot(&engine).unwrap();
+    assert!(engine.delete_printer(&id).is_err());
+    assert_eq!(printer_slot_operation_snapshot(&engine).unwrap(), snapshot);
+    assert!(engine.db.get_printer_overview(&id).unwrap().is_some());
+    conn.execute_batch("DROP TRIGGER reject_slot_cleanup")
+        .unwrap();
+    engine.delete_printer(&id).unwrap();
+    assert!(engine.db.get_printer_overview(&id).unwrap().is_none());
+    assert!(location_name(&engine.db, before.location_id.as_deref()).is_none());
+    assert_eq!(location_name(&engine.db, Some(&external)), Some(external));
+    let after = engine.db.get_spool_by_id(&spool).unwrap().unwrap();
+    assert_eq!(after.location_id, before.home_location_id);
+    assert_eq!(after.remaining_g, before.remaining_g);
+}

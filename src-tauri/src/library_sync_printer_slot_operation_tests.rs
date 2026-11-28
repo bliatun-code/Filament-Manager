@@ -192,7 +192,13 @@ impl SyntheticHost {
                 let estimate_post = request_line.starts_with("POST /api/v1/printers/")
                     && request_line.ends_with("/bambu-live-weight-estimate/accept HTTP/1.1");
                 let printer_post = request_line == "POST /api/v1/printers HTTP/1.1";
-                let post = slot_post
+                let printer_delete = request_line
+                    == format!(
+                        "POST /api/v1/printers/{}/delete HTTP/1.1",
+                        encode_library_sync_path_segment("printer / one")
+                    );
+                let post = printer_delete
+                    || slot_post
                     || bulk_post
                     || delete_post
                     || purge_post
@@ -203,6 +209,15 @@ impl SyntheticHost {
                         "capabilities": if capable { vec![PRINTER_SLOT_OPERATIONS_CAPABILITY, crate::companion_models::INVENTORY_BULK_MUTATION_CAPABILITY, crate::companion_models::INVENTORY_MARK_EMPTY_CAPABILITY, crate::companion_models::INVENTORY_ROLL_STATUS_CAPABILITY, crate::companion_models::INVENTORY_ROLL_WEIGHT_CAPABILITY] } else { vec![] },
                         "auth_mode":"pairing-session","access_mode":"trusted-lan", "library_id":LIBRARY_ID,
                         "device_name":"Synthetic slot Host","sync_mode":"HOST"}).to_string())
+                } else if printer_delete {
+                    service
+                        .delete_printer_under_authority_gate("printer / one")
+                        .unwrap();
+                    printer_saved = true;
+                    (
+                        "200 OK",
+                        serde_json::json!({"ok":true,"message":"Printer deleted"}).to_string(),
+                    )
                 } else if printer_post {
                     let changed = service
                         .create_printer(serde_json::from_str(&payload).unwrap())
@@ -852,4 +867,67 @@ fn printer_rename_refreshes_paired_placements_and_skips_inventory_on_an_unchange
             .iter()
             .any(|row| row.id == location && row.linked_spool_count == Some(1)));
     }
+}
+
+#[test]
+fn paired_printer_deletion_refreshes_home_shelf_and_retires_offline_slot() {
+    use crate::library_sync_models::{
+        LibrarySyncCreatePrinterInput, LibrarySyncDeletePrinterInput,
+    };
+    use crate::library_sync_printer_write_commands::{
+        create_library_sync_host_printer_blocking, delete_library_sync_host_printer_blocking,
+    };
+    let _serial = NETWORK_TEST_LOCK
+        .lock()
+        .unwrap_or_else(|err| err.into_inner());
+    let mut host = SyntheticHost::start(true, serde_json::json!({"ok":true}));
+    let (_directory, state, _) = client(&host, true);
+    create_library_sync_host_printer_blocking(
+        &state,
+        LibrarySyncCreatePrinterInput {
+            base_url: host.base_url.clone(),
+            expected_library_id: Some(LIBRARY_ID.into()),
+            id: "printer / one".into(),
+            model: "P1S".into(),
+            name: "Workshop".into(),
+            ams_units: Some(1),
+            slots_per_ams: Some(1),
+        },
+    )
+    .unwrap();
+    let db = FilamentDatabase::open(&state.db_path).unwrap();
+    let slot = "Printer:Workshop:printer / one_ams_1_slot_1";
+    let cached_locations = || {
+        db.get_library_sync_cached_locations()
+            .unwrap()
+            .unwrap()
+            .rows
+    };
+    assert!(cached_locations().iter().any(|row| row.id == slot));
+    delete_library_sync_host_printer_blocking(
+        &state,
+        LibrarySyncDeletePrinterInput {
+            base_url: host.base_url.clone(),
+            expected_library_id: Some(LIBRARY_ID.into()),
+            printer_id: "printer / one".into(),
+        },
+    )
+    .unwrap();
+    host.finish();
+    let rolls = db
+        .get_library_sync_settings()
+        .unwrap()
+        .cached_spools
+        .unwrap()
+        .rows;
+    let roll = &rolls
+        .iter()
+        .find(|row| row.spool.id == "original-host-roll")
+        .unwrap()
+        .spool;
+    let home = roll.home_location_id.as_ref().unwrap();
+    assert_eq!(roll.location_id.as_ref(), Some(home));
+    let locations = cached_locations();
+    assert!(locations.iter().any(|row| row.id == *home));
+    assert!(locations.iter().all(|row| row.id != slot));
 }
