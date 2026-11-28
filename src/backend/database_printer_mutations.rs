@@ -86,18 +86,30 @@ pub(crate) fn upsert_printer_with_ams(
             };
 
             let mut removable_slot_stmt = tx.prepare(
-                "SELECT id, spool_id
-                 FROM ams_slots
+                "SELECT s.id, s.spool_id, f.location_id
+                 FROM ams_slots s LEFT JOIN filament_spools f ON f.id = s.spool_id
                  WHERE ams_id = ?1
                    AND (?2 = 0 OR slot_index > ?2)",
             )?;
-            let removable_slots = removable_slot_stmt
-                .query_map(params![ams_id, keep_slots], |row| {
-                    Ok((row.get::<_, String>(0)?, row.get::<_, Option<String>>(1)?))
+            let removable_slots =
+                removable_slot_stmt.query_map(params![ams_id, keep_slots], |row| {
+                    Ok((
+                        row.get::<_, String>(0)?,
+                        row.get::<_, Option<String>>(1)?,
+                        row.get::<_, Option<String>>(2)?,
+                    ))
                 })?;
 
             for slot in removable_slots {
-                let (slot_id, spool_id) = slot?;
+                let (slot_id, spool_id, location_id) = slot?;
+                if let Some(previous_name) = previous_name.as_deref() {
+                    collect_removed_slot_locations(
+                        &mut obsolete_locations,
+                        previous_name,
+                        &slot_id,
+                        location_id,
+                    );
+                }
                 if let Some(assigned_spool_id) = spool_id {
                     release_printer_spool(&tx, &assigned_spool_id)?;
                     placements_changed = true;
@@ -151,17 +163,41 @@ pub(crate) fn upsert_printer_with_ams(
 
     placements_changed |=
         sync_assigned_slot_locations(&tx, printer_id, name, &mut obsolete_locations)?;
-    for old in obsolete_locations {
-        let removed = tx.execute(
+    placements_changed |= delete_unused_slot_locations(&tx, obsolete_locations)?;
+    tx.commit()?;
+    Ok(placements_changed)
+}
+
+fn collect_removed_slot_locations(
+    locations: &mut HashSet<String>,
+    name: &str,
+    slot: &str,
+    assigned_location: Option<String>,
+) {
+    locations.insert(format_printer_slot_location(name, slot));
+    // Older versions could leave the assigned spool under the printer's former name.
+    if let Some(old) = assigned_location
+        .filter(|id| id.starts_with("Printer:") && id.ends_with(&format!(":{slot}")))
+    {
+        locations.insert(old);
+    }
+}
+
+fn delete_unused_slot_locations(
+    conn: &Connection,
+    locations: HashSet<String>,
+) -> InventoryResult<bool> {
+    let mut changed = false;
+    for old in locations {
+        let removed = conn.execute(
             "DELETE FROM inventory_locations WHERE id = ?1 AND type = 'PRINTER_SLOT'
              AND NOT EXISTS (SELECT 1 FROM filament_spools WHERE location_id = ?1 OR home_location_id = ?1)
              AND NOT EXISTS (SELECT 1 FROM inventory_locations WHERE parent_id = ?1)",
             [old],
         )?;
-        placements_changed |= removed > 0;
+        changed |= removed > 0;
     }
-    tx.commit()?;
-    Ok(placements_changed)
+    Ok(changed)
 }
 
 // Use the actual assigned slot so that saving also repairs names left stale by older versions.
@@ -206,19 +242,30 @@ fn sync_assigned_slot_locations(
 
 pub(crate) fn delete_printer(conn: &Connection, printer_id: &str) -> InventoryResult<()> {
     let bambu_live_integration_key = bambu_live_integration_setting_key(printer_id.trim());
-    let tx = conn.unchecked_transaction()?;
+    let tx = rusqlite::Transaction::new_unchecked(conn, rusqlite::TransactionBehavior::Immediate)?;
+    let mut obsolete_locations = HashSet::new();
 
     {
         let mut stmt = tx.prepare(
-            "SELECT s.spool_id
+            "SELECT p.name, s.id, s.spool_id, f.location_id
              FROM ams_slots s
              JOIN ams_units u ON u.id = s.ams_id
-             WHERE u.printer_id = ?1
-               AND s.spool_id IS NOT NULL",
+             JOIN printers p ON p.id = u.printer_id
+             LEFT JOIN filament_spools f ON f.id = s.spool_id
+             WHERE u.printer_id = ?1",
         )?;
-        let rows = stmt.query_map(params![printer_id], |row| row.get::<_, Option<String>>(0))?;
+        let rows = stmt.query_map(params![printer_id], |row| {
+            Ok((
+                row.get::<_, String>(0)?,
+                row.get::<_, String>(1)?,
+                row.get::<_, Option<String>>(2)?,
+                row.get::<_, Option<String>>(3)?,
+            ))
+        })?;
         for row in rows {
-            if let Some(spool_id) = row? {
+            let (name, slot, spool_id, location_id) = row?;
+            collect_removed_slot_locations(&mut obsolete_locations, &name, &slot, location_id);
+            if let Some(spool_id) = spool_id {
                 release_printer_spool(&tx, &spool_id)?;
             }
         }
@@ -274,6 +321,7 @@ pub(crate) fn delete_printer(conn: &Connection, printer_id: &str) -> InventoryRe
         params![printer_id],
     )?;
     require_rows(removed)?;
+    delete_unused_slot_locations(&tx, obsolete_locations)?;
 
     tx.commit()?;
     Ok(())

@@ -439,7 +439,7 @@ pub(crate) async fn delete_library_sync_host_printer(
         .await
 }
 
-fn delete_library_sync_host_printer_blocking(
+pub(crate) fn delete_library_sync_host_printer_blocking(
     state: &AppState,
     input: LibrarySyncDeletePrinterInput,
 ) -> Result<(), String> {
@@ -461,6 +461,7 @@ fn delete_library_sync_host_printer_blocking(
 
     refresh_library_sync_printer_cache(state, &target);
     refresh_library_sync_spool_cache(state, &target);
+    crate::library_sync_location_commands::refresh_location_cache_best_effort(state, &target);
     save_library_sync_success(state, &target, "Host printer deleted.", None)?;
     Ok(())
 }
