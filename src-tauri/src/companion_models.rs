@@ -313,6 +313,15 @@ pub(crate) struct CompanionLibrarySnapshotResponse {
     pub(crate) printers: i64,
 }
 
+#[derive(serde::Deserialize, Serialize)]
+pub(crate) struct SavePrinterResponse {
+    pub(crate) ok: bool,
+    #[serde(default)]
+    pub(crate) message: String,
+    // Older Hosts do not report the effects of resizing an AMS.
+    pub(crate) placements_changed: Option<bool>,
+}
+
 #[derive(Serialize)]
 pub(crate) struct WriteResponse {
     pub(crate) ok: bool,

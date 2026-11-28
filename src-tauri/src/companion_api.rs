@@ -658,7 +658,7 @@ pub(super) async fn handle_audit_vendor_catalog(
 pub(super) async fn handle_create_printer(
     State(state): State<CompanionApiState>,
     Json(payload): Json<CreatePrinterInput>,
-) -> Result<Json<WriteResponse>, CompanionApiError> {
+) -> Result<Json<crate::companion_models::SavePrinterResponse>, CompanionApiError> {
     let model = payload.model.trim();
     let name = payload.name.trim();
     if model.is_empty() || name.is_empty() {
@@ -674,7 +674,7 @@ pub(super) async fn handle_create_printer(
         ams_units: payload.ams_units,
         slots_per_ams: payload.slots_per_ams,
     };
-    state
+    let placements_changed = state
         .run_blocking("printer create", move |state| {
             state
                 .service
@@ -683,7 +683,8 @@ pub(super) async fn handle_create_printer(
         })
         .await?;
 
-    Ok(Json(WriteResponse {
+    Ok(Json(crate::companion_models::SavePrinterResponse {
+        placements_changed: Some(placements_changed),
         ok: true,
         message: "Printer saved".to_string(),
     }))

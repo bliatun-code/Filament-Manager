@@ -1594,7 +1594,13 @@ impl InventoryEngine {
     }
 
     pub fn create_printer(&self, input: CreatePrinterInput) -> InventoryResult<()> {
-        self.db.upsert_printer_with_ams(
+        self.save_printer_configuration(input).map(|_| ())
+    }
+
+    /// Returns whether inventory placements or their location rows changed.
+    pub fn save_printer_configuration(&self, input: CreatePrinterInput) -> InventoryResult<bool> {
+        super::database_printer_mutations::upsert_printer_with_ams(
+            self.db.connection(),
             &input.id,
             &input.model,
             &input.name,

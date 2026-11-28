@@ -159,14 +159,7 @@ fn assign_spool_location(
 ) -> InventoryResult<()> {
     let location = format_printer_slot_location(printer_name, slot_id);
     debug_assert!(is_printer_slot_location(&location));
-    conn.execute(
-        "INSERT INTO inventory_locations (id, name, type, created_at, updated_at)
-         VALUES (?1, ?2, 'PRINTER_SLOT', datetime('now'), datetime('now'))
-         ON CONFLICT(id) DO UPDATE SET
-            name = excluded.name,
-            updated_at = datetime('now')",
-        params![location, location],
-    )?;
+    ensure_slot_location(conn, &location)?;
     conn.execute(
         "UPDATE filament_spools
          SET status = 'ASSIGNED',
@@ -175,5 +168,24 @@ fn assign_spool_location(
          WHERE id = ?1 AND deleted_at IS NULL",
         params![spool_id, location],
     )?;
+    Ok(())
+}
+
+pub(super) fn ensure_slot_location(conn: &Connection, location: &str) -> InventoryResult<()> {
+    let changed = conn.execute(
+        "INSERT INTO inventory_locations (id, name, type, created_at, updated_at)
+         VALUES (?1, ?1, 'PRINTER_SLOT', datetime('now'), datetime('now'))
+         ON CONFLICT(id) DO UPDATE SET
+            name = excluded.name,
+            updated_at = datetime('now') WHERE inventory_locations.type = 'PRINTER_SLOT'",
+        [location],
+    )?;
+    if changed == 0 {
+        return Err(InventoryError::InvalidOperation {
+            code: "inventory.location.name_conflict",
+            message: "The generated printer slot location is already used by another location."
+                .into(),
+        });
+    }
     Ok(())
 }

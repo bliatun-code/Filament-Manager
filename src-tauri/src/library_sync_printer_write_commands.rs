@@ -218,7 +218,7 @@ pub(crate) async fn create_library_sync_host_printer(
         .await
 }
 
-fn create_library_sync_host_printer_blocking(
+pub(crate) fn create_library_sync_host_printer_blocking(
     state: &AppState,
     input: LibrarySyncCreatePrinterInput,
 ) -> Result<(), String> {
@@ -232,21 +232,29 @@ fn create_library_sync_host_printer_blocking(
         return Err("Printer id, model and name are required.".to_string());
     }
 
-    perform_library_sync_host_write(
-        state,
-        "/api/v1/printers",
-        &serde_json::json!({
-            "id": id,
-            "model": model,
-            "name": name,
-            "ams_units": input.ams_units,
-            "slots_per_ams": input.slots_per_ams,
-        }),
-        &target,
-    )?;
+    let receipt: crate::companion_models::SavePrinterResponse =
+        perform_library_sync_host_write_and_parse(
+            state,
+            "/api/v1/printers",
+            &serde_json::json!({
+                "id": id,
+                "model": model,
+                "name": name,
+                "ams_units": input.ams_units,
+                "slots_per_ams": input.slots_per_ams,
+            }),
+            &target,
+        )?;
 
+    if !receipt.ok {
+        return Err(crate::app_error::coded_command_error("common.internal"));
+    }
+    if receipt.placements_changed.unwrap_or(true) {
+        refresh_library_sync_spool_cache(state, &target);
+        crate::library_sync_location_commands::refresh_location_cache_best_effort(state, &target);
+    }
     refresh_library_sync_printer_cache(state, &target);
-    save_library_sync_success(state, &target, "Host printer saved.", None)?;
+    let _ = save_library_sync_success(state, &target, "Host printer saved.", None);
     Ok(())
 }
 
