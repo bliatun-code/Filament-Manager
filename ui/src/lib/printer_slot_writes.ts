@@ -44,6 +44,15 @@ type PrinterSlotWriteDependencies = {
   updateLocalSpoolWeight?: typeof updateSpoolWeight;
 };
 
+function reviewedLibrary(target: PrinterSlotWriteTarget) {
+  const libraryId = target.clientLibraryId?.trim();
+  const generation = target.clientTargetGeneration;
+  if (!libraryId || generation == null || !Number.isSafeInteger(generation) || generation < 0) {
+    throw createAppError("common.invalid_request");
+  }
+  return { libraryId, generation };
+}
+
 export async function writePrinterSlotOperation(
   target: PrinterSlotWriteTarget & { clientTargetGeneration: number | null },
   operation: PrinterSlotOperationInput,
@@ -61,7 +70,8 @@ export async function writePrinterSlotOperation(
     return;
   }
   const operateLocal = dependencies.operateLocalPrinterSlot ?? operatePrinterSlot;
-  await operateLocal(operation);
+  const { libraryId, generation } = reviewedLibrary(target);
+  await operateLocal(operation, libraryId, generation);
 }
 
 export async function writeAcceptedBambuLiveWeightEstimate(
@@ -73,11 +83,7 @@ export async function writeAcceptedBambuLiveWeightEstimate(
     dependencies.acceptHostAmsWeightEstimate ?? acceptLibrarySyncHostBambuLiveWeightEstimate;
   const acceptLocal = dependencies.acceptLocalAmsWeightEstimate ?? acceptBambuLiveWeightEstimate;
 
-  const libraryId = target.clientLibraryId?.trim();
-  const generation = target.clientTargetGeneration;
-  if (!libraryId || generation == null || !Number.isSafeInteger(generation) || generation < 0) {
-    throw createAppError("common.invalid_request");
-  }
+  const { libraryId, generation } = reviewedLibrary(target);
   if (target.clientReadOnly) {
     const hostTarget = requireClientHostWriteTarget(target, "Host connection details are missing for this printer action.");
     await acceptHost(hostTarget.baseUrl, libraryId, input, generation);

@@ -91,33 +91,37 @@ fn seed(path: &std::path::Path, spool_id: &str) -> String {
         .master_id
 }
 
+fn seed_slot_operation_library(path: &std::path::Path) {
+    seed(path, "original-host-roll");
+    seed(path, "incoming-host-roll");
+    let engine = InventoryEngine::new(FilamentDatabase::open(path).unwrap());
+    engine
+        .create_printer(CreatePrinterInput {
+            id: "printer / one".into(),
+            model: "Bambu X1C".into(),
+            name: "Synthetic slot printer".into(),
+            ams_units: Some(1),
+            slots_per_ams: Some(1),
+        })
+        .unwrap();
+    engine
+        .assign_printer_slot(AssignPrinterSlotInput {
+            printer_id: "printer / one".into(),
+            slot_id: "printer / one_ams_1_slot_1".into(),
+            spool_id: Some("original-host-roll".into()),
+            rfid_override_tray_uuid: None,
+            rfid_override_color_hex: None,
+            clear_live_cache_before_next_refresh: None,
+        })
+        .unwrap();
+    drop(engine);
+}
+
 impl SyntheticHost {
     fn start(capable: bool, acknowledgment: serde_json::Value) -> Self {
         let directory = TestDirectory::new();
         let db_path = directory.0.join("host.db");
-        seed(&db_path, "original-host-roll");
-        seed(&db_path, "incoming-host-roll");
-        let engine = InventoryEngine::new(FilamentDatabase::open(&db_path).unwrap());
-        engine
-            .create_printer(CreatePrinterInput {
-                id: "printer / one".into(),
-                model: "Bambu X1C".into(),
-                name: "Synthetic slot printer".into(),
-                ams_units: Some(1),
-                slots_per_ams: Some(1),
-            })
-            .unwrap();
-        engine
-            .assign_printer_slot(AssignPrinterSlotInput {
-                printer_id: "printer / one".into(),
-                slot_id: "printer / one_ams_1_slot_1".into(),
-                spool_id: Some("original-host-roll".into()),
-                rfid_override_tray_uuid: None,
-                rfid_override_color_hex: None,
-                clear_live_cache_before_next_refresh: None,
-            })
-            .unwrap();
-        drop(engine);
+        seed_slot_operation_library(&db_path);
         let db = FilamentDatabase::open(&db_path).unwrap();
         db.set_setting("library_sync_library_id", LIBRARY_ID)
             .unwrap();
@@ -406,10 +410,50 @@ fn printer_slot_local_command_rejects_client_shadow_mutation() {
     let mut host = SyntheticHost::start(true, serde_json::json!({"ok":true}));
     let (_directory, state, _) = client(&host, true);
     let before = snapshot(&state.db_path);
-    let error = operate_printer_slot_blocking(&state, operation()).unwrap_err();
+    let error = operate_printer_slot_blocking(&state, operation(), LIBRARY_ID, 0).unwrap_err();
     assert!(error.contains("common.forbidden"));
     assert_eq!(snapshot(&state.db_path), before);
     assert!(host.finish().is_empty());
+}
+
+#[test]
+fn local_printer_slot_rejects_old_library_and_a_b_a_even_when_slot_and_spools_match() {
+    let directory = TestDirectory::new();
+    let path = directory.0.join("local.db");
+    seed_slot_operation_library(&path);
+    let state = AppState {
+        db_path: path.to_string_lossy().into_owned(),
+        companion: CompanionRuntimeState::new(TrustedLanCompanionRuntime::new(
+            TRUSTED_LAN_DEFAULT_PORT,
+        )),
+        credentials: CredentialStore::in_memory(),
+        library_sync_auth: LibrarySyncRuntimeAuth::new(),
+    };
+    let db = FilamentDatabase::open(&state.db_path).unwrap();
+    let reviewed = db.get_library_sync_page_status().unwrap();
+    cycle_target(&state.db_path);
+    let current = db.get_library_sync_page_status().unwrap();
+    assert_eq!(reviewed.library_id, current.library_id);
+    assert!(current.target_generation > reviewed.target_generation);
+    let before = snapshot(&state.db_path);
+    for (library, generation) in [
+        ("other-library", current.target_generation),
+        (&reviewed.library_id, reviewed.target_generation),
+    ] {
+        let error =
+            operate_printer_slot_blocking(&state, operation(), library, generation).unwrap_err();
+        assert!(error.contains("common.invalid_request"));
+        assert_eq!(snapshot(&state.db_path), before);
+    }
+    operate_printer_slot_blocking(
+        &state,
+        operation(),
+        &current.library_id,
+        current.target_generation,
+    )
+    .unwrap();
+    assert!(db.spool_assigned_to_printer("incoming-host-roll").unwrap());
+    assert!(!db.spool_assigned_to_printer("original-host-roll").unwrap());
 }
 
 #[test]

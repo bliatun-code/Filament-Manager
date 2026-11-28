@@ -433,8 +433,8 @@ export async function assignPrinterSlot(input: AssignPrinterSlotInput) {
   return invoke<void>("assign_printer_slot", { input });
 }
 
-export async function operatePrinterSlot(input: PrinterSlotOperationInput) {
-  return invoke<void>("operate_printer_slot", { input });
+export async function operatePrinterSlot(input: PrinterSlotOperationInput, expectedLibraryId: string, expectedTargetGeneration: number) {
+  return invoke<void>("operate_printer_slot", { input, expectedLibraryId, expectedTargetGeneration });
 }
 
 export async function operateLibrarySyncHostPrinterSlot(

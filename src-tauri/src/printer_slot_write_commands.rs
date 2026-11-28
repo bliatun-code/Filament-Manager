@@ -52,17 +52,30 @@ impl DesktopPrinterSlotOperationInput {
 pub(crate) fn operate_printer_slot(
     state: tauri::State<'_, AppState>,
     input: DesktopPrinterSlotOperationInput,
+    expected_library_id: String,
+    expected_target_generation: u64,
 ) -> Result<(), String> {
-    operate_printer_slot_blocking(&state, input)
+    operate_printer_slot_blocking(
+        &state,
+        input,
+        &expected_library_id,
+        expected_target_generation,
+    )
 }
 
 pub(crate) fn operate_printer_slot_blocking(
     state: &AppState,
     input: DesktopPrinterSlotOperationInput,
+    expected_library_id: &str,
+    expected_target_generation: u64,
 ) -> Result<(), String> {
-    companion_service(state)
-        .operate_printer_slot(input.into_operation()?)
-        .map_err(inventory_error_to_string)
+    let operation = input.into_operation()?;
+    crate::active_library_gateway::with_reviewed_inventory(
+        state,
+        expected_library_id,
+        expected_target_generation,
+        |engine| engine.operate_printer_slot(operation),
+    )
 }
 
 #[tauri::command]

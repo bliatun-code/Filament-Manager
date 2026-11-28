@@ -29,6 +29,7 @@ import { createCatalogSpoolBatch } from "./tauri_catalog_spool_batch_client";
 import { getLibrarySyncSettings } from "./tauri_library_sync_client";
 import {
   createPackagedDesktopBatch,
+  packagedDesktopLocalTarget,
   replayPackagedDesktopBatch,
   validatePackagedDesktopBatchBackup,
   type PackagedDesktopBatchDependencies,
@@ -406,6 +407,7 @@ async function runMutationPhase(
     });
 
     step = "assign-printer-slot";
+    const { clientLibraryId, clientTargetGeneration } = await packagedDesktopLocalTarget(dependencies);
     const loadedWeight = config.returned_weight_g + 100;
     await dependencies.operatePrinterSlot({
       printer_id: config.printer_id,
@@ -414,7 +416,7 @@ async function runMutationPhase(
       target_spool_id: config.spool_id,
       outgoing_measured_total_g: null,
       incoming_measured_total_g: loadedWeight,
-    });
+    }, clientLibraryId, clientTargetGeneration);
     const loaded = (await dependencies.listSpools(500, 0)).find(
       ({ spool }) => spool.id === config.spool_id,
     )?.spool;
@@ -430,9 +432,9 @@ async function runMutationPhase(
       outgoing_measured_total_g: null,
       incoming_measured_total_g: config.returned_weight_g,
     };
-    await dependencies.operatePrinterSlot(measurement);
+    await dependencies.operatePrinterSlot(measurement, clientLibraryId, clientTargetGeneration);
     step = "replay-printer-slot-measurement";
-    await dependencies.operatePrinterSlot(measurement);
+    await dependencies.operatePrinterSlot(measurement, clientLibraryId, clientTargetGeneration);
 
     step = "validate-mutated-state";
     const { loan } = await readAndValidatePersistedState(config, dependencies, step);
