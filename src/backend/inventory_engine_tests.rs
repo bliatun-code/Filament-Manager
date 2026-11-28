@@ -7442,3 +7442,186 @@ fn manual_ams_unload_requires_weighing_for_uncertain_or_unaccepted_live_evidence
         std::fs::remove_file(path).unwrap();
     }
 }
+
+#[test]
+fn printer_rename_repairs_loaded_locations_and_preserves_home_and_slot_history() {
+    let db = FilamentDatabase::open(":memory:").unwrap();
+    db.apply_schema().unwrap();
+    let engine = InventoryEngine::new(db);
+    let (id, slot, spool, other) = seed_printer_slot_operation_fixture(&engine, "rename").unwrap();
+    let save = |name: &str, units| {
+        engine.save_printer_configuration(CreatePrinterInput {
+            id: id.clone(),
+            name: name.into(),
+            model: "P1S".into(),
+            ams_units: Some(units),
+            slots_per_ams: Some(1),
+        })
+    };
+    let roll = |id: &str| engine.db.get_spool_by_id(id).unwrap().unwrap();
+    let before = roll(&spool);
+    let ext = format!("{id}_ext_slot_1");
+    engine
+        .assign_printer_slot(AssignPrinterSlotInput {
+            printer_id: id.clone(),
+            slot_id: ext.clone(),
+            spool_id: Some(other.clone()),
+            rfid_override_tray_uuid: None,
+            rfid_override_color_hex: None,
+            clear_live_cache_before_next_refresh: None,
+        })
+        .unwrap();
+    let ext_before = roll(&other);
+    let events = engine
+        .db
+        .list_spool_history_events(&spool, 100)
+        .unwrap()
+        .len();
+    let snapshot = printer_slot_operation_snapshot(&engine).unwrap();
+    engine
+        .db
+        .connection()
+        .execute_batch(
+            "CREATE TRIGGER reject_relocation BEFORE UPDATE OF location_id ON filament_spools
+        BEGIN SELECT RAISE(ABORT,'interrupted rename'); END;",
+        )
+        .unwrap();
+    assert!(save("Lab:North", 1).is_err());
+    assert_eq!(printer_slot_operation_snapshot(&engine).unwrap(), snapshot);
+    assert_eq!(
+        engine
+            .db
+            .get_printer_overview(&id)
+            .unwrap()
+            .unwrap()
+            .printer
+            .name,
+        "rename printer"
+    );
+    engine
+        .db
+        .connection()
+        .execute_batch("DROP TRIGGER reject_relocation")
+        .unwrap();
+    assert!(save("Lab:North", 1).unwrap());
+    assert!(!save("Lab:North", 1).unwrap());
+    for (id, slot_id, previous) in [(&spool, &slot, &before), (&other, &ext, &ext_before)] {
+        let current = roll(id);
+        let location = format!("Printer:Lab:North:{slot_id}");
+        assert_eq!(current.location_id.as_deref(), Some(location.as_str()));
+        assert_eq!(
+            location_name(&engine.db, current.location_id.as_deref()),
+            Some(location)
+        );
+        assert_eq!(
+            location_name(&engine.db, previous.location_id.as_deref()),
+            None
+        );
+        assert_eq!(current.home_location_id, previous.home_location_id);
+        assert_eq!(current.status, previous.status);
+        assert_eq!(current.remaining_g, previous.remaining_g);
+    }
+    assert_eq!(
+        engine
+            .db
+            .list_spool_history_events(&spool, 100)
+            .unwrap()
+            .len(),
+        events
+    );
+    // Simulate a library last renamed under an older version.
+    engine
+        .db
+        .connection()
+        .execute("UPDATE printers SET name='Legacy' WHERE id=?1", [&id])
+        .unwrap();
+    assert!(save("Legacy", 1).unwrap());
+    assert_eq!(
+        roll(&spool).location_id,
+        Some(format!("Printer:Legacy:{slot}"))
+    );
+    // Rename and remove the internal AMS together; retain the external roll.
+    assert!(save("Workshop", 0).unwrap());
+    assert_eq!(roll(&spool).location_id, before.home_location_id);
+    assert_eq!(
+        roll(&other).location_id,
+        Some(format!("Printer:Workshop:{ext}"))
+    );
+    engine
+        .assign_printer_slot(AssignPrinterSlotInput {
+            printer_id: id,
+            slot_id: ext,
+            spool_id: None,
+            rfid_override_tray_uuid: None,
+            rfid_override_color_hex: None,
+            clear_live_cache_before_next_refresh: None,
+        })
+        .unwrap();
+    assert_eq!(roll(&other).location_id, ext_before.home_location_id);
+}
+
+#[test]
+fn printer_rename_protects_existing_location_references_and_user_owned_ids() {
+    let db = FilamentDatabase::open(":memory:").unwrap();
+    db.apply_schema().unwrap();
+    let engine = InventoryEngine::new(db);
+    let (id, slot, spool, other) =
+        seed_printer_slot_operation_fixture(&engine, "protected").unwrap();
+    let conn = engine.db.connection();
+    let old = engine
+        .db
+        .get_spool_by_id(&spool)
+        .unwrap()
+        .unwrap()
+        .location_id
+        .unwrap();
+    let destination = format!("Printer:Office:{slot}");
+    let save = || {
+        engine.save_printer_configuration(CreatePrinterInput {
+            id: id.clone(),
+            name: "Office".into(),
+            model: "P1S".into(),
+            ams_units: Some(1),
+            slots_per_ams: Some(1),
+        })
+    };
+    conn.execute(
+        "INSERT INTO inventory_locations (id,name,type) VALUES (?1,'Private shelf','GENERIC')",
+        [&destination],
+    )
+    .unwrap();
+    let before = printer_slot_operation_snapshot(&engine).unwrap();
+    assert!(save().is_err());
+    assert_eq!(printer_slot_operation_snapshot(&engine).unwrap(), before);
+    conn.execute(
+        "DELETE FROM inventory_locations WHERE id=?1",
+        [&destination],
+    )
+    .unwrap();
+    // Old imports can refer to system locations through a home or parent link.
+    conn.execute(
+        "UPDATE filament_spools SET home_location_id=?1 WHERE id=?2",
+        rusqlite::params![old, other],
+    )
+    .unwrap();
+    assert!(save().unwrap());
+    assert_eq!(location_name(&engine.db, Some(&old)), Some(old.clone()));
+    assert_eq!(
+        engine
+            .db
+            .get_spool_by_id(&other)
+            .unwrap()
+            .unwrap()
+            .home_location_id,
+        Some(old)
+    );
+    assert_eq!(
+        engine
+            .db
+            .get_spool_by_id(&spool)
+            .unwrap()
+            .unwrap()
+            .location_id,
+        Some(destination)
+    );
+}

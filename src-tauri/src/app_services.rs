@@ -494,8 +494,8 @@ impl CompanionService {
         self.with_authoritative_inventory(|engine| engine.accept_bambu_live_weight_estimate(input))
     }
 
-    pub fn create_printer(&self, input: CreatePrinterInput) -> InventoryResult<()> {
-        self.with_authoritative_inventory(|engine| engine.create_printer(input))
+    pub fn create_printer(&self, input: CreatePrinterInput) -> InventoryResult<bool> {
+        self.with_authoritative_inventory(|engine| engine.save_printer_configuration(input))
     }
 
     pub(crate) fn delete_printer_under_authority_gate(

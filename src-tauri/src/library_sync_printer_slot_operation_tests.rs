@@ -134,7 +134,9 @@ impl SyntheticHost {
         let stop = Arc::clone(&stopped);
         let transition = Arc::new(Mutex::new((TransitionAt::Never, None::<String>)));
         let transition_state = Arc::clone(&transition);
+        let host_path = db_path.clone();
         let server = std::thread::spawn(move || {
+            let mut printer_saved = false;
             let mut requests = Vec::new();
             while !stop.load(Ordering::Acquire) {
                 let mut stream = match listener.accept() {
@@ -189,12 +191,42 @@ impl SyntheticHost {
                     request_line == "POST /api/v1/spools/original-host-roll/purge HTTP/1.1";
                 let estimate_post = request_line.starts_with("POST /api/v1/printers/")
                     && request_line.ends_with("/bambu-live-weight-estimate/accept HTTP/1.1");
-                let post = slot_post || bulk_post || delete_post || purge_post || estimate_post;
+                let printer_post = request_line == "POST /api/v1/printers HTTP/1.1";
+                let post = slot_post
+                    || bulk_post
+                    || delete_post
+                    || purge_post
+                    || estimate_post
+                    || printer_post;
                 let (status, body) = if health {
                     ("200 OK", serde_json::json!({"ok":true,"api_version":"v1",
                         "capabilities": if capable { vec![PRINTER_SLOT_OPERATIONS_CAPABILITY, crate::companion_models::INVENTORY_BULK_MUTATION_CAPABILITY, crate::companion_models::INVENTORY_MARK_EMPTY_CAPABILITY, crate::companion_models::INVENTORY_ROLL_STATUS_CAPABILITY, crate::companion_models::INVENTORY_ROLL_WEIGHT_CAPABILITY] } else { vec![] },
                         "auth_mode":"pairing-session","access_mode":"trusted-lan", "library_id":LIBRARY_ID,
                         "device_name":"Synthetic slot Host","sync_mode":"HOST"}).to_string())
+                } else if printer_post {
+                    let changed = service
+                        .create_printer(serde_json::from_str(&payload).unwrap())
+                        .unwrap();
+                    printer_saved = true;
+                    let receipt = if capable {
+                        serde_json::json!({"ok":true,"placements_changed":changed})
+                    } else {
+                        serde_json::json!({"ok":true,"message":"Printer saved"})
+                    };
+                    ("200 OK", receipt.to_string())
+                } else if printer_saved && request_line.starts_with("GET /api/v1/library/spools?") {
+                    (
+                        "200 OK",
+                        serde_json::to_string(&service.list_spools(2500, 0).unwrap()).unwrap(),
+                    )
+                } else if printer_saved
+                    && request_line.starts_with("GET /api/v1/library/locations?")
+                {
+                    let rows = FilamentDatabase::open(&host_path)
+                        .unwrap()
+                        .list_inventory_locations(true)
+                        .unwrap();
+                    ("200 OK", serde_json::to_string(&rows).unwrap())
                 } else if estimate_post {
                     ("200 OK", acknowledgment.to_string())
                 } else if delete_post || purge_post {
@@ -759,5 +791,65 @@ fn ams_estimate_pins_target_before_network_during_health_and_after_confirmation(
             assert!(settings.target_generation > generation);
         }
         assert!(settings.cached_spools.is_none());
+    }
+}
+
+#[test]
+fn printer_rename_refreshes_paired_placements_and_skips_inventory_on_an_unchanged_save() {
+    use crate::library_sync_models::LibrarySyncCreatePrinterInput;
+    use crate::library_sync_printer_write_commands::create_library_sync_host_printer_blocking;
+    let _serial = NETWORK_TEST_LOCK
+        .lock()
+        .unwrap_or_else(|err| err.into_inner());
+    for modern in [true, false] {
+        let mut host = SyntheticHost::start(modern, serde_json::json!({"ok":true}));
+        let (_directory, state, _) = client(&host, true);
+        for _ in 0..2 {
+            create_library_sync_host_printer_blocking(
+                &state,
+                LibrarySyncCreatePrinterInput {
+                    base_url: host.base_url.clone(),
+                    expected_library_id: Some(LIBRARY_ID.into()),
+                    id: "printer / one".into(),
+                    model: "P1S".into(),
+                    name: "Lab:North".into(),
+                    ams_units: Some(1),
+                    slots_per_ams: Some(1),
+                },
+            )
+            .unwrap();
+        }
+        let requests = host.finish();
+        let expected_reads = if modern { 1 } else { 2 };
+        for path in [
+            "GET /api/v1/library/spools?",
+            "GET /api/v1/library/locations?",
+        ] {
+            assert_eq!(
+                requests
+                    .iter()
+                    .filter(|(line, _)| line.starts_with(path))
+                    .count(),
+                expected_reads
+            );
+        }
+        let db = FilamentDatabase::open(&state.db_path).unwrap();
+        let rolls = db
+            .get_library_sync_settings()
+            .unwrap()
+            .cached_spools
+            .unwrap()
+            .rows;
+        let placed = rolls
+            .iter()
+            .find(|row| row.spool.id == "original-host-roll")
+            .unwrap();
+        let location = "Printer:Lab:North:printer / one_ams_1_slot_1";
+        assert_eq!(placed.spool.location_id.as_deref(), Some(location));
+        let cached = db.get_library_sync_cached_locations().unwrap().unwrap();
+        assert!(cached
+            .rows
+            .iter()
+            .any(|row| row.id == location && row.linked_spool_count == Some(1)));
     }
 }

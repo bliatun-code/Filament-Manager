@@ -51,6 +51,7 @@ impl FilamentDatabase {
             ams_units,
             slots_per_unit,
         )
+        .map(|_| ())
     }
 
     pub fn delete_printer(&self, printer_id: &str) -> InventoryResult<()> {

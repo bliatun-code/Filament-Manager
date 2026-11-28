@@ -1,12 +1,14 @@
 use std::collections::HashSet;
 
-use rusqlite::{params, Connection};
+use rusqlite::{params, Connection, OptionalExtension};
 
 use super::bambu_live_settings::bambu_live_integration_setting_key;
 use super::database_loan_queries::ensure_spool_not_outbound_loan_locked;
 use super::database_result::require_rows;
 use super::database_result::{InventoryError, InventoryResult};
-use super::printer_slot_location::PRINTER_SLOT_LOCATION_PREDICATE_SQL;
+use super::printer_slot_location::{
+    format_printer_slot_location, PRINTER_SLOT_LOCATION_PREDICATE_SQL,
+};
 use super::spool_defaults::SPOOL_STATUS_ASSIGNED_PREDICATE_SQL;
 
 pub(crate) fn upsert_printer_with_ams(
@@ -16,7 +18,7 @@ pub(crate) fn upsert_printer_with_ams(
     name: &str,
     ams_units: i64,
     slots_per_unit: i64,
-) -> InventoryResult<()> {
+) -> InventoryResult<bool> {
     let printer_id = printer_id.trim();
     let model = model.trim();
     let name = name.trim();
@@ -28,8 +30,26 @@ pub(crate) fn upsert_printer_with_ams(
 
     let unit_count = ams_units.clamp(0, 4);
     let slot_count = slots_per_unit.clamp(1, 8);
-    let tx = conn.unchecked_transaction()?;
+    let tx = rusqlite::Transaction::new_unchecked(conn, rusqlite::TransactionBehavior::Immediate)?;
 
+    let previous_name: Option<String> = tx
+        .query_row(
+            "SELECT name FROM printers WHERE id = ?1",
+            [printer_id],
+            |row| row.get(0),
+        )
+        .optional()?;
+    let renamed_from = previous_name.as_deref().filter(|old| *old != name);
+    let mut obsolete_locations = HashSet::new();
+    if let Some(old) = renamed_from {
+        let mut stmt = tx.prepare(
+            "SELECT s.id FROM ams_slots s JOIN ams_units u ON u.id = s.ams_id WHERE u.printer_id = ?1",
+        )?;
+        for slot in stmt.query_map([printer_id], |row| row.get::<_, String>(0))? {
+            obsolete_locations.insert(format_printer_slot_location(old, &slot?));
+        }
+    }
+    let mut placements_changed = false;
     tx.execute(
         "INSERT INTO printers (id, model, name, created_at, updated_at)
          VALUES (?1, ?2, ?3, datetime('now'), datetime('now'))
@@ -80,6 +100,7 @@ pub(crate) fn upsert_printer_with_ams(
                 let (slot_id, spool_id) = slot?;
                 if let Some(assigned_spool_id) = spool_id {
                     release_printer_spool(&tx, &assigned_spool_id)?;
+                    placements_changed = true;
                 }
                 tx.execute("DELETE FROM ams_slots WHERE id = ?1", params![slot_id])?;
             }
@@ -128,8 +149,59 @@ pub(crate) fn upsert_printer_with_ams(
         }
     }
 
+    placements_changed |=
+        sync_assigned_slot_locations(&tx, printer_id, name, &mut obsolete_locations)?;
+    for old in obsolete_locations {
+        let removed = tx.execute(
+            "DELETE FROM inventory_locations WHERE id = ?1 AND type = 'PRINTER_SLOT'
+             AND NOT EXISTS (SELECT 1 FROM filament_spools WHERE location_id = ?1 OR home_location_id = ?1)
+             AND NOT EXISTS (SELECT 1 FROM inventory_locations WHERE parent_id = ?1)",
+            [old],
+        )?;
+        placements_changed |= removed > 0;
+    }
     tx.commit()?;
-    Ok(())
+    Ok(placements_changed)
+}
+
+// Use the actual assigned slot so that saving also repairs names left stale by older versions.
+fn sync_assigned_slot_locations(
+    conn: &Connection,
+    printer_id: &str,
+    name: &str,
+    obsolete_locations: &mut HashSet<String>,
+) -> InventoryResult<bool> {
+    let mut stmt = conn.prepare(
+        "SELECT s.id, f.id, f.location_id FROM ams_slots s
+        JOIN ams_units u ON u.id = s.ams_id
+        JOIN filament_spools f ON f.id = s.spool_id
+        JOIN inventory_locations l ON l.id = f.location_id
+        WHERE u.printer_id = ?1 AND f.deleted_at IS NULL AND l.type = 'PRINTER_SLOT'",
+    )?;
+    let assigned = stmt
+        .query_map([printer_id], |r| {
+            Ok((
+                r.get::<_, String>(0)?,
+                r.get::<_, String>(1)?,
+                r.get::<_, String>(2)?,
+            ))
+        })?
+        .collect::<Result<Vec<_>, _>>()?;
+    let mut changed = false;
+    for (slot, spool, old_location) in assigned {
+        let location = format_printer_slot_location(name, &slot);
+        if old_location == location || !old_location.ends_with(&format!(":{slot}")) {
+            continue;
+        }
+        super::database_printer_slot_assignment::ensure_slot_location(conn, &location)?;
+        conn.execute(
+            "UPDATE filament_spools SET location_id = ?1, updated_at = datetime('now') WHERE id = ?2",
+            params![location, spool],
+        )?;
+        obsolete_locations.insert(old_location);
+        changed = true;
+    }
+    Ok(changed)
 }
 
 pub(crate) fn delete_printer(conn: &Connection, printer_id: &str) -> InventoryResult<()> {
